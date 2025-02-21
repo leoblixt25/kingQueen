@@ -1,9 +1,10 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Check, Edit, Trash } from "lucide-react";
+import { Check, Edit, Trash, Crown } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Gender, Match, Player, FinalMatchScores, FinalMatchWinner } from "@/types";
 
@@ -300,222 +301,318 @@ export default function BeachVolleyballTracker() {
   const currentMatch = matches[currentMatchIndex];
 
   return (
-    <div className="min-h-screen bg-white flex flex-col items-center p-4">
-      <style>{`
-        input[type="number"]::-webkit-inner-spin-button,
-        input[type="number"]::-webkit-outer-spin-button {
-          -webkit-appearance: none;
-          margin: 0;
-        }
-        input[type="number"] {
-          -moz-appearance: textfield;
-        }
-      `}</style>
+    <div className="min-h-screen bg-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <header className="mb-8">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button 
+                variant={gender === 'female' ? "default" : "outline"} 
+                onClick={() => { setGender('female'); setShowFinalMatch(false); }}
+                className="w-full sm:w-auto"
+              >
+                Female
+              </Button>
+              <Button 
+                variant={gender === 'male' ? "default" : "outline"}
+                onClick={() => { setGender('male'); setShowFinalMatch(false); }}
+                className="w-full sm:w-auto"
+              >
+                Male
+              </Button>
+              <Button 
+                variant={showFinalMatch ? "default" : "outline"}
+                onClick={() => setShowFinalMatch(true)}
+                className="w-full sm:w-auto"
+              >
+                Final Match
+              </Button>
+            </div>
+            <div className="flex items-center gap-2">
+              {!isAdmin ? (
+                <Button variant="outline" onClick={() => setShowLoginForm(true)}>
+                  Admin Login
+                </Button>
+              ) : (
+                <Button variant="destructive" onClick={handleAdminLogout}>
+                  Logout
+                </Button>
+              )}
+            </div>
+          </div>
+        </header>
 
-      <header className="w-full max-w-4xl flex justify-between items-center mb-8">
-        <div className="flex items-center space-x-4">
-          <Button variant="outline" onClick={() => { setGender('female'); setShowFinalMatch(false); }}>
-            Female
-          </Button>
-          <Button variant="outline" onClick={() => { setGender('male'); setShowFinalMatch(false); }}>
-            Male
-          </Button>
-          <Button variant="outline" onClick={() => setShowFinalMatch(true)}>
-            Final Match
-          </Button>
-        </div>
-        <div className="flex items-center space-x-4">
-          <Button variant="outline" onClick={() => setShowLoginForm(true)}>
-            Admin Login
-          </Button>
-          {isAdmin && (
-            <Button variant="outline" onClick={handleAdminLogout}>
-              Admin Logout
-            </Button>
-          )}
-        </div>
-      </header>
-
-      {showLoginForm && (
-        <section className="mb-8">
-          <Card>
+        {showLoginForm && (
+          <Card className="mb-8">
             <CardHeader>
               <CardTitle>Admin Login</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex flex-col space-y-2">
+              <div className="space-y-2">
                 <Label htmlFor="adminUsername">Username</Label>
                 <Input
                   id="adminUsername"
                   value={adminUsername}
                   onChange={(e) => setAdminUsername(e.target.value)}
                   type="text"
-                  className="w-full"
                 />
               </div>
-              <div className="flex flex-col space-y-2">
+              <div className="space-y-2">
                 <Label htmlFor="adminPassword">Password</Label>
                 <Input
                   id="adminPassword"
                   value={adminPassword}
                   onChange={(e) => setAdminPassword(e.target.value)}
                   type="password"
-                  className="w-full"
                 />
               </div>
-              <Button onClick={handleAdminLogin}>Login</Button>
+              <Button onClick={handleAdminLogin} className="w-full">Login</Button>
             </CardContent>
           </Card>
-        </section>
-      )}
+        )}
 
-      {!showLoginForm && (
-        <main className="w-full max-w-4xl">
-          {showFinalMatch ? (
-            <section className="mb-8">
+        {!showLoginForm && (
+          <main>
+            {showFinalMatch ? (
               <Card>
                 <CardHeader>
-                  <CardTitle>Final Match</CardTitle>
+                  <CardTitle className="text-2xl font-bold">Final Match</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-8">
                   {/* Team 1 */}
-                  <div className="flex items-center space-x-4">
-                    <div>
-                      <p className="text-lg font-semibold">Team 1: {malePlayers[0].name} & {femalePlayers[1].name}</p>
-                    </div>
-                    <div className="flex items-center space-x-4">
-                      <Input
-                        value={currentMatch.isSubmitted && !isAdmin ? currentMatch.score1 : score1}
-                        onChange={(e) => setScore1(e.target.value)}
-                        type="number"
-                        className="w-16"
-                        inputMode="numeric"
-                        pattern="\d*"
-                        step="any"
-                        disabled={currentMatch.isSubmitted && !isAdmin}
-                      />
+                  <div className="space-y-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                      <h3 className="text-lg font-semibold min-w-[200px]">
+                        Team 1: {malePlayers[0].name} & {femalePlayers[1].name}
+                      </h3>
+                      <div className="flex gap-4">
+                        {[0, 1, 2].map((setIndex) => (
+                          <div key={setIndex} className="space-y-2">
+                            <Label htmlFor={`team1-set${setIndex + 1}`}>Set {setIndex + 1}</Label>
+                            <Input
+                              id={`team1-set${setIndex + 1}`}
+                              value={finalMatchScores.team1[setIndex] !== null ? finalMatchScores.team1[setIndex] : ''}
+                              onChange={(e) => {
+                                const newScores = [...finalMatchScores.team1];
+                                newScores[setIndex] = e.target.value === '' ? null : parseInt(e.target.value, 10);
+                                setFinalMatchScores({
+                                  ...finalMatchScores,
+                                  team1: newScores as [number | null, number | null, number | null]
+                                });
+                              }}
+                              type="number"
+                              className="w-16"
+                              inputMode="numeric"
+                              pattern="\d*"
+                              disabled={finalMatchSubmitted && !isEditingFinalMatch}
+                            />
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
 
                   {/* Team 2 */}
-                  <div className="flex items-center space-x-4">
-                    <div>
-                      <p className="text-lg font-semibold">Team 2: {femalePlayers[0].name} & {malePlayers[1].name}</p>
-                    </div>
-                    <div className="flex items-center space-x-4">
-                      <Input
-                        value={currentMatch.isSubmitted && !isAdmin ? currentMatch.score2 : score2}
-                        onChange={(e) => setScore2(e.target.value)}
-                        type="number"
-                        className="w-16"
-                        inputMode="numeric"
-                        pattern="\d*"
-                        step="any"
-                        disabled={currentMatch.isSubmitted && !isAdmin}
-                      />
+                  <div className="space-y-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                      <h3 className="text-lg font-semibold min-w-[200px]">
+                        Team 2: {femalePlayers[0].name} & {malePlayers[1].name}
+                      </h3>
+                      <div className="flex gap-4">
+                        {[0, 1, 2].map((setIndex) => (
+                          <div key={setIndex} className="space-y-2">
+                            <Label htmlFor={`team2-set${setIndex + 1}`}>Set {setIndex + 1}</Label>
+                            <Input
+                              id={`team2-set${setIndex + 1}`}
+                              value={finalMatchScores.team2[setIndex] !== null ? finalMatchScores.team2[setIndex] : ''}
+                              onChange={(e) => {
+                                const newScores = [...finalMatchScores.team2];
+                                newScores[setIndex] = e.target.value === '' ? null : parseInt(e.target.value, 10);
+                                setFinalMatchScores({
+                                  ...finalMatchScores,
+                                  team2: newScores as [number | null, number | null, number | null]
+                                });
+                              }}
+                              type="number"
+                              className="w-16"
+                              inputMode="numeric"
+                              pattern="\d*"
+                              disabled={finalMatchSubmitted && !isEditingFinalMatch}
+                            />
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
 
-                  {/* Results */}
                   {!finalMatchSubmitted ? (
-                    <div className="flex items-center space-x-4">
-                      <Button onClick={handleFinalMatchSubmit}>Submit</Button>
-                    </div>
+                    <Button onClick={handleFinalMatchSubmit} className="w-full sm:w-auto">
+                      Submit Final Match
+                    </Button>
                   ) : (
-                    <div></div>
+                    <div className="space-y-6">
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <h3 className="text-lg font-semibold mb-4">Final Match Results</h3>
+                        <p className="text-gray-600">
+                          Team 1: {finalMatchScores.team1.map(s => s ?? 0).join(' - ')}
+                        </p>
+                        <p className="text-gray-600">
+                          Team 2: {finalMatchScores.team2.map(s => s ?? 0).join(' - ')}
+                        </p>
+                      </div>
+
+                      {finalMatchWinner && (
+                        <div className="bg-gradient-to-r from-purple-100 to-pink-100 p-6 rounded-lg">
+                          <div className="space-y-4">
+                            <div>
+                              <h3 className="text-xl font-bold mb-2">👑 Champions 👑</h3>
+                              <p className="text-lg">
+                                King {finalMatchWinner.malePlayer} & Queen {finalMatchWinner.femalePlayer}
+                              </p>
+                            </div>
+                            <div>
+                              <h3 className="text-lg font-semibold mb-2">Runners-up</h3>
+                              <p>
+                                Prince {finalMatchWinner.losingMalePlayer} & Princess {finalMatchWinner.losingFemalePlayer}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {isAdmin && (
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <Button variant="outline" onClick={handleEditFinalMatch}>
+                            <Edit className="w-4 h-4 mr-2" />
+                            Edit Match
+                          </Button>
+                          <Button variant="destructive" onClick={handleResetFinalMatch}>
+                            <Trash className="w-4 h-4 mr-2" />
+                            Reset Match
+                          </Button>
+                          {isEditingFinalMatch && (
+                            <Button onClick={handleFinalMatchEditSubmit}>
+                              Save Changes
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   )}
                 </CardContent>
               </Card>
-            </section>
-          ) : (
-            <>
-              <section className="mb-8">
-                <Card>
+            ) : (
+              <>
+                {/* Rankings Table */}
+                <Card className="mb-8">
                   <CardHeader>
-                    <CardTitle>{gender.charAt(0).toUpperCase() + gender.slice(1)} Rankings</CardTitle>
+                    <CardTitle className="text-2xl font-bold">
+                      {gender.charAt(0).toUpperCase() + gender.slice(1)} Rankings
+                    </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    {players.map((player, index) => (
-                      <div key={player.name} className="flex items-center space-x-4">
-                        <div className="text-lg font-semibold">
-                          {index + 1}. {player.name}
-                        </div>
-                        <div>
-                          <p className="text-gray-500">Points: {player.points}</p>
-                        </div>
-                      </div>
-                    ))}
+                  <CardContent>
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left py-2 px-4">Rank</th>
+                            <th className="text-left py-2 px-4">Player</th>
+                            <th className="text-right py-2 px-4">Points</th>
+                            <th className="text-right py-2 px-4">Total Scores</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {players.map((player, index) => (
+                            <tr key={player.name} className="border-b last:border-0">
+                              <td className="py-2 px-4">{index + 1}</td>
+                              <td className="py-2 px-4">{player.name}</td>
+                              <td className="py-2 px-4 text-right">{player.points}</td>
+                              <td className="py-2 px-4 text-right">{player.totalScores}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </CardContent>
                 </Card>
-              </section>
-              <section className="mb-8">
+
+                {/* Current Match */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>Match {currentMatchIndex + 1}</CardTitle>
+                    <CardTitle className="text-2xl font-bold">
+                      Match {currentMatchIndex + 1}
+                    </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center space-x-4">
-                      <div>
-                        <p className="text-lg font-semibold">{currentMatch.player1.name} & {currentMatch.player2.name}</p>
+                  <CardContent className="space-y-6">
+                    <div className="space-y-4">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                        <p className="text-lg font-semibold min-w-[200px]">
+                          {currentMatch.player1.name} & {currentMatch.player2.name}
+                        </p>
+                        {!currentMatch.isSubmitted || isAdmin ? (
+                          <Input
+                            value={currentMatch.isSubmitted && !isAdmin ? currentMatch.score1 : score1}
+                            onChange={(e) => setScore1(e.target.value)}
+                            type="number"
+                            className="w-20"
+                            inputMode="numeric"
+                            pattern="\d*"
+                            disabled={currentMatch.isSubmitted && !isAdmin}
+                          />
+                        ) : (
+                          <p className="text-xl font-bold">{currentMatch.score1}</p>
+                        )}
                       </div>
-                      {!currentMatch.isSubmitted || isAdmin ? (
-                        <Input
-                          value={currentMatch.isSubmitted && !isAdmin ? currentMatch.score1 : score1}
-                          onChange={(e) => setScore1(e.target.value)}
-                          type="number"
-                          className="w-16"
-                          inputMode="numeric"
-                          pattern="\d*"
-                          step="any"
-                          disabled={currentMatch.isSubmitted && !isAdmin}
-                        />
-                      ) : (
-                        <p>{currentMatch.score1}</p>
-                      )}
-                    </div>
-                    <div className="flex items-center space-x-4">
-                      <div>
-                        <p className="text-lg font-semibold">{currentMatch.player3.name} & {currentMatch.player4.name}</p>
+
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                        <p className="text-lg font-semibold min-w-[200px]">
+                          {currentMatch.player3.name} & {currentMatch.player4.name}
+                        </p>
+                        {!currentMatch.isSubmitted || isAdmin ? (
+                          <Input
+                            value={currentMatch.isSubmitted && !isAdmin ? currentMatch.score2 : score2}
+                            onChange={(e) => setScore2(e.target.value)}
+                            type="number"
+                            className="w-20"
+                            inputMode="numeric"
+                            pattern="\d*"
+                            disabled={currentMatch.isSubmitted && !isAdmin}
+                          />
+                        ) : (
+                          <p className="text-xl font-bold">{currentMatch.score2}</p>
+                        )}
                       </div>
-                      {!currentMatch.isSubmitted || isAdmin ? (
-                        <Input
-                          value={currentMatch.isSubmitted && !isAdmin ? currentMatch.score2 : score2}
-                          onChange={(e) => setScore2(e.target.value)}
-                          type="number"
-                          className="w-16"
-                          inputMode="numeric"
-                          pattern="\d*"
-                          step="any"
-                          disabled={currentMatch.isSubmitted && !isAdmin}
-                        />
-                      ) : (
-                        <p>{currentMatch.score2}</p>
-                      )}
                     </div>
+
                     {!currentMatch.isSubmitted ? (
-                      <div className="flex items-center space-x-4">
-                        <Button onClick={handleScoreSubmit}>Submit</Button>
-                      </div>
+                      <Button onClick={handleScoreSubmit} className="w-full sm:w-auto">
+                        Submit Score
+                      </Button>
                     ) : (
-                      <div className="flex items-center space-x-4">
-                        <p>Match Score: {currentMatch.score1} - {currentMatch.score2}</p>
-                        <Check className="text-green-500" />
+                      <div className="flex items-center gap-2">
+                        <Check className="text-green-500 w-6 h-6" />
+                        <p className="text-lg">
+                          Final Score: {currentMatch.score1} - {currentMatch.score2}
+                        </p>
                       </div>
                     )}
-                    {isAdmin && (
-                      <div className="flex items-center space-x-4">
-                        <Button onClick={() => handleEditScore(currentMatchIndex, parseInt(score1, 10) || 0, parseInt(score2, 10) || 0)}>
-                          Edit Score
-                        </Button>
-                      </div>
+
+                    {isAdmin && currentMatch.isSubmitted && (
+                      <Button 
+                        onClick={() => handleEditScore(currentMatchIndex, parseInt(score1, 10) || 0, parseInt(score2, 10) || 0)}
+                        variant="outline"
+                      >
+                        <Edit className="w-4 h-4 mr-2" />
+                        Edit Score
+                      </Button>
                     )}
                   </CardContent>
                 </Card>
-              </section>
-            </>
-          )}
-        </main>
-      )}
+              </>
+            )}
+          </main>
+        )}
+      </div>
     </div>
   );
 }

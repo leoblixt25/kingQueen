@@ -1,56 +1,41 @@
-
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Player } from "@/types";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Trophy } from "lucide-react";
 
 interface RankingsTableProps {
   players: Player[];
+  title: string;
 }
 
-const RankingsTable = ({ players }: RankingsTableProps) => {
-  const sortedPlayers = [...players].sort((a, b) => {
-    if (b.points !== a.points) {
-      return b.points - a.points;
-    }
-    return b.totalScore - a.totalScore;
-  });
-
+export function RankingsTable({ players, title }: RankingsTableProps) {
   return (
-    <div className="rounded-lg border shadow-sm animate-slide-up">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-12">Rank</TableHead>
-            <TableHead>Player</TableHead>
-            <TableHead className="text-right">Points</TableHead>
-            <TableHead className="text-right">Total Score</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {sortedPlayers.map((player, index) => (
-            <TableRow key={player.name}>
-              <TableCell className="font-medium">
-                <div className="flex items-center">
-                  {index === 0 && <Trophy className="h-4 w-4 text-yellow-500 mr-1" />}
-                  {index + 1}
-                </div>
-              </TableCell>
-              <TableCell>{player.name}</TableCell>
-              <TableCell className="text-right">{player.points}</TableCell>
-              <TableCell className="text-right">{player.totalScore}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+    <section className="mb-8">
+      <Card>
+        <CardHeader>
+          <CardTitle>{title}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr>
+                <th className="p-2 border-b">Rank</th>
+                <th className="p-2 border-b">Player Name</th>
+                <th className="p-2 border-b">Points</th>
+                <th className="p-2 border-b">Total Scores</th>
+              </tr>
+            </thead>
+            <tbody>
+              {players.map((player, index) => (
+                <tr key={player.name}>
+                  <td className="p-2 border-b text-center">{index + 1}</td>
+                  <td className="p-2 border-b">{player.name}</td>
+                  <td className="p-2 border-b text-center">{player.points}</td>
+                  <td className="p-2 border-b text-center">{player.totalScores}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </CardContent>
+      </Card>
+    </section>
   );
-};
-
-export default RankingsTable;
+}

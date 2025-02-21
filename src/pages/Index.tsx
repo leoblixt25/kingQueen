@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Gender, Match, Player } from "@/types";
-import { AdminLoginForm } from "@/components/AdminLoginForm";
-import { PlayerRankings } from "@/components/PlayerRankings";
-import { MatchDisplay } from "@/components/MatchDisplay";
-import { FinalMatch } from "@/components/FinalMatch";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Check, Edit, Trash } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Gender, Match, Player, FinalMatchScores, FinalMatchWinner } from "@/types";
 
 const initialFemalePlayers: Player[] = [
   { name: "Lakota", points: 0, totalScores: 0 },
@@ -180,7 +181,6 @@ export default function BeachVolleyballTracker() {
       isSubmitted: true,
     }
 
-    // Reset points for the old match
     const oldPlayers = [...players]
     const oldPlayer1Index = oldPlayers.findIndex(p => p.name === oldMatch.player1.name)
     const oldPlayer2Index = oldPlayers.findIndex(p => p.name === oldMatch.player2.name)
@@ -197,7 +197,6 @@ export default function BeachVolleyballTracker() {
     oldPlayers[oldPlayer3Index].totalScores -= oldMatch.score2
     oldPlayers[oldPlayer4Index].totalScores -= oldMatch.score2
 
-    // Update points for the new match
     updatePlayerPoints(newMatches[matchIndex])
 
     setMatches(newMatches)
@@ -298,22 +297,21 @@ export default function BeachVolleyballTracker() {
     setNewPlayerGender('female')
   }
 
-  const currentMatch = matches[currentMatchIndex]
+  const currentMatch = matches[currentMatchIndex];
 
   return (
     <div className="min-h-screen bg-white flex flex-col items-center p-4">
-      <style>
-        {`
-          input[type="number"]::-webkit-inner-spin-button,
-          input[type="number"]::-webkit-outer-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
-          }
-          input[type="number"] {
-            -moz-appearance: textfield;
-          }
-        `}
-      </style>
+      <style>{`
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
+        }
+        input[type="number"] {
+          -moz-appearance: textfield;
+        }
+      `}</style>
+
       <header className="w-full max-w-4xl flex justify-between items-center mb-8">
         <div className="flex items-center space-x-4">
           <Button variant="outline" onClick={() => { setGender('female'); setShowFinalMatch(false); }}>

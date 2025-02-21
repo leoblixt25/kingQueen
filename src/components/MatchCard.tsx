@@ -1,102 +1,50 @@
-
-import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Match } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
-import { Trophy } from "lucide-react";
+import { Check } from "lucide-react";
 
 interface MatchCardProps {
   match: Match;
-  onScoreSubmit: (matchId: number, scoreA: number, scoreB: number) => void;
-  isAdmin?: boolean;
+  isAdmin: boolean;
+  onScoreSubmit: (score1: number, score2: number) => void;
 }
 
-const MatchCard = ({ match, onScoreSubmit, isAdmin = false }: MatchCardProps) => {
-  const [scoreA, setScoreA] = useState(match.scoreA?.toString() || "");
-  const [scoreB, setScoreB] = useState(match.scoreB?.toString() || "");
-
-  const handleSubmit = () => {
-    const parsedScoreA = parseInt(scoreA);
-    const parsedScoreB = parseInt(scoreB);
-    
-    if (!isNaN(parsedScoreA) && !isNaN(parsedScoreB)) {
-      onScoreSubmit(match.id, parsedScoreA, parsedScoreB);
-    }
-  };
-
-  const isWinner = (score: number | undefined, otherScore: number | undefined) => {
-    return score !== undefined && otherScore !== undefined && score > otherScore;
-  };
-
+export function MatchCard({ match, isAdmin, onScoreSubmit }: MatchCardProps) {
   return (
-    <Card className="p-4 mb-4 animate-slide-up">
-      <div className="text-sm font-medium mb-2">Match #{match.id}</div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-sm">{match.teamA[0]}</span>
-            {isWinner(match.scoreA, match.scoreB) && (
-              <Trophy className="h-4 w-4 text-yellow-500" />
-            )}
+    <Card>
+      <CardHeader>
+        <CardTitle>Match</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center space-x-4">
+          <div>
+            <p className="text-lg font-semibold">{match.player1.name} & {match.player2.name}</p>
           </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm">{match.teamA[1]}</span>
-            {isWinner(match.scoreA, match.scoreB) && (
-              <Trophy className="h-4 w-4 text-yellow-500" />
-            )}
-          </div>
-        </div>
-        
-        <div className="flex space-x-2 justify-center items-center">
           <Input
             type="number"
-            value={scoreA}
-            onChange={(e) => setScoreA(e.target.value)}
-            className="w-16 text-center"
-            placeholder="0"
-            disabled={match.submitted && !isAdmin}
+            className="w-16"
+            defaultValue={match.score1}
+            disabled={!isAdmin}
           />
-          <span className="text-sm font-medium">vs</span>
+        </div>
+        <div className="flex items-center space-x-4">
+          <div>
+            <p className="text-lg font-semibold">{match.player3.name} & {match.player4.name}</p>
+          </div>
           <Input
             type="number"
-            value={scoreB}
-            onChange={(e) => setScoreB(e.target.value)}
-            className="w-16 text-center"
-            placeholder="0"
-            disabled={match.submitted && !isAdmin}
+            className="w-16"
+            defaultValue={match.score2}
+            disabled={!isAdmin}
           />
         </div>
-
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-sm">{match.teamB[0]}</span>
-            {isWinner(match.scoreB, match.scoreA) && (
-              <Trophy className="h-4 w-4 text-yellow-500" />
-            )}
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm">{match.teamB[1]}</span>
-            {isWinner(match.scoreB, match.scoreA) && (
-              <Trophy className="h-4 w-4 text-yellow-500" />
-            )}
-          </div>
-        </div>
-      </div>
-      
-      {(!match.submitted || isAdmin) && (
-        <div className="mt-4 flex justify-end">
-          <Button
-            onClick={handleSubmit}
-            size="sm"
-            className="transition-all duration-300 transform hover:scale-105"
-          >
-            {isAdmin && match.submitted ? "Update Score" : "Submit Score"}
+        <div className="flex items-center space-x-4">
+          <Button onClick={() => onScoreSubmit(match.score1, match.score2)}>
+            {match.isSubmitted ? <Check className="text-green-500" /> : "Submit"}
           </Button>
         </div>
-      )}
+      </CardContent>
     </Card>
   );
-};
-
-export default MatchCard;
+}

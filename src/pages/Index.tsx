@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Gender, Match, Player } from "@/types";
 import { matchData } from "@/data/matches";
@@ -6,6 +5,7 @@ import GenderButton from "@/components/GenderButton";
 import MatchCard from "@/components/MatchCard";
 import RankingsTable from "@/components/RankingsTable";
 import AdminControls from "@/components/AdminControls";
+import AdminLogin from "@/components/AdminLogin";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -13,8 +13,9 @@ const Index = () => {
   const [selectedGender, setSelectedGender] = useState<Gender>("female");
   const [matches, setMatches] = useState(matchData);
   const [players, setPlayers] = useState<Player[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showAdminLogin, setShowAdminLogin] = useState(false);
   const { toast } = useToast();
-  const isAdmin = true; // TODO: Implement proper admin authentication
 
   useEffect(() => {
     calculateRankings();
@@ -114,6 +115,24 @@ const Index = () => {
             onClick={() => setSelectedGender("male")}
           />
         </div>
+
+        <div className="flex justify-end mb-4">
+          {!isAdmin && (
+            <Button
+              variant="outline"
+              onClick={() => setShowAdminLogin(true)}
+            >
+              Admin Login
+            </Button>
+          )}
+        </div>
+
+        {showAdminLogin && !isAdmin && (
+          <AdminLogin onLogin={(success) => {
+            setIsAdmin(success);
+            setShowAdminLogin(false);
+          }} />
+        )}
 
         {isAdmin && <AdminControls onResetScores={handleResetScores} />}
 

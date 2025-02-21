@@ -32,7 +32,7 @@ const MatchCard = ({ match, onScoreSubmit, isAdmin = false }: MatchCardProps) =>
   return (
     <Card className="p-4 mb-4 animate-slide-up">
       <div className="text-sm font-medium mb-2">Match #{match.id}</div>
-      <div className="grid grid-cols-3 gap-4 items-center">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-sm">{match.teamA[0]}</span>

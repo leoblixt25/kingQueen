@@ -6,6 +6,7 @@ import MatchCard from "@/components/MatchCard";
 import RankingsTable from "@/components/RankingsTable";
 import AdminControls from "@/components/AdminControls";
 import AdminLogin from "@/components/AdminLogin";
+import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useToast } from "@/components/ui/use-toast";
 

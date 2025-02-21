@@ -1,22 +1,31 @@
 
 export type Gender = "male" | "female";
 
-export interface Player {
+export type Player = {
   name: string;
   points: number;
-  totalScore: number;
-}
+  totalScores: number;
+};
 
-export interface Match {
-  id: number;
-  teamA: [string, string];
-  teamB: [string, string];
-  scoreA?: number;
-  scoreB?: number;
-  submitted?: boolean;
-}
+export type Match = {
+  player1: Player;
+  player2: Player;
+  player3: Player;
+  player4: Player;
+  score1: number;
+  score2: number;
+  isSubmitted: boolean;
+};
 
-export interface MatchData {
-  female: Match[];
-  male: Match[];
-}
+export type FinalMatchScores = {
+  team1: [number | null, number | null, number | null];
+  team2: [number | null, number | null, number | null];
+};
+
+export type FinalMatchWinner = {
+  team: 'team1' | 'team2' | null;
+  malePlayer: string;
+  femalePlayer: string;
+  losingMalePlayer: string;
+  losingFemalePlayer: string;
+} | null;

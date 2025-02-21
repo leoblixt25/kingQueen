@@ -1,11 +1,10 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Check, Edit, Trash, Crown } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Gender, Match, Player, FinalMatchScores, FinalMatchWinner } from "@/types";
+import { Gender, Match, Player } from "@/types";
+import { AdminLoginForm } from "@/components/AdminLoginForm";
+import { PlayerRankings } from "@/components/PlayerRankings";
+import { MatchDisplay } from "@/components/MatchDisplay";
+import { FinalMatch } from "@/components/FinalMatch";
 
 const initialFemalePlayers: Player[] = [
   { name: "Lakota", points: 0, totalScores: 0 },
@@ -338,303 +337,56 @@ export default function BeachVolleyballTracker() {
           )}
         </div>
       </header>
+
       {showLoginForm && (
-        <section className="mb-8">
-          <Card>
-            <CardHeader>
-              <CardTitle>Admin Login</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex flex-col space-y-2">
-                <Label htmlFor="adminUsername">Username</Label>
-                <Input
-                  id="adminUsername"
-                  value={adminUsername}
-                  onChange={(e) => setAdminUsername(e.target.value)}
-                  type="text"
-                  className="w-full"
-                />
-              </div>
-              <div className="flex flex-col space-y-2">
-                <Label htmlFor="adminPassword">Password</Label>
-                <Input
-                  id="adminPassword"
-                  value={adminPassword}
-                  onChange={(e) => setAdminPassword(e.target.value)}
-                  type="password"
-                  className="w-full"
-                />
-              </div>
-              <Button onClick={handleAdminLogin}>Login</Button>
-            </CardContent>
-          </Card>
-        </section>
+        <AdminLoginForm
+          adminUsername={adminUsername}
+          adminPassword={adminPassword}
+          onUsernameChange={setAdminUsername}
+          onPasswordChange={setAdminPassword}
+          onLogin={handleAdminLogin}
+        />
       )}
+
       {!showLoginForm && (
         <main className="w-full max-w-4xl">
           {showFinalMatch ? (
-            <section className="mb-8">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Final Match</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Team 1 */}
-                  <div className="flex items-center space-x-4">
-                    <div>
-                      <p className="text-lg font-semibold">Team 1: {malePlayers[0].name} & {femalePlayers[1].name}</p>
-                    </div>
-                    <div className="flex flex-col space-y-2">
-                      <Label htmlFor="team1-set1">Set 1</Label>
-                      <Input
-                        id="team1-set1"
-                        value={finalMatchScores.team1[0] !== null ? finalMatchScores.team1[0] : ''}
-                        onChange={(e) =>
-                          setFinalMatchScores({
-                            ...finalMatchScores,
-                            team1: [e.target.value === '' ? null : parseInt(e.target.value, 10), finalMatchScores.team1[1], finalMatchScores.team1[2]],
-                          })
-                        }
-                        type="number"
-                        className="w-16"
-                        inputMode="numeric"
-                        pattern="\d*"
-                        step="any"
-                        disabled={finalMatchSubmitted && !isEditingFinalMatch}
-                        style={{ MozAppearance: 'textfield' }}
-                      />
-                    </div>
-                    <div className="flex flex-col space-y-2">
-                      <Label htmlFor="team1-set2">Set 2</Label>
-                      <Input
-                        id="team1-set2"
-                        value={finalMatchScores.team1[1] !== null ? finalMatchScores.team1[1] : ''}
-                        onChange={(e) =>
-                          setFinalMatchScores({
-                            ...finalMatchScores,
-                            team1: [finalMatchScores.team1[0], e.target.value === '' ? null : parseInt(e.target.value, 10), finalMatchScores.team1[2]],
-                          })
-                        }
-                        type="number"
-                        className="w-16"
-                        inputMode="numeric"
-                        pattern="\d*"
-                        step="any"
-                        disabled={finalMatchSubmitted && !isEditingFinalMatch}
-                        style={{ MozAppearance: 'textfield' }}
-                      />
-                    </div>
-                    <div className="flex flex-col space-y-2">
-                      <Label htmlFor="team1-set3">Set 3</Label>
-                      <Input
-                        id="team1-set3"
-                        value={finalMatchScores.team1[2] !== null ? finalMatchScores.team1[2] : ''}
-                        onChange={(e) =>
-                          setFinalMatchScores({
-                            ...finalMatchScores,
-                            team1: [finalMatchScores.team1[0], finalMatchScores.team1[1], e.target.value === '' ? null : parseInt(e.target.value, 10)],
-                          })
-                        }
-                        type="number"
-                        className="w-16"
-                        inputMode="numeric"
-                        pattern="\d*"
-                        step="any"
-                        disabled={finalMatchSubmitted && !isEditingFinalMatch}
-                        style={{ MozAppearance: 'textfield' }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Team 2 */}
-                  <div className="flex items-center space-x-4">
-                    <div>
-                      <p className="text-lg font-semibold">Team 2: {femalePlayers[0].name} & {malePlayers[1].name}</p>
-                    </div>
-                    <div className="flex flex-col space-y-2">
-                      <Label htmlFor="team2-set1">Set 1</Label>
-                      <Input
-                        id="team2-set1"
-                        value={finalMatchScores.team2[0] !== null ? finalMatchScores.team2[0] : ''}
-                        onChange={(e) =>
-                          setFinalMatchScores({
-                            ...finalMatchScores,
-                            team2: [e.target.value === '' ? null : parseInt(e.target.value, 10), finalMatchScores.team2[1], finalMatchScores.team2[2]],
-                          })
-                        }
-                        type="number"
-                        className="w-16"
-                        inputMode="numeric"
-                        pattern="\d*"
-                        step="any"
-                        disabled={finalMatchSubmitted && !isEditingFinalMatch}
-                        style={{ MozAppearance: 'textfield' }}
-                      />
-                    </div>
-                    <div className="flex flex-col space-y-2">
-                      <Label htmlFor="team2-set2">Set 2</Label>
-                      <Input
-                        id="team2-set2"
-                        value={finalMatchScores.team2[1] !== null ? finalMatchScores.team2[1] : ''}
-                        onChange={(e) =>
-                          setFinalMatchScores({
-                            ...finalMatchScores,
-                            team2: [finalMatchScores.team2[0], e.target.value === '' ? null : parseInt(e.target.value, 10), finalMatchScores.team2[2]],
-                          })
-                        }
-                        type="number"
-                        className="w-16"
-                        inputMode="numeric"
-                        pattern="\d*"
-                        step="any"
-                        disabled={finalMatchSubmitted && !isEditingFinalMatch}
-                        style={{ MozAppearance: 'textfield' }}
-                      />
-                    </div>
-                    <div className="flex flex-col space-y-2">
-                      <Label htmlFor="team2-set3">Set 3</Label>
-                      <Input
-                        id="team2-set3"
-                        value={finalMatchScores.team2[2] !== null ? finalMatchScores.team2[2] : ''}
-                        onChange={(e) =>
-                          setFinalMatchScores({
-                            ...finalMatchScores,
-                            team2: [finalMatchScores.team2[0], finalMatchScores.team2[1], e.target.value === '' ? null : parseInt(e.target.value, 10)],
-                          })
-                        }
-                        type="number"
-                        className="w-16"
-                        inputMode="numeric"
-                        pattern="\d*"
-                        step="any"
-                        disabled={finalMatchSubmitted && !isEditingFinalMatch}
-                        style={{ MozAppearance: 'textfield' }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Submit Button or Final Score Display */}
-                  {!finalMatchSubmitted ? (
-                    <div className="flex items-center space-x-4">
-                      <Button onClick={handleFinalMatchSubmit}>Submit</Button>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col space-y-4">
-                      <p>
-                        Final Match Score: Team 1 - {finalMatchScores.team1[0] !== null ? finalMatchScores.team1[0] : 0} - {finalMatchScores.team1[1] !== null ? finalMatchScores.team1[1] : 0} - {finalMatchScores.team1[2] !== null ? finalMatchScores.team1[2] : 0} | Team 2 - {finalMatchScores.team2[0] !== null ? finalMatchScores.team2[0] : 0} - {finalMatchScores.team2[1] !== null ? finalMatchScores.team2[1] : 0} - {finalMatchScores.team2[2] !== null ? finalMatchScores.team2[2] : 0}
-                      </p>
-                      <Check className="text-green-500" />
-                      {finalMatchWinner && (
-                        <div className="flex flex-col space-y-2">
-                          <div className="flex items-center space-x-4">
-                            <h2 className="text-lg font-semibold">Winning Team:</h2>
-                            <p>{finalMatchWinner.malePlayer} is crowned King 👑.</p>
-                            <p>{finalMatchWinner.femalePlayer} is crowned Queen 👑.</p>
-                          </div>
-                          <div className="flex items-center space-x-4">
-                            <h2 className="text-lg font-semibold">Losing Team:</h2>
-                            <p>{finalMatchWinner.losingMalePlayer} is titled Prince 🤴.</p>
-                            <p>{finalMatchWinner.losingFemalePlayer} is titled Princess 👸.</p>
-                          </div>
-                        </div>
-                      )}
-                      {isAdmin && (
-                        <>
-                          <Button variant="outline" onClick={handleEditFinalMatch}>
-                            <Edit className="mr-2" />
-                            Edit
-                          </Button>
-                          <Button variant="destructive" onClick={handleResetFinalMatch}>
-                            <Trash className="mr-2" />
-                            Reset
-                          </Button>
-                        </>
-                      )}
-                      {isEditingFinalMatch && (
-                        <Button onClick={handleFinalMatchEditSubmit}>Save</Button>
-                      )}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </section>
+            <FinalMatch
+              finalMatchScores={finalMatchScores}
+              finalMatchSubmitted={finalMatchSubmitted}
+              isEditingFinalMatch={isEditingFinalMatch}
+              isAdmin={isAdmin}
+              malePlayers={malePlayers}
+              femalePlayers={femalePlayers}
+              finalMatchWinner={finalMatchWinner}
+              onScoresChange={setFinalMatchScores}
+              onSubmit={handleFinalMatchSubmit}
+              onEdit={handleEditFinalMatch}
+              onEditSubmit={handleFinalMatchEditSubmit}
+              onReset={handleResetFinalMatch}
+            />
           ) : (
             <>
               <section className="mb-8">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Top 2 {gender.charAt(0).toUpperCase() + gender.slice(1)} Players</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {topPlayers.map((player, index) => (
-                      <div key={player.name} className="flex items-center space-x-4">
-                        <div className="text-lg font-semibold">
-                          {index + 1}. {player.name}
-                        </div>
-                        <div>
-                          <p className="text-gray-500">Points: {player.points}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
+                <PlayerRankings players={players} gender={gender} />
               </section>
               <section className="mb-8">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Match {currentMatchIndex + 1}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center space-x-4">
-                      <div>
-                        <p className="text-lg font-semibold">{currentMatch.player1.name} & {currentMatch.player2.name}</p>
-                      </div>
-                      {!currentMatch.isSubmitted || isAdmin ? (
-                        <Input
-                          value={currentMatch.isSubmitted && !isAdmin ? currentMatch.score1 : score1}
-                          onChange={(e) => setScore1(e.target.value)}
-                          type="number"
-                          className="w-16"
-                          inputMode="numeric"
-                          pattern="\d*"
-                          step="any"
-                          disabled={currentMatch.isSubmitted && !isAdmin}
-                        />
-                      ) : (
-                        <p>{currentMatch.score1}</p>
-                      )}
-                    </div>
-                    <div className="flex items-center space-x-4">
-                      <div>
-                        <p className="text-lg font-semibold">{currentMatch.player3.name} & {currentMatch.player4.name}</p>
-                      </div>
-                      {!currentMatch.isSubmitted || isAdmin ? (
-                        <Input
-                          value={currentMatch.isSubmitted && !isAdmin ? currentMatch.score2 : score2}
-                          onChange={(e) => setScore2(e.target.value)}
-                          type="number"
-                          className="w-16"
-                          inputMode="numeric"
-                          pattern="\d*"
-                          step="any"
-                          disabled={currentMatch.isSubmitted && !isAdmin}
-                        />
-                      ) : (
-                        <p>{currentMatch.score2}</p>
-                      )}
-                    </div>
-                    {!currentMatch.isSubmitted ? (
-                      <div className="flex items-center space-x-4">
-                        <Button onClick={handleScoreSubmit}>Submit</Button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center space-x-4">
-                        <p>Match Score: {currentMatch.score1} - {currentMatch.score2}</p>
-                        <Check className="text-green-500" />
-                      </div>
-                    )}
-                    {isAdmin && (
-                      <div className="flex items-center space-x-4">
-                        <Button onClick={() => handleEditScore(currentMatchIndex, parseInt(score1, 10) || 0, parseInt(score2, 10) || 0)}>Edit Score</Button>
-                      </div>
-                    )}
+                <MatchDisplay
+                  match={currentMatch}
+                  matchIndex={currentMatchIndex}
+                  score1={score1}
+                  score2={score2}
+                  isAdmin={isAdmin}
+                  onScore1Change={setScore1}
+                  onScore2Change={setScore2}
+                  onSubmit={handleScoreSubmit}
+                  onEdit={handleEditScore}
+                />
+              </section>
+            </>
+          )}
+        </main>
+      )}
+    </div>
+  );
+}

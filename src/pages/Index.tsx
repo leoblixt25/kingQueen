@@ -503,41 +503,8 @@ export default function BeachVolleyballTracker() {
               </Card>
             ) : (
               <>
-                {/* Rankings Table */}
+                {/* Current Match - Now First */}
                 <Card className="mb-8">
-                  <CardHeader>
-                    <CardTitle className="text-2xl font-bold">
-                      {gender.charAt(0).toUpperCase() + gender.slice(1)} Rankings
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b">
-                            <th className="text-left py-2 px-4">Rank</th>
-                            <th className="text-left py-2 px-4">Player</th>
-                            <th className="text-right py-2 px-4">Points</th>
-                            <th className="text-right py-2 px-4">Total Scores</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {players.map((player, index) => (
-                            <tr key={player.name} className="border-b last:border-0">
-                              <td className="py-2 px-4">{index + 1}</td>
-                              <td className="py-2 px-4">{player.name}</td>
-                              <td className="py-2 px-4 text-right">{player.points}</td>
-                              <td className="py-2 px-4 text-right">{player.totalScores}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Current Match */}
-                <Card>
                   <CardHeader>
                     <CardTitle className="text-2xl font-bold">
                       Match {currentMatchIndex + 1}
@@ -606,6 +573,39 @@ export default function BeachVolleyballTracker() {
                         Edit Score
                       </Button>
                     )}
+                  </CardContent>
+                </Card>
+
+                {/* Rankings Table - Now Second */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-2xl font-bold">
+                      {gender.charAt(0).toUpperCase() + gender.slice(1)} Rankings
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left py-2 px-4">Rank</th>
+                            <th className="text-left py-2 px-4">Player</th>
+                            <th className="text-right py-2 px-4">Points</th>
+                            <th className="text-right py-2 px-4">Total Scores</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {players.map((player, index) => (
+                            <tr key={player.name} className="border-b last:border-0">
+                              <td className="py-2 px-4">{index + 1}</td>
+                              <td className="py-2 px-4">{player.name}</td>
+                              <td className="py-2 px-4 text-right">{player.points}</td>
+                              <td className="py-2 px-4 text-right">{player.totalScores}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </CardContent>
                 </Card>
               </>

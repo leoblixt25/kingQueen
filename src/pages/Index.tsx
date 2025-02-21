@@ -9,6 +9,7 @@ import AdminLogin from "@/components/AdminLogin";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useToast } from "@/components/ui/use-toast";
+import { LogOut } from "lucide-react";
 
 const Index = () => {
   const [selectedGender, setSelectedGender] = useState<Gender>("female");
@@ -21,6 +22,14 @@ const Index = () => {
   useEffect(() => {
     calculateRankings();
   }, [matches, selectedGender]);
+
+  const handleLogout = () => {
+    setIsAdmin(false);
+    toast({
+      title: "Logged out",
+      description: "Successfully logged out from admin account",
+    });
+  };
 
   const calculateRankings = () => {
     const playerMap = new Map<string, Player>();
@@ -100,9 +109,21 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-4xl mx-auto space-y-8">
-        <h1 className="text-3xl font-bold text-center mb-8">
-          King & Queen of the Beach
-        </h1>
+        <div className="flex justify-between items-center">
+          <h1 className="text-3xl font-bold">
+            King & Queen of the Beach
+          </h1>
+          {isAdmin && (
+            <Button
+              variant="outline"
+              onClick={handleLogout}
+              className="flex items-center gap-2"
+            >
+              <LogOut className="h-4 w-4" />
+              Logout
+            </Button>
+          )}
+        </div>
 
         <div className="flex justify-center space-x-4 mb-8">
           <GenderButton

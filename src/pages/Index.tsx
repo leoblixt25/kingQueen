@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Check, Edit, Trash, Crown, UserPlus, UserMinus, UserX, RefreshCw } from "lucide-react";
+import { Check, Edit, Trash, Crown, UserPlus, UserMinus, UserX, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Gender, Match, Player, FinalMatchScores, FinalMatchWinner } from "@/types";
 import { db } from "@/lib/firebase";
@@ -443,6 +443,22 @@ export default function BeachVolleyballTracker() {
     setPlayers(resetPlayers);
   };
 
+  const handlePreviousMatch = () => {
+    if (currentMatchIndex > 0) {
+      setCurrentMatchIndex(currentMatchIndex - 1);
+      setScore1('');
+      setScore2('');
+    }
+  };
+
+  const handleNextMatch = () => {
+    if (currentMatchIndex < matches.length - 1) {
+      setCurrentMatchIndex(currentMatchIndex + 1);
+      setScore1('');
+      setScore2('');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -665,12 +681,32 @@ export default function BeachVolleyballTracker() {
               </Card>
             ) : (
               <>
-                {/* Current Match - Now First */}
+                {/* Current Match - Now with Navigation */}
                 <Card className="mb-8">
                   <CardHeader>
-                    <CardTitle className="text-2xl font-bold">
-                      Match {currentMatchIndex + 1}
-                    </CardTitle>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-2xl font-bold">
+                        Match {currentMatchIndex + 1} of {matches.length}
+                      </CardTitle>
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          onClick={handlePreviousMatch}
+                          disabled={currentMatchIndex === 0}
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                          Previous
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          onClick={handleNextMatch}
+                          disabled={currentMatchIndex === matches.length - 1}
+                        >
+                          Next
+                          <ChevronRight className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
                   </CardHeader>
                   <CardContent className="space-y-6">
                     <div className="space-y-4">

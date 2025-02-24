@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Check, Edit, Trash, Crown, UserPlus, UserMinus, UserX } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Gender, Match, Player, FinalMatchScores, FinalMatchWinner } from "@/types";
+import { db } from "@/lib/firebase";
+import { ref, onValue, set } from "firebase/database";
 
 const initialFemalePlayers: Player[] = [
   { name: "Lakota", points: 0, totalScores: 0 },
@@ -90,6 +92,43 @@ export default function BeachVolleyballTracker() {
   const [showPlayerManagement, setShowPlayerManagement] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [replacementName, setReplacementName] = useState("");
+
+  useEffect(() => {
+    const femaleDatabaseRef = ref(db, 'female');
+    const maleDatabaseRef = ref(db, 'male');
+    const finalMatchRef = ref(db, 'finalMatch');
+
+    const femaleUnsubscribe = onValue(femaleDatabaseRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        if (data.players) setFemalePlayers(data.players);
+        if (data.matches) setFemaleMatches(data.matches);
+      }
+    });
+
+    const maleUnsubscribe = onValue(maleDatabaseRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        if (data.players) setMalePlayers(data.players);
+        if (data.matches) setMaleMatches(data.matches);
+      }
+    });
+
+    const finalMatchUnsubscribe = onValue(finalMatchRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        if (data.scores) setFinalMatchScores(data.scores);
+        if (data.winner) setFinalMatchWinner(data.winner);
+        if (data.submitted !== undefined) setFinalMatchSubmitted(data.submitted);
+      }
+    });
+
+    return () => {
+      femaleUnsubscribe();
+      maleUnsubscribe();
+      finalMatchUnsubscribe();
+    };
+  }, []);
 
   const players = gender === 'female' ? femalePlayers : malePlayers
   const matches = gender === 'female' ? femaleMatches : maleMatches
@@ -218,26 +257,26 @@ export default function BeachVolleyballTracker() {
     const team1Wins = team1Scores.filter((score, index) => score > (team2Scores[index] || 0)).length
     const team2Wins = team2Scores.filter((score, index) => score > (team1Scores[index] || 0)).length
 
+    let winner: FinalMatchWinner = null
     if (team1Wins > team2Wins) {
-      setFinalMatchWinner({
+      winner = {
         team: 'team1',
         malePlayer: malePlayers[0].name,
         femalePlayer: femalePlayers[1].name,
         losingMalePlayer: malePlayers[1].name,
         losingFemalePlayer: femalePlayers[0].name,
-      })
+      }
     } else if (team2Wins > team1Wins) {
-      setFinalMatchWinner({
+      winner = {
         team: 'team2',
         malePlayer: malePlayers[1].name,
         femalePlayer: femalePlayers[0].name,
         losingMalePlayer: malePlayers[0].name,
         losingFemalePlayer: femalePlayers[1].name,
-      })
-    } else {
-      setFinalMatchWinner(null)
+      }
     }
 
+    setFinalMatchWinner(winner)
     setFinalMatchSubmitted(true)
   }
 
@@ -265,22 +304,21 @@ export default function BeachVolleyballTracker() {
     };
 
     const updatedPlayers = [...players, newPlayer];
-    setPlayers(updatedPlayers);
+    set(ref(db, `${gender}/players`), updatedPlayers);
     setNewPlayerName("");
   };
 
   const handleRemovePlayer = (playerToRemove: Player) => {
     const updatedPlayers = players.filter(p => p.name !== playerToRemove.name);
-    setPlayers(updatedPlayers);
-
-    // Update matches to remove the player
     const updatedMatches = matches.filter(match => 
       match.player1.name !== playerToRemove.name &&
       match.player2.name !== playerToRemove.name &&
       match.player3.name !== playerToRemove.name &&
       match.player4.name !== playerToRemove.name
     );
-    setMatches(updatedMatches);
+
+    set(ref(db, `${gender}/players`), updatedPlayers);
+    set(ref(db, `${gender}/matches`), updatedMatches);
   };
 
   const handleReplacePlayer = () => {
@@ -292,13 +330,10 @@ export default function BeachVolleyballTracker() {
       totalScores: selectedPlayer.totalScores,
     };
 
-    // Update players list
     const updatedPlayers = players.map(p => 
       p.name === selectedPlayer.name ? newPlayer : p
     );
-    setPlayers(updatedPlayers);
 
-    // Update matches
     const updatedMatches = matches.map(match => ({
       ...match,
       player1: match.player1.name === selectedPlayer.name ? newPlayer : match.player1,
@@ -306,7 +341,9 @@ export default function BeachVolleyballTracker() {
       player3: match.player3.name === selectedPlayer.name ? newPlayer : match.player3,
       player4: match.player4.name === selectedPlayer.name ? newPlayer : match.player4,
     }));
-    setMatches(updatedMatches);
+
+    set(ref(db, `${gender}/players`), updatedPlayers);
+    set(ref(db, `${gender}/matches`), updatedMatches);
 
     setSelectedPlayer(null);
     setReplacementName("");

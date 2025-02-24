@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Check, Edit, Trash, Crown, UserPlus, UserMinus, UserX } from "lucide-react";
+import { Check, Edit, Trash, Crown, UserPlus, UserMinus, UserX, RefreshCw } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Gender, Match, Player, FinalMatchScores, FinalMatchWinner } from "@/types";
 import { db } from "@/lib/firebase";
@@ -64,6 +64,78 @@ const initialMaleMatches: Match[] = [
   { player1: initialMalePlayers[7], player2: initialMalePlayers[4], player3: initialMalePlayers[0], player4: initialMalePlayers[6], score1: 0, score2: 0, isSubmitted: false },
   { player1: initialMalePlayers[5], player2: initialMalePlayers[2], player3: initialMalePlayers[6], player4: initialMalePlayers[1], score1: 0, score2: 0, isSubmitted: false },
 ];
+
+const generateRoundRobinMatches = (players: Player[]): Match[] => {
+  const n = players.length;
+  if (n < 4) return [];
+
+  let matches: Match[] = [];
+  
+  let pairs: [Player, Player][] = [];
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      pairs.push([players[i], players[j]]);
+    }
+  }
+
+  for (let i = 0; i < pairs.length; i++) {
+    for (let j = i + 1; j < pairs.length; j++) {
+      const pair1 = pairs[i];
+      const pair2 = pairs[j];
+      
+      if (new Set([...pair1, ...pair2]).size === 4) {
+        matches.push({
+          player1: pair1[0],
+          player2: pair1[1],
+          player3: pair2[0],
+          player4: pair2[1],
+          score1: 0,
+          score2: 0,
+          isSubmitted: false,
+        });
+      }
+    }
+  }
+
+  for (let i = matches.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [matches[i], matches[j]] = [matches[j], matches[i]];
+  }
+
+  const playerMatchups = new Map<string, Set<string>>();
+  const filteredMatches: Match[] = [];
+
+  for (const match of matches) {
+    const allPlayers = [match.player1, match.player2, match.player3, match.player4];
+    
+    allPlayers.forEach(player => {
+      if (!playerMatchups.has(player.name)) {
+        playerMatchups.set(player.name, new Set<string>());
+      }
+    });
+
+    let alreadyPlayed = false;
+    [match.player1, match.player2].forEach(team1Player => {
+      [match.player3, match.player4].forEach(team2Player => {
+        if (playerMatchups.get(team1Player.name)?.has(team2Player.name)) {
+          alreadyPlayed = true;
+        }
+      });
+    });
+
+    if (!alreadyPlayed) {
+      [match.player1, match.player2].forEach(team1Player => {
+        [match.player3, match.player4].forEach(team2Player => {
+          playerMatchups.get(team1Player.name)?.add(team2Player.name);
+          playerMatchups.get(team2Player.name)?.add(team1Player.name);
+        });
+      });
+      filteredMatches.push(match);
+    }
+  }
+
+  return filteredMatches;
+};
 
 export default function BeachVolleyballTracker() {
   const [gender, setGender] = useState<Gender>("female");
@@ -351,6 +423,26 @@ export default function BeachVolleyballTracker() {
 
   const currentMatch = matches[currentMatchIndex];
 
+  const handleGenerateMatches = () => {
+    if (gender === 'female') {
+      const newMatches = generateRoundRobinMatches(femalePlayers);
+      set(ref(db, 'female/matches'), newMatches);
+      setFemaleMatches(newMatches);
+    } else {
+      const newMatches = generateRoundRobinMatches(malePlayers);
+      set(ref(db, 'male/matches'), newMatches);
+      setMaleMatches(newMatches);
+    }
+
+    const resetPlayers = players.map(player => ({
+      ...player,
+      points: 0,
+      totalScores: 0,
+    }));
+    set(ref(db, `${gender}/players`), resetPlayers);
+    setPlayers(resetPlayers);
+  };
+
   return (
     <div className="min-h-screen bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -379,13 +471,23 @@ export default function BeachVolleyballTracker() {
                 Final Match
               </Button>
               {isAdmin && (
-                <Button
-                  variant={showPlayerManagement ? "default" : "outline"}
-                  onClick={() => setShowPlayerManagement(!showPlayerManagement)}
-                  className="w-full sm:w-auto"
-                >
-                  Manage Players
-                </Button>
+                <>
+                  <Button
+                    variant={showPlayerManagement ? "default" : "outline"}
+                    onClick={() => setShowPlayerManagement(!showPlayerManagement)}
+                    className="w-full sm:w-auto"
+                  >
+                    Manage Players
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={handleGenerateMatches}
+                    className="w-full sm:w-auto"
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Generate Matches
+                  </Button>
+                </>
               )}
             </div>
             <div className="flex items-center gap-2">

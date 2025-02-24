@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -71,70 +72,127 @@ const generateRoundRobinMatches = (players: Player[]): Match[] => {
 
   let matches: Match[] = [];
   
-  let pairs: [Player, Player][] = [];
-  for (let i = 0; i < n; i++) {
-    for (let j = i + 1; j < n; j++) {
-      pairs.push([players[i], players[j]]);
-    }
-  }
+  // Create a tracking system for player pairings
+  const playerPartners = new Map<string, Set<string>>();
+  const playerOpponents = new Map<string, Set<string>>();
+  
+  players.forEach(player => {
+    playerPartners.set(player.name, new Set<string>());
+    playerOpponents.set(player.name, new Set<string>());
+  });
 
-  for (let i = 0; i < pairs.length; i++) {
-    for (let j = i + 1; j < pairs.length; j++) {
-      const pair1 = pairs[i];
-      const pair2 = pairs[j];
-      
-      if (new Set([...pair1, ...pair2]).size === 4) {
-        matches.push({
-          player1: pair1[0],
-          player2: pair1[1],
-          player3: pair2[0],
-          player4: pair2[1],
-          score1: 0,
-          score2: 0,
-          isSubmitted: false,
-        });
+  // Helper function to check if a match combination is valid
+  const isValidMatch = (team1: [Player, Player], team2: [Player, Player]): boolean => {
+    // Check if any players have played together before
+    if (playerPartners.get(team1[0].name)?.has(team1[1].name)) return false;
+    if (playerPartners.get(team2[0].name)?.has(team2[1].name)) return false;
+
+    // Check if any players have played against each other before
+    if (playerOpponents.get(team1[0].name)?.has(team2[0].name)) return false;
+    if (playerOpponents.get(team1[0].name)?.has(team2[1].name)) return false;
+    if (playerOpponents.get(team1[1].name)?.has(team2[0].name)) return false;
+    if (playerOpponents.get(team1[1].name)?.has(team2[1].name)) return false;
+
+    return true;
+  };
+
+  // Helper function to record a match
+  const recordMatch = (team1: [Player, Player], team2: [Player, Player]) => {
+    // Record partnerships
+    playerPartners.get(team1[0].name)?.add(team1[1].name);
+    playerPartners.get(team1[1].name)?.add(team1[0].name);
+    playerPartners.get(team2[0].name)?.add(team2[1].name);
+    playerPartners.get(team2[1].name)?.add(team2[0].name);
+
+    // Record opponents
+    team1.forEach(p1 => {
+      team2.forEach(p2 => {
+        playerOpponents.get(p1.name)?.add(p2.name);
+        playerOpponents.get(p2.name)?.add(p1.name);
+      });
+    });
+
+    matches.push({
+      player1: team1[0],
+      player2: team1[1],
+      player3: team2[0],
+      player4: team2[1],
+      score1: 0,
+      score2: 0,
+      isSubmitted: false,
+    });
+  };
+
+  // Generate matches ensuring each player plays with different partners against different opponents
+  const maxAttempts = 1000;
+  let attempts = 0;
+
+  while (matches.length < (n * 7) / 4 && attempts < maxAttempts) {
+    attempts++;
+    
+    // Try to find a valid match
+    let validMatchFound = false;
+    
+    for (let i = 0; i < n && !validMatchFound; i++) {
+      for (let j = i + 1; j < n; j++) {
+        const team1: [Player, Player] = [players[i], players[j]];
+        
+        for (let k = 0; k < n; k++) {
+          if (k === i || k === j) continue;
+          
+          for (let l = k + 1; l < n; l++) {
+            if (l === i || l === j) continue;
+            
+            const team2: [Player, Player] = [players[k], players[l]];
+            
+            if (isValidMatch(team1, team2)) {
+              recordMatch(team1, team2);
+              validMatchFound = true;
+              break;
+            }
+          }
+          if (validMatchFound) break;
+        }
+        if (validMatchFound) break;
       }
     }
+
+    if (!validMatchFound) break;
   }
 
+  // Verify each player has the correct number of matches
+  const matchCounts = new Map<string, number>();
+  players.forEach(player => matchCounts.set(player.name, 0));
+
+  matches.forEach(match => {
+    [match.player1, match.player2, match.player3, match.player4].forEach(player => {
+      matchCounts.set(player.name, (matchCounts.get(player.name) || 0) + 1);
+    });
+  });
+
+  // Only return matches if all players have exactly 7 matches (for 8 players)
+  const isValid = Array.from(matchCounts.values()).every(count => count === 7);
+  
+  if (!isValid) {
+    // If we couldn't generate a valid schedule, try again with a fresh start
+    if (attempts < maxAttempts) {
+      matches = [];
+      players.forEach(player => {
+        playerPartners.set(player.name, new Set<string>());
+        playerOpponents.set(player.name, new Set<string>());
+      });
+      return generateRoundRobinMatches(players);
+    }
+    return [];
+  }
+
+  // Shuffle the matches for variety
   for (let i = matches.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [matches[i], matches[j]] = [matches[j], matches[i]];
   }
 
-  const playerMatchups = new Map<string, Set<string>>();
-  const filteredMatches: Match[] = [];
-
-  for (const match of matches) {
-    const allPlayers = [match.player1, match.player2, match.player3, match.player4];
-    
-    allPlayers.forEach(player => {
-      if (!playerMatchups.has(player.name)) {
-        playerMatchups.set(player.name, new Set<string>());
-      }
-    });
-
-    let alreadyPlayed = false;
-    [match.player1, match.player2].forEach(team1Player => {
-      [match.player3, match.player4].forEach(team2Player => {
-        if (playerMatchups.get(team1Player.name)?.has(team2Player.name)) {
-          alreadyPlayed = true;
-        }
-      });
-    });
-
-    if (!alreadyPlayed) {
-      [match.player1, match.player2].forEach(team1Player => {
-        [match.player3, match.player4].forEach(team2Player => {
-          playerMatchups.get(team1Player.name)?.add(team2Player.name);
-          playerMatchups.get(team2Player.name)?.add(team1Player.name);
-        });
-      });
-      filteredMatches.push(match);
-    }
-  }
-
-  return filteredMatches;
+  return matches;
 };
 
 export default function BeachVolleyballTracker() {

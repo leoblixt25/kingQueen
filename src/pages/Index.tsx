@@ -547,9 +547,11 @@ export default function BeachVolleyballTracker() {
                 {/* Current Match */}
                 <Card className="mb-8 max-w-2xl mx-auto">
                   <CardHeader>
-                    <CardTitle className="text-2xl font-bold text-center">
-                      Match {currentMatchIndex + 1}
-                    </CardTitle>
+                    <div className="text-center">
+                      <CardTitle className="text-2xl font-bold">
+                        Match {currentMatchIndex + 1}
+                      </CardTitle>
+                    </div>
                   </CardHeader>
                   <CardContent className="space-y-6">
                     <div className="flex items-center justify-between gap-4">
@@ -562,9 +564,9 @@ export default function BeachVolleyballTracker() {
                         <ChevronLeft className="w-6 h-6" />
                       </Button>
 
-                      <div className="flex-1 space-y-4">
-                        <div className="flex flex-col sm:flex-row items-center gap-4">
-                          <p className="text-lg font-semibold min-w-[200px] text-center">
+                      <div className="flex-1 space-y-6">
+                        <div className="flex flex-col items-center gap-4">
+                          <p className="text-lg font-semibold text-center">
                             {currentMatch.player1.name} & {currentMatch.player2.name}
                           </p>
                           {!currentMatch.isSubmitted || isAdmin ? (
@@ -582,8 +584,8 @@ export default function BeachVolleyballTracker() {
                           )}
                         </div>
 
-                        <div className="flex flex-col sm:flex-row items-center gap-4">
-                          <p className="text-lg font-semibold min-w-[200px] text-center">
+                        <div className="flex flex-col items-center gap-4">
+                          <p className="text-lg font-semibold text-center">
                             {currentMatch.player3.name} & {currentMatch.player4.name}
                           </p>
                           {!currentMatch.isSubmitted || isAdmin ? (
@@ -613,9 +615,11 @@ export default function BeachVolleyballTracker() {
                     </div>
 
                     {!currentMatch.isSubmitted ? (
-                      <Button onClick={handleScoreSubmit} className="w-full sm:w-auto mx-auto block">
-                        Submit Score
-                      </Button>
+                      <div className="flex justify-center">
+                        <Button onClick={handleScoreSubmit} className="w-full sm:w-auto">
+                          Submit Score
+                        </Button>
+                      </div>
                     ) : (
                       <div className="flex items-center justify-center gap-2">
                         <Check className="text-green-500 w-6 h-6" />
@@ -644,22 +648,22 @@ export default function BeachVolleyballTracker() {
                   </CardHeader>
                   <CardContent>
                     <div className="overflow-x-auto">
-                      <table className="w-full">
+                      <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b">
-                            <th className="text-left py-2 px-4">Rank</th>
-                            <th className="text-left py-2 px-4">Player</th>
-                            <th className="text-right py-2 px-4">Points</th>
-                            <th className="text-right py-2 px-4">Total Scores</th>
+                            <th className="text-left py-2 px-2">#</th>
+                            <th className="text-left py-2 px-2">Name</th>
+                            <th className="text-right py-2 px-2">Pts</th>
+                            <th className="text-right py-2 px-2">Score</th>
                           </tr>
                         </thead>
                         <tbody>
                           {players.map((player, index) => (
                             <tr key={player.name} className="border-b last:border-0">
-                              <td className="py-2 px-4">{index + 1}</td>
-                              <td className="py-2 px-4">{player.name}</td>
-                              <td className="py-2 px-4 text-right">{player.points}</td>
-                              <td className="py-2 px-4 text-right">{player.totalScores}</td>
+                              <td className="py-2 px-2">{index + 1}</td>
+                              <td className="py-2 px-2">{player.name}</td>
+                              <td className="py-2 px-2 text-right">{player.points}</td>
+                              <td className="py-2 px-2 text-right">{player.totalScores}</td>
                             </tr>
                           ))}
                         </tbody>

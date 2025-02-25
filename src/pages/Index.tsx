@@ -1,3 +1,4 @@
+<lov-code>
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -65,129 +66,6 @@ const initialMaleMatches: Match[] = [
   { player1: initialMalePlayers[5], player2: initialMalePlayers[2], player3: initialMalePlayers[6], player4: initialMalePlayers[1], score1: 0, score2: 0, isSubmitted: false },
 ];
 
-const generateRoundRobinMatches = (players: Player[]): Match[] => {
-  const n = players.length;
-  if (n < 4) return [];
-
-  const maxOverallAttempts = 10; // Maximum number of complete restarts
-  let overallAttempts = 0;
-  
-  while (overallAttempts < maxOverallAttempts) {
-    overallAttempts++;
-    
-    let matches: Match[] = [];
-    const playerPartners = new Map<string, Set<string>>();
-    const playerOpponents = new Map<string, Set<string>>();
-    
-    // Initialize tracking maps
-    players.forEach(player => {
-      playerPartners.set(player.name, new Set<string>());
-      playerOpponents.set(player.name, new Set<string>());
-    });
-
-    // Try to generate all needed matches
-    const maxAttempts = 1000;
-    let attempts = 0;
-    
-    while (matches.length < (n * 7) / 4 && attempts < maxAttempts) {
-      attempts++;
-      
-      // Try each possible combination of players
-      for (let i = 0; i < n; i++) {
-        for (let j = i + 1; j < n; j++) {
-          if (playerPartners.get(players[i].name)?.has(players[j].name)) continue;
-          
-          for (let k = 0; k < n; k++) {
-            if (k === i || k === j) continue;
-            
-            for (let l = k + 1; l < n; l++) {
-              if (l === i || l === j) continue;
-              
-              const team1: [Player, Player] = [players[i], players[j]];
-              const team2: [Player, Player] = [players[k], players[l]];
-              
-              // Check if this match would be valid
-              let isValid = true;
-              
-              // Check partnerships
-              if (playerPartners.get(team2[0].name)?.has(team2[1].name)) {
-                isValid = false;
-              }
-              
-              // Check opponents
-              team1.forEach(p1 => {
-                team2.forEach(p2 => {
-                  if (playerOpponents.get(p1.name)?.has(p2.name)) {
-                    isValid = false;
-                  }
-                });
-              });
-              
-              if (isValid) {
-                // Record the match
-                playerPartners.get(team1[0].name)?.add(team1[1].name);
-                playerPartners.get(team1[1].name)?.add(team1[0].name);
-                playerPartners.get(team2[0].name)?.add(team2[1].name);
-                playerPartners.get(team2[1].name)?.add(team2[0].name);
-                
-                team1.forEach(p1 => {
-                  team2.forEach(p2 => {
-                    playerOpponents.get(p1.name)?.add(p2.name);
-                    playerOpponents.get(p2.name)?.add(p1.name);
-                  });
-                });
-                
-                matches.push({
-                  player1: team1[0],
-                  player2: team1[1],
-                  player3: team2[0],
-                  player4: team2[1],
-                  score1: 0,
-                  score2: 0,
-                  isSubmitted: false,
-                });
-                
-                if (matches.length === (n * 7) / 4) {
-                  // We've found all needed matches
-                  break;
-                }
-              }
-            }
-            if (matches.length === (n * 7) / 4) break;
-          }
-          if (matches.length === (n * 7) / 4) break;
-        }
-        if (matches.length === (n * 7) / 4) break;
-      }
-    }
-
-    // Verify each player has exactly 7 matches
-    const matchCounts = new Map<string, number>();
-    players.forEach(player => matchCounts.set(player.name, 0));
-    
-    matches.forEach(match => {
-      [match.player1, match.player2, match.player3, match.player4].forEach(player => {
-        matchCounts.set(player.name, (matchCounts.get(player.name) || 0) + 1);
-      });
-    });
-    
-    const isValid = Array.from(matchCounts.values()).every(count => count === 7);
-    
-    if (isValid) {
-      // Shuffle the matches for variety
-      for (let i = matches.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [matches[i], matches[j]] = [matches[j], matches[i]];
-      }
-      
-      return matches;
-    }
-  }
-  
-  // If we couldn't generate valid matches after all attempts, return empty array
-  return [];
-};
-
 export default function BeachVolleyballTracker() {
   const [gender, setGender] = useState<Gender>("female");
   const [femalePlayers, setFemalePlayers] = useState<Player[]>(initialFemalePlayers);
@@ -253,10 +131,10 @@ export default function BeachVolleyballTracker() {
     };
   }, []);
 
-  const players = gender === 'female' ? femalePlayers : malePlayers
-  const matches = gender === 'female' ? femaleMatches : maleMatches
-  const setMatches = gender === 'female' ? setFemaleMatches : setMaleMatches
-  const setPlayers = gender === 'female' ? setFemalePlayers : setMalePlayers
+  const players = gender === 'female' ? femalePlayers : malePlayers;
+  const matches = gender === 'female' ? femaleMatches : maleMatches;
+  const setMatches = gender === 'female' ? setFemaleMatches : setMaleMatches;
+  const setPlayers = gender === 'female' ? setFemalePlayers : setMalePlayers;
 
   const topPlayers = players.slice(0, 2).sort((a, b) => {
     if (b.points === a.points) {
@@ -477,19 +355,13 @@ export default function BeachVolleyballTracker() {
 
   const handleGenerateMatches = () => {
     if (gender === 'female') {
-      const newMatches = generateRoundRobinMatches(femalePlayers);
-      if (newMatches.length > 0) {
-        set(ref(db, 'female/matches'), newMatches);
-        setFemaleMatches(newMatches);
-        setCurrentMatchIndex(0);
-      }
+      set(ref(db, 'female/matches'), initialFemaleMatches);
+      setFemaleMatches(initialFemaleMatches);
+      setCurrentMatchIndex(0);
     } else {
-      const newMatches = generateRoundRobinMatches(malePlayers);
-      if (newMatches.length > 0) {
-        set(ref(db, 'male/matches'), newMatches);
-        setMaleMatches(newMatches);
-        setCurrentMatchIndex(0);
-      }
+      set(ref(db, 'male/matches'), initialMaleMatches);
+      setMaleMatches(initialMaleMatches);
+      setCurrentMatchIndex(0);
     }
 
     const resetPlayers = players.map(player => ({
@@ -795,178 +667,4 @@ export default function BeachVolleyballTracker() {
                               </p>
                               {!currentMatch.isSubmitted || isAdmin ? (
                                 <Input
-                                  value={currentMatch.isSubmitted && !isAdmin ? currentMatch.score2 : score2}
-                                  onChange={(e) => setScore2(e.target.value)}
-                                  type="number"
-                                  className="w-20"
-                                  inputMode="numeric"
-                                  pattern="\d*"
-                                  disabled={currentMatch.isSubmitted && !isAdmin}
-                                />
-                              ) : (
-                                <p className="text-xl font-bold">{currentMatch.score2}</p>
-                              )}
-                            </div>
-                          </div>
-
-                          {!currentMatch.isSubmitted ? (
-                            <Button onClick={handleScoreSubmit} className="w-full sm:w-auto">
-                              Submit Score
-                            </Button>
-                          ) : (
-                            <div className="flex items-center gap-2">
-                              <Check className="text-green-500 w-6 h-6" />
-                              <p className="text-lg">
-                                Final Score: {currentMatch.score1} - {currentMatch.score2}
-                              </p>
-                            </div>
-                          )}
-
-                          {isAdmin && currentMatch.isSubmitted && (
-                            <Button 
-                              onClick={() => handleEditScore(currentMatchIndex, parseInt(score1, 10) || 0, parseInt(score2, 10) || 0)}
-                              variant="outline"
-                            >
-                              <Edit className="w-4 h-4 mr-2" />
-                              Edit Score
-                            </Button>
-                          )}
-                        </>
-                      )}
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <Card className="mb-8">
-                    <CardHeader>
-                      <CardTitle className="text-2xl font-bold">No Matches Available</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-gray-600 mb-4">There are currently no matches generated.</p>
-                      {isAdmin && (
-                        <Button onClick={handleGenerateMatches}>
-                          <RefreshCw className="w-4 h-4 mr-2" />
-                          Generate Matches
-                        </Button>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Rankings Table - Now Second */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-2xl font-bold">
-                      {gender.charAt(0).toUpperCase() + gender.slice(1)} Rankings
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b">
-                            <th className="text-left py-2 px-4">Rank</th>
-                            <th className="text-left py-2 px-4">Player</th>
-                            <th className="text-right py-2 px-4">Points</th>
-                            <th className="text-right py-2 px-4">Total Scores</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {players.map((player, index) => (
-                            <tr key={player.name} className="border-b last:border-0">
-                              <td className="py-2 px-4">{index + 1}</td>
-                              <td className="py-2 px-4">{player.name}</td>
-                              <td className="py-2 px-4 text-right">{player.points}</td>
-                              <td className="py-2 px-4 text-right">{player.totalScores}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </CardContent>
-                </Card>
-              </>
-            )}
-          </main>
-        )}
-
-        {!showLoginForm && isAdmin && showPlayerManagement && (
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle>Player Management</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Add Player */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Add New Player</h3>
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="New player name"
-                    value={newPlayerName}
-                    onChange={(e) => setNewPlayerName(e.target.value)}
-                  />
-                  <Button onClick={handleAddPlayer}>
-                    <UserPlus className="w-4 h-4 mr-2" />
-                    Add
-                  </Button>
-                </div>
-              </div>
-
-              {/* Replace Player */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Replace Player</h3>
-                <div className="flex flex-col gap-2">
-                  <Select
-                    value={selectedPlayer?.name || ""}
-                    onValueChange={(value) => setSelectedPlayer(players.find(p => p.name === value) || null)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select player to replace" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {players.map((player) => (
-                        <SelectItem key={player.name} value={player.name}>
-                          {player.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="New player name"
-                      value={replacementName}
-                      onChange={(e) => setReplacementName(e.target.value)}
-                    />
-                    <Button onClick={handleReplacePlayer} disabled={!selectedPlayer || !replacementName}>
-                      <UserX className="w-4 h-4 mr-2" />
-                      Replace
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Remove Player */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Remove Player</h3>
-                <div className="space-y-2">
-                  {players.map((player) => (
-                    <div key={player.name} className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                      <span>{player.name}</span>
-                      <Button 
-                        variant="destructive" 
-                        size="sm" 
-                        onClick={() => handleRemovePlayer(player)}
-                      >
-                        <UserMinus className="w-4 h-4 mr-2" />
-                        Remove
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-    </div>
-  );
-}
+                                  value={currentMatch.isSubmitted && !isAdmin ? currentMatch.score2 : score

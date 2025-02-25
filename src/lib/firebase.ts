@@ -9,7 +9,7 @@ const firebaseConfig = {
   projectId: "king-queen-of-the-beach",
   storageBucket: "king-queen-of-the-beach.firebasestorage.app",
   messagingSenderId: "612744328741",
-  appId: "1:612744328741:web:f8b136960dd2f30005f1cc"
+  appId: "1:612744328741:web:b03c2b96fd86ce8805f1cc"
 };
 
 const app = initializeApp(firebaseConfig);

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Check, Edit, Trash, Crown, UserPlus, UserMinus, UserX } from "lucide-react";
+import { Check, Edit, Trash, Crown, UserPlus, UserMinus, UserX, ChevronLeft, ChevronRight } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Gender, Match, Player, FinalMatchScores, FinalMatchWinner } from "@/types";
 
@@ -312,14 +312,30 @@ export default function BeachVolleyballTracker() {
     setReplacementName("");
   };
 
+  const handlePreviousMatch = () => {
+    if (currentMatchIndex > 0) {
+      setCurrentMatchIndex(currentMatchIndex - 1);
+      setScore1('');
+      setScore2('');
+    }
+  };
+
+  const handleNextMatch = () => {
+    if (currentMatchIndex < matches.length - 1) {
+      setCurrentMatchIndex(currentMatchIndex + 1);
+      setScore1('');
+      setScore2('');
+    }
+  };
+
   const currentMatch = matches[currentMatchIndex];
 
   return (
     <div className="min-h-screen bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <header className="mb-8">
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-            <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
+            <div className="flex flex-wrap justify-center items-center gap-2">
               <Button 
                 variant={gender === 'female' ? "default" : "outline"} 
                 onClick={() => { setGender('female'); setShowFinalMatch(false); }}
@@ -366,8 +382,8 @@ export default function BeachVolleyballTracker() {
         </header>
 
         {showLoginForm && (
-          <Card className="mb-8">
-            <CardHeader>
+          <Card className="mb-8 max-w-md mx-auto">
+            <CardHeader className="text-center">
               <CardTitle>Admin Login</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -397,9 +413,11 @@ export default function BeachVolleyballTracker() {
         {!showLoginForm && (
           <main>
             {showFinalMatch ? (
-              <Card>
+              <Card className="max-w-2xl mx-auto">
                 <CardHeader>
-                  <CardTitle className="text-2xl font-bold">Final Match</CardTitle>
+                  <CardTitle className="text-2xl font-bold text-center">
+                    Final Match
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-8">
                   {/* Team 1 */}
@@ -469,7 +487,7 @@ export default function BeachVolleyballTracker() {
                   </div>
 
                   {!finalMatchSubmitted ? (
-                    <Button onClick={handleFinalMatchSubmit} className="w-full sm:w-auto">
+                    <Button onClick={handleFinalMatchSubmit} className="w-full sm:w-auto mx-auto block">
                       Submit Final Match
                     </Button>
                   ) : (
@@ -526,85 +544,103 @@ export default function BeachVolleyballTracker() {
               </Card>
             ) : (
               <>
-                {/* Current Match - Now First */}
-                <Card className="mb-8">
+                {/* Current Match */}
+                <Card className="mb-8 max-w-2xl mx-auto">
                   <CardHeader>
-                    <CardTitle className="text-2xl font-bold">
+                    <CardTitle className="text-2xl font-bold text-center">
                       Match {currentMatchIndex + 1}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    <div className="space-y-4">
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                        <p className="text-lg font-semibold min-w-[200px]">
-                          {currentMatch.player1.name} & {currentMatch.player2.name}
-                        </p>
-                        {!currentMatch.isSubmitted || isAdmin ? (
-                          <Input
-                            value={currentMatch.isSubmitted && !isAdmin ? currentMatch.score1 : score1}
-                            onChange={(e) => setScore1(e.target.value)}
-                            type="number"
-                            className="w-20"
-                            inputMode="numeric"
-                            pattern="\d*"
-                            disabled={currentMatch.isSubmitted && !isAdmin}
-                          />
-                        ) : (
-                          <p className="text-xl font-bold">{currentMatch.score1}</p>
-                        )}
+                    <div className="flex items-center justify-between gap-4">
+                      <Button
+                        variant="outline"
+                        onClick={handlePreviousMatch}
+                        disabled={currentMatchIndex === 0}
+                        className="flex-shrink-0"
+                      >
+                        <ChevronLeft className="w-6 h-6" />
+                      </Button>
+
+                      <div className="flex-1 space-y-4">
+                        <div className="flex flex-col sm:flex-row items-center gap-4">
+                          <p className="text-lg font-semibold min-w-[200px] text-center">
+                            {currentMatch.player1.name} & {currentMatch.player2.name}
+                          </p>
+                          {!currentMatch.isSubmitted || isAdmin ? (
+                            <Input
+                              value={currentMatch.isSubmitted && !isAdmin ? currentMatch.score1 : score1}
+                              onChange={(e) => setScore1(e.target.value)}
+                              type="number"
+                              className="w-20 text-center"
+                              inputMode="numeric"
+                              pattern="\d*"
+                              disabled={currentMatch.isSubmitted && !isAdmin}
+                            />
+                          ) : (
+                            <p className="text-xl font-bold">{currentMatch.score1}</p>
+                          )}
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row items-center gap-4">
+                          <p className="text-lg font-semibold min-w-[200px] text-center">
+                            {currentMatch.player3.name} & {currentMatch.player4.name}
+                          </p>
+                          {!currentMatch.isSubmitted || isAdmin ? (
+                            <Input
+                              value={currentMatch.isSubmitted && !isAdmin ? currentMatch.score2 : score2}
+                              onChange={(e) => setScore2(e.target.value)}
+                              type="number"
+                              className="w-20 text-center"
+                              inputMode="numeric"
+                              pattern="\d*"
+                              disabled={currentMatch.isSubmitted && !isAdmin}
+                            />
+                          ) : (
+                            <p className="text-xl font-bold">{currentMatch.score2}</p>
+                          )}
+                        </div>
                       </div>
 
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                        <p className="text-lg font-semibold min-w-[200px]">
-                          {currentMatch.player3.name} & {currentMatch.player4.name}
-                        </p>
-                        {!currentMatch.isSubmitted || isAdmin ? (
-                          <Input
-                            value={currentMatch.isSubmitted && !isAdmin ? currentMatch.score2 : score2}
-                            onChange={(e) => setScore2(e.target.value)}
-                            type="number"
-                            className="w-20"
-                            inputMode="numeric"
-                            pattern="\d*"
-                            disabled={currentMatch.isSubmitted && !isAdmin}
-                          />
-                        ) : (
-                          <p className="text-xl font-bold">{currentMatch.score2}</p>
-                        )}
-                      </div>
+                      <Button
+                        variant="outline"
+                        onClick={handleNextMatch}
+                        disabled={currentMatchIndex === matches.length - 1}
+                        className="flex-shrink-0"
+                      >
+                        <ChevronRight className="w-6 h-6" />
+                      </Button>
                     </div>
 
                     {!currentMatch.isSubmitted ? (
-                      <Button onClick={handleScoreSubmit} className="w-full sm:w-auto">
+                      <Button onClick={handleScoreSubmit} className="w-full sm:w-auto mx-auto block">
                         Submit Score
                       </Button>
                     ) : (
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-center gap-2">
                         <Check className="text-green-500 w-6 h-6" />
-                        <p className="text-lg">
-                          Final Score: {currentMatch.score1} - {currentMatch.score2}
-                        </p>
+                        <p className="text-lg">Final Score: {currentMatch.score1} - {currentMatch.score2}</p>
                       </div>
                     )}
 
                     {isAdmin && currentMatch.isSubmitted && (
-                      <Button 
-                        onClick={() => handleEditScore(currentMatchIndex, parseInt(score1, 10) || 0, parseInt(score2, 10) || 0)}
-                        variant="outline"
-                      >
-                        <Edit className="w-4 h-4 mr-2" />
-                        Edit Score
-                      </Button>
+                      <div className="flex justify-center">
+                        <Button 
+                          onClick={() => handleEditScore(currentMatchIndex, parseInt(score1, 10) || 0, parseInt(score2, 10) || 0)}
+                          variant="outline"
+                        >
+                          <Edit className="w-4 h-4 mr-2" />
+                          Edit Score
+                        </Button>
+                      </div>
                     )}
                   </CardContent>
                 </Card>
 
-                {/* Rankings Table - Now Second */}
-                <Card>
+                {/* Rankings */}
+                <Card className="max-w-2xl mx-auto">
                   <CardHeader>
-                    <CardTitle className="text-2xl font-bold">
-                      {gender.charAt(0).toUpperCase() + gender.slice(1)} Rankings
-                    </CardTitle>
+                    <CardTitle className="text-2xl font-bold text-center">Rankings</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="overflow-x-auto">
@@ -637,9 +673,9 @@ export default function BeachVolleyballTracker() {
         )}
 
         {!showLoginForm && isAdmin && showPlayerManagement && (
-          <Card className="mb-8">
+          <Card className="mt-8 max-w-2xl mx-auto">
             <CardHeader>
-              <CardTitle>Player Management</CardTitle>
+              <CardTitle className="text-center">Player Management</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Add Player */}

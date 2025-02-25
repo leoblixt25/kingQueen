@@ -135,7 +135,7 @@ export default function BeachVolleyballTracker() {
   const setMatches = gender === 'female' ? setFemaleMatches : setMaleMatches;
   const setPlayers = gender === 'female' ? setFemalePlayers : setMalePlayers;
 
-  const topPlayers = players.slice(0, 2).sort((a, b) => {
+  const topPlayers = players.slice().sort((a, b) => {
     if (b.points === a.points) {
       return b.totalScores - a.totalScores;
     }
@@ -478,219 +478,115 @@ export default function BeachVolleyballTracker() {
           </Card>
         )}
 
-        {!showLoginForm && (
-          <main>
-            {showFinalMatch ? (
-              <Card>
+        {!showLoginForm && !showFinalMatch && (
+          <>
+            {hasMatches ? (
+              <Card className="mb-8">
                 <CardHeader>
-                  <CardTitle className="text-2xl font-bold">Final Match</CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-2xl font-bold">
+                      Match {currentMatchIndex + 1} of {matches.length}
+                    </CardTitle>
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        onClick={handlePreviousMatch}
+                        disabled={currentMatchIndex === 0}
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                        Previous
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={handleNextMatch}
+                        disabled={currentMatchIndex === matches.length - 1}
+                      >
+                        Next
+                        <ChevronRight className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
                 </CardHeader>
-                <CardContent className="space-y-8">
-                  {/* Team 1 */}
-                  <div className="space-y-4">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                      <h3 className="text-lg font-semibold min-w-[200px]">
-                        Team 1: {malePlayers[0].name} & {femalePlayers[1].name}
-                      </h3>
-                      <div className="flex gap-4">
-                        {[0, 1, 2].map((setIndex) => (
-                          <div key={setIndex} className="space-y-2">
-                            <Label htmlFor={`team1-set${setIndex + 1}`}>Set {setIndex + 1}</Label>
+                <CardContent className="space-y-6">
+                  {currentMatch && (
+                    <>
+                      <div className="space-y-4">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                          <p className="text-lg font-semibold min-w-[200px]">
+                            {currentMatch.player1.name} & {currentMatch.player2.name}
+                          </p>
+                          {!currentMatch.isSubmitted || isAdmin ? (
                             <Input
-                              id={`team1-set${setIndex + 1}`}
-                              value={finalMatchScores.team1[setIndex] !== null ? finalMatchScores.team1[setIndex] : ''}
-                              onChange={(e) => {
-                                const newScores = [...finalMatchScores.team1];
-                                newScores[setIndex] = e.target.value === '' ? null : parseInt(e.target.value, 10);
-                                setFinalMatchScores({
-                                  ...finalMatchScores,
-                                  team1: newScores as [number | null, number | null, number | null]
-                                });
-                              }}
+                              value={currentMatch.isSubmitted && !isAdmin ? currentMatch.score1 : score1}
+                              onChange={(e) => setScore1(e.target.value)}
                               type="number"
-                              className="w-16"
+                              className="w-20"
                               inputMode="numeric"
                               pattern="\d*"
-                              disabled={finalMatchSubmitted && !isEditingFinalMatch}
+                              disabled={currentMatch.isSubmitted && !isAdmin}
                             />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Team 2 */}
-                  <div className="space-y-4">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                      <h3 className="text-lg font-semibold min-w-[200px]">
-                        Team 2: {femalePlayers[0].name} & {malePlayers[1].name}
-                      </h3>
-                      <div className="flex gap-4">
-                        {[0, 1, 2].map((setIndex) => (
-                          <div key={setIndex} className="space-y-2">
-                            <Label htmlFor={`team2-set${setIndex + 1}`}>Set {setIndex + 1}</Label>
-                            <Input
-                              id={`team2-set${setIndex + 1}`}
-                              value={finalMatchScores.team2[setIndex] !== null ? finalMatchScores.team2[setIndex] : ''}
-                              onChange={(e) => {
-                                const newScores = [...finalMatchScores.team2];
-                                newScores[setIndex] = e.target.value === '' ? null : parseInt(e.target.value, 10);
-                                setFinalMatchScores({
-                                  ...finalMatchScores,
-                                  team2: newScores as [number | null, number | null, number | null]
-                                });
-                              }}
-                              type="number"
-                              className="w-16"
-                              inputMode="numeric"
-                              pattern="\d*"
-                              disabled={finalMatchSubmitted && !isEditingFinalMatch}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {!finalMatchSubmitted ? (
-                    <Button onClick={handleFinalMatchSubmit} className="w-full sm:w-auto">
-                      Submit Final Match
-                    </Button>
-                  ) : (
-                    <div className="space-y-6">
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <h3 className="text-lg font-semibold mb-4">Final Match Results</h3>
-                        <p className="text-gray-600">
-                          Team 1: {finalMatchScores.team1.map(s => s ?? 0).join(' - ')}
-                        </p>
-                        <p className="text-gray-600">
-                          Team 2: {finalMatchScores.team2.map(s => s ?? 0).join(' - ')}
-                        </p>
-                      </div>
-
-                      {finalMatchWinner && (
-                        <div className="bg-gradient-to-r from-purple-100 to-pink-100 p-6 rounded-lg">
-                          <div className="space-y-4">
-                            <div>
-                              <h3 className="text-xl font-bold mb-2">👑 Champions 👑</h3>
-                              <p className="text-lg">
-                                King {finalMatchWinner.malePlayer} & Queen {finalMatchWinner.femalePlayer}
-                              </p>
-                            </div>
-                            <div>
-                              <h3 className="text-lg font-semibold mb-2">Runners-up</h3>
-                              <p>
-                                Prince {finalMatchWinner.losingMalePlayer} & Princess {finalMatchWinner.losingFemalePlayer}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {isAdmin && (
-                        <div className="flex flex-col sm:flex-row gap-2">
-                          <Button variant="outline" onClick={handleEditFinalMatch}>
-                            <Edit className="w-4 h-4 mr-2" />
-                            Edit Match
-                          </Button>
-                          <Button variant="destructive" onClick={handleResetFinalMatch}>
-                            <Trash className="w-4 h-4 mr-2" />
-                            Reset Match
-                          </Button>
-                          {isEditingFinalMatch && (
-                            <Button onClick={handleFinalMatchEditSubmit}>
-                              Save Changes
-                            </Button>
+                          ) : (
+                            <p className="text-xl font-bold">{currentMatch.score1}</p>
                           )}
                         </div>
-                      )}
-                    </div>
+
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                          <p className="text-lg font-semibold min-w-[200px]">
+                            {currentMatch.player3.name} & {currentMatch.player4.name}
+                          </p>
+                          {!currentMatch.isSubmitted || isAdmin ? (
+                            <Input
+                              value={currentMatch.isSubmitted && !isAdmin ? currentMatch.score2 : score2}
+                              onChange={(e) => setScore2(e.target.value)}
+                              type="number"
+                              className="w-20"
+                              inputMode="numeric"
+                              pattern="\d*"
+                              disabled={currentMatch.isSubmitted && !isAdmin}
+                            />
+                          ) : (
+                            <p className="text-xl font-bold">{currentMatch.score2}</p>
+                          )}
+                        </div>
+                      </div>
+                    </>
                   )}
                 </CardContent>
               </Card>
             ) : (
-              <>
-                {hasMatches ? (
-                  <Card className="mb-8">
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-2xl font-bold">
-                          Match {currentMatchIndex + 1} of {matches.length}
-                        </CardTitle>
-                        <div className="flex gap-2">
-                          <Button 
-                            variant="outline" 
-                            onClick={handlePreviousMatch}
-                            disabled={currentMatchIndex === 0}
-                          >
-                            <ChevronLeft className="w-4 h-4" />
-                            Previous
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            onClick={handleNextMatch}
-                            disabled={currentMatchIndex === matches.length - 1}
-                          >
-                            Next
-                            <ChevronRight className="w-4 h-4" />
-                          </Button>
+              <div className="flex flex-col items-center justify-center mb-8">
+                <p className="text-2xl font-bold">No matches found</p>
+              </div>
+            )}
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-2xl font-bold">Rankings</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {topPlayers.map((player, index) => (
+                    <div
+                      key={player.name}
+                      className="flex items-center justify-between border-b border-gray-200 pb-4 last:border-0 last:pb-0"
+                    >
+                      <div className="flex items-center gap-4">
+                        <span className="text-lg font-semibold">{index + 1}</span>
+                        <div>
+                          <p className="font-semibold">{player.name}</p>
+                          <p className="text-sm text-gray-500">Total Score: {player.totalScores}</p>
                         </div>
                       </div>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                      {currentMatch && (
-                        <>
-                          <div className="space-y-4">
-                            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                              <p className="text-lg font-semibold min-w-[200px]">
-                                {currentMatch.player1.name} & {currentMatch.player2.name}
-                              </p>
-                              {!currentMatch.isSubmitted || isAdmin ? (
-                                <Input
-                                  value={currentMatch.isSubmitted && !isAdmin ? currentMatch.score1 : score1}
-                                  onChange={(e) => setScore1(e.target.value)}
-                                  type="number"
-                                  className="w-20"
-                                  inputMode="numeric"
-                                  pattern="\d*"
-                                  disabled={currentMatch.isSubmitted && !isAdmin}
-                                />
-                              ) : (
-                                <p className="text-xl font-bold">{currentMatch.score1}</p>
-                              )}
-                            </div>
-
-                            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                              <p className="text-lg font-semibold min-w-[200px]">
-                                {currentMatch.player3.name} & {currentMatch.player4.name}
-                              </p>
-                              {!currentMatch.isSubmitted || isAdmin ? (
-                                <Input
-                                  value={currentMatch.isSubmitted && !isAdmin ? currentMatch.score2 : score2}
-                                  onChange={(e) => setScore2(e.target.value)}
-                                  type="number"
-                                  className="w-20"
-                                  inputMode="numeric"
-                                  pattern="\d*"
-                                  disabled={currentMatch.isSubmitted && !isAdmin}
-                                />
-                              ) : (
-                                <p className="text-xl font-bold">{currentMatch.score2}</p>
-                              )}
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <div className="flex flex-col items-center justify-center">
-                    <p className="text-2xl font-bold">No matches found</p>
-                  </div>
-                )}
-              </>
-            )}
-          </main>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl font-bold">{player.points}</span>
+                        <span className="text-sm text-gray-500">points</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </>
         )}
       </div>
     </div>

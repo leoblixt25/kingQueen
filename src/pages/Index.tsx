@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -70,129 +69,123 @@ const generateRoundRobinMatches = (players: Player[]): Match[] => {
   const n = players.length;
   if (n < 4) return [];
 
-  let matches: Match[] = [];
+  const maxOverallAttempts = 10; // Maximum number of complete restarts
+  let overallAttempts = 0;
   
-  // Create a tracking system for player pairings
-  const playerPartners = new Map<string, Set<string>>();
-  const playerOpponents = new Map<string, Set<string>>();
-  
-  players.forEach(player => {
-    playerPartners.set(player.name, new Set<string>());
-    playerOpponents.set(player.name, new Set<string>());
-  });
-
-  // Helper function to check if a match combination is valid
-  const isValidMatch = (team1: [Player, Player], team2: [Player, Player]): boolean => {
-    // Check if any players have played together before
-    if (playerPartners.get(team1[0].name)?.has(team1[1].name)) return false;
-    if (playerPartners.get(team2[0].name)?.has(team2[1].name)) return false;
-
-    // Check if any players have played against each other before
-    if (playerOpponents.get(team1[0].name)?.has(team2[0].name)) return false;
-    if (playerOpponents.get(team1[0].name)?.has(team2[1].name)) return false;
-    if (playerOpponents.get(team1[1].name)?.has(team2[0].name)) return false;
-    if (playerOpponents.get(team1[1].name)?.has(team2[1].name)) return false;
-
-    return true;
-  };
-
-  // Helper function to record a match
-  const recordMatch = (team1: [Player, Player], team2: [Player, Player]) => {
-    // Record partnerships
-    playerPartners.get(team1[0].name)?.add(team1[1].name);
-    playerPartners.get(team1[1].name)?.add(team1[0].name);
-    playerPartners.get(team2[0].name)?.add(team2[1].name);
-    playerPartners.get(team2[1].name)?.add(team2[0].name);
-
-    // Record opponents
-    team1.forEach(p1 => {
-      team2.forEach(p2 => {
-        playerOpponents.get(p1.name)?.add(p2.name);
-        playerOpponents.get(p2.name)?.add(p1.name);
-      });
+  while (overallAttempts < maxOverallAttempts) {
+    overallAttempts++;
+    
+    let matches: Match[] = [];
+    const playerPartners = new Map<string, Set<string>>();
+    const playerOpponents = new Map<string, Set<string>>();
+    
+    // Initialize tracking maps
+    players.forEach(player => {
+      playerPartners.set(player.name, new Set<string>());
+      playerOpponents.set(player.name, new Set<string>());
     });
 
-    matches.push({
-      player1: team1[0],
-      player2: team1[1],
-      player3: team2[0],
-      player4: team2[1],
-      score1: 0,
-      score2: 0,
-      isSubmitted: false,
-    });
-  };
-
-  // Generate matches ensuring each player plays with different partners against different opponents
-  const maxAttempts = 1000;
-  let attempts = 0;
-
-  while (matches.length < (n * 7) / 4 && attempts < maxAttempts) {
-    attempts++;
+    // Try to generate all needed matches
+    const maxAttempts = 1000;
+    let attempts = 0;
     
-    // Try to find a valid match
-    let validMatchFound = false;
-    
-    for (let i = 0; i < n && !validMatchFound; i++) {
-      for (let j = i + 1; j < n; j++) {
-        const team1: [Player, Player] = [players[i], players[j]];
-        
-        for (let k = 0; k < n; k++) {
-          if (k === i || k === j) continue;
+    while (matches.length < (n * 7) / 4 && attempts < maxAttempts) {
+      attempts++;
+      
+      // Try each possible combination of players
+      for (let i = 0; i < n; i++) {
+        for (let j = i + 1; j < n; j++) {
+          if (playerPartners.get(players[i].name)?.has(players[j].name)) continue;
           
-          for (let l = k + 1; l < n; l++) {
-            if (l === i || l === j) continue;
+          for (let k = 0; k < n; k++) {
+            if (k === i || k === j) continue;
             
-            const team2: [Player, Player] = [players[k], players[l]];
-            
-            if (isValidMatch(team1, team2)) {
-              recordMatch(team1, team2);
-              validMatchFound = true;
-              break;
+            for (let l = k + 1; l < n; l++) {
+              if (l === i || l === j) continue;
+              
+              const team1: [Player, Player] = [players[i], players[j]];
+              const team2: [Player, Player] = [players[k], players[l]];
+              
+              // Check if this match would be valid
+              let isValid = true;
+              
+              // Check partnerships
+              if (playerPartners.get(team2[0].name)?.has(team2[1].name)) {
+                isValid = false;
+              }
+              
+              // Check opponents
+              team1.forEach(p1 => {
+                team2.forEach(p2 => {
+                  if (playerOpponents.get(p1.name)?.has(p2.name)) {
+                    isValid = false;
+                  }
+                });
+              });
+              
+              if (isValid) {
+                // Record the match
+                playerPartners.get(team1[0].name)?.add(team1[1].name);
+                playerPartners.get(team1[1].name)?.add(team1[0].name);
+                playerPartners.get(team2[0].name)?.add(team2[1].name);
+                playerPartners.get(team2[1].name)?.add(team2[0].name);
+                
+                team1.forEach(p1 => {
+                  team2.forEach(p2 => {
+                    playerOpponents.get(p1.name)?.add(p2.name);
+                    playerOpponents.get(p2.name)?.add(p1.name);
+                  });
+                });
+                
+                matches.push({
+                  player1: team1[0],
+                  player2: team1[1],
+                  player3: team2[0],
+                  player4: team2[1],
+                  score1: 0,
+                  score2: 0,
+                  isSubmitted: false,
+                });
+                
+                if (matches.length === (n * 7) / 4) {
+                  // We've found all needed matches
+                  break;
+                }
+              }
             }
+            if (matches.length === (n * 7) / 4) break;
           }
-          if (validMatchFound) break;
+          if (matches.length === (n * 7) / 4) break;
         }
-        if (validMatchFound) break;
+        if (matches.length === (n * 7) / 4) break;
       }
     }
 
-    if (!validMatchFound) break;
-  }
-
-  // Verify each player has the correct number of matches
-  const matchCounts = new Map<string, number>();
-  players.forEach(player => matchCounts.set(player.name, 0));
-
-  matches.forEach(match => {
-    [match.player1, match.player2, match.player3, match.player4].forEach(player => {
-      matchCounts.set(player.name, (matchCounts.get(player.name) || 0) + 1);
-    });
-  });
-
-  // Only return matches if all players have exactly 7 matches (for 8 players)
-  const isValid = Array.from(matchCounts.values()).every(count => count === 7);
-  
-  if (!isValid) {
-    // If we couldn't generate a valid schedule, try again with a fresh start
-    if (attempts < maxAttempts) {
-      matches = [];
-      players.forEach(player => {
-        playerPartners.set(player.name, new Set<string>());
-        playerOpponents.set(player.name, new Set<string>());
+    // Verify each player has exactly 7 matches
+    const matchCounts = new Map<string, number>();
+    players.forEach(player => matchCounts.set(player.name, 0));
+    
+    matches.forEach(match => {
+      [match.player1, match.player2, match.player3, match.player4].forEach(player => {
+        matchCounts.set(player.name, (matchCounts.get(player.name) || 0) + 1);
       });
-      return generateRoundRobinMatches(players);
+    });
+    
+    const isValid = Array.from(matchCounts.values()).every(count => count === 7);
+    
+    if (isValid) {
+      // Shuffle the matches for variety
+      for (let i = matches.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [matches[i], matches[j]] = [matches[j], matches[i]];
+      }
+      
+      return matches;
     }
-    return [];
   }
-
-  // Shuffle the matches for variety
-  for (let i = matches.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [matches[i], matches[j]] = [matches[j], matches[i]];
-  }
-
-  return matches;
+  
+  // If we couldn't generate valid matches after all attempts, return empty array
+  return [];
 };
 
 export default function BeachVolleyballTracker() {

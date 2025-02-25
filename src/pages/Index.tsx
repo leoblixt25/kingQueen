@@ -1,4 +1,3 @@
-<lov-code>
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -667,4 +666,33 @@ export default function BeachVolleyballTracker() {
                               </p>
                               {!currentMatch.isSubmitted || isAdmin ? (
                                 <Input
-                                  value={currentMatch.isSubmitted && !isAdmin ? currentMatch.score2 : score
+                                  value={currentMatch.isSubmitted && !isAdmin ? currentMatch.score2 : score2}
+                                  onChange={(e) => setScore2(e.target.value)}
+                                  type="number"
+                                  className="w-20"
+                                  inputMode="numeric"
+                                  pattern="\d*"
+                                  disabled={currentMatch.isSubmitted && !isAdmin}
+                                />
+                              ) : (
+                                <p className="text-xl font-bold">{currentMatch.score2}</p>
+                              )}
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="flex flex-col items-center justify-center">
+                    <p className="text-2xl font-bold">No matches found</p>
+                  </div>
+                )}
+              </>
+            )}
+          </main>
+        )}
+      </div>
+    </div>
+  );
+}

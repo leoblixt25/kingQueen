@@ -9,7 +9,125 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      final_matches: {
+        Row: {
+          created_at: string
+          id: string
+          is_submitted: boolean | null
+          team1_scores: number[] | null
+          team2_scores: number[] | null
+          winner_team: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_submitted?: boolean | null
+          team1_scores?: number[] | null
+          team2_scores?: number[] | null
+          winner_team?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_submitted?: boolean | null
+          team1_scores?: number[] | null
+          team2_scores?: number[] | null
+          winner_team?: string | null
+        }
+        Relationships: []
+      }
+      matches: {
+        Row: {
+          created_at: string
+          id: string
+          is_submitted: boolean | null
+          player1_id: string
+          player2_id: string
+          player3_id: string
+          player4_id: string
+          score1: number | null
+          score2: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_submitted?: boolean | null
+          player1_id: string
+          player2_id: string
+          player3_id: string
+          player4_id: string
+          score1?: number | null
+          score2?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_submitted?: boolean | null
+          player1_id?: string
+          player2_id?: string
+          player3_id?: string
+          player4_id?: string
+          score1?: number | null
+          score2?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matches_player1_id_fkey"
+            columns: ["player1_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_player2_id_fkey"
+            columns: ["player2_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_player3_id_fkey"
+            columns: ["player3_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_player4_id_fkey"
+            columns: ["player4_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      players: {
+        Row: {
+          created_at: string
+          gender: string
+          id: string
+          name: string
+          points: number | null
+          total_scores: number | null
+        }
+        Insert: {
+          created_at?: string
+          gender: string
+          id?: string
+          name: string
+          points?: number | null
+          total_scores?: number | null
+        }
+        Update: {
+          created_at?: string
+          gender?: string
+          id?: string
+          name?: string
+          points?: number | null
+          total_scores?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

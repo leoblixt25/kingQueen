@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -6,69 +6,16 @@ import { Label } from "@/components/ui/label";
 import { Check, Edit, Trash, Crown, UserPlus, UserMinus, UserX, ChevronLeft, ChevronRight } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Gender, Match, Player, FinalMatchScores, FinalMatchWinner } from "@/types";
-
-const initialFemalePlayers: Player[] = [
-  { name: "Lakota", points: 0, totalScores: 0 },
-  { name: "Lidia", points: 0, totalScores: 0 },
-  { name: "Giulia", points: 0, totalScores: 0 },
-  { name: "Dina", points: 0, totalScores: 0 },
-  { name: "Catalina", points: 0, totalScores: 0 },
-  { name: "Izel", points: 0, totalScores: 0 },
-  { name: "Marta", points: 0, totalScores: 0 },
-  { name: "Eli", points: 0, totalScores: 0 },
-];
-
-const initialMalePlayers: Player[] = [
-  { name: "Giacomo", points: 0, totalScores: 0 },
-  { name: "David", points: 0, totalScores: 0 },
-  { name: "Javi", points: 0, totalScores: 0 },
-  { name: "Mauro", points: 0, totalScores: 0 },
-  { name: "Mattia", points: 0, totalScores: 0 },
-  { name: "Dani", points: 0, totalScores: 0 },
-  { name: "Leo", points: 0, totalScores: 0 },
-  { name: "Samuel", points: 0, totalScores: 0 },
-];
-
-const initialFemaleMatches: Match[] = [
-  { player1: initialFemalePlayers[0], player2: initialFemalePlayers[1], player3: initialFemalePlayers[2], player4: initialFemalePlayers[3], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialFemalePlayers[4], player2: initialFemalePlayers[5], player3: initialFemalePlayers[6], player4: initialFemalePlayers[7], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialFemalePlayers[5], player2: initialFemalePlayers[6], player3: initialFemalePlayers[7], player4: initialFemalePlayers[0], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialFemalePlayers[3], player2: initialFemalePlayers[4], player3: initialFemalePlayers[1], player4: initialFemalePlayers[2], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialFemalePlayers[6], player2: initialFemalePlayers[3], player3: initialFemalePlayers[4], player4: initialFemalePlayers[1], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialFemalePlayers[0], player2: initialFemalePlayers[2], player3: initialFemalePlayers[7], player4: initialFemalePlayers[5], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialFemalePlayers[2], player2: initialFemalePlayers[4], player3: initialFemalePlayers[3], player4: initialFemalePlayers[7], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialFemalePlayers[1], player2: initialFemalePlayers[6], player3: initialFemalePlayers[5], player4: initialFemalePlayers[0], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialFemalePlayers[5], player2: initialFemalePlayers[3], player3: initialFemalePlayers[6], player4: initialFemalePlayers[2], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialFemalePlayers[7], player2: initialFemalePlayers[1], player3: initialFemalePlayers[0], player4: initialFemalePlayers[4], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialFemalePlayers[2], player2: initialFemalePlayers[7], player3: initialFemalePlayers[1], player4: initialFemalePlayers[5], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialFemalePlayers[3], player2: initialFemalePlayers[0], player3: initialFemalePlayers[4], player4: initialFemalePlayers[6], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialFemalePlayers[7], player2: initialFemalePlayers[4], player3: initialFemalePlayers[0], player4: initialFemalePlayers[6], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialFemalePlayers[5], player2: initialFemalePlayers[2], player3: initialFemalePlayers[6], player4: initialFemalePlayers[1], score1: 0, score2: 0, isSubmitted: false },
-];
-
-const initialMaleMatches: Match[] = [
-  { player1: initialMalePlayers[0], player2: initialMalePlayers[1], player3: initialMalePlayers[2], player4: initialMalePlayers[3], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialMalePlayers[4], player2: initialMalePlayers[5], player3: initialMalePlayers[6], player4: initialMalePlayers[7], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialMalePlayers[5], player2: initialMalePlayers[6], player3: initialMalePlayers[7], player4: initialMalePlayers[0], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialMalePlayers[3], player2: initialMalePlayers[4], player3: initialMalePlayers[1], player4: initialMalePlayers[2], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialMalePlayers[6], player2: initialMalePlayers[3], player3: initialMalePlayers[4], player4: initialMalePlayers[1], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialMalePlayers[0], player2: initialMalePlayers[2], player3: initialMalePlayers[7], player4: initialMalePlayers[5], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialMalePlayers[2], player2: initialMalePlayers[4], player3: initialMalePlayers[3], player4: initialMalePlayers[7], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialMalePlayers[1], player2: initialMalePlayers[6], player3: initialMalePlayers[5], player4: initialMalePlayers[0], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialMalePlayers[5], player2: initialMalePlayers[3], player3: initialMalePlayers[6], player4: initialMalePlayers[2], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialMalePlayers[7], player2: initialMalePlayers[1], player3: initialMalePlayers[0], player4: initialMalePlayers[4], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialMalePlayers[2], player2: initialMalePlayers[7], player3: initialMalePlayers[1], player4: initialMalePlayers[5], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialMalePlayers[3], player2: initialMalePlayers[0], player3: initialMalePlayers[4], player4: initialMalePlayers[6], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialMalePlayers[7], player2: initialMalePlayers[4], player3: initialMalePlayers[0], player4: initialMalePlayers[6], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialMalePlayers[5], player2: initialMalePlayers[2], player3: initialMalePlayers[6], player4: initialMalePlayers[1], score1: 0, score2: 0, isSubmitted: false },
-];
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
 
 export default function BeachVolleyballTracker() {
+  const { toast } = useToast();
   const [gender, setGender] = useState<Gender>("female");
-  const [femalePlayers, setFemalePlayers] = useState<Player[]>(initialFemalePlayers);
-  const [malePlayers, setMalePlayers] = useState<Player[]>(initialMalePlayers);
-  const [femaleMatches, setFemaleMatches] = useState<Match[]>(initialFemaleMatches);
-  const [maleMatches, setMaleMatches] = useState<Match[]>(initialMaleMatches);
+  const [femalePlayers, setFemalePlayers] = useState<Player[]>([]);
+  const [malePlayers, setMalePlayers] = useState<Player[]>([]);
+  const [femaleMatches, setFemaleMatches] = useState<Match[]>([]);
+  const [maleMatches, setMaleMatches] = useState<Match[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
   const [score1, setScore1] = useState("");
@@ -84,71 +31,137 @@ export default function BeachVolleyballTracker() {
   const [showFinalMatch, setShowFinalMatch] = useState(false);
   const [isEditingFinalMatch, setIsEditingFinalMatch] = useState(false);
   const [finalMatchWinner, setFinalMatchWinner] = useState<FinalMatchWinner>(null);
-  const [selectedPlayerToReplace, setSelectedPlayerToReplace] = useState<Player | null>(null);
+  const [showPlayerManagement, setShowPlayerManagement] = useState(false);
   const [newPlayerName, setNewPlayerName] = useState("");
   const [newPlayerGender, setNewPlayerGender] = useState<Gender>("female");
-  const [showPlayerManagement, setShowPlayerManagement] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [replacementName, setReplacementName] = useState("");
 
-  const players = gender === 'female' ? femalePlayers : malePlayers
-  const matches = gender === 'female' ? femaleMatches : maleMatches
-  const setMatches = gender === 'female' ? setFemaleMatches : setMaleMatches
-  const setPlayers = gender === 'female' ? setFemalePlayers : setMalePlayers
+  const players = gender === 'female' ? femalePlayers : malePlayers;
+  const matches = gender === 'female' ? femaleMatches : maleMatches;
+  const setMatches = gender === 'female' ? setFemaleMatches : setMaleMatches;
+  const setPlayers = gender === 'female' ? setFemalePlayers : setMalePlayers;
 
-  const topPlayers = players.slice(0, 2).sort((a, b) => {
-    if (b.points === a.points) {
-      return b.totalScores - a.totalScores;
+  useEffect(() => {
+    const loadPlayers = async () => {
+      const { data: players, error } = await supabase
+        .from('players')
+        .select('*')
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        toast({
+          title: "Error loading players",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const femalePlayersData = players.filter(p => p.gender === 'female')
+        .map(p => ({ id: p.id, name: p.name, points: p.points, totalScores: p.total_scores }));
+      const malePlayersData = players.filter(p => p.gender === 'male')
+        .map(p => ({ id: p.id, name: p.name, points: p.points, totalScores: p.total_scores }));
+
+      setFemalePlayers(femalePlayersData);
+      setMalePlayers(malePlayersData);
+    };
+
+    loadPlayers();
+
+    const playersChannel = supabase.channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'players' },
+        (payload) => {
+          loadPlayers();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(playersChannel);
+    };
+  }, []);
+
+  const handleScoreSubmit = async () => {
+    const currentMatch = matches[currentMatchIndex];
+    const scoreData = {
+      player1_id: currentMatch.player1.id,
+      player2_id: currentMatch.player2.id,
+      player3_id: currentMatch.player3.id,
+      player4_id: currentMatch.player4.id,
+      score1: parseInt(score1, 10) || 0,
+      score2: parseInt(score2, 10) || 0,
+      is_submitted: true
+    };
+
+    const { error } = await supabase
+      .from('matches')
+      .insert(scoreData);
+
+    if (error) {
+      toast({
+        title: "Error saving match",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
     }
-    return b.points - a.points;
-  });
 
-  const handleScoreSubmit = () => {
-    const newMatches = [...matches]
+    const newMatches = [...matches];
     newMatches[currentMatchIndex] = {
       ...newMatches[currentMatchIndex],
       score1: parseInt(score1, 10) || 0,
       score2: parseInt(score2, 10) || 0,
       isSubmitted: true,
-    }
-    setMatches(newMatches)
-    updatePlayerPoints(newMatches[currentMatchIndex])
-    setScore1('')
-    setScore2('')
-  }
+    };
+    setMatches(newMatches);
+    updatePlayerPoints(newMatches[currentMatchIndex]);
+    setScore1('');
+    setScore2('');
+  };
 
-  const updatePlayerPoints = (match: Match) => {
-    const { player1, player2, player3, player4, score1, score2 } = match
-    const newPlayers = [...players]
-    const player1Index = newPlayers.findIndex(p => p.name === player1.name)
-    const player2Index = newPlayers.findIndex(p => p.name === player2.name)
-    const player3Index = newPlayers.findIndex(p => p.name === player3.name)
-    const player4Index = newPlayers.findIndex(p => p.name === player4.name)
+  const updatePlayerPoints = async (match: Match) => {
+    const { player1, player2, player3, player4, score1, score2 } = match;
+    const player1Index = players.findIndex(p => p.name === player1.name);
+    const player2Index = players.findIndex(p => p.name === player2.name);
+    const player3Index = players.findIndex(p => p.name === player3.name);
+    const player4Index = players.findIndex(p => p.name === player4.name);
 
+    const updates = [];
+    
     if (score1 > score2) {
-      newPlayers[player1Index].points += 2
-      newPlayers[player2Index].points += 2
-      newPlayers[player3Index].points += 1
-      newPlayers[player4Index].points += 1
+      updates.push(
+        { id: players[player1Index].id, points: players[player1Index].points + 2, total_scores: players[player1Index].totalScores + score1 },
+        { id: players[player2Index].id, points: players[player2Index].points + 2, total_scores: players[player2Index].totalScores + score1 },
+        { id: players[player3Index].id, points: players[player3Index].points + 1, total_scores: players[player3Index].totalScores + score2 },
+        { id: players[player4Index].id, points: players[player4Index].points + 1, total_scores: players[player4Index].totalScores + score2 }
+      );
     } else {
-      newPlayers[player1Index].points += 1
-      newPlayers[player2Index].points += 1
-      newPlayers[player3Index].points += 2
-      newPlayers[player4Index].points += 2
+      updates.push(
+        { id: players[player1Index].id, points: players[player1Index].points + 1, total_scores: players[player1Index].totalScores + score1 },
+        { id: players[player2Index].id, points: players[player2Index].points + 1, total_scores: players[player2Index].totalScores + score1 },
+        { id: players[player3Index].id, points: players[player3Index].points + 2, total_scores: players[player3Index].totalScores + score2 },
+        { id: players[player4Index].id, points: players[player4Index].points + 2, total_scores: players[player4Index].totalScores + score2 }
+      );
     }
 
-    newPlayers[player1Index].totalScores += score1
-    newPlayers[player2Index].totalScores += score1
-    newPlayers[player3Index].totalScores += score2
-    newPlayers[player4Index].totalScores += score2
+    for (const update of updates) {
+      const { error } = await supabase
+        .from('players')
+        .update({ points: update.points, total_scores: update.total_scores })
+        .eq('id', update.id);
 
-    setPlayers(newPlayers.sort((a, b) => {
-      if (b.points === a.points) {
-        return b.totalScores - a.totalScores;
+      if (error) {
+        toast({
+          title: "Error updating player points",
+          description: error.message,
+          variant: "destructive",
+        });
       }
-      return b.points - a.points;
-    }))
-  }
+    }
+  };
 
   const handleAdminLogin = () => {
     if (adminUsername === 'leo' && adminPassword === 'Woodgoat22!!') {
@@ -163,16 +176,41 @@ export default function BeachVolleyballTracker() {
     setIsAdmin(false)
   }
 
-  const handleResetScores = () => {
-    const newFemalePlayers = femalePlayers.map(player => ({ ...player, points: 0, totalScores: 0 }))
-    setFemalePlayers(newFemalePlayers)
-    const newMalePlayers = malePlayers.map(player => ({ ...player, points: 0, totalScores: 0 }))
-    setMalePlayers(newMalePlayers)
-    const newFemaleMatches = femaleMatches.map(match => ({ ...match, score1: 0, score2: 0, isSubmitted: false }))
-    setFemaleMatches(newFemaleMatches)
-    const newMaleMatches = maleMatches.map(match => ({ ...match, score1: 0, score2: 0, isSubmitted: false }))
-    setMaleMatches(newMaleMatches)
-  }
+  const handleResetScores = async () => {
+    const { error: resetError } = await supabase
+      .from('players')
+      .update({ points: 0, total_scores: 0 });
+
+    if (resetError) {
+      toast({
+        title: "Error resetting scores",
+        description: resetError.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const { error: matchesError } = await supabase
+      .from('matches')
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000');
+
+    if (matchesError) {
+      toast({
+        title: "Error resetting matches",
+        description: matchesError.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const newFemalePlayers = femalePlayers.map(player => ({ ...player, points: 0, totalScores: 0 }));
+    setFemalePlayers(newFemalePlayers);
+    const newMalePlayers = malePlayers.map(player => ({ ...player, points: 0, totalScores: 0 }));
+    setMalePlayers(newMalePlayers);
+    setFemaleMatches([]);
+    setMaleMatches([]);
+  };
 
   const handleEditScore = (matchIndex: number, newScore1: number, newScore2: number) => {
     const newMatches = [...matches]
@@ -209,7 +247,7 @@ export default function BeachVolleyballTracker() {
       }
       return b.points - a.points;
     }))
-  }
+  };
 
   const handleFinalMatchSubmit = () => {
     const team1Scores = finalMatchScores.team1.filter(score => score !== null) as number[]
@@ -273,7 +311,6 @@ export default function BeachVolleyballTracker() {
     const updatedPlayers = players.filter(p => p.name !== playerToRemove.name);
     setPlayers(updatedPlayers);
 
-    // Update matches to remove the player
     const updatedMatches = matches.filter(match => 
       match.player1.name !== playerToRemove.name &&
       match.player2.name !== playerToRemove.name &&
@@ -292,13 +329,11 @@ export default function BeachVolleyballTracker() {
       totalScores: selectedPlayer.totalScores,
     };
 
-    // Update players list
     const updatedPlayers = players.map(p => 
       p.name === selectedPlayer.name ? newPlayer : p
     );
     setPlayers(updatedPlayers);
 
-    // Update matches
     const updatedMatches = matches.map(match => ({
       ...match,
       player1: match.player1.name === selectedPlayer.name ? newPlayer : match.player1,

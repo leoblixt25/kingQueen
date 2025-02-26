@@ -1,4 +1,3 @@
-<lov-code>
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -823,3 +822,19 @@ export default function BeachVolleyballTracker() {
                 <h3 className="text-lg font-semibold">Remove Player</h3>
                 <div className="space-y-2">
                   {players.map((player) => (
+                    <div key={player.name}>
+                      <Button onClick={() => handleRemovePlayer(player)}>
+                        <UserMinus className="w-4 h-4 mr-2" />
+                        {player.name}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </div>
+  );
+}

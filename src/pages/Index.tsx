@@ -58,39 +58,87 @@ export default function BeachVolleyballTracker() {
         return;
       }
 
-      const femalePlayersData = players.filter(p => p.gender === 'female')
-        .map(p => ({ id: p.id, name: p.name, points: p.points, totalScores: p.total_scores, gender: 'female' as Gender }));
-      const malePlayersData = players.filter(p => p.gender === 'male')
-        .map(p => ({ id: p.id, name: p.name, points: p.points, totalScores: p.total_scores, gender: 'male' as Gender }));
+      const femalePlayersData = players
+        .filter(p => p.gender === 'female')
+        .map(p => ({ 
+          id: p.id, 
+          name: p.name, 
+          points: p.points || 0, 
+          totalScores: p.total_scores || 0, 
+          gender: 'female' as Gender 
+        }))
+        .sort((a, b) => {
+          if (b.points === a.points) {
+            return b.totalScores - a.totalScores;
+          }
+          return b.points - a.points;
+        });
+
+      const malePlayersData = players
+        .filter(p => p.gender === 'male')
+        .map(p => ({ 
+          id: p.id, 
+          name: p.name, 
+          points: p.points || 0, 
+          totalScores: p.total_scores || 0, 
+          gender: 'male' as Gender 
+        }))
+        .sort((a, b) => {
+          if (b.points === a.points) {
+            return b.totalScores - a.totalScores;
+          }
+          return b.points - a.points;
+        });
 
       setFemalePlayers(femalePlayersData);
       setMalePlayers(malePlayersData);
 
-      // Create initial matches if there are enough players
-      if (femalePlayersData.length >= 4) {
-        const initialFemaleMatch: Match = {
-          player1: femalePlayersData[0],
-          player2: femalePlayersData[1],
-          player3: femalePlayersData[2],
-          player4: femalePlayersData[3],
-          score1: 0,
-          score2: 0,
-          isSubmitted: false
-        };
-        setFemaleMatches([initialFemaleMatch]);
+      // Load matches
+      const { data: matchesData, error: matchesError } = await supabase
+        .from('matches')
+        .select('*')
+        .order('created_at', { ascending: true });
+
+      if (matchesError) {
+        toast({
+          title: "Error loading matches",
+          description: matchesError.message,
+          variant: "destructive",
+        });
+        return;
       }
 
-      if (malePlayersData.length >= 4) {
-        const initialMaleMatch: Match = {
-          player1: malePlayersData[0],
-          player2: malePlayersData[1],
-          player3: malePlayersData[2],
-          player4: malePlayersData[3],
-          score1: 0,
-          score2: 0,
-          isSubmitted: false
-        };
-        setMaleMatches([initialMaleMatch]);
+      if (matchesData) {
+        const femaleMatches: Match[] = [];
+        const maleMatches: Match[] = [];
+
+        matchesData.forEach(match => {
+          const player1 = femalePlayersData.find(p => p.id === match.player1_id) || malePlayersData.find(p => p.id === match.player1_id);
+          const player2 = femalePlayersData.find(p => p.id === match.player2_id) || malePlayersData.find(p => p.id === match.player2_id);
+          const player3 = femalePlayersData.find(p => p.id === match.player3_id) || malePlayersData.find(p => p.id === match.player3_id);
+          const player4 = femalePlayersData.find(p => p.id === match.player4_id) || malePlayersData.find(p => p.id === match.player4_id);
+
+          if (player1 && player2 && player3 && player4) {
+            const matchObj: Match = {
+              player1,
+              player2,
+              player3,
+              player4,
+              score1: match.score1 || 0,
+              score2: match.score2 || 0,
+              isSubmitted: match.is_submitted || false
+            };
+
+            if (player1.gender === 'female') {
+              femaleMatches.push(matchObj);
+            } else {
+              maleMatches.push(matchObj);
+            }
+          }
+        });
+
+        setFemaleMatches(femaleMatches);
+        setMaleMatches(maleMatches);
       }
     };
 
@@ -100,7 +148,7 @@ export default function BeachVolleyballTracker() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'players' },
-        (payload) => {
+        () => {
           loadPlayers();
         }
       )
@@ -153,33 +201,42 @@ export default function BeachVolleyballTracker() {
       isSubmitted: true,
     };
     setMatches(newMatches);
-    updatePlayerPoints(newMatches[currentMatchIndex]);
-    setScore1('');
-    setScore2('');
+    await updatePlayerPoints(newMatches[currentMatchIndex]);
+    
+    // Create next match if there are enough players
+    if (currentMatchIndex === matches.length - 1 && players.length >= 4) {
+      const nextMatch: Match = {
+        player1: players[0],
+        player2: players[1],
+        player3: players[2],
+        player4: players[3],
+        score1: 0,
+        score2: 0,
+        isSubmitted: false
+      };
+      setMatches([...newMatches, nextMatch]);
+    }
   };
 
   const updatePlayerPoints = async (match: Match) => {
-    const { player1, player2, player3, player4, score1, score2 } = match;
-    const player1Index = players.findIndex(p => p.name === player1.name);
-    const player2Index = players.findIndex(p => p.name === player2.name);
-    const player3Index = players.findIndex(p => p.name === player3.name);
-    const player4Index = players.findIndex(p => p.name === player4.name);
+    const score1Num = parseInt(score1, 10) || 0;
+    const score2Num = parseInt(score2, 10) || 0;
 
     const updates = [];
     
-    if (score1 > score2) {
+    if (score1Num > score2Num) {
       updates.push(
-        { id: players[player1Index].id, points: players[player1Index].points + 2, total_scores: players[player1Index].totalScores + score1 },
-        { id: players[player2Index].id, points: players[player2Index].points + 2, total_scores: players[player2Index].totalScores + score1 },
-        { id: players[player3Index].id, points: players[player3Index].points + 1, total_scores: players[player3Index].totalScores + score2 },
-        { id: players[player4Index].id, points: players[player4Index].points + 1, total_scores: players[player4Index].totalScores + score2 }
+        { id: match.player1.id, points: (match.player1.points || 0) + 2, total_scores: (match.player1.totalScores || 0) + score1Num },
+        { id: match.player2.id, points: (match.player2.points || 0) + 2, total_scores: (match.player2.totalScores || 0) + score1Num },
+        { id: match.player3.id, points: (match.player3.points || 0) + 1, total_scores: (match.player3.totalScores || 0) + score2Num },
+        { id: match.player4.id, points: (match.player4.points || 0) + 1, total_scores: (match.player4.totalScores || 0) + score2Num }
       );
     } else {
       updates.push(
-        { id: players[player1Index].id, points: players[player1Index].points + 1, total_scores: players[player1Index].totalScores + score1 },
-        { id: players[player2Index].id, points: players[player2Index].points + 1, total_scores: players[player2Index].totalScores + score1 },
-        { id: players[player3Index].id, points: players[player3Index].points + 2, total_scores: players[player3Index].totalScores + score2 },
-        { id: players[player4Index].id, points: players[player4Index].points + 2, total_scores: players[player4Index].totalScores + score2 }
+        { id: match.player1.id, points: (match.player1.points || 0) + 1, total_scores: (match.player1.totalScores || 0) + score1Num },
+        { id: match.player2.id, points: (match.player2.points || 0) + 1, total_scores: (match.player2.totalScores || 0) + score1Num },
+        { id: match.player3.id, points: (match.player3.points || 0) + 2, total_scores: (match.player3.totalScores || 0) + score2Num },
+        { id: match.player4.id, points: (match.player4.points || 0) + 2, total_scores: (match.player4.totalScores || 0) + score2Num }
       );
     }
 
@@ -197,6 +254,26 @@ export default function BeachVolleyballTracker() {
         });
       }
     }
+
+    // Update local state after all updates are done
+    const updatedPlayers = players.map(player => {
+      const update = updates.find(u => u.id === player.id);
+      if (update) {
+        return {
+          ...player,
+          points: update.points,
+          totalScores: update.total_scores
+        };
+      }
+      return player;
+    }).sort((a, b) => {
+      if (b.points === a.points) {
+        return b.totalScores - a.totalScores;
+      }
+      return b.points - a.points;
+    });
+
+    setPlayers(updatedPlayers);
   };
 
   const handleAdminLogin = () => {

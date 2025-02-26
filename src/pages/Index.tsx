@@ -159,6 +159,14 @@ export default function BeachVolleyballTracker() {
     };
   }, []);
 
+  const handleGenderChange = (newGender: Gender) => {
+    setGender(newGender);
+    setShowFinalMatch(false);
+    setCurrentMatchIndex(0);
+    setScore1("");
+    setScore2("");
+  };
+
   const handleScoreSubmit = async () => {
     if (!matches || !matches[currentMatchIndex]) {
       toast({
@@ -290,9 +298,12 @@ export default function BeachVolleyballTracker() {
   }
 
   const handleResetScores = async () => {
+    if (!isAdmin) return;
+
     const { error: resetError } = await supabase
       .from('players')
-      .update({ points: 0, total_scores: 0 });
+      .update({ points: 0, total_scores: 0 })
+      .eq('gender', gender);
 
     if (resetError) {
       toast({
@@ -306,7 +317,7 @@ export default function BeachVolleyballTracker() {
     const { error: matchesError } = await supabase
       .from('matches')
       .delete()
-      .neq('id', '00000000-0000-0000-0000-000000000000');
+      .eq('id', matches.map(m => m.player1.id));
 
     if (matchesError) {
       toast({
@@ -317,12 +328,15 @@ export default function BeachVolleyballTracker() {
       return;
     }
 
-    const newFemalePlayers = femalePlayers.map(player => ({ ...player, points: 0, totalScores: 0 }));
-    setFemalePlayers(newFemalePlayers);
-    const newMalePlayers = malePlayers.map(player => ({ ...player, points: 0, totalScores: 0 }));
-    setMalePlayers(newMalePlayers);
-    setFemaleMatches([]);
-    setMaleMatches([]);
+    if (gender === 'female') {
+      const newFemalePlayers = femalePlayers.map(player => ({ ...player, points: 0, totalScores: 0 }));
+      setFemalePlayers(newFemalePlayers);
+      setFemaleMatches([]);
+    } else {
+      const newMalePlayers = malePlayers.map(player => ({ ...player, points: 0, totalScores: 0 }));
+      setMalePlayers(newMalePlayers);
+      setMaleMatches([]);
+    }
   };
 
   const handleEditScore = (matchIndex: number, newScore1: number, newScore2: number) => {
@@ -486,14 +500,14 @@ export default function BeachVolleyballTracker() {
             <div className="flex flex-wrap justify-center items-center gap-2">
               <Button 
                 variant={gender === 'female' ? "default" : "outline"} 
-                onClick={() => { setGender('female'); setShowFinalMatch(false); }}
+                onClick={() => handleGenderChange('female')}
                 className="w-full sm:w-auto"
               >
                 Female
               </Button>
               <Button 
                 variant={gender === 'male' ? "default" : "outline"}
-                onClick={() => { setGender('male'); setShowFinalMatch(false); }}
+                onClick={() => handleGenderChange('male')}
                 className="w-full sm:w-auto"
               >
                 Male
@@ -506,13 +520,22 @@ export default function BeachVolleyballTracker() {
                 Final Match
               </Button>
               {isAdmin && (
-                <Button
-                  variant={showPlayerManagement ? "default" : "outline"}
-                  onClick={() => setShowPlayerManagement(!showPlayerManagement)}
-                  className="w-full sm:w-auto"
-                >
-                  Manage Players
-                </Button>
+                <>
+                  <Button
+                    variant={showPlayerManagement ? "default" : "outline"}
+                    onClick={() => setShowPlayerManagement(!showPlayerManagement)}
+                    className="w-full sm:w-auto"
+                  >
+                    Manage Players
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={handleResetScores}
+                    className="w-full sm:w-auto"
+                  >
+                    Reset Scores
+                  </Button>
+                </>
               )}
             </div>
             <div className="sm:absolute sm:right-0 sm:top-0">

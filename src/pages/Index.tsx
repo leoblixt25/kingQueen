@@ -1,3 +1,4 @@
+<lov-code>
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,7 +8,7 @@ import { Check, Edit, Trash, Crown, UserPlus, UserMinus, UserX, ChevronLeft, Che
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Gender, Match, Player, FinalMatchScores, FinalMatchWinner } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 export default function BeachVolleyballTracker() {
   const { toast } = useToast();
@@ -59,12 +60,39 @@ export default function BeachVolleyballTracker() {
       }
 
       const femalePlayersData = players.filter(p => p.gender === 'female')
-        .map(p => ({ id: p.id, name: p.name, points: p.points, totalScores: p.total_scores }));
+        .map(p => ({ id: p.id, name: p.name, points: p.points, totalScores: p.total_scores, gender: 'female' as Gender }));
       const malePlayersData = players.filter(p => p.gender === 'male')
-        .map(p => ({ id: p.id, name: p.name, points: p.points, totalScores: p.total_scores }));
+        .map(p => ({ id: p.id, name: p.name, points: p.points, totalScores: p.total_scores, gender: 'male' as Gender }));
 
       setFemalePlayers(femalePlayersData);
       setMalePlayers(malePlayersData);
+
+      // Create initial matches if there are enough players
+      if (femalePlayersData.length >= 4) {
+        const initialFemaleMatch: Match = {
+          player1: femalePlayersData[0],
+          player2: femalePlayersData[1],
+          player3: femalePlayersData[2],
+          player4: femalePlayersData[3],
+          score1: 0,
+          score2: 0,
+          isSubmitted: false
+        };
+        setFemaleMatches([initialFemaleMatch]);
+      }
+
+      if (malePlayersData.length >= 4) {
+        const initialMaleMatch: Match = {
+          player1: malePlayersData[0],
+          player2: malePlayersData[1],
+          player3: malePlayersData[2],
+          player4: malePlayersData[3],
+          score1: 0,
+          score2: 0,
+          isSubmitted: false
+        };
+        setMaleMatches([initialMaleMatch]);
+      }
     };
 
     loadPlayers();
@@ -85,6 +113,15 @@ export default function BeachVolleyballTracker() {
   }, []);
 
   const handleScoreSubmit = async () => {
+    if (!matches || !matches[currentMatchIndex]) {
+      toast({
+        title: "Error",
+        description: "No match available to submit scores for",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const currentMatch = matches[currentMatchIndex];
     const scoreData = {
       player1_id: currentMatch.player1.id,
@@ -468,7 +505,7 @@ export default function BeachVolleyballTracker() {
                   <div className="space-y-4">
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
                       <h3 className="text-lg font-semibold text-center sm:min-w-[200px]">
-                        Team 1: {malePlayers[0].name} & {femalePlayers[1].name}
+                        Team 1: {malePlayers[0]?.name} & {femalePlayers[1]?.name}
                       </h3>
                       <div className="flex gap-4 justify-center">
                         {[0, 1, 2].map((setIndex) => (
@@ -501,7 +538,7 @@ export default function BeachVolleyballTracker() {
                   <div className="space-y-4">
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
                       <h3 className="text-lg font-semibold text-center sm:min-w-[200px]">
-                        Team 2: {femalePlayers[0].name} & {malePlayers[1].name}
+                        Team 2: {femalePlayers[0]?.name} & {malePlayers[1]?.name}
                       </h3>
                       <div className="flex gap-4 justify-center">
                         {[0, 1, 2].map((setIndex) => (
@@ -593,101 +630,103 @@ export default function BeachVolleyballTracker() {
             ) : (
               <>
                 {/* Current Match */}
-                <Card className="mb-8 max-w-2xl mx-auto">
-                  <CardHeader>
-                    <div className="text-center">
-                      <CardTitle className="text-2xl font-bold">
-                        Match {currentMatchIndex + 1}
-                      </CardTitle>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="flex items-center justify-between gap-4">
-                      <Button
-                        variant="outline"
-                        onClick={handlePreviousMatch}
-                        disabled={currentMatchIndex === 0}
-                        className="flex-shrink-0"
-                      >
-                        <ChevronLeft className="w-6 h-6" />
-                      </Button>
-
-                      <div className="flex-1 space-y-6">
-                        <div className="flex flex-col items-center gap-4">
-                          <p className="text-lg font-semibold text-center">
-                            {currentMatch.player1.name} & {currentMatch.player2.name}
-                          </p>
-                          {!currentMatch.isSubmitted || isAdmin ? (
-                            <Input
-                              value={currentMatch.isSubmitted && !isAdmin ? currentMatch.score1 : score1}
-                              onChange={(e) => setScore1(e.target.value)}
-                              type="number"
-                              className="w-20 text-center"
-                              inputMode="numeric"
-                              pattern="\d*"
-                              disabled={currentMatch.isSubmitted && !isAdmin}
-                            />
-                          ) : (
-                            <p className="text-xl font-bold">{currentMatch.score1}</p>
-                          )}
-                        </div>
-
-                        <div className="flex flex-col items-center gap-4">
-                          <p className="text-lg font-semibold text-center">
-                            {currentMatch.player3.name} & {currentMatch.player4.name}
-                          </p>
-                          {!currentMatch.isSubmitted || isAdmin ? (
-                            <Input
-                              value={currentMatch.isSubmitted && !isAdmin ? currentMatch.score2 : score2}
-                              onChange={(e) => setScore2(e.target.value)}
-                              type="number"
-                              className="w-20 text-center"
-                              inputMode="numeric"
-                              pattern="\d*"
-                              disabled={currentMatch.isSubmitted && !isAdmin}
-                            />
-                          ) : (
-                            <p className="text-xl font-bold">{currentMatch.score2}</p>
-                          )}
-                        </div>
+                {matches && matches.length > 0 && matches[currentMatchIndex] && (
+                  <Card className="mb-8 max-w-2xl mx-auto">
+                    <CardHeader>
+                      <div className="text-center">
+                        <CardTitle className="text-2xl font-bold">
+                          Match {currentMatchIndex + 1}
+                        </CardTitle>
                       </div>
-
-                      <Button
-                        variant="outline"
-                        onClick={handleNextMatch}
-                        disabled={currentMatchIndex === matches.length - 1}
-                        className="flex-shrink-0"
-                      >
-                        <ChevronRight className="w-6 h-6" />
-                      </Button>
-                    </div>
-
-                    {!currentMatch.isSubmitted ? (
-                      <div className="flex justify-center">
-                        <Button onClick={handleScoreSubmit} className="w-full sm:w-auto">
-                          Submit Score
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-center gap-2">
-                        <Check className="text-green-500 w-6 h-6" />
-                        <p className="text-lg">Final Score: {currentMatch.score1} - {currentMatch.score2}</p>
-                      </div>
-                    )}
-
-                    {isAdmin && currentMatch.isSubmitted && (
-                      <div className="flex justify-center">
-                        <Button 
-                          onClick={() => handleEditScore(currentMatchIndex, parseInt(score1, 10) || 0, parseInt(score2, 10) || 0)}
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <div className="flex items-center justify-between gap-4">
+                        <Button
                           variant="outline"
+                          onClick={handlePreviousMatch}
+                          disabled={currentMatchIndex === 0}
+                          className="flex-shrink-0"
                         >
-                          <Edit className="w-4 h-4 mr-2" />
-                          Edit Score
+                          <ChevronLeft className="w-6 h-6" />
+                        </Button>
+
+                        <div className="flex-1 space-y-6">
+                          <div className="flex flex-col items-center gap-4">
+                            <p className="text-lg font-semibold text-center">
+                              {matches[currentMatchIndex].player1.name} & {matches[currentMatchIndex].player2.name}
+                            </p>
+                            {!matches[currentMatchIndex].isSubmitted || isAdmin ? (
+                              <Input
+                                value={matches[currentMatchIndex].isSubmitted && !isAdmin ? matches[currentMatchIndex].score1 : score1}
+                                onChange={(e) => setScore1(e.target.value)}
+                                type="number"
+                                className="w-20 text-center"
+                                inputMode="numeric"
+                                pattern="\d*"
+                                disabled={matches[currentMatchIndex].isSubmitted && !isAdmin}
+                              />
+                            ) : (
+                              <p className="text-xl font-bold">{matches[currentMatchIndex].score1}</p>
+                            )}
+                          </div>
+
+                          <div className="flex flex-col items-center gap-4">
+                            <p className="text-lg font-semibold text-center">
+                              {matches[currentMatchIndex].player3.name} & {matches[currentMatchIndex].player4.name}
+                            </p>
+                            {!matches[currentMatchIndex].isSubmitted || isAdmin ? (
+                              <Input
+                                value={matches[currentMatchIndex].isSubmitted && !isAdmin ? matches[currentMatchIndex].score2 : score2}
+                                onChange={(e) => setScore2(e.target.value)}
+                                type="number"
+                                className="w-20 text-center"
+                                inputMode="numeric"
+                                pattern="\d*"
+                                disabled={matches[currentMatchIndex].isSubmitted && !isAdmin}
+                              />
+                            ) : (
+                              <p className="text-xl font-bold">{matches[currentMatchIndex].score2}</p>
+                            )}
+                          </div>
+                        </div>
+
+                        <Button
+                          variant="outline"
+                          onClick={handleNextMatch}
+                          disabled={currentMatchIndex === matches.length - 1}
+                          className="flex-shrink-0"
+                        >
+                          <ChevronRight className="w-6 h-6" />
                         </Button>
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
+
+                      {!matches[currentMatchIndex].isSubmitted ? (
+                        <div className="flex justify-center">
+                          <Button onClick={handleScoreSubmit} className="w-full sm:w-auto">
+                            Submit Score
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center gap-2">
+                          <Check className="text-green-500 w-6 h-6" />
+                          <p className="text-lg">Final Score: {matches[currentMatchIndex].score1} - {matches[currentMatchIndex].score2}</p>
+                        </div>
+                      )}
+
+                      {isAdmin && matches[currentMatchIndex].isSubmitted && (
+                        <div className="flex justify-center">
+                          <Button 
+                            onClick={() => handleEditScore(currentMatchIndex, parseInt(score1, 10) || 0, parseInt(score2, 10) || 0)}
+                            variant="outline"
+                          >
+                            <Edit className="w-4 h-4 mr-2" />
+                            Edit Score
+                          </Button>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
 
                 {/* Rankings */}
                 <Card className="max-w-2xl mx-auto">
@@ -784,24 +823,3 @@ export default function BeachVolleyballTracker() {
                 <h3 className="text-lg font-semibold">Remove Player</h3>
                 <div className="space-y-2">
                   {players.map((player) => (
-                    <div key={player.name} className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                      <span>{player.name}</span>
-                      <Button 
-                        variant="destructive" 
-                        size="sm" 
-                        onClick={() => handleRemovePlayer(player)}
-                      >
-                        <UserMinus className="w-4 h-4 mr-2" />
-                        Remove
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-    </div>
-  );
-}

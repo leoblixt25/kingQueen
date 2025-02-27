@@ -295,9 +295,14 @@ export default function BeachVolleyballTracker() {
     }
   };
 
-  const updatePlayerPoints = async (match: Match, scoreValues: { score1: string, score2: string }) => {
-    const score1Num = parseInt(scoreValues.score1, 10) || 0;
-    const score2Num = parseInt(scoreValues.score2, 10) || 0;
+  const updatePlayerPoints = async (match: Match, scoreValues?: { score1: string, score2: string }) => {
+    // Use either provided scoreValues or get from match
+    const score1Num = scoreValues 
+      ? parseInt(scoreValues.score1, 10) || 0 
+      : match.score1;
+    const score2Num = scoreValues 
+      ? parseInt(scoreValues.score2, 10) || 0 
+      : match.score2;
 
     const updates = [];
     
@@ -455,7 +460,13 @@ export default function BeachVolleyballTracker() {
     oldPlayers[oldPlayer3Index].totalScores -= oldMatch.score2
     oldPlayers[oldPlayer4Index].totalScores -= oldMatch.score2
 
-    updatePlayerPoints(newMatches[matchIndex])
+    // Create the scoreValues object for the updatePlayerPoints function
+    const scoreValues = {
+      score1: newScore1.toString(),
+      score2: newScore2.toString()
+    };
+    
+    updatePlayerPoints(newMatches[matchIndex], scoreValues);
 
     setMatches(newMatches)
     setPlayers(oldPlayers.sort((a, b) => {

@@ -39,7 +39,7 @@ export function MatchDisplay({
       <CardHeader>
         <div className="text-center">
           <CardTitle className="text-2xl font-bold">
-            Match {currentMatchIndex + 1}
+            Match {currentMatchIndex + 1} of {matches.length}
           </CardTitle>
         </div>
       </CardHeader>
@@ -61,7 +61,7 @@ export function MatchDisplay({
               </p>
               {!match.isSubmitted || isAdmin ? (
                 <Input
-                  value={match.isSubmitted && !isAdmin ? match.score1 : score1}
+                  value={match.isSubmitted && !isAdmin ? match.score1.toString() : score1}
                   onChange={(e) => setScore1(e.target.value)}
                   type="number"
                   className="w-20 text-center"
@@ -80,7 +80,7 @@ export function MatchDisplay({
               </p>
               {!match.isSubmitted || isAdmin ? (
                 <Input
-                  value={match.isSubmitted && !isAdmin ? match.score2 : score2}
+                  value={match.isSubmitted && !isAdmin ? match.score2.toString() : score2}
                   onChange={(e) => setScore2(e.target.value)}
                   type="number"
                   className="w-20 text-center"

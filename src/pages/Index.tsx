@@ -247,17 +247,35 @@ export default function BeachVolleyballTracker() {
       return;
     }
 
+    const parseScore1 = parseInt(score1, 10) || 0;
+    const parseScore2 = parseInt(score2, 10) || 0;
+    
     const newMatches = [...matches];
     newMatches[currentMatchIndex] = {
       ...newMatches[currentMatchIndex],
-      score1: parseInt(score1, 10) || 0,
-      score2: parseInt(score2, 10) || 0,
+      score1: parseScore1,
+      score2: parseScore2,
       isSubmitted: true,
     };
     setMatches(newMatches);
-    await updatePlayerPoints(newMatches[currentMatchIndex]);
     
-    // Create next match if there are enough players
+    // Update player points with current scores
+    const scoreValuesForUpdate = {
+      score1: parseScore1.toString(),
+      score2: parseScore2.toString()
+    };
+    await updatePlayerPoints(newMatches[currentMatchIndex], scoreValuesForUpdate);
+    
+    // Reset input fields but don't navigate yet
+    setScore1("");
+    setScore2("");
+    
+    toast({
+      title: "Score submitted",
+      description: `Match ${currentMatchIndex + 1} score recorded: ${parseScore1} - ${parseScore2}`,
+    });
+    
+    // Create next match if we're at the end and there are enough players
     if (currentMatchIndex === matches.length - 1 && players.length >= 4) {
       const nextMatch: Match = {
         player1: players[0],
@@ -270,11 +288,16 @@ export default function BeachVolleyballTracker() {
       };
       setMatches([...newMatches, nextMatch]);
     }
+    
+    // Automatically advance to next match if available
+    if (currentMatchIndex < matches.length - 1) {
+      handleNextMatch();
+    }
   };
 
-  const updatePlayerPoints = async (match: Match) => {
-    const score1Num = parseInt(score1, 10) || 0;
-    const score2Num = parseInt(score2, 10) || 0;
+  const updatePlayerPoints = async (match: Match, scoreValues: { score1: string, score2: string }) => {
+    const score1Num = parseInt(scoreValues.score1, 10) || 0;
+    const score2Num = parseInt(scoreValues.score2, 10) || 0;
 
     const updates = [];
     

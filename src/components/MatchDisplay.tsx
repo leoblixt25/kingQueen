@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Check, Edit, ChevronLeft, ChevronRight } from "lucide-react";
 import { Match } from "@/types";
+import { useEffect } from "react";
 
 interface MatchDisplayProps {
   match: Match;
@@ -34,6 +35,19 @@ export function MatchDisplay({
   handleScoreSubmit,
   handleEditScore,
 }: MatchDisplayProps) {
+  // Update score inputs when match changes
+  useEffect(() => {
+    if (match) {
+      if (match.isSubmitted && isAdmin) {
+        setScore1(match.score1.toString());
+        setScore2(match.score2.toString());
+      } else if (!match.isSubmitted) {
+        setScore1("");
+        setScore2("");
+      }
+    }
+  }, [match, setScore1, setScore2, isAdmin]);
+
   return (
     <Card className="mb-8 max-w-2xl mx-auto">
       <CardHeader>

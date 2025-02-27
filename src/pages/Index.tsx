@@ -264,10 +264,6 @@ export default function BeachVolleyballTracker() {
     };
     await updatePlayerPoints(newMatches[currentMatchIndex], scoreValuesForUpdate);
     
-    // Reset input fields
-    setScore1("");
-    setScore2("");
-    
     toast({
       title: "Score submitted",
       description: `Match ${currentMatchIndex + 1} score recorded: ${parseScore1} - ${parseScore2}`,
@@ -286,6 +282,10 @@ export default function BeachVolleyballTracker() {
       };
       setMatches([...newMatches, nextMatch]);
     }
+    
+    // Reset input fields AFTER updating the match data
+    setScore1("");
+    setScore2("");
   };
 
   const updatePlayerPoints = async (match: Match, scoreValues?: { score1: string, score2: string }) => {
@@ -335,7 +335,7 @@ export default function BeachVolleyballTracker() {
         return {
           ...player,
           points: update.points,
-          totalScores: update.total_scores
+          totalScores: update.totalScores
         };
       }
       return player;
@@ -631,16 +631,20 @@ export default function BeachVolleyballTracker() {
   const handlePreviousMatch = () => {
     if (currentMatchIndex > 0) {
       setCurrentMatchIndex(currentMatchIndex - 1);
-      setScore1('');
-      setScore2('');
+      
+      // Clear scores when navigating
+      setScore1("");
+      setScore2("");
     }
   };
 
   const handleNextMatch = () => {
     if (currentMatchIndex < matches.length - 1) {
       setCurrentMatchIndex(currentMatchIndex + 1);
-      setScore1('');
-      setScore2('');
+      
+      // Clear scores when navigating
+      setScore1("");
+      setScore2("");
     }
   };
 

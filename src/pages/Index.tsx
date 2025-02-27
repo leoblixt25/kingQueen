@@ -140,6 +140,15 @@ export default function BeachVolleyballTracker() {
 
         setFemaleMatches(femaleMatches);
         setMaleMatches(maleMatches);
+        
+        // If no matches were loaded, generate initial matches
+        if (femaleMatches.length === 0 && femalePlayersData.length >= 4) {
+          createInitialMatches('female', femalePlayersData);
+        }
+        
+        if (maleMatches.length === 0 && malePlayersData.length >= 4) {
+          createInitialMatches('male', malePlayersData);
+        }
       }
     };
 
@@ -159,6 +168,42 @@ export default function BeachVolleyballTracker() {
       supabase.removeChannel(playersChannel);
     };
   }, []);
+
+  // Function to create initial matchups
+  const createInitialMatches = (currentGender: Gender, playersList: Player[]) => {
+    if (playersList.length < 4) return;
+    
+    const initialMatches: Match[] = [];
+    const numMatches = 14; // Default to 14 matches as requested
+    
+    // Generate matches using a round-robin approach
+    for (let i = 0; i < numMatches; i++) {
+      // Each match needs 4 unique players
+      // We'll rotate the players to create fair matchups
+      const idx1 = i % playersList.length;
+      const idx2 = (i + 1) % playersList.length;
+      const idx3 = (i + 2) % playersList.length;
+      const idx4 = (i + 3) % playersList.length;
+      
+      const match: Match = {
+        player1: playersList[idx1],
+        player2: playersList[idx2],
+        player3: playersList[idx3],
+        player4: playersList[idx4],
+        score1: 0,
+        score2: 0,
+        isSubmitted: false
+      };
+      
+      initialMatches.push(match);
+    }
+    
+    if (currentGender === 'female') {
+      setFemaleMatches(initialMatches);
+    } else {
+      setMaleMatches(initialMatches);
+    }
+  };
 
   const handleGenderChange = (newGender: Gender) => {
     setGender(newGender);
@@ -301,6 +346,7 @@ export default function BeachVolleyballTracker() {
   const handleResetScores = async () => {
     if (!isAdmin) return;
 
+    // Reset player scores in the database
     const { error: resetError } = await supabase
       .from('players')
       .update({ points: 0, total_scores: 0 })
@@ -315,8 +361,8 @@ export default function BeachVolleyballTracker() {
       return;
     }
 
-    // Instead of trying to delete specific matches, we'll delete all matches for the current gender
-    // This is safer and avoids the TypeScript error
+    // Clear match data in the database
+    // Delete all matches for the current gender
     for (const match of matches) {
       const { error: matchError } = await supabase
         .from('matches')
@@ -328,19 +374,35 @@ export default function BeachVolleyballTracker() {
       }
     }
 
+    // Reset local player state
     if (gender === 'female') {
-      const newFemalePlayers = femalePlayers.map(player => ({ ...player, points: 0, totalScores: 0 }));
-      setFemalePlayers(newFemalePlayers);
-      setFemaleMatches([]);
+      const resetFemalePlayers = femalePlayers.map(player => ({ 
+        ...player, 
+        points: 0, 
+        totalScores: 0 
+      }));
+      setFemalePlayers(resetFemalePlayers);
+      
+      // Create new set of matches after resetting
+      createInitialMatches('female', resetFemalePlayers);
     } else {
-      const newMalePlayers = malePlayers.map(player => ({ ...player, points: 0, totalScores: 0 }));
-      setMalePlayers(newMalePlayers);
-      setMaleMatches([]);
+      const resetMalePlayers = malePlayers.map(player => ({ 
+        ...player, 
+        points: 0, 
+        totalScores: 0 
+      }));
+      setMalePlayers(resetMalePlayers);
+      
+      // Create new set of matches after resetting
+      createInitialMatches('male', resetMalePlayers);
     }
+    
+    // Reset to the first match
+    setCurrentMatchIndex(0);
 
     toast({
       title: "Success",
-      description: `Reset all scores for ${gender} players`,
+      description: `Reset all scores for ${gender} players and created new matches`,
     });
   };
 
@@ -425,10 +487,32 @@ export default function BeachVolleyballTracker() {
     setFinalMatchWinner(null)
   }
 
-  const handleAddPlayer = () => {
+  const handleAddPlayer = async () => {
     if (!newPlayerName.trim()) return;
     
+    // Create new player in database first
+    const { data: newPlayerData, error } = await supabase
+      .from('players')
+      .insert({
+        name: newPlayerName,
+        gender: gender,
+        points: 0,
+        total_scores: 0
+      })
+      .select()
+      .single();
+      
+    if (error) {
+      toast({
+        title: "Error adding player",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+    
     const newPlayer: Player = {
+      id: newPlayerData.id,
       name: newPlayerName,
       points: 0,
       totalScores: 0,
@@ -438,9 +522,38 @@ export default function BeachVolleyballTracker() {
     const updatedPlayers = [...players, newPlayer];
     setPlayers(updatedPlayers);
     setNewPlayerName("");
+    
+    // If we now have enough players, and no matches exist, create initial matches
+    if (updatedPlayers.length >= 4 && matches.length === 0) {
+      createInitialMatches(gender, updatedPlayers);
+    }
   };
 
-  const handleRemovePlayer = (playerToRemove: Player) => {
+  const handleRemovePlayer = async (playerToRemove: Player) => {
+    if (!playerToRemove.id) {
+      toast({
+        title: "Error removing player",
+        description: "Player ID is missing",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Remove player from database
+    const { error } = await supabase
+      .from('players')
+      .delete()
+      .eq('id', playerToRemove.id);
+      
+    if (error) {
+      toast({
+        title: "Error removing player",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
     const updatedPlayers = players.filter(p => p.name !== playerToRemove.name);
     setPlayers(updatedPlayers);
 
@@ -453,10 +566,26 @@ export default function BeachVolleyballTracker() {
     setMatches(updatedMatches);
   };
 
-  const handleReplacePlayer = () => {
-    if (!selectedPlayer || !replacementName.trim()) return;
+  const handleReplacePlayer = async () => {
+    if (!selectedPlayer || !replacementName.trim() || !selectedPlayer.id) return;
+
+    // Update player in database
+    const { error } = await supabase
+      .from('players')
+      .update({ name: replacementName })
+      .eq('id', selectedPlayer.id);
+      
+    if (error) {
+      toast({
+        title: "Error replacing player",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
 
     const newPlayer: Player = {
+      id: selectedPlayer.id,
       name: replacementName,
       points: selectedPlayer.points,
       totalScores: selectedPlayer.totalScores,
@@ -479,6 +608,11 @@ export default function BeachVolleyballTracker() {
 
     setSelectedPlayer(null);
     setReplacementName("");
+    
+    toast({
+      title: "Success",
+      description: `Replaced player ${selectedPlayer.name} with ${replacementName}`,
+    });
   };
 
   const handlePreviousMatch = () => {
@@ -597,7 +731,7 @@ export default function BeachVolleyballTracker() {
               />
             ) : (
               <>
-                {matches && matches.length > 0 && matches[currentMatchIndex] && (
+                {matches && matches.length > 0 && matches[currentMatchIndex] ? (
                   <MatchDisplay
                     match={matches[currentMatchIndex]}
                     currentMatchIndex={currentMatchIndex}
@@ -612,6 +746,18 @@ export default function BeachVolleyballTracker() {
                     handleScoreSubmit={handleScoreSubmit}
                     handleEditScore={handleEditScore}
                   />
+                ) : (
+                  <div className="text-center p-8 bg-gray-50 rounded-lg mb-8">
+                    <p className="text-lg text-gray-600">No matches available. Add at least 4 players to create matches.</p>
+                    {isAdmin && (
+                      <Button 
+                        onClick={() => setShowPlayerManagement(true)}
+                        className="mt-4"
+                      >
+                        Manage Players
+                      </Button>
+                    )}
+                  </div>
                 )}
 
                 <Rankings players={players} />

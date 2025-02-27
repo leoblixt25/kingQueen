@@ -61,7 +61,7 @@ export function MatchDisplay({
               </p>
               {!match.isSubmitted || isAdmin ? (
                 <Input
-                  value={match.isSubmitted && !isAdmin ? match.score1.toString() : score1}
+                  value={score1}
                   onChange={(e) => setScore1(e.target.value)}
                   type="number"
                   className="w-20 text-center"
@@ -80,7 +80,7 @@ export function MatchDisplay({
               </p>
               {!match.isSubmitted || isAdmin ? (
                 <Input
-                  value={match.isSubmitted && !isAdmin ? match.score2.toString() : score2}
+                  value={score2}
                   onChange={(e) => setScore2(e.target.value)}
                   type="number"
                   className="w-20 text-center"

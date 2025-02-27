@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Gender, Match, Player, FinalMatchScores, FinalMatchWinner } from "@/types";
@@ -169,7 +168,6 @@ export default function BeachVolleyballTracker() {
     };
   }, []);
 
-  // Function to create initial matchups
   const createInitialMatches = (currentGender: Gender, playersList: Player[]) => {
     if (playersList.length < 4) return;
     
@@ -224,13 +222,16 @@ export default function BeachVolleyballTracker() {
     }
 
     const currentMatch = matches[currentMatchIndex];
+    const parseScore1 = parseInt(score1, 10) || 0;
+    const parseScore2 = parseInt(score2, 10) || 0;
+
     const scoreData = {
       player1_id: currentMatch.player1.id,
       player2_id: currentMatch.player2.id,
       player3_id: currentMatch.player3.id,
       player4_id: currentMatch.player4.id,
-      score1: parseInt(score1, 10) || 0,
-      score2: parseInt(score2, 10) || 0,
+      score1: parseScore1,
+      score2: parseScore2,
       is_submitted: true
     };
 
@@ -246,9 +247,6 @@ export default function BeachVolleyballTracker() {
       });
       return;
     }
-
-    const parseScore1 = parseInt(score1, 10) || 0;
-    const parseScore2 = parseInt(score2, 10) || 0;
     
     const newMatches = [...matches];
     newMatches[currentMatchIndex] = {
@@ -266,7 +264,7 @@ export default function BeachVolleyballTracker() {
     };
     await updatePlayerPoints(newMatches[currentMatchIndex], scoreValuesForUpdate);
     
-    // Reset input fields but don't navigate yet
+    // Reset input fields
     setScore1("");
     setScore2("");
     
@@ -288,15 +286,9 @@ export default function BeachVolleyballTracker() {
       };
       setMatches([...newMatches, nextMatch]);
     }
-    
-    // Automatically advance to next match if available
-    if (currentMatchIndex < matches.length - 1) {
-      handleNextMatch();
-    }
   };
 
   const updatePlayerPoints = async (match: Match, scoreValues?: { score1: string, score2: string }) => {
-    // Use either provided scoreValues or get from match
     const score1Num = scoreValues 
       ? parseInt(scoreValues.score1, 10) || 0 
       : match.score1;
@@ -337,7 +329,6 @@ export default function BeachVolleyballTracker() {
       }
     }
 
-    // Update local state after all updates are done
     const updatedPlayers = players.map(player => {
       const update = updates.find(u => u.id === player.id);
       if (update) {
@@ -374,7 +365,6 @@ export default function BeachVolleyballTracker() {
   const handleResetScores = async () => {
     if (!isAdmin) return;
 
-    // Reset player scores in the database
     const { error: resetError } = await supabase
       .from('players')
       .update({ points: 0, total_scores: 0 })
@@ -389,8 +379,6 @@ export default function BeachVolleyballTracker() {
       return;
     }
 
-    // Clear match data in the database
-    // Delete all matches for the current gender
     for (const match of matches) {
       const { error: matchError } = await supabase
         .from('matches')
@@ -402,7 +390,6 @@ export default function BeachVolleyballTracker() {
       }
     }
 
-    // Reset local player state
     if (gender === 'female') {
       const resetFemalePlayers = femalePlayers.map(player => ({ 
         ...player, 
@@ -411,7 +398,6 @@ export default function BeachVolleyballTracker() {
       }));
       setFemalePlayers(resetFemalePlayers);
       
-      // Create new set of matches after resetting
       createInitialMatches('female', resetFemalePlayers);
     } else {
       const resetMalePlayers = malePlayers.map(player => ({ 
@@ -421,11 +407,9 @@ export default function BeachVolleyballTracker() {
       }));
       setMalePlayers(resetMalePlayers);
       
-      // Create new set of matches after resetting
       createInitialMatches('male', resetMalePlayers);
     }
     
-    // Reset to the first match
     setCurrentMatchIndex(0);
 
     toast({
@@ -460,7 +444,6 @@ export default function BeachVolleyballTracker() {
     oldPlayers[oldPlayer3Index].totalScores -= oldMatch.score2
     oldPlayers[oldPlayer4Index].totalScores -= oldMatch.score2
 
-    // Create the scoreValues object for the updatePlayerPoints function
     const scoreValues = {
       score1: newScore1.toString(),
       score2: newScore2.toString()
@@ -524,7 +507,6 @@ export default function BeachVolleyballTracker() {
   const handleAddPlayer = async () => {
     if (!newPlayerName.trim()) return;
     
-    // Create new player in database first
     const { data: newPlayerData, error } = await supabase
       .from('players')
       .insert({
@@ -557,7 +539,6 @@ export default function BeachVolleyballTracker() {
     setPlayers(updatedPlayers);
     setNewPlayerName("");
     
-    // If we now have enough players, and no matches exist, create initial matches
     if (updatedPlayers.length >= 4 && matches.length === 0) {
       createInitialMatches(gender, updatedPlayers);
     }
@@ -573,7 +554,6 @@ export default function BeachVolleyballTracker() {
       return;
     }
     
-    // Remove player from database
     const { error } = await supabase
       .from('players')
       .delete()
@@ -603,7 +583,6 @@ export default function BeachVolleyballTracker() {
   const handleReplacePlayer = async () => {
     if (!selectedPlayer || !replacementName.trim() || !selectedPlayer.id) return;
 
-    // Update player in database
     const { error } = await supabase
       .from('players')
       .update({ name: replacementName })

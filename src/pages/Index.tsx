@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Gender, Match, Player, FinalMatchScores, FinalMatchWinner } from "@/types";
@@ -282,10 +283,6 @@ export default function BeachVolleyballTracker() {
       };
       setMatches([...newMatches, nextMatch]);
     }
-    
-    // Reset input fields AFTER updating the match data
-    setScore1("");
-    setScore2("");
   };
 
   const updatePlayerPoints = async (match: Match, scoreValues?: { score1: string, score2: string }) => {
@@ -335,7 +332,7 @@ export default function BeachVolleyballTracker() {
         return {
           ...player,
           points: update.points,
-          totalScores: update.totalScores
+          totalScores: update.total_scores
         };
       }
       return player;
@@ -631,20 +628,12 @@ export default function BeachVolleyballTracker() {
   const handlePreviousMatch = () => {
     if (currentMatchIndex > 0) {
       setCurrentMatchIndex(currentMatchIndex - 1);
-      
-      // Clear scores when navigating
-      setScore1("");
-      setScore2("");
     }
   };
 
   const handleNextMatch = () => {
     if (currentMatchIndex < matches.length - 1) {
       setCurrentMatchIndex(currentMatchIndex + 1);
-      
-      // Clear scores when navigating
-      setScore1("");
-      setScore2("");
     }
   };
 

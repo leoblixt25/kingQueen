@@ -38,15 +38,15 @@ export function MatchDisplay({
   // Update score inputs when match changes
   useEffect(() => {
     if (match) {
-      if (match.isSubmitted && isAdmin) {
+      if (match.isSubmitted) {
         setScore1(match.score1.toString());
         setScore2(match.score2.toString());
-      } else if (!match.isSubmitted) {
+      } else {
         setScore1("");
         setScore2("");
       }
     }
-  }, [match, setScore1, setScore2, isAdmin]);
+  }, [match, setScore1, setScore2]);
 
   return (
     <Card className="mb-8 max-w-2xl mx-auto">

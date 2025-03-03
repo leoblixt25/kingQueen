@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Gender, Match, Player, FinalMatchScores, FinalMatchWinner } from "@/types";

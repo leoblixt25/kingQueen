@@ -45,6 +45,7 @@ export default function BeachVolleyballTracker() {
     matches,
     setMatches,
     currentMatchIndex,
+    setCurrentMatchIndex, // Pass setCurrentMatchIndex to the hook
     score1,
     score2,
     setScore1,

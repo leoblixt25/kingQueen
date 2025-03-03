@@ -1,4 +1,3 @@
-
 import { Match } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -7,6 +6,7 @@ interface UseMatchScoringProps {
   matches: Match[];
   setMatches: (matches: Match[]) => void;
   currentMatchIndex: number;
+  setCurrentMatchIndex: (index: number) => void;
   score1: string;
   score2: string;
   setScore1: (score: string) => void;
@@ -19,6 +19,7 @@ export function useMatchScoring({
   matches,
   setMatches,
   currentMatchIndex,
+  setCurrentMatchIndex,
   score1,
   score2,
   setScore1,
@@ -98,6 +99,11 @@ export function useMatchScoring({
         isSubmitted: false
       };
       setMatches([...newMatches, nextMatch]);
+    }
+    
+    // If not the last match, navigate to the next match
+    if (currentMatchIndex < matches.length - 1) {
+      setCurrentMatchIndex(currentMatchIndex + 1);
     }
   };
 

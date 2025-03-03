@@ -46,7 +46,7 @@ export function MatchDisplay({
         setScore2("");
       }
     }
-  }, [match, setScore1, setScore2]);
+  }, [match, setScore1, setScore2, currentMatchIndex]);
 
   return (
     <Card className="mb-8 max-w-2xl mx-auto">

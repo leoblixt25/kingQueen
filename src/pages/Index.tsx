@@ -45,7 +45,7 @@ export default function BeachVolleyballTracker() {
     matches,
     setMatches,
     currentMatchIndex,
-    setCurrentMatchIndex, // Pass setCurrentMatchIndex to the hook
+    setCurrentMatchIndex,
     score1,
     score2,
     setScore1,
@@ -109,12 +109,13 @@ export default function BeachVolleyballTracker() {
     createInitialMatches,
     setCurrentMatchIndex
   });
-
-  const currentMatch = matches[currentMatchIndex];
   
   const handleFinalMatchSubmitWrapper = () => {
     handleFinalMatchSubmit(malePlayers, femalePlayers);
   };
+
+  // Check if we have valid matches with at least one match
+  const hasValidMatches = Array.isArray(matches) && matches.length > 0;
 
   return (
     <div className="min-h-screen bg-white">
@@ -214,7 +215,7 @@ export default function BeachVolleyballTracker() {
               />
             ) : (
               <>
-                {matches && matches.length > 0 && matches[currentMatchIndex] ? (
+                {hasValidMatches && matches[currentMatchIndex] ? (
                   <MatchDisplay
                     match={matches[currentMatchIndex]}
                     currentMatchIndex={currentMatchIndex}

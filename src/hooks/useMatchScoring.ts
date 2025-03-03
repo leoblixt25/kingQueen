@@ -1,3 +1,4 @@
+
 import { Match } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -43,6 +44,7 @@ export function useMatchScoring({
     const parseScore1 = parseInt(score1, 10) || 0;
     const parseScore2 = parseInt(score2, 10) || 0;
 
+    // Create data to insert into Supabase
     const scoreData = {
       player1_id: currentMatch.player1.id,
       player2_id: currentMatch.player2.id,
@@ -53,6 +55,7 @@ export function useMatchScoring({
       is_submitted: true
     };
 
+    // Insert into Supabase
     const { error } = await supabase
       .from('matches')
       .insert(scoreData);
@@ -66,6 +69,7 @@ export function useMatchScoring({
       return;
     }
     
+    // Update local state
     const newMatches = [...matches];
     newMatches[currentMatchIndex] = {
       ...newMatches[currentMatchIndex],
@@ -101,16 +105,26 @@ export function useMatchScoring({
       setMatches([...newMatches, nextMatch]);
     }
     
-    // If not the last match, navigate to the next match
+    // Navigate to the next match if not the last match
     if (currentMatchIndex < matches.length - 1) {
       setCurrentMatchIndex(currentMatchIndex + 1);
     }
   };
 
   const handleEditScore = async (matchIndex: number, newScore1: number, newScore2: number) => {
-    const newMatches = [...matches];
-    const oldMatch = newMatches[matchIndex];
+    if (!matches || !matches[matchIndex]) {
+      toast({
+        title: "Error",
+        description: "Match not found",
+        variant: "destructive",
+      });
+      return;
+    }
     
+    const oldMatch = matches[matchIndex];
+    
+    // Update local state
+    const newMatches = [...matches];
     newMatches[matchIndex] = {
       ...newMatches[matchIndex],
       score1: newScore1,
@@ -129,6 +143,11 @@ export function useMatchScoring({
     
     if (findError) {
       console.error("Error finding match:", findError);
+      toast({
+        title: "Error finding match",
+        description: findError.message,
+        variant: "destructive",
+      });
       return;
     }
     
@@ -144,6 +163,11 @@ export function useMatchScoring({
       
       if (updateError) {
         console.error("Error updating match:", updateError);
+        toast({
+          title: "Error updating match",
+          description: updateError.message,
+          variant: "destructive",
+        });
         return;
       }
     }
@@ -155,6 +179,11 @@ export function useMatchScoring({
     
     await updatePlayerPoints(newMatches[matchIndex], scoreValues);
     setMatches(newMatches);
+    
+    toast({
+      title: "Score updated",
+      description: `Match ${matchIndex + 1} score updated: ${newScore1} - ${newScore2}`,
+    });
   };
 
   return {

@@ -48,6 +48,14 @@ export function MatchDisplay({
     }
   }, [match, setScore1, setScore2, currentMatchIndex]);
 
+  if (!match) {
+    return (
+      <div className="text-center p-8 bg-gray-50 rounded-lg mb-8">
+        <p className="text-lg text-gray-600">No match selected. Please navigate to another match or add players.</p>
+      </div>
+    );
+  }
+
   return (
     <Card className="mb-8 max-w-2xl mx-auto">
       <CardHeader>

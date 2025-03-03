@@ -39,8 +39,8 @@ export function MatchDisplay({
   useEffect(() => {
     if (match) {
       if (match.isSubmitted) {
-        setScore1(match.score1.toString());
-        setScore2(match.score2.toString());
+        setScore1(String(match.score1));
+        setScore2(String(match.score2));
       } else {
         setScore1("");
         setScore2("");

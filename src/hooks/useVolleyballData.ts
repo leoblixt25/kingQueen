@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Match, Player, Gender } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
@@ -71,7 +70,6 @@ export function useVolleyballData() {
       setFemalePlayers(femalePlayersData);
       setMalePlayers(malePlayersData);
 
-      // Load matches
       const { data: matchesData, error: matchesError } = await supabase
         .from('matches')
         .select('*')
@@ -118,7 +116,6 @@ export function useVolleyballData() {
         setFemaleMatches(femaleMatches);
         setMaleMatches(maleMatches);
         
-        // If no matches were loaded, generate initial matches
         if (femaleMatches.length === 0 && femalePlayersData.length >= 4) {
           createInitialMatches('female', femalePlayersData);
         }
@@ -150,12 +147,9 @@ export function useVolleyballData() {
     if (playersList.length < 4) return;
     
     const initialMatches: Match[] = [];
-    const numMatches = 14; // Default to 14 matches as requested
+    const numMatches = 14;
     
-    // Generate matches using a round-robin approach
     for (let i = 0; i < numMatches; i++) {
-      // Each match needs 4 unique players
-      // We'll rotate the players to create fair matchups
       const idx1 = i % playersList.length;
       const idx2 = (i + 1) % playersList.length;
       const idx3 = (i + 2) % playersList.length;
@@ -184,8 +178,6 @@ export function useVolleyballData() {
   const handleGenderChange = (newGender: Gender) => {
     setGender(newGender);
     setCurrentMatchIndex(0);
-    setScore1("");
-    setScore2("");
   };
 
   const handlePreviousMatch = () => {

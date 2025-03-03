@@ -101,39 +101,53 @@ export function useMatchScoring({
     }
   };
 
-  const handleEditScore = (matchIndex: number, newScore1: number, newScore2: number) => {
-    const newMatches = [...matches]
-    const oldMatch = newMatches[matchIndex]
+  const handleEditScore = async (matchIndex: number, newScore1: number, newScore2: number) => {
+    const newMatches = [...matches];
+    const oldMatch = newMatches[matchIndex];
+    
     newMatches[matchIndex] = {
       ...newMatches[matchIndex],
       score1: newScore1,
       score2: newScore2,
       isSubmitted: true,
+    };
+
+    // Find the match in the database
+    const { data: existingMatches, error: findError } = await supabase
+      .from('matches')
+      .select('*')
+      .eq('player1_id', oldMatch.player1.id)
+      .eq('player2_id', oldMatch.player2.id)
+      .eq('player3_id', oldMatch.player3.id)
+      .eq('player4_id', oldMatch.player4.id);
+    
+    if (findError) {
+      console.error("Error finding match:", findError);
+      return;
     }
-
-    const oldPlayers = [...players]
-    const oldPlayer1Index = oldPlayers.findIndex(p => p.name === oldMatch.player1.name)
-    const oldPlayer2Index = oldPlayers.findIndex(p => p.name === oldMatch.player2.name)
-    const oldPlayer3Index = oldPlayers.findIndex(p => p.name === oldMatch.player3.name)
-    const oldPlayer4Index = oldPlayers.findIndex(p => p.name === oldMatch.player4.name)
-
-    oldPlayers[oldPlayer1Index].points -= oldMatch.score1 > oldMatch.score2 ? 2 : 1
-    oldPlayers[oldPlayer2Index].points -= oldMatch.score1 > oldMatch.score2 ? 2 : 1
-    oldPlayers[oldPlayer3Index].points -= oldMatch.score1 > oldMatch.score2 ? 1 : 2
-    oldPlayers[oldPlayer4Index].points -= oldMatch.score1 > oldMatch.score2 ? 1 : 2
-
-    oldPlayers[oldPlayer1Index].totalScores -= oldMatch.score1
-    oldPlayers[oldPlayer2Index].totalScores -= oldMatch.score1
-    oldPlayers[oldPlayer3Index].totalScores -= oldMatch.score2
-    oldPlayers[oldPlayer4Index].totalScores -= oldMatch.score2
+    
+    if (existingMatches && existingMatches.length > 0) {
+      // Update existing match
+      const { error: updateError } = await supabase
+        .from('matches')
+        .update({ 
+          score1: newScore1, 
+          score2: newScore2 
+        })
+        .eq('id', existingMatches[0].id);
+      
+      if (updateError) {
+        console.error("Error updating match:", updateError);
+        return;
+      }
+    }
 
     const scoreValues = {
       score1: newScore1.toString(),
       score2: newScore2.toString()
     };
     
-    updatePlayerPoints(newMatches[matchIndex], scoreValues);
-
+    await updatePlayerPoints(newMatches[matchIndex], scoreValues);
     setMatches(newMatches);
   };
 

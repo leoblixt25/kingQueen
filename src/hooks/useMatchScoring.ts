@@ -1,5 +1,5 @@
 
-import { Match } from "@/types";
+import { Match, Player } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -13,7 +13,7 @@ interface UseMatchScoringProps {
   setScore1: (score: string) => void;
   setScore2: (score: string) => void;
   updatePlayerPoints: (match: Match, scoreValues?: { score1: string, score2: string }) => Promise<void>;
-  players: any[];
+  players: Player[];
 }
 
 export function useMatchScoring({
@@ -89,7 +89,7 @@ export function useMatchScoring({
     await updatePlayerPoints(newMatches[currentMatchIndex], scoreValuesForUpdate);
     
     // Create next match if we're at the end and there are enough players
-    if (currentMatchIndex === matches.length - 1 && players.length >= 4) {
+    if (currentMatchIndex === newMatches.length - 1 && players.length >= 4) {
       const nextMatch: Match = {
         player1: players[0],
         player2: players[1],
@@ -102,7 +102,7 @@ export function useMatchScoring({
       newMatches.push(nextMatch);
     }
     
-    // Update the state with the new matches array
+    // Update the state with the new matches array first
     setMatches(newMatches);
     
     toast({
@@ -110,10 +110,13 @@ export function useMatchScoring({
       description: `Match ${currentMatchIndex + 1} score recorded: ${parseScore1} - ${parseScore2}`,
     });
     
-    // Navigate to the next match if not the last match
-    if (currentMatchIndex < newMatches.length - 1) {
-      setCurrentMatchIndex(currentMatchIndex + 1);
-    }
+    // IMPORTANT: Set timeout to ensure state update has completed before navigation
+    setTimeout(() => {
+      // Navigate to the next match if not the last match
+      if (currentMatchIndex < newMatches.length - 1) {
+        setCurrentMatchIndex(currentMatchIndex + 1);
+      }
+    }, 50);
   };
 
   const handleEditScore = async (matchIndex: number, newScore1: number, newScore2: number) => {

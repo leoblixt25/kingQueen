@@ -48,7 +48,8 @@ export function MatchDisplay({
     }
   }, [match, setScore1, setScore2, currentMatchIndex]);
 
-  if (!match) {
+  // Handle case when match is undefined
+  if (!match || !matches || matches.length === 0) {
     return (
       <div className="text-center p-8 bg-gray-50 rounded-lg mb-8">
         <p className="text-lg text-gray-600">No match selected. Please navigate to another match or add players.</p>

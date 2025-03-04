@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { AdminLogin } from "@/components/AdminLogin";
@@ -11,6 +10,7 @@ import { useMatchScoring } from "@/hooks/useMatchScoring";
 import { useFinalMatch } from "@/hooks/useFinalMatch";
 import { usePlayerManagement } from "@/hooks/usePlayerManagement";
 import { useAdminControls } from "@/hooks/useAdminControls";
+import { useEffect } from "react";
 
 export default function BeachVolleyballTracker() {
   const { toast } = useToast();
@@ -114,8 +114,13 @@ export default function BeachVolleyballTracker() {
     handleFinalMatchSubmit(malePlayers, femalePlayers);
   };
 
-  // Check if we have valid matches with at least one match
   const hasValidMatches = Array.isArray(matches) && matches.length > 0;
+
+  useEffect(() => {
+    console.log("Current matches:", matches);
+    console.log("Current index:", currentMatchIndex);
+    console.log("Has valid matches:", hasValidMatches);
+  }, [matches, currentMatchIndex, hasValidMatches]);
 
   return (
     <div className="min-h-screen bg-white">

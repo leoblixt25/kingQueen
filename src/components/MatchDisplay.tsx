@@ -56,6 +56,10 @@ export function MatchDisplay({
     );
   }
 
+  // Check if we can navigate to previous or next match
+  const hasPreviousMatch = currentMatchIndex > 0;
+  const hasNextMatch = currentMatchIndex < matches.length - 1;
+
   return (
     <Card className="mb-8 max-w-2xl mx-auto">
       <CardHeader>
@@ -70,7 +74,7 @@ export function MatchDisplay({
           <Button
             variant="outline"
             onClick={handlePreviousMatch}
-            disabled={currentMatchIndex === 0}
+            disabled={!hasPreviousMatch}
             className="flex-shrink-0"
           >
             <ChevronLeft className="w-6 h-6" />
@@ -119,7 +123,7 @@ export function MatchDisplay({
           <Button
             variant="outline"
             onClick={handleNextMatch}
-            disabled={currentMatchIndex === matches.length - 1}
+            disabled={!hasNextMatch}
             className="flex-shrink-0"
           >
             <ChevronRight className="w-6 h-6" />

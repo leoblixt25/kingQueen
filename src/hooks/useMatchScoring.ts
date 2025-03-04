@@ -69,27 +69,24 @@ export function useMatchScoring({
       return;
     }
     
-    // Update local state
-    const newMatches = [...matches];
+    // Create a deep copy of the matches array to avoid state mutations
+    const newMatches = JSON.parse(JSON.stringify(matches));
+    
+    // Update the specific match with new scores
     newMatches[currentMatchIndex] = {
       ...newMatches[currentMatchIndex],
       score1: parseScore1,
       score2: parseScore2,
       isSubmitted: true,
     };
-    setMatches(newMatches);
     
     // Update player points with current scores
     const scoreValuesForUpdate = {
       score1: parseScore1.toString(),
       score2: parseScore2.toString()
     };
-    await updatePlayerPoints(newMatches[currentMatchIndex], scoreValuesForUpdate);
     
-    toast({
-      title: "Score submitted",
-      description: `Match ${currentMatchIndex + 1} score recorded: ${parseScore1} - ${parseScore2}`,
-    });
+    await updatePlayerPoints(newMatches[currentMatchIndex], scoreValuesForUpdate);
     
     // Create next match if we're at the end and there are enough players
     if (currentMatchIndex === matches.length - 1 && players.length >= 4) {
@@ -102,11 +99,19 @@ export function useMatchScoring({
         score2: 0,
         isSubmitted: false
       };
-      setMatches([...newMatches, nextMatch]);
+      newMatches.push(nextMatch);
     }
     
+    // Update the state with the new matches array
+    setMatches(newMatches);
+    
+    toast({
+      title: "Score submitted",
+      description: `Match ${currentMatchIndex + 1} score recorded: ${parseScore1} - ${parseScore2}`,
+    });
+    
     // Navigate to the next match if not the last match
-    if (currentMatchIndex < matches.length - 1) {
+    if (currentMatchIndex < newMatches.length - 1) {
       setCurrentMatchIndex(currentMatchIndex + 1);
     }
   };
@@ -123,8 +128,10 @@ export function useMatchScoring({
     
     const oldMatch = matches[matchIndex];
     
-    // Update local state
-    const newMatches = [...matches];
+    // Create a deep copy of the matches array
+    const newMatches = JSON.parse(JSON.stringify(matches));
+    
+    // Update the specific match with edited scores
     newMatches[matchIndex] = {
       ...newMatches[matchIndex],
       score1: newScore1,
@@ -178,6 +185,8 @@ export function useMatchScoring({
     };
     
     await updatePlayerPoints(newMatches[matchIndex], scoreValues);
+    
+    // Update the state with the new matches array
     setMatches(newMatches);
     
     toast({

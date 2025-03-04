@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Check, Edit, ChevronLeft, ChevronRight } from "lucide-react";
 import { Match } from "@/types";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 interface MatchDisplayProps {
   match: Match;
@@ -35,14 +35,19 @@ export function MatchDisplay({
   handleScoreSubmit,
   handleEditScore,
 }: MatchDisplayProps) {
+  // Add local state to track if there was a recent submission
+  const [recentSubmission, setRecentSubmission] = useState(false);
+
   // Update score inputs when match changes
   useEffect(() => {
     if (match) {
       console.log("Match changed in MatchDisplay:", { 
         matchIndex: currentMatchIndex, 
+        matchesLength: matches?.length,
         isSubmitted: match.isSubmitted,
         score1: match.score1,
-        score2: match.score2
+        score2: match.score2,
+        recentSubmission
       });
       
       if (match.isSubmitted) {
@@ -53,11 +58,24 @@ export function MatchDisplay({
         setScore2("");
       }
     }
-  }, [match, setScore1, setScore2, currentMatchIndex]);
+    
+    // Reset recent submission flag after a short delay
+    if (recentSubmission) {
+      const timer = setTimeout(() => {
+        setRecentSubmission(false);
+      }, 300);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [match, setScore1, setScore2, currentMatchIndex, recentSubmission]);
 
   // Handle case when match is undefined
   if (!match || !matches || matches.length === 0) {
-    console.log("No match or matches available:", { match, matchesLength: matches?.length || 0 });
+    console.log("No match or matches available:", { 
+      match, 
+      matchesLength: matches?.length || 0,
+      currentMatchIndex
+    });
     return (
       <div className="text-center p-8 bg-gray-50 rounded-lg mb-8">
         <p className="text-lg text-gray-600">No match selected. Please navigate to another match or add players.</p>
@@ -89,6 +107,7 @@ export function MatchDisplay({
 
   const handleSubmitClick = () => {
     console.log("Submit button clicked, calling handleScoreSubmit");
+    setRecentSubmission(true);
     handleScoreSubmit();
   };
 

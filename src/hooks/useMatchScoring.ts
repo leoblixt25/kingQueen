@@ -31,7 +31,12 @@ export function useMatchScoring({
   const { toast } = useToast();
 
   const handleScoreSubmit = async () => {
-    console.log("handleScoreSubmit called with:", { currentMatchIndex, score1, score2, matchesLength: matches?.length });
+    console.log("handleScoreSubmit called with:", { 
+      currentMatchIndex, 
+      score1, 
+      score2, 
+      matchesLength: matches?.length 
+    });
     
     if (!matches || !matches[currentMatchIndex]) {
       console.error("No match available to submit scores for");
@@ -93,9 +98,10 @@ export function useMatchScoring({
     }
     
     // Create a deep copy of the matches array to avoid state mutations
-    const newMatches = [...matches.map(match => ({ ...match }))];
+    // Use JSON.parse/stringify for a true deep clone
+    const newMatches = JSON.parse(JSON.stringify(matches));
     
-    console.log("Original matches before update:", JSON.stringify(matches));
+    console.log("Original matches before update:", matches.length);
     
     // Update the specific match with new scores
     newMatches[currentMatchIndex] = {
@@ -157,10 +163,11 @@ export function useMatchScoring({
     });
     
     // Use a setTimeout with a longer delay to ensure state update completes before navigation
+    // 500ms should be enough for React to process state updates
     setTimeout(() => {
       console.log("Setting current match index to:", nextMatchIndex);
       setCurrentMatchIndex(nextMatchIndex);
-    }, 300);
+    }, 500);
   };
 
   const handleEditScore = async (matchIndex: number, newScore1: number, newScore2: number) => {
@@ -183,8 +190,8 @@ export function useMatchScoring({
       newScores: `${newScore1} - ${newScore2}`
     });
     
-    // Create a deep copy of the matches array
-    const newMatches = [...matches.map(match => ({ ...match }))];
+    // Create a deep copy of the matches array using JSON methods for true deep cloning
+    const newMatches = JSON.parse(JSON.stringify(matches));
     
     // Update the specific match with edited scores
     newMatches[matchIndex] = {

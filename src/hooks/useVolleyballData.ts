@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+
+import { useState, useEffect, useCallback } from "react";
 import { Match, Player, Gender } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -176,21 +177,54 @@ export function useVolleyballData() {
   };
 
   const handleGenderChange = (newGender: Gender) => {
+    console.log(`Changing gender from ${gender} to ${newGender}`);
     setGender(newGender);
     setCurrentMatchIndex(0);
   };
 
-  const handlePreviousMatch = () => {
+  // Make navigation functions memoized with useCallback to prevent unnecessary re-renders
+  const handlePreviousMatch = useCallback(() => {
     if (currentMatchIndex > 0) {
-      setCurrentMatchIndex(currentMatchIndex - 1);
+      console.log(`Navigation: Moving from match ${currentMatchIndex} to ${currentMatchIndex - 1}`);
+      setCurrentMatchIndex(prevIndex => {
+        const newIndex = prevIndex - 1;
+        console.log(`Navigation confirmed: New index set to ${newIndex}`);
+        return newIndex;
+      });
+    } else {
+      console.log("Navigation: Cannot go to previous match (already at first)");
     }
-  };
+  }, [currentMatchIndex]);
 
-  const handleNextMatch = () => {
-    if (currentMatchIndex < matches.length - 1) {
-      setCurrentMatchIndex(currentMatchIndex + 1);
+  const handleNextMatch = useCallback(() => {
+    if (matches && currentMatchIndex < matches.length - 1) {
+      console.log(`Navigation: Moving from match ${currentMatchIndex} to ${currentMatchIndex + 1}`);
+      console.log(`Match array length: ${matches.length}`);
+      setCurrentMatchIndex(prevIndex => {
+        const newIndex = prevIndex + 1;
+        console.log(`Navigation confirmed: New index set to ${newIndex}`);
+        return newIndex;
+      });
+    } else {
+      console.log("Navigation: Cannot go to next match (already at last)");
+      console.log(`Current match index: ${currentMatchIndex}, Matches length: ${matches?.length || 0}`);
     }
-  };
+  }, [currentMatchIndex, matches]);
+
+  // Safe index check effect
+  useEffect(() => {
+    if (matches && matches.length > 0 && currentMatchIndex >= matches.length) {
+      console.log(`Index correction: currentMatchIndex (${currentMatchIndex}) is out of bounds, setting to ${matches.length - 1}`);
+      setCurrentMatchIndex(matches.length - 1);
+    }
+  }, [matches, currentMatchIndex]);
+
+  // When gender changes, validate current match index
+  useEffect(() => {
+    if (matches && matches.length > 0) {
+      console.log(`Gender ${gender} selected with ${matches.length} matches available`);
+    }
+  }, [gender, matches]);
 
   const updatePlayerPoints = async (match: Match, scoreValues?: { score1: string, score2: string }) => {
     const score1Num = scoreValues 

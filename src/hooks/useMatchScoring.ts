@@ -31,7 +31,10 @@ export function useMatchScoring({
   const { toast } = useToast();
 
   const handleScoreSubmit = async () => {
+    console.log("handleScoreSubmit called with:", { currentMatchIndex, score1, score2, matchesLength: matches?.length });
+    
     if (!matches || !matches[currentMatchIndex]) {
+      console.error("No match available to submit scores for");
       toast({
         title: "Error",
         description: "No match available to submit scores for",
@@ -43,6 +46,13 @@ export function useMatchScoring({
     const currentMatch = matches[currentMatchIndex];
     const parseScore1 = parseInt(score1, 10) || 0;
     const parseScore2 = parseInt(score2, 10) || 0;
+    
+    console.log("Submitting scores:", { 
+      matchIndex: currentMatchIndex, 
+      score1: parseScore1, 
+      score2: parseScore2,
+      players: `${currentMatch.player1.name} & ${currentMatch.player2.name} vs ${currentMatch.player3.name} & ${currentMatch.player4.name}`
+    });
 
     // Create data to insert into Supabase
     const scoreData = {
@@ -56,21 +66,36 @@ export function useMatchScoring({
     };
 
     // Insert into Supabase
-    const { error } = await supabase
-      .from('matches')
-      .insert(scoreData);
+    try {
+      const { error } = await supabase
+        .from('matches')
+        .insert(scoreData);
 
-    if (error) {
+      if (error) {
+        console.error("Error saving match to Supabase:", error);
+        toast({
+          title: "Error saving match",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      console.log("Match saved to Supabase successfully");
+    } catch (error) {
+      console.error("Exception saving match to Supabase:", error);
       toast({
         title: "Error saving match",
-        description: error.message,
+        description: "An unexpected error occurred",
         variant: "destructive",
       });
       return;
     }
     
     // Create a deep copy of the matches array to avoid state mutations
-    const newMatches = [...JSON.parse(JSON.stringify(matches))];
+    const newMatches = [...matches.map(match => ({ ...match }))];
+    
+    console.log("Original matches before update:", JSON.stringify(matches));
     
     // Update the specific match with new scores
     newMatches[currentMatchIndex] = {
@@ -80,16 +105,24 @@ export function useMatchScoring({
       isSubmitted: true,
     };
     
+    console.log("Updated match in newMatches:", newMatches[currentMatchIndex]);
+    
     // Update player points with current scores
     const scoreValuesForUpdate = {
       score1: parseScore1.toString(),
       score2: parseScore2.toString()
     };
     
-    await updatePlayerPoints(newMatches[currentMatchIndex], scoreValuesForUpdate);
+    try {
+      await updatePlayerPoints(newMatches[currentMatchIndex], scoreValuesForUpdate);
+      console.log("Player points updated successfully");
+    } catch (error) {
+      console.error("Error updating player points:", error);
+    }
     
     // Create next match if we're at the end and there are enough players
     if (currentMatchIndex === newMatches.length - 1 && players.length >= 4) {
+      console.log("Creating next match as we're at the end");
       const nextMatch: Match = {
         player1: players[0],
         player2: players[1],
@@ -100,9 +133,11 @@ export function useMatchScoring({
         isSubmitted: false
       };
       newMatches.push(nextMatch);
+      console.log("New match added, new total:", newMatches.length);
     }
     
     // First update the matches state
+    console.log("Setting matches state with updated matches:", newMatches.length);
     setMatches(newMatches);
     
     toast({
@@ -110,17 +145,29 @@ export function useMatchScoring({
       description: `Match ${currentMatchIndex + 1} score recorded: ${parseScore1} - ${parseScore2}`,
     });
     
-    // Store the next match index value
-    const nextMatchIndex = currentMatchIndex < newMatches.length - 1 ? currentMatchIndex + 1 : currentMatchIndex;
+    // Calculate and store the next match index value
+    const shouldMoveToNext = currentMatchIndex < newMatches.length - 1;
+    const nextMatchIndex = shouldMoveToNext ? currentMatchIndex + 1 : currentMatchIndex;
     
-    // Use a setTimeout to ensure state update completes before navigation
+    console.log("Navigation after submit:", { 
+      currentIndex: currentMatchIndex,
+      shouldMoveToNext,
+      nextMatchIndex,
+      matchesLength: newMatches.length
+    });
+    
+    // Use a setTimeout with a longer delay to ensure state update completes before navigation
     setTimeout(() => {
+      console.log("Setting current match index to:", nextMatchIndex);
       setCurrentMatchIndex(nextMatchIndex);
-    }, 100);
+    }, 300);
   };
 
   const handleEditScore = async (matchIndex: number, newScore1: number, newScore2: number) => {
+    console.log("handleEditScore called with:", { matchIndex, newScore1, newScore2 });
+    
     if (!matches || !matches[matchIndex]) {
+      console.error("Match not found for editing");
       toast({
         title: "Error",
         description: "Match not found",
@@ -130,9 +177,14 @@ export function useMatchScoring({
     }
     
     const oldMatch = matches[matchIndex];
+    console.log("Editing match:", { 
+      players: `${oldMatch.player1.name} & ${oldMatch.player2.name} vs ${oldMatch.player3.name} & ${oldMatch.player4.name}`,
+      oldScores: `${oldMatch.score1} - ${oldMatch.score2}`,
+      newScores: `${newScore1} - ${newScore2}`
+    });
     
     // Create a deep copy of the matches array
-    const newMatches = [...JSON.parse(JSON.stringify(matches))];
+    const newMatches = [...matches.map(match => ({ ...match }))];
     
     // Update the specific match with edited scores
     newMatches[matchIndex] = {
@@ -143,43 +195,58 @@ export function useMatchScoring({
     };
 
     // Find the match in the database
-    const { data: existingMatches, error: findError } = await supabase
-      .from('matches')
-      .select('*')
-      .eq('player1_id', oldMatch.player1.id)
-      .eq('player2_id', oldMatch.player2.id)
-      .eq('player3_id', oldMatch.player3.id)
-      .eq('player4_id', oldMatch.player4.id);
-    
-    if (findError) {
-      console.error("Error finding match:", findError);
-      toast({
-        title: "Error finding match",
-        description: findError.message,
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (existingMatches && existingMatches.length > 0) {
-      // Update existing match
-      const { error: updateError } = await supabase
+    try {
+      const { data: existingMatches, error: findError } = await supabase
         .from('matches')
-        .update({ 
-          score1: newScore1, 
-          score2: newScore2 
-        })
-        .eq('id', existingMatches[0].id);
+        .select('*')
+        .eq('player1_id', oldMatch.player1.id)
+        .eq('player2_id', oldMatch.player2.id)
+        .eq('player3_id', oldMatch.player3.id)
+        .eq('player4_id', oldMatch.player4.id);
       
-      if (updateError) {
-        console.error("Error updating match:", updateError);
+      if (findError) {
+        console.error("Error finding match:", findError);
         toast({
-          title: "Error updating match",
-          description: updateError.message,
+          title: "Error finding match",
+          description: findError.message,
           variant: "destructive",
         });
         return;
       }
+      
+      if (existingMatches && existingMatches.length > 0) {
+        console.log("Found match in database, updating score");
+        // Update existing match
+        const { error: updateError } = await supabase
+          .from('matches')
+          .update({ 
+            score1: newScore1, 
+            score2: newScore2 
+          })
+          .eq('id', existingMatches[0].id);
+        
+        if (updateError) {
+          console.error("Error updating match:", updateError);
+          toast({
+            title: "Error updating match",
+            description: updateError.message,
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        console.log("Match updated in database");
+      } else {
+        console.log("Match not found in database, skipping update");
+      }
+    } catch (error) {
+      console.error("Exception during database operations:", error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      });
+      return;
     }
 
     const scoreValues = {
@@ -187,9 +254,15 @@ export function useMatchScoring({
       score2: newScore2.toString()
     };
     
-    await updatePlayerPoints(newMatches[matchIndex], scoreValues);
+    try {
+      await updatePlayerPoints(newMatches[matchIndex], scoreValues);
+      console.log("Player points updated after edit");
+    } catch (error) {
+      console.error("Error updating player points during edit:", error);
+    }
     
     // Update the state with the new matches array
+    console.log("Setting matches state with edited matches");
     setMatches(newMatches);
     
     toast({

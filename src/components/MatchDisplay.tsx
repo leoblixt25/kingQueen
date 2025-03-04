@@ -38,6 +38,13 @@ export function MatchDisplay({
   // Update score inputs when match changes
   useEffect(() => {
     if (match) {
+      console.log("Match changed in MatchDisplay:", { 
+        matchIndex: currentMatchIndex, 
+        isSubmitted: match.isSubmitted,
+        score1: match.score1,
+        score2: match.score2
+      });
+      
       if (match.isSubmitted) {
         setScore1(String(match.score1));
         setScore2(String(match.score2));
@@ -50,6 +57,7 @@ export function MatchDisplay({
 
   // Handle case when match is undefined
   if (!match || !matches || matches.length === 0) {
+    console.log("No match or matches available:", { match, matchesLength: matches?.length || 0 });
     return (
       <div className="text-center p-8 bg-gray-50 rounded-lg mb-8">
         <p className="text-lg text-gray-600">No match selected. Please navigate to another match or add players.</p>
@@ -61,7 +69,28 @@ export function MatchDisplay({
   const hasPreviousMatch = currentMatchIndex > 0;
   const hasNextMatch = currentMatchIndex < matches.length - 1;
 
-  console.log("Navigation status:", { hasPreviousMatch, hasNextMatch, currentMatchIndex, matchesLength: matches.length });
+  console.log("Navigation status in MatchDisplay:", { 
+    hasPreviousMatch, 
+    hasNextMatch, 
+    currentMatchIndex, 
+    matchesLength: matches.length,
+    isSubmitted: match.isSubmitted
+  });
+
+  const handlePreviousClick = () => {
+    console.log("Previous button clicked, calling handlePreviousMatch");
+    handlePreviousMatch();
+  };
+
+  const handleNextClick = () => {
+    console.log("Next button clicked, calling handleNextMatch");
+    handleNextMatch();
+  };
+
+  const handleSubmitClick = () => {
+    console.log("Submit button clicked, calling handleScoreSubmit");
+    handleScoreSubmit();
+  };
 
   return (
     <Card className="mb-8 max-w-2xl mx-auto">
@@ -76,7 +105,7 @@ export function MatchDisplay({
         <div className="flex items-center justify-between gap-4">
           <Button
             variant="outline"
-            onClick={handlePreviousMatch}
+            onClick={handlePreviousClick}
             disabled={!hasPreviousMatch}
             className="flex-shrink-0"
           >
@@ -125,7 +154,7 @@ export function MatchDisplay({
 
           <Button
             variant="outline"
-            onClick={handleNextMatch}
+            onClick={handleNextClick}
             disabled={!hasNextMatch}
             className="flex-shrink-0"
           >
@@ -135,7 +164,7 @@ export function MatchDisplay({
 
         {!match.isSubmitted ? (
           <div className="flex justify-center">
-            <Button onClick={handleScoreSubmit} className="w-full sm:w-auto">
+            <Button onClick={handleSubmitClick} className="w-full sm:w-auto">
               Submit Score
             </Button>
           </div>

@@ -120,7 +120,22 @@ export default function BeachVolleyballTracker() {
     console.log("Current matches:", matches);
     console.log("Current index:", currentMatchIndex);
     console.log("Has valid matches:", hasValidMatches);
+    
+    if (matches && matches.length > 0) {
+      console.log("Current match:", matches[currentMatchIndex]);
+      console.log("Navigation status:", { 
+        hasPrevious: currentMatchIndex > 0, 
+        hasNext: currentMatchIndex < matches.length - 1 
+      });
+    }
   }, [matches, currentMatchIndex, hasValidMatches]);
+
+  useEffect(() => {
+    if (hasValidMatches && currentMatchIndex >= matches.length) {
+      console.log("Fixing currentMatchIndex:", { currentMatchIndex, matchesLength: matches.length });
+      setCurrentMatchIndex(matches.length - 1);
+    }
+  }, [matches, currentMatchIndex, hasValidMatches, setCurrentMatchIndex]);
 
   return (
     <div className="min-h-screen bg-white">
@@ -237,7 +252,11 @@ export default function BeachVolleyballTracker() {
                   />
                 ) : (
                   <div className="text-center p-8 bg-gray-50 rounded-lg mb-8">
-                    <p className="text-lg text-gray-600">No matches available. Add at least 4 players to create matches.</p>
+                    <p className="text-lg text-gray-600">
+                      {matches && matches.length > 0 
+                        ? "Loading match data..." 
+                        : "No matches available. Add at least 4 players to create matches."}
+                    </p>
                     {isAdmin && (
                       <Button 
                         onClick={() => setShowPlayerManagement(true)}

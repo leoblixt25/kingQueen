@@ -57,9 +57,11 @@ export function MatchDisplay({
     );
   }
 
-  // Check if we can navigate to previous or next match
+  // Calculate navigation status locally, don't rely solely on the props
   const hasPreviousMatch = currentMatchIndex > 0;
   const hasNextMatch = currentMatchIndex < matches.length - 1;
+
+  console.log("Navigation status:", { hasPreviousMatch, hasNextMatch, currentMatchIndex, matchesLength: matches.length });
 
   return (
     <Card className="mb-8 max-w-2xl mx-auto">

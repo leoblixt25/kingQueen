@@ -70,7 +70,7 @@ export function useMatchScoring({
     }
     
     // Create a deep copy of the matches array to avoid state mutations
-    const newMatches = JSON.parse(JSON.stringify(matches));
+    const newMatches = [...JSON.parse(JSON.stringify(matches))];
     
     // Update the specific match with new scores
     newMatches[currentMatchIndex] = {
@@ -102,7 +102,7 @@ export function useMatchScoring({
       newMatches.push(nextMatch);
     }
     
-    // Update the state with the new matches array first
+    // First update the matches state
     setMatches(newMatches);
     
     toast({
@@ -110,13 +110,13 @@ export function useMatchScoring({
       description: `Match ${currentMatchIndex + 1} score recorded: ${parseScore1} - ${parseScore2}`,
     });
     
-    // IMPORTANT: Set timeout to ensure state update has completed before navigation
+    // Store the next match index value
+    const nextMatchIndex = currentMatchIndex < newMatches.length - 1 ? currentMatchIndex + 1 : currentMatchIndex;
+    
+    // Use a setTimeout to ensure state update completes before navigation
     setTimeout(() => {
-      // Navigate to the next match if not the last match
-      if (currentMatchIndex < newMatches.length - 1) {
-        setCurrentMatchIndex(currentMatchIndex + 1);
-      }
-    }, 50);
+      setCurrentMatchIndex(nextMatchIndex);
+    }, 100);
   };
 
   const handleEditScore = async (matchIndex: number, newScore1: number, newScore2: number) => {
@@ -132,7 +132,7 @@ export function useMatchScoring({
     const oldMatch = matches[matchIndex];
     
     // Create a deep copy of the matches array
-    const newMatches = JSON.parse(JSON.stringify(matches));
+    const newMatches = [...JSON.parse(JSON.stringify(matches))];
     
     // Update the specific match with edited scores
     newMatches[matchIndex] = {

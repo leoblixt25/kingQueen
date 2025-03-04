@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -41,40 +40,36 @@ export function MatchDisplay({
   // Update score inputs when match changes
   useEffect(() => {
     if (match) {
-      console.log("Match changed in MatchDisplay:", { 
-        matchIndex: currentMatchIndex, 
+      console.log("Match changed in MatchDisplay:", {
+        matchIndex: currentMatchIndex,
         matchesLength: matches?.length,
         isSubmitted: match.isSubmitted,
         score1: match.score1,
         score2: match.score2,
-        recentSubmission
+        recentSubmission,
       });
-      
-      if (match.isSubmitted) {
-        setScore1(String(match.score1));
-        setScore2(String(match.score2));
-      } else {
-        setScore1("");
-        setScore2("");
-      }
+
+      // Always set the scores to the match values, regardless of submission status
+      setScore1(String(match.score1));
+      setScore2(String(match.score2));
     }
-    
+
     // Reset recent submission flag after a short delay
     if (recentSubmission) {
       const timer = setTimeout(() => {
         setRecentSubmission(false);
       }, 300);
-      
+
       return () => clearTimeout(timer);
     }
   }, [match, setScore1, setScore2, currentMatchIndex, recentSubmission]);
 
   // Handle case when match is undefined
   if (!match || !matches || matches.length === 0) {
-    console.log("No match or matches available:", { 
-      match, 
+    console.log("No match or matches available:", {
+      match,
       matchesLength: matches?.length || 0,
-      currentMatchIndex
+      currentMatchIndex,
     });
     return (
       <div className="text-center p-8 bg-gray-50 rounded-lg mb-8">
@@ -87,12 +82,12 @@ export function MatchDisplay({
   const hasPreviousMatch = currentMatchIndex > 0;
   const hasNextMatch = currentMatchIndex < matches.length - 1;
 
-  console.log("Navigation status in MatchDisplay:", { 
-    hasPreviousMatch, 
-    hasNextMatch, 
-    currentMatchIndex, 
+  console.log("Navigation status in MatchDisplay:", {
+    hasPreviousMatch,
+    hasNextMatch,
+    currentMatchIndex,
     matchesLength: matches.length,
-    isSubmitted: match.isSubmitted
+    isSubmitted: match.isSubmitted,
   });
 
   const handlePreviousClick = () => {
@@ -144,7 +139,7 @@ export function MatchDisplay({
                   className="w-20 text-center"
                   inputMode="numeric"
                   pattern="\d*"
-                  disabled={match.isSubmitted && !isAdmin}
+                  disabled={match.isSubmitted && !isAdmin} // Disable if submitted and not admin
                 />
               ) : (
                 <p className="text-xl font-bold">{match.score1}</p>
@@ -163,7 +158,7 @@ export function MatchDisplay({
                   className="w-20 text-center"
                   inputMode="numeric"
                   pattern="\d*"
-                  disabled={match.isSubmitted && !isAdmin}
+                  disabled={match.isSubmitted && !isAdmin} // Disable if submitted and not admin
                 />
               ) : (
                 <p className="text-xl font-bold">{match.score2}</p>
@@ -196,7 +191,7 @@ export function MatchDisplay({
 
         {isAdmin && match.isSubmitted && (
           <div className="flex justify-center">
-            <Button 
+            <Button
               onClick={() => handleEditScore(currentMatchIndex, parseInt(score1, 10) || 0, parseInt(score2, 10) || 0)}
               variant="outline"
             >

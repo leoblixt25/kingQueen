@@ -34,31 +34,16 @@ export function MatchDisplay({
   handleScoreSubmit,
   handleEditScore,
 }: MatchDisplayProps) {
-  // Add local state to track if there was a recent submission and navigation
-  const [navigationBlocked, setNavigationBlocked] = useState(false);
-
-  console.log("MatchDisplay rendering with currentMatchIndex:", currentMatchIndex, "and matches length:", matches?.length);
-
   // Update score inputs when match changes
   useEffect(() => {
     if (match) {
       setScore1(String(match.score1));
       setScore2(String(match.score2));
-      
-      // Allow navigation immediately if match is already submitted
-      if (match.isSubmitted) {
-        setNavigationBlocked(false);
-      }
     }
   }, [match, setScore1, setScore2]);
 
   // Handle case when match is undefined
   if (!match || !matches || matches.length === 0) {
-    console.log("No match or matches available:", {
-      matchExists: !!match,
-      matchesLength: matches?.length || 0,
-      currentMatchIndex,
-    });
     return (
       <div className="text-center p-8 bg-gray-50 rounded-lg mb-8">
         <p className="text-lg text-gray-600">No match selected. Please navigate to another match or add players.</p>
@@ -70,44 +55,17 @@ export function MatchDisplay({
   const hasPreviousMatch = currentMatchIndex > 0;
   const hasNextMatch = currentMatchIndex < matches.length - 1;
 
-  console.log("Navigation status in MatchDisplay:", {
-    hasPreviousMatch,
-    hasNextMatch,
-    currentMatchIndex,
-    matchesLength: matches.length,
-    isSubmitted: match.isSubmitted,
-    navigationBlocked
-  });
-
-  // Create memoized handlers to avoid recreation on each render
+  // Memoize navigation handlers
   const handlePreviousClick = useCallback(() => {
-    if (navigationBlocked) {
-      console.log("Navigation blocked, ignoring previous click");
-      return;
-    }
-    console.log("Previous button clicked, calling handlePreviousMatch");
     handlePreviousMatch();
-  }, [handlePreviousMatch, navigationBlocked]);
+  }, [handlePreviousMatch]);
 
   const handleNextClick = useCallback(() => {
-    if (navigationBlocked) {
-      console.log("Navigation blocked, ignoring next click");
-      return;
-    }
-    console.log("Next button clicked, calling handleNextMatch");
     handleNextMatch();
-  }, [handleNextMatch, navigationBlocked]);
+  }, [handleNextMatch]);
 
   const handleSubmitClick = useCallback(() => {
-    console.log("Submit button clicked, calling handleScoreSubmit");
-    setNavigationBlocked(true); // Block navigation during submission
     handleScoreSubmit();
-
-    // After 1.5 seconds, re-enable navigation
-    setTimeout(() => {
-      setNavigationBlocked(false);
-      console.log("Navigation re-enabled after submission timeout");
-    }, 1500);
   }, [handleScoreSubmit]);
 
   return (
@@ -124,7 +82,7 @@ export function MatchDisplay({
           <Button
             variant="outline"
             onClick={handlePreviousClick}
-            disabled={!hasPreviousMatch || navigationBlocked}
+            disabled={!hasPreviousMatch}
             className="flex-shrink-0"
           >
             <ChevronLeft className="w-6 h-6" />
@@ -135,7 +93,9 @@ export function MatchDisplay({
               <p className="text-lg font-semibold text-center">
                 {match.player1.name} & {match.player2.name}
               </p>
-              {!match.isSubmitted || isAdmin ? (
+              {match.isSubmitted && !isAdmin ? (
+                <p className="text-xl font-bold">{match.score1}</p>
+              ) : (
                 <Input
                   value={score1}
                   onChange={(e) => setScore1(e.target.value)}
@@ -145,8 +105,6 @@ export function MatchDisplay({
                   pattern="\d*"
                   disabled={match.isSubmitted && !isAdmin} // Disable if submitted and not admin
                 />
-              ) : (
-                <p className="text-xl font-bold">{match.score1}</p>
               )}
             </div>
 
@@ -154,7 +112,9 @@ export function MatchDisplay({
               <p className="text-lg font-semibold text-center">
                 {match.player3.name} & {match.player4.name}
               </p>
-              {!match.isSubmitted || isAdmin ? (
+              {match.isSubmitted && !isAdmin ? (
+                <p className="text-xl font-bold">{match.score2}</p>
+              ) : (
                 <Input
                   value={score2}
                   onChange={(e) => setScore2(e.target.value)}
@@ -164,8 +124,6 @@ export function MatchDisplay({
                   pattern="\d*"
                   disabled={match.isSubmitted && !isAdmin} // Disable if submitted and not admin
                 />
-              ) : (
-                <p className="text-xl font-bold">{match.score2}</p>
               )}
             </div>
           </div>
@@ -173,7 +131,7 @@ export function MatchDisplay({
           <Button
             variant="outline"
             onClick={handleNextClick}
-            disabled={!hasNextMatch || navigationBlocked}
+            disabled={!hasNextMatch}
             className="flex-shrink-0"
           >
             <ChevronRight className="w-6 h-6" />
@@ -185,7 +143,6 @@ export function MatchDisplay({
             <Button 
               onClick={handleSubmitClick} 
               className="w-full sm:w-auto"
-              disabled={navigationBlocked}
             >
               Submit Score
             </Button>
@@ -202,7 +159,6 @@ export function MatchDisplay({
             <Button
               onClick={() => handleEditScore(currentMatchIndex, parseInt(score1, 10) || 0, parseInt(score2, 10) || 0)}
               variant="outline"
-              disabled={navigationBlocked}
             >
               <Edit className="w-4 h-4 mr-2" />
               Edit Score

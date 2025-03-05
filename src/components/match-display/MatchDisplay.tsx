@@ -72,7 +72,7 @@ export function MatchDisplay({
         setRecentSubmission(false);
         setNavigationBlocked(false); // Re-enable navigation
         console.log("Navigation re-enabled after submission timeout");
-      }, 800); // Reduced timeout for better responsiveness
+      }, 600); // Reduced timeout for better responsiveness
 
       return () => clearTimeout(timer);
     }

@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { AdminLogin } from "@/components/AdminLogin";
@@ -248,7 +249,7 @@ export default function BeachVolleyballTracker() {
               <>
                 {hasValidMatches && matches[currentMatchIndex] ? (
                   <MatchDisplay
-                    key={`match-${gender}-${currentMatchIndex}`}
+                    key={`match-${gender}-${currentMatchIndex}-${matches.length}`} 
                     match={matches[currentMatchIndex]}
                     currentMatchIndex={currentMatchIndex}
                     matches={matches}

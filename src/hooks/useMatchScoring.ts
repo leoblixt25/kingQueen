@@ -69,8 +69,8 @@ export function useMatchScoring({
       is_submitted: true
     };
 
-    // Insert into Supabase
     try {
+      // Insert into Supabase
       const { error } = await supabase
         .from('matches')
         .insert(scoreData);
@@ -86,86 +86,74 @@ export function useMatchScoring({
       }
       
       console.log("Match saved to Supabase successfully");
-    } catch (error) {
-      console.error("Exception saving match to Supabase:", error);
-      toast({
-        title: "Error saving match",
-        description: "An unexpected error occurred",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    // Create a deep copy of the matches array to avoid state mutations
-    const newMatches = JSON.parse(JSON.stringify(matches));
-    
-    console.log("Original matches before update:", newMatches.length);
-    
-    // Update the specific match with new scores
-    newMatches[currentMatchIndex] = {
-      ...newMatches[currentMatchIndex],
-      score1: parseScore1,
-      score2: parseScore2,
-      isSubmitted: true,
-    };
-    
-    console.log("Updated match in newMatches:", newMatches[currentMatchIndex]);
-    
-    // Update player points with current scores
-    const scoreValuesForUpdate = {
-      score1: parseScore1.toString(),
-      score2: parseScore2.toString()
-    };
-    
-    try {
+
+      // Important: Create a deep copy of the matches array to avoid state mutations
+      const newMatches = [...matches.map(m => ({...m}))];
+      
+      console.log("Original matches before update:", newMatches.length);
+      
+      // Update the specific match with new scores
+      newMatches[currentMatchIndex] = {
+        ...newMatches[currentMatchIndex],
+        score1: parseScore1,
+        score2: parseScore2,
+        isSubmitted: true,
+      };
+      
+      console.log("Updated match in newMatches:", newMatches[currentMatchIndex]);
+      
+      // Update player points with current scores
+      const scoreValuesForUpdate = {
+        score1: parseScore1.toString(),
+        score2: parseScore2.toString()
+      };
+      
       await updatePlayerPoints(newMatches[currentMatchIndex], scoreValuesForUpdate);
       console.log("Player points updated successfully");
+      
+      // Create next match if we're at the end and there are enough players
+      if (currentMatchIndex === newMatches.length - 1 && players.length >= 4) {
+        console.log("Creating next match as we're at the end");
+        const nextMatch: Match = {
+          player1: players[0],
+          player2: players[1],
+          player3: players[2],
+          player4: players[3],
+          score1: 0,
+          score2: 0,
+          isSubmitted: false
+        };
+        newMatches.push(nextMatch);
+        console.log("New match added, new total:", newMatches.length);
+      }
+      
+      // Update the state with the new matches array
+      console.log("Setting matches state with updated matches:", newMatches.length);
+      setMatches(newMatches);
+      
+      toast({
+        title: "Score submitted",
+        description: `Match ${currentMatchIndex + 1} score recorded: ${parseScore1} - ${parseScore2}`,
+      });
+      
+      // Only move to the next match if there is one available
+      if (currentMatchIndex < newMatches.length - 1) {
+        // Use a short timeout to ensure state updates have time to propagate
+        setTimeout(() => {
+          console.log("Moving to next match:", currentMatchIndex + 1);
+          setCurrentMatchIndex(currentMatchIndex + 1);
+        }, 500);
+      } else {
+        console.log("Already at last match, staying at current index:", currentMatchIndex);
+      }
     } catch (error) {
-      console.error("Error updating player points:", error);
+      console.error("Exception during match submission:", error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred while saving the match",
+        variant: "destructive",
+      });
     }
-    
-    // Create next match if we're at the end and there are enough players
-    if (currentMatchIndex === newMatches.length - 1 && players.length >= 4) {
-      console.log("Creating next match as we're at the end");
-      const nextMatch: Match = {
-        player1: players[0],
-        player2: players[1],
-        player3: players[2],
-        player4: players[3],
-        score1: 0,
-        score2: 0,
-        isSubmitted: false
-      };
-      newMatches.push(nextMatch);
-      console.log("New match added, new total:", newMatches.length);
-    }
-    
-    // First update the matches state with the complete new array
-    console.log("Setting matches state with updated matches:", newMatches.length);
-    setMatches(newMatches);
-    
-    toast({
-      title: "Score submitted",
-      description: `Match ${currentMatchIndex + 1} score recorded: ${parseScore1} - ${parseScore2}`,
-    });
-    
-    // Calculate and store the next match index value
-    const shouldMoveToNext = currentMatchIndex < newMatches.length - 1;
-    const nextMatchIndex = shouldMoveToNext ? currentMatchIndex + 1 : currentMatchIndex;
-    
-    console.log("Navigation after submit:", { 
-      currentIndex: currentMatchIndex,
-      shouldMoveToNext,
-      nextMatchIndex,
-      matchesLength: newMatches.length
-    });
-    
-    // Use a longer timeout and make sure we're using the calculated nextMatchIndex value directly
-    // Do not rely on previous state
-    setTimeout(() => {
-      console.log("Setting current match index to:", nextMatchIndex);
-      setCurrentMatchIndex(nextMatchIndex);
-    }, 1000); // Increased timeout to ensure state updates have time to propagate
   };
 
   const handleEditScore = async (matchIndex: number, newScore1: number, newScore2: number) => {

@@ -3,7 +3,7 @@ import { useToast } from "@/hooks/use-toast";
 import { AdminLogin } from "@/components/AdminLogin";
 import { PlayerManagement } from "@/components/PlayerManagement";
 import { FinalMatch } from "@/components/FinalMatch";
-import { MatchDisplay } from "@/components/MatchDisplay";
+import { MatchDisplay } from "@/components/match-display";
 import { Rankings } from "@/components/Rankings";
 import { useVolleyballData } from "@/hooks/useVolleyballData";
 import { useMatchScoring } from "@/hooks/useMatchScoring";

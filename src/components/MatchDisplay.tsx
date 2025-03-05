@@ -35,7 +35,6 @@ export function MatchDisplay({
   handleEditScore,
 }: MatchDisplayProps) {
   // Add local state to track if there was a recent submission and navigation
-  const [recentSubmission, setRecentSubmission] = useState(false);
   const [navigationBlocked, setNavigationBlocked] = useState(false);
 
   console.log("MatchDisplay rendering with currentMatchIndex:", currentMatchIndex, "and matches length:", matches?.length);
@@ -43,17 +42,6 @@ export function MatchDisplay({
   // Update score inputs when match changes
   useEffect(() => {
     if (match) {
-      console.log("Match changed in MatchDisplay:", {
-        matchIndex: currentMatchIndex,
-        matchesLength: matches?.length,
-        isSubmitted: match.isSubmitted,
-        score1: match.score1,
-        score2: match.score2,
-        recentSubmission,
-        navigationBlocked
-      });
-
-      // Always set the scores to the match values
       setScore1(String(match.score1));
       setScore2(String(match.score2));
       
@@ -62,18 +50,7 @@ export function MatchDisplay({
         setNavigationBlocked(false);
       }
     }
-
-    // Reset recent submission flag after a delay
-    if (recentSubmission) {
-      const timer = setTimeout(() => {
-        setRecentSubmission(false);
-        setNavigationBlocked(false); // Re-enable navigation
-        console.log("Navigation re-enabled after submission timeout");
-      }, 1500);
-
-      return () => clearTimeout(timer);
-    }
-  }, [match, setScore1, setScore2, currentMatchIndex, recentSubmission, matches?.length, navigationBlocked]);
+  }, [match, setScore1, setScore2]);
 
   // Handle case when match is undefined
   if (!match || !matches || matches.length === 0) {
@@ -123,10 +100,14 @@ export function MatchDisplay({
 
   const handleSubmitClick = useCallback(() => {
     console.log("Submit button clicked, calling handleScoreSubmit");
-    setRecentSubmission(true);
     setNavigationBlocked(true); // Block navigation during submission
-    console.log("Navigation blocked for submission");
     handleScoreSubmit();
+
+    // After 1.5 seconds, re-enable navigation
+    setTimeout(() => {
+      setNavigationBlocked(false);
+      console.log("Navigation re-enabled after submission timeout");
+    }, 1500);
   }, [handleScoreSubmit]);
 
   return (

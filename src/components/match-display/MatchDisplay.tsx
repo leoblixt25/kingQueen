@@ -1,6 +1,6 @@
 
 import { Match } from "@/types";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { MatchNavigation } from "./MatchNavigation";
 import { MatchTeams } from "./MatchTeams";
 import { MatchControls } from "./MatchControls";
@@ -63,18 +63,20 @@ export function MatchDisplay({
         setNavigationBlocked(false);
       }
     }
+  }, [match, setScore1, setScore2, currentMatchIndex, matches?.length, navigationBlocked, recentSubmission]);
 
-    // Reset recent submission flag after a delay
+  // Reset submission state after delay - separate effect
+  useEffect(() => {
     if (recentSubmission) {
       const timer = setTimeout(() => {
         setRecentSubmission(false);
         setNavigationBlocked(false); // Re-enable navigation
         console.log("Navigation re-enabled after submission timeout");
-      }, 1500);
+      }, 800); // Reduced timeout for better responsiveness
 
       return () => clearTimeout(timer);
     }
-  }, [match, setScore1, setScore2, currentMatchIndex, recentSubmission, matches?.length, navigationBlocked]);
+  }, [recentSubmission]);
 
   // Handle case when match is undefined
   if (!match || !matches || matches.length === 0) {
@@ -103,13 +105,13 @@ export function MatchDisplay({
     navigationBlocked
   });
 
-  const onSubmitClick = () => {
+  const onSubmitClick = useCallback(() => {
     console.log("Submit button clicked, calling handleScoreSubmit");
     setRecentSubmission(true);
     setNavigationBlocked(true); // Block navigation during submission
     console.log("Navigation blocked for submission");
     handleScoreSubmit();
-  };
+  }, [handleScoreSubmit]);
 
   return (
     <MatchNavigation

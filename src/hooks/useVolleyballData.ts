@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { Match, Player, Gender } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,6 +13,7 @@ export function useVolleyballData() {
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
   const [score1, setScore1] = useState("");
   const [score2, setScore2] = useState("");
+  const [isNavigating, setIsNavigating] = useState(false);
 
   const players = gender === 'female' ? femalePlayers : malePlayers;
   const matches = gender === 'female' ? femaleMatches : maleMatches;
@@ -182,46 +182,68 @@ export function useVolleyballData() {
     setCurrentMatchIndex(0);
   };
 
-  // Make navigation functions memoized with useCallback to prevent unnecessary re-renders
   const handlePreviousMatch = useCallback(() => {
+    if (isNavigating || !matches || matches.length === 0) {
+      console.log("Navigation skipped: already navigating or no matches");
+      return;
+    }
+    
     if (currentMatchIndex > 0) {
+      setIsNavigating(true);
       console.log(`Navigation: Moving from match ${currentMatchIndex} to ${currentMatchIndex - 1}`);
+      
       setCurrentMatchIndex(prevIndex => {
         const newIndex = prevIndex - 1;
         console.log(`Navigation confirmed: New index set to ${newIndex}`);
         return newIndex;
       });
+      
+      setTimeout(() => setIsNavigating(false), 300);
     } else {
       console.log("Navigation: Cannot go to previous match (already at first)");
     }
-  }, [currentMatchIndex]);
+  }, [currentMatchIndex, matches, isNavigating]);
 
   const handleNextMatch = useCallback(() => {
-    if (matches && currentMatchIndex < matches.length - 1) {
+    if (isNavigating || !matches || matches.length === 0) {
+      console.log("Navigation skipped: already navigating or no matches");
+      return;
+    }
+    
+    if (currentMatchIndex < matches.length - 1) {
+      setIsNavigating(true);
       console.log(`Navigation: Moving from match ${currentMatchIndex} to ${currentMatchIndex + 1}`);
       console.log(`Match array length: ${matches.length}`);
+      
       setCurrentMatchIndex(prevIndex => {
         const newIndex = prevIndex + 1;
         console.log(`Navigation confirmed: New index set to ${newIndex}`);
         return newIndex;
       });
+      
+      setTimeout(() => setIsNavigating(false), 300);
     } else {
       console.log("Navigation: Cannot go to next match (already at last)");
       console.log(`Current match index: ${currentMatchIndex}, Matches length: ${matches?.length || 0}`);
     }
-  }, [currentMatchIndex, matches]);
+  }, [currentMatchIndex, matches, isNavigating]);
 
-  // Safe index check effect
   useEffect(() => {
-    if (matches && matches.length > 0 && currentMatchIndex >= matches.length) {
-      console.log(`Index correction: currentMatchIndex (${currentMatchIndex}) is out of bounds, setting to ${matches.length - 1}`);
-      setCurrentMatchIndex(matches.length - 1);
+    if (matches && matches.length > 0) {
+      if (currentMatchIndex >= matches.length) {
+        console.log(`Index correction: currentMatchIndex (${currentMatchIndex}) is out of bounds, setting to ${matches.length - 1}`);
+        setCurrentMatchIndex(matches.length - 1);
+      } else {
+        console.log(`Index check: currentMatchIndex (${currentMatchIndex}) is valid, max index is ${matches.length - 1}`);
+      }
+    } else if (matches && matches.length === 0) {
+      console.log("Index correction: No matches available, resetting to index 0");
+      setCurrentMatchIndex(0);
     }
   }, [matches, currentMatchIndex]);
 
-  // When gender changes, validate current match index
   useEffect(() => {
-    if (matches && matches.length > 0) {
+    if (matches) {
       console.log(`Gender ${gender} selected with ${matches.length} matches available`);
     }
   }, [gender, matches]);

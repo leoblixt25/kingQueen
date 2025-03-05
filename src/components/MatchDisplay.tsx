@@ -1,9 +1,10 @@
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Check, Edit, ChevronLeft, ChevronRight } from "lucide-react";
 import { Match } from "@/types";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 
 interface MatchDisplayProps {
   match: Match;
@@ -34,8 +35,11 @@ export function MatchDisplay({
   handleScoreSubmit,
   handleEditScore,
 }: MatchDisplayProps) {
-  // Add local state to track if there was a recent submission
+  // Add local state to track if there was a recent submission and navigation
   const [recentSubmission, setRecentSubmission] = useState(false);
+  const [navigationBlocked, setNavigationBlocked] = useState(false);
+
+  console.log("MatchDisplay rendering with currentMatchIndex:", currentMatchIndex, "and matches length:", matches?.length);
 
   // Update score inputs when match changes
   useEffect(() => {
@@ -47,27 +51,35 @@ export function MatchDisplay({
         score1: match.score1,
         score2: match.score2,
         recentSubmission,
+        navigationBlocked
       });
 
-      // Always set the scores to the match values, regardless of submission status
+      // Always set the scores to the match values
       setScore1(String(match.score1));
       setScore2(String(match.score2));
+      
+      // Allow navigation immediately if match is already submitted
+      if (match.isSubmitted) {
+        setNavigationBlocked(false);
+      }
     }
 
-    // Reset recent submission flag after a short delay
+    // Reset recent submission flag after a delay
     if (recentSubmission) {
       const timer = setTimeout(() => {
         setRecentSubmission(false);
-      }, 300);
+        setNavigationBlocked(false); // Re-enable navigation
+        console.log("Navigation re-enabled after submission timeout");
+      }, 1500);
 
       return () => clearTimeout(timer);
     }
-  }, [match, setScore1, setScore2, currentMatchIndex, recentSubmission]);
+  }, [match, setScore1, setScore2, currentMatchIndex, recentSubmission, matches?.length, navigationBlocked]);
 
   // Handle case when match is undefined
   if (!match || !matches || matches.length === 0) {
     console.log("No match or matches available:", {
-      match,
+      matchExists: !!match,
       matchesLength: matches?.length || 0,
       currentMatchIndex,
     });
@@ -78,7 +90,7 @@ export function MatchDisplay({
     );
   }
 
-  // Calculate navigation status locally, don't rely solely on the props
+  // Calculate navigation status locally for reliable checking
   const hasPreviousMatch = currentMatchIndex > 0;
   const hasNextMatch = currentMatchIndex < matches.length - 1;
 
@@ -88,23 +100,35 @@ export function MatchDisplay({
     currentMatchIndex,
     matchesLength: matches.length,
     isSubmitted: match.isSubmitted,
+    navigationBlocked
   });
 
-  const handlePreviousClick = () => {
+  // Create memoized handlers to avoid recreation on each render
+  const handlePreviousClick = useCallback(() => {
+    if (navigationBlocked) {
+      console.log("Navigation blocked, ignoring previous click");
+      return;
+    }
     console.log("Previous button clicked, calling handlePreviousMatch");
     handlePreviousMatch();
-  };
+  }, [handlePreviousMatch, navigationBlocked]);
 
-  const handleNextClick = () => {
+  const handleNextClick = useCallback(() => {
+    if (navigationBlocked) {
+      console.log("Navigation blocked, ignoring next click");
+      return;
+    }
     console.log("Next button clicked, calling handleNextMatch");
     handleNextMatch();
-  };
+  }, [handleNextMatch, navigationBlocked]);
 
-  const handleSubmitClick = () => {
+  const handleSubmitClick = useCallback(() => {
     console.log("Submit button clicked, calling handleScoreSubmit");
     setRecentSubmission(true);
+    setNavigationBlocked(true); // Block navigation during submission
+    console.log("Navigation blocked for submission");
     handleScoreSubmit();
-  };
+  }, [handleScoreSubmit]);
 
   return (
     <Card className="mb-8 max-w-2xl mx-auto">
@@ -120,7 +144,7 @@ export function MatchDisplay({
           <Button
             variant="outline"
             onClick={handlePreviousClick}
-            disabled={!hasPreviousMatch}
+            disabled={!hasPreviousMatch || navigationBlocked}
             className="flex-shrink-0"
           >
             <ChevronLeft className="w-6 h-6" />
@@ -169,7 +193,7 @@ export function MatchDisplay({
           <Button
             variant="outline"
             onClick={handleNextClick}
-            disabled={!hasNextMatch}
+            disabled={!hasNextMatch || navigationBlocked}
             className="flex-shrink-0"
           >
             <ChevronRight className="w-6 h-6" />
@@ -178,7 +202,11 @@ export function MatchDisplay({
 
         {!match.isSubmitted ? (
           <div className="flex justify-center">
-            <Button onClick={handleSubmitClick} className="w-full sm:w-auto">
+            <Button 
+              onClick={handleSubmitClick} 
+              className="w-full sm:w-auto"
+              disabled={navigationBlocked}
+            >
               Submit Score
             </Button>
           </div>
@@ -194,6 +222,7 @@ export function MatchDisplay({
             <Button
               onClick={() => handleEditScore(currentMatchIndex, parseInt(score1, 10) || 0, parseInt(score2, 10) || 0)}
               variant="outline"
+              disabled={navigationBlocked}
             >
               <Edit className="w-4 h-4 mr-2" />
               Edit Score

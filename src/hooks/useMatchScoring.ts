@@ -1,4 +1,3 @@
-
 import { Match, Player } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -98,10 +97,9 @@ export function useMatchScoring({
     }
     
     // Create a deep copy of the matches array to avoid state mutations
-    // Use JSON.parse/stringify for a true deep clone
     const newMatches = JSON.parse(JSON.stringify(matches));
     
-    console.log("Original matches before update:", matches.length);
+    console.log("Original matches before update:", newMatches.length);
     
     // Update the specific match with new scores
     newMatches[currentMatchIndex] = {
@@ -142,7 +140,7 @@ export function useMatchScoring({
       console.log("New match added, new total:", newMatches.length);
     }
     
-    // First update the matches state
+    // First update the matches state with the complete new array
     console.log("Setting matches state with updated matches:", newMatches.length);
     setMatches(newMatches);
     
@@ -162,12 +160,12 @@ export function useMatchScoring({
       matchesLength: newMatches.length
     });
     
-    // Use a setTimeout with a longer delay to ensure state update completes before navigation
-    // 500ms should be enough for React to process state updates
+    // Use a longer timeout and make sure we're using the calculated nextMatchIndex value directly
+    // Do not rely on previous state
     setTimeout(() => {
       console.log("Setting current match index to:", nextMatchIndex);
       setCurrentMatchIndex(nextMatchIndex);
-    }, 500);
+    }, 1000); // Increased timeout to ensure state updates have time to propagate
   };
 
   const handleEditScore = async (matchIndex: number, newScore1: number, newScore2: number) => {

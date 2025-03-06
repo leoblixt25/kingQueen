@@ -16,7 +16,7 @@ interface MatchDisplayProps {
   setScore2: (score: string) => void;
   handlePreviousMatch: () => void;
   handleNextMatch: () => void;
-  handleScoreSubmit: () => void;
+  handleScoreSubmit: (matchIndex: number, score1: number, score2: number) => void; // Updated to accept parameters
   handleEditScore: (matchIndex: number, newScore1: number, newScore2: number) => void;
 }
 
@@ -72,9 +72,9 @@ export function MatchDisplay({
   }, [handleNextMatch]);
 
   const handleSubmitClick = useCallback(() => {
-    handleScoreSubmit(); // Submit the score
-    setRecentSubmission(true); // Set submission flag
-  }, [handleScoreSubmit]);
+    handleScoreSubmit(currentMatchIndex, parseInt(score1, 10) || 0, parseInt(score2, 10) || 0); // Pass current match index and scores
+    setRecentSubmission(true);
+  }, [handleScoreSubmit, currentMatchIndex, score1, score2]);
 
   return (
     <Card className="mb-8 max-w-2xl mx-auto">

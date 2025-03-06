@@ -34,10 +34,8 @@ export function MatchDisplay({
   handleScoreSubmit,
   handleEditScore,
 }: MatchDisplayProps) {
-  // Initialize state for the submission flag
   const [recentSubmission, setRecentSubmission] = useState(false);
 
-  // Ensure score inputs are updated when the match changes
   useEffect(() => {
     if (match) {
       setScore1(String(match.score1));
@@ -45,17 +43,15 @@ export function MatchDisplay({
     }
   }, [match, setScore1, setScore2]);
 
-  // Ensure that after submission, navigation is not blocked, and we can move to other matches
   useEffect(() => {
     if (recentSubmission) {
       const timer = setTimeout(() => {
-        setRecentSubmission(false); // Reset the submission flag
-      }, 1500); // Let the submission "lock" for a short period
-      return () => clearTimeout(timer); // Cleanup the timer
+        setRecentSubmission(false);
+      }, 1500);
+      return () => clearTimeout(timer);
     }
   }, [recentSubmission]);
 
-  // Handle case when no match is selected
   if (!match || !matches || matches.length === 0) {
     return (
       <div className="text-center p-8 bg-gray-50 rounded-lg mb-8">
@@ -64,22 +60,20 @@ export function MatchDisplay({
     );
   }
 
-  // Calculate navigation status based on the current index
   const hasPreviousMatch = currentMatchIndex > 0;
   const hasNextMatch = currentMatchIndex < matches.length - 1;
 
-  // Memoized handlers for navigation
   const handlePreviousClick = useCallback(() => {
-    handlePreviousMatch(); // Navigate to the previous match
+    handlePreviousMatch();
   }, [handlePreviousMatch]);
 
   const handleNextClick = useCallback(() => {
-    handleNextMatch(); // Navigate to the next match
+    handleNextMatch();
   }, [handleNextMatch]);
 
   const handleSubmitClick = useCallback(() => {
-    setRecentSubmission(true);
-    handleScoreSubmit(); // Submit the score and mark the match as submitted
+    handleScoreSubmit(); // Submit the score
+    setRecentSubmission(true); // Set submission flag
   }, [handleScoreSubmit]);
 
   return (
@@ -96,7 +90,7 @@ export function MatchDisplay({
           <Button
             variant="outline"
             onClick={handlePreviousClick}
-            disabled={!hasPreviousMatch} // Disabled if no previous match
+            disabled={!hasPreviousMatch}
             className="flex-shrink-0"
           >
             <ChevronLeft className="w-6 h-6" />
@@ -117,7 +111,7 @@ export function MatchDisplay({
                   className="w-20 text-center"
                   inputMode="numeric"
                   pattern="\d*"
-                  disabled={match.isSubmitted && !isAdmin} // Disable if submitted and not admin
+                  disabled={match.isSubmitted && !isAdmin}
                 />
               )}
             </div>
@@ -136,7 +130,7 @@ export function MatchDisplay({
                   className="w-20 text-center"
                   inputMode="numeric"
                   pattern="\d*"
-                  disabled={match.isSubmitted && !isAdmin} // Disable if submitted and not admin
+                  disabled={match.isSubmitted && !isAdmin}
                 />
               )}
             </div>
@@ -145,7 +139,7 @@ export function MatchDisplay({
           <Button
             variant="outline"
             onClick={handleNextClick}
-            disabled={!hasNextMatch} // Disabled if no next match
+            disabled={!hasNextMatch}
             className="flex-shrink-0"
           >
             <ChevronRight className="w-6 h-6" />

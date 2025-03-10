@@ -60,7 +60,7 @@ export function useScoreSubmission({
       await saveMatchToDatabase(currentMatch, parseScore1, parseScore2);
       
       // Create a deep copy of the matches array
-      const newMatches = [...matches.map(m => ({...m}))];
+      const newMatches = JSON.parse(JSON.stringify(matches));
       
       console.log("Original matches before update:", newMatches.length);
       
@@ -114,7 +114,7 @@ export function useScoreSubmission({
         setTimeout(() => {
           console.log("Moving to next match:", currentMatchIndex + 1);
           setCurrentMatchIndex(currentMatchIndex + 1);
-        }, 500);
+        }, 300);
       } else {
         console.log("Already at last match, staying at current index:", currentMatchIndex);
       }

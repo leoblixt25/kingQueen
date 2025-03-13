@@ -1,170 +1,409 @@
-
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
-import { AdminLogin } from "@/components/AdminLogin";
-import { PlayerManagement } from "@/components/PlayerManagement";
-import { FinalMatch } from "@/components/FinalMatch";
-import { MatchDisplay } from "@/components/match-display";
-import { Rankings } from "@/components/Rankings";
-import { useVolleyballData } from "@/hooks/useVolleyballData";
-import { useMatchScoring } from "@/hooks/useMatchScoring";
-import { useFinalMatch } from "@/hooks/useFinalMatch";
-import { usePlayerManagement } from "@/hooks/usePlayerManagement";
-import { useAdminControls } from "@/hooks/useAdminControls";
-import { useEffect, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Check, Edit, Trash, Crown, UserPlus, UserMinus, UserX, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Gender, Match, Player, FinalMatchScores, FinalMatchWinner } from "@/types";
+import { db } from "@/lib/firebase";
+import { ref, onValue, set } from "firebase/database";
+
+const initialFemalePlayers: Player[] = [
+  { name: "Lakota", points: 0, totalScores: 0 },
+  { name: "Lidia", points: 0, totalScores: 0 },
+  { name: "Giulia", points: 0, totalScores: 0 },
+  { name: "Dina", points: 0, totalScores: 0 },
+  { name: "Catalina", points: 0, totalScores: 0 },
+  { name: "Izel", points: 0, totalScores: 0 },
+  { name: "Marta", points: 0, totalScores: 0 },
+  { name: "Eli", points: 0, totalScores: 0 },
+];
+
+const initialMalePlayers: Player[] = [
+  { name: "Giacomo", points: 0, totalScores: 0 },
+  { name: "David", points: 0, totalScores: 0 },
+  { name: "Javi", points: 0, totalScores: 0 },
+  { name: "Mauro", points: 0, totalScores: 0 },
+  { name: "Mattia", points: 0, totalScores: 0 },
+  { name: "Dani", points: 0, totalScores: 0 },
+  { name: "Leo", points: 0, totalScores: 0 },
+  { name: "Samuel", points: 0, totalScores: 0 },
+];
+
+const initialFemaleMatches: Match[] = [
+  { player1: initialFemalePlayers[0], player2: initialFemalePlayers[1], player3: initialFemalePlayers[2], player4: initialFemalePlayers[3], score1: 0, score2: 0, isSubmitted: false },
+  { player1: initialFemalePlayers[4], player2: initialFemalePlayers[5], player3: initialFemalePlayers[6], player4: initialFemalePlayers[7], score1: 0, score2: 0, isSubmitted: false },
+  { player1: initialFemalePlayers[5], player2: initialFemalePlayers[6], player3: initialFemalePlayers[7], player4: initialFemalePlayers[0], score1: 0, score2: 0, isSubmitted: false },
+  { player1: initialFemalePlayers[3], player2: initialFemalePlayers[4], player3: initialFemalePlayers[1], player4: initialFemalePlayers[2], score1: 0, score2: 0, isSubmitted: false },
+  { player1: initialFemalePlayers[6], player2: initialFemalePlayers[3], player3: initialFemalePlayers[4], player4: initialFemalePlayers[1], score1: 0, score2: 0, isSubmitted: false },
+  { player1: initialFemalePlayers[0], player2: initialFemalePlayers[2], player3: initialFemalePlayers[7], player4: initialFemalePlayers[5], score1: 0, score2: 0, isSubmitted: false },
+  { player1: initialFemalePlayers[2], player2: initialFemalePlayers[4], player3: initialFemalePlayers[3], player4: initialFemalePlayers[7], score1: 0, score2: 0, isSubmitted: false },
+  { player1: initialFemalePlayers[1], player2: initialFemalePlayers[6], player3: initialFemalePlayers[5], player4: initialFemalePlayers[0], score1: 0, score2: 0, isSubmitted: false },
+  { player1: initialFemalePlayers[5], player2: initialFemalePlayers[3], player3: initialFemalePlayers[6], player4: initialFemalePlayers[2], score1: 0, score2: 0, isSubmitted: false },
+  { player1: initialFemalePlayers[7], player2: initialFemalePlayers[1], player3: initialFemalePlayers[0], player4: initialFemalePlayers[4], score1: 0, score2: 0, isSubmitted: false },
+  { player1: initialFemalePlayers[2], player2: initialFemalePlayers[7], player3: initialFemalePlayers[1], player4: initialFemalePlayers[5], score1: 0, score2: 0, isSubmitted: false },
+  { player1: initialFemalePlayers[3], player2: initialFemalePlayers[0], player3: initialFemalePlayers[4], player4: initialFemalePlayers[6], score1: 0, score2: 0, isSubmitted: false },
+  { player1: initialFemalePlayers[7], player2: initialFemalePlayers[4], player3: initialFemalePlayers[0], player4: initialFemalePlayers[6], score1: 0, score2: 0, isSubmitted: false },
+  { player1: initialFemalePlayers[5], player2: initialFemalePlayers[2], player3: initialFemalePlayers[6], player4: initialFemalePlayers[1], score1: 0, score2: 0, isSubmitted: false },
+];
+
+const initialMaleMatches: Match[] = [
+  { player1: initialMalePlayers[0], player2: initialMalePlayers[1], player3: initialMalePlayers[2], player4: initialMalePlayers[3], score1: 0, score2: 0, isSubmitted: false },
+  { player1: initialMalePlayers[4], player2: initialMalePlayers[5], player3: initialMalePlayers[6], player4: initialMalePlayers[7], score1: 0, score2: 0, isSubmitted: false },
+  { player1: initialMalePlayers[5], player2: initialMalePlayers[6], player3: initialMalePlayers[7], player4: initialMalePlayers[0], score1: 0, score2: 0, isSubmitted: false },
+  { player1: initialMalePlayers[3], player2: initialMalePlayers[4], player3: initialMalePlayers[1], player4: initialMalePlayers[2], score1: 0, score2: 0, isSubmitted: false },
+  { player1: initialMalePlayers[6], player2: initialMalePlayers[3], player3: initialMalePlayers[4], player4: initialMalePlayers[1], score1: 0, score2: 0, isSubmitted: false },
+  { player1: initialMalePlayers[0], player2: initialMalePlayers[2], player3: initialMalePlayers[7], player4: initialMalePlayers[5], score1: 0, score2: 0, isSubmitted: false },
+  { player1: initialMalePlayers[2], player2: initialMalePlayers[4], player3: initialMalePlayers[3], player4: initialMalePlayers[7], score1: 0, score2: 0, isSubmitted: false },
+  { player1: initialMalePlayers[1], player2: initialMalePlayers[6], player3: initialMalePlayers[5], player4: initialMalePlayers[0], score1: 0, score2: 0, isSubmitted: false },
+  { player1: initialMalePlayers[5], player2: initialMalePlayers[3], player3: initialMalePlayers[6], player4: initialMalePlayers[2], score1: 0, score2: 0, isSubmitted: false },
+  { player1: initialMalePlayers[7], player2: initialMalePlayers[1], player3: initialMalePlayers[0], player4: initialMalePlayers[4], score1: 0, score2: 0, isSubmitted: false },
+  { player1: initialMalePlayers[2], player2: initialMalePlayers[7], player3: initialMalePlayers[1], player4: initialMalePlayers[5], score1: 0, score2: 0, isSubmitted: false },
+  { player1: initialMalePlayers[3], player2: initialMalePlayers[0], player3: initialMalePlayers[4], player4: initialMalePlayers[6], score1: 0, score2: 0, isSubmitted: false },
+  { player1: initialMalePlayers[7], player2: initialMalePlayers[4], player3: initialMalePlayers[0], player4: initialMalePlayers[6], score1: 0, score2: 0, isSubmitted: false },
+  { player1: initialMalePlayers[5], player2: initialMalePlayers[2], player3: initialMalePlayers[6], player4: initialMalePlayers[1], score1: 0, score2: 0, isSubmitted: false },
+];
 
 export default function BeachVolleyballTracker() {
-  const { toast } = useToast();
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
-  
-  // Use our custom hooks
-  const {
-    gender,
-    setGender,
-    players,
-    femalePlayers,
-    malePlayers,
-    matches,
-    setMatches,
-    setPlayers,
-    createInitialMatches,
-    handleGenderChange,
-    currentMatchIndex,
-    setCurrentMatchIndex,
-    score1,
-    setScore1,
-    score2,
-    setScore2,
-    handlePreviousMatch,
-    handleNextMatch,
-    updatePlayerPoints
-  } = useVolleyballData();
+  const [gender, setGender] = useState<Gender>("female");
+  const [femalePlayers, setFemalePlayers] = useState<Player[]>(initialFemalePlayers);
+  const [malePlayers, setMalePlayers] = useState<Player[]>(initialMalePlayers);
+  const [femaleMatches, setFemaleMatches] = useState<Match[]>(initialFemaleMatches);
+  const [maleMatches, setMaleMatches] = useState<Match[]>(initialMaleMatches);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
+  const [score1, setScore1] = useState("");
+  const [score2, setScore2] = useState("");
+  const [finalMatchScores, setFinalMatchScores] = useState<FinalMatchScores>({
+    team1: [null, null, null],
+    team2: [null, null, null],
+  });
+  const [finalMatchSubmitted, setFinalMatchSubmitted] = useState(false);
+  const [adminUsername, setAdminUsername] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
+  const [showLoginForm, setShowLoginForm] = useState(false);
+  const [showFinalMatch, setShowFinalMatch] = useState(false);
+  const [isEditingFinalMatch, setIsEditingFinalMatch] = useState(false);
+  const [finalMatchWinner, setFinalMatchWinner] = useState<FinalMatchWinner>(null);
+  const [selectedPlayerToReplace, setSelectedPlayerToReplace] = useState<Player | null>(null);
+  const [newPlayerName, setNewPlayerName] = useState("");
+  const [newPlayerGender, setNewPlayerGender] = useState<Gender>("female");
+  const [showPlayerManagement, setShowPlayerManagement] = useState(false);
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  const [replacementName, setReplacementName] = useState("");
 
-  const { 
-    handleScoreSubmit, 
-    handleEditScore 
-  } = useMatchScoring({
-    matches,
-    setMatches,
-    currentMatchIndex,
-    setCurrentMatchIndex,
-    score1,
-    score2,
-    setScore1,
-    setScore2,
-    updatePlayerPoints,
-    players
+  useEffect(() => {
+    const femaleDatabaseRef = ref(db, 'female');
+    const maleDatabaseRef = ref(db, 'male');
+    const finalMatchRef = ref(db, 'finalMatch');
+
+    const femaleUnsubscribe = onValue(femaleDatabaseRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        if (data.players) setFemalePlayers(data.players);
+        if (data.matches) setFemaleMatches(data.matches);
+      }
+    });
+
+    const maleUnsubscribe = onValue(maleDatabaseRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        if (data.players) setMalePlayers(data.players);
+        if (data.matches) setMaleMatches(data.matches);
+      }
+    });
+
+    const finalMatchUnsubscribe = onValue(finalMatchRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        if (data.scores) setFinalMatchScores(data.scores);
+        if (data.winner) setFinalMatchWinner(data.winner);
+        if (data.submitted !== undefined) setFinalMatchSubmitted(data.submitted);
+      }
+    });
+
+    return () => {
+      femaleUnsubscribe();
+      maleUnsubscribe();
+      finalMatchUnsubscribe();
+    };
+  }, []);
+
+  const players = gender === 'female' ? femalePlayers : malePlayers;
+  const matches = gender === 'female' ? femaleMatches : maleMatches;
+  const setMatches = gender === 'female' ? setFemaleMatches : setMaleMatches;
+  const setPlayers = gender === 'female' ? setFemalePlayers : setMalePlayers;
+
+  const topPlayers = players.slice().sort((a, b) => {
+    if (b.points === a.points) {
+      return b.totalScores - a.totalScores;
+    }
+    return b.points - a.points;
   });
 
-  const {
-    showFinalMatch,
-    setShowFinalMatch,
-    finalMatchScores,
-    setFinalMatchScores,
-    finalMatchSubmitted,
-    isEditingFinalMatch,
-    finalMatchWinner,
-    handleFinalMatchSubmit,
-    handleEditFinalMatch,
-    handleFinalMatchEditSubmit,
-    handleResetFinalMatch
-  } = useFinalMatch();
+  const handleScoreSubmit = () => {
+    const newMatches = [...matches]
+    newMatches[currentMatchIndex] = {
+      ...newMatches[currentMatchIndex],
+      score1: parseInt(score1, 10) || 0,
+      score2: parseInt(score2, 10) || 0,
+      isSubmitted: true,
+    }
+    setMatches(newMatches)
+    updatePlayerPoints(newMatches[currentMatchIndex])
+    setScore1('')
+    setScore2('')
+  }
 
-  const {
-    showPlayerManagement,
-    setShowPlayerManagement,
-    newPlayerName,
-    setNewPlayerName,
-    selectedPlayer,
-    setSelectedPlayer,
-    replacementName,
-    setReplacementName,
-    handleAddPlayer,
-    handleRemovePlayer,
-    handleReplacePlayer
-  } = usePlayerManagement({
-    players,
-    setPlayers,
-    gender,
-    matches,
-    setMatches,
-    createInitialMatches
-  });
+  const updatePlayerPoints = (match: Match) => {
+    const { player1, player2, player3, player4, score1, score2 } = match
+    const newPlayers = [...players]
+    const player1Index = newPlayers.findIndex(p => p.name === player1.name)
+    const player2Index = newPlayers.findIndex(p => p.name === player2.name)
+    const player3Index = newPlayers.findIndex(p => p.name === player3.name)
+    const player4Index = newPlayers.findIndex(p => p.name === player4.name)
 
-  const {
-    isAdmin,
-    setIsAdmin,
-    adminUsername,
-    setAdminUsername,
-    adminPassword,
-    setAdminPassword,
-    showLoginForm,
-    setShowLoginForm,
-    handleAdminLogin,
-    handleAdminLogout,
-    handleResetScores
-  } = useAdminControls({
-    gender,
-    players,
-    matches,
-    setPlayers,
-    createInitialMatches,
-    setCurrentMatchIndex
-  });
-  
-  const handleFinalMatchSubmitWrapper = () => {
-    handleFinalMatchSubmit(malePlayers, femalePlayers);
+    if (score1 > score2) {
+      newPlayers[player1Index].points += 2
+      newPlayers[player2Index].points += 2
+      newPlayers[player3Index].points += 1
+      newPlayers[player4Index].points += 1
+    } else {
+      newPlayers[player1Index].points += 1
+      newPlayers[player2Index].points += 1
+      newPlayers[player3Index].points += 2
+      newPlayers[player4Index].points += 2
+    }
+
+    newPlayers[player1Index].totalScores += score1
+    newPlayers[player2Index].totalScores += score1
+    newPlayers[player3Index].totalScores += score2
+    newPlayers[player4Index].totalScores += score2
+
+    setPlayers(newPlayers.sort((a, b) => {
+      if (b.points === a.points) {
+        return b.totalScores - a.totalScores;
+      }
+      return b.points - a.points;
+    }))
+  }
+
+  const handleAdminLogin = () => {
+    if (adminUsername === 'leo' && adminPassword === 'Woodgoat22!!') {
+      setIsAdmin(true)
+      setShowLoginForm(false)
+    } else {
+      alert('Invalid username or password')
+    }
+  }
+
+  const handleAdminLogout = () => {
+    setIsAdmin(false)
+  }
+
+  const handleResetScores = () => {
+    const newFemalePlayers = femalePlayers.map(player => ({ ...player, points: 0, totalScores: 0 }))
+    setFemalePlayers(newFemalePlayers)
+    const newMalePlayers = malePlayers.map(player => ({ ...player, points: 0, totalScores: 0 }))
+    setMalePlayers(newMalePlayers)
+    const newFemaleMatches = femaleMatches.map(match => ({ ...match, score1: 0, score2: 0, isSubmitted: false }))
+    setFemaleMatches(newFemaleMatches)
+    const newMaleMatches = maleMatches.map(match => ({ ...match, score1: 0, score2: 0, isSubmitted: false }))
+    setMaleMatches(newMaleMatches)
+  }
+
+  const handleEditScore = (matchIndex: number, newScore1: number, newScore2: number) => {
+    const newMatches = [...matches]
+    const oldMatch = newMatches[matchIndex]
+    newMatches[matchIndex] = {
+      ...newMatches[matchIndex],
+      score1: newScore1,
+      score2: newScore2,
+      isSubmitted: true,
+    }
+
+    const oldPlayers = [...players]
+    const oldPlayer1Index = oldPlayers.findIndex(p => p.name === oldMatch.player1.name)
+    const oldPlayer2Index = oldPlayers.findIndex(p => p.name === oldMatch.player2.name)
+    const oldPlayer3Index = oldPlayers.findIndex(p => p.name === oldMatch.player3.name)
+    const oldPlayer4Index = oldPlayers.findIndex(p => p.name === oldMatch.player4.name)
+
+    oldPlayers[oldPlayer1Index].points -= oldMatch.score1 > oldMatch.score2 ? 2 : 1
+    oldPlayers[oldPlayer2Index].points -= oldMatch.score1 > oldMatch.score2 ? 2 : 1
+    oldPlayers[oldPlayer3Index].points -= oldMatch.score1 > oldMatch.score2 ? 1 : 2
+    oldPlayers[oldPlayer4Index].points -= oldMatch.score1 > oldMatch.score2 ? 1 : 2
+
+    oldPlayers[oldPlayer1Index].totalScores -= oldMatch.score1
+    oldPlayers[oldPlayer2Index].totalScores -= oldMatch.score1
+    oldPlayers[oldPlayer3Index].totalScores -= oldMatch.score2
+    oldPlayers[oldPlayer4Index].totalScores -= oldMatch.score2
+
+    updatePlayerPoints(newMatches[matchIndex])
+
+    setMatches(newMatches)
+    setPlayers(oldPlayers.sort((a, b) => {
+      if (b.points === a.points) {
+        return b.totalScores - a.totalScores;
+      }
+      return b.points - a.points;
+    }))
+  }
+
+  const handleFinalMatchSubmit = () => {
+    const team1Scores = finalMatchScores.team1.filter(score => score !== null) as number[]
+    const team2Scores = finalMatchScores.team2.filter(score => score !== null) as number[]
+
+    const team1Wins = team1Scores.filter((score, index) => score > (team2Scores[index] || 0)).length
+    const team2Wins = team2Scores.filter((score, index) => score > (team1Scores[index] || 0)).length
+
+    let winner: FinalMatchWinner = null
+    if (team1Wins > team2Wins) {
+      winner = {
+        team: 'team1',
+        malePlayer: malePlayers[0].name,
+        femalePlayer: femalePlayers[1].name,
+        losingMalePlayer: malePlayers[1].name,
+        losingFemalePlayer: femalePlayers[0].name,
+      }
+    } else if (team2Wins > team1Wins) {
+      winner = {
+        team: 'team2',
+        malePlayer: malePlayers[1].name,
+        femalePlayer: femalePlayers[0].name,
+        losingMalePlayer: malePlayers[0].name,
+        losingFemalePlayer: femalePlayers[1].name,
+      }
+    }
+
+    setFinalMatchWinner(winner)
+    setFinalMatchSubmitted(true)
+  }
+
+  const handleEditFinalMatch = () => {
+    setIsEditingFinalMatch(true)
+  }
+
+  const handleFinalMatchEditSubmit = () => {
+    setIsEditingFinalMatch(false)
+  }
+
+  const handleResetFinalMatch = () => {
+    setFinalMatchScores({ team1: [null, null, null], team2: [null, null, null] })
+    setFinalMatchSubmitted(false)
+    setFinalMatchWinner(null)
+  }
+
+  const handleAddPlayer = () => {
+    if (!newPlayerName.trim()) return;
+    
+    const newPlayer: Player = {
+      name: newPlayerName,
+      points: 0,
+      totalScores: 0,
+    };
+
+    const updatedPlayers = [...players, newPlayer];
+    set(ref(db, `${gender}/players`), updatedPlayers);
+    setNewPlayerName("");
   };
 
-  const hasValidMatches = Array.isArray(matches) && matches.length > 0;
+  const handleRemovePlayer = (playerToRemove: Player) => {
+    const updatedPlayers = players.filter(p => p.name !== playerToRemove.name);
+    const updatedMatches = matches.filter(match => 
+      match.player1.name !== playerToRemove.name &&
+      match.player2.name !== playerToRemove.name &&
+      match.player3.name !== playerToRemove.name &&
+      match.player4.name !== playerToRemove.name
+    );
 
-  useEffect(() => {
-    console.log("Current matches:", matches);
-    console.log("Current index:", currentMatchIndex);
-    console.log("Has valid matches:", hasValidMatches);
-    
-    if (matches && matches.length > 0) {
-      console.log("Current match:", matches[currentMatchIndex]);
-      console.log("Navigation status:", { 
-        hasPrevious: currentMatchIndex > 0, 
-        hasNext: currentMatchIndex < matches.length - 1 
-      });
-    }
-    
-    if (isInitialLoad && hasValidMatches) {
-      console.log("Initial data loaded successfully");
-      setIsInitialLoad(false);
-      
-      toast({
-        title: "Ready to play!",
-        description: `${matches.length} matches available for ${gender} players.`,
-      });
-    }
-  }, [matches, currentMatchIndex, hasValidMatches, gender, isInitialLoad, toast]);
+    set(ref(db, `${gender}/players`), updatedPlayers);
+    set(ref(db, `${gender}/matches`), updatedMatches);
+  };
 
-  useEffect(() => {
-    if (hasValidMatches && currentMatchIndex >= matches.length) {
-      console.log("Fixing currentMatchIndex:", { currentMatchIndex, matchesLength: matches.length });
-      setCurrentMatchIndex(matches.length - 1);
+  const handleReplacePlayer = () => {
+    if (!selectedPlayer || !replacementName.trim()) return;
+
+    const newPlayer: Player = {
+      name: replacementName,
+      points: selectedPlayer.points,
+      totalScores: selectedPlayer.totalScores,
+    };
+
+    const updatedPlayers = players.map(p => 
+      p.name === selectedPlayer.name ? newPlayer : p
+    );
+
+    const updatedMatches = matches.map(match => ({
+      ...match,
+      player1: match.player1.name === selectedPlayer.name ? newPlayer : match.player1,
+      player2: match.player2.name === selectedPlayer.name ? newPlayer : match.player2,
+      player3: match.player3.name === selectedPlayer.name ? newPlayer : match.player3,
+      player4: match.player4.name === selectedPlayer.name ? newPlayer : match.player4,
+    }));
+
+    set(ref(db, `${gender}/players`), updatedPlayers);
+    set(ref(db, `${gender}/matches`), updatedMatches);
+
+    setSelectedPlayer(null);
+    setReplacementName("");
+  };
+
+  const currentMatch = matches[currentMatchIndex];
+  const hasMatches = matches.length > 0;
+
+  const handleGenerateMatches = () => {
+    if (gender === 'female') {
+      set(ref(db, 'female/matches'), initialFemaleMatches);
+      setFemaleMatches(initialFemaleMatches);
+      setCurrentMatchIndex(0);
+    } else {
+      set(ref(db, 'male/matches'), initialMaleMatches);
+      setMaleMatches(initialMaleMatches);
+      setCurrentMatchIndex(0);
     }
-  }, [matches, currentMatchIndex, hasValidMatches, setCurrentMatchIndex]);
+
+    const resetPlayers = players.map(player => ({
+      ...player,
+      points: 0,
+      totalScores: 0,
+    }));
+    set(ref(db, `${gender}/players`), resetPlayers);
+    setPlayers(resetPlayers);
+  };
+
+  const handlePreviousMatch = () => {
+    if (currentMatchIndex > 0) {
+      setCurrentMatchIndex(currentMatchIndex - 1);
+      setScore1('');
+      setScore2('');
+    }
+  };
+
+  const handleNextMatch = () => {
+    if (currentMatchIndex < matches.length - 1) {
+      setCurrentMatchIndex(currentMatchIndex + 1);
+      setScore1('');
+      setScore2('');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <header className="mb-8">
-          <div className="relative flex flex-col sm:flex-row justify-center items-center gap-4">
-            <div className="flex flex-wrap justify-center items-center gap-2">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div className="flex flex-wrap items-center gap-2">
               <Button 
                 variant={gender === 'female' ? "default" : "outline"} 
-                onClick={() => handleGenderChange('female')}
+                onClick={() => { setGender('female'); setShowFinalMatch(false); }}
                 className="w-full sm:w-auto"
               >
                 Female
               </Button>
               <Button 
                 variant={gender === 'male' ? "default" : "outline"}
-                onClick={() => handleGenderChange('male')}
+                onClick={() => { setGender('male'); setShowFinalMatch(false); }}
                 className="w-full sm:w-auto"
               >
                 Male
@@ -186,31 +425,23 @@ export default function BeachVolleyballTracker() {
                     Manage Players
                   </Button>
                   <Button
-                    variant="destructive"
-                    onClick={handleResetScores}
+                    variant="outline"
+                    onClick={handleGenerateMatches}
                     className="w-full sm:w-auto"
                   >
-                    Reset Scores
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Generate Matches
                   </Button>
                 </>
               )}
             </div>
-            <div className="sm:absolute sm:right-0 sm:top-0">
+            <div className="flex items-center gap-2">
               {!isAdmin ? (
-                <Button 
-                  variant="outline" 
-                  onClick={() => setShowLoginForm(true)}
-                  size="sm"
-                  className="text-sm bg-gray-50"
-                >
+                <Button variant="outline" onClick={() => setShowLoginForm(true)}>
                   Admin Login
                 </Button>
               ) : (
-                <Button 
-                  variant="destructive" 
-                  onClick={handleAdminLogout}
-                  size="sm"
-                >
+                <Button variant="destructive" onClick={handleAdminLogout}>
                   Logout
                 </Button>
               )}
@@ -219,87 +450,143 @@ export default function BeachVolleyballTracker() {
         </header>
 
         {showLoginForm && (
-          <AdminLogin
-            adminUsername={adminUsername}
-            adminPassword={adminPassword}
-            setAdminUsername={setAdminUsername}
-            setAdminPassword={setAdminPassword}
-            handleAdminLogin={handleAdminLogin}
-          />
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle>Admin Login</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="adminUsername">Username</Label>
+                <Input
+                  id="adminUsername"
+                  value={adminUsername}
+                  onChange={(e) => setAdminUsername(e.target.value)}
+                  type="text"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="adminPassword">Password</Label>
+                <Input
+                  id="adminPassword"
+                  value={adminPassword}
+                  onChange={(e) => setAdminPassword(e.target.value)}
+                  type="password"
+                />
+              </div>
+              <Button onClick={handleAdminLogin} className="w-full">Login</Button>
+            </CardContent>
+          </Card>
         )}
 
-        {!showLoginForm && (
-          <main>
-            {showFinalMatch ? (
-              <FinalMatch
-                malePlayers={malePlayers}
-                femalePlayers={femalePlayers}
-                finalMatchScores={finalMatchScores}
-                setFinalMatchScores={setFinalMatchScores}
-                finalMatchSubmitted={finalMatchSubmitted}
-                isEditingFinalMatch={isEditingFinalMatch}
-                finalMatchWinner={finalMatchWinner}
-                isAdmin={isAdmin}
-                handleFinalMatchSubmit={handleFinalMatchSubmitWrapper}
-                handleEditFinalMatch={handleEditFinalMatch}
-                handleResetFinalMatch={handleResetFinalMatch}
-                handleFinalMatchEditSubmit={handleFinalMatchEditSubmit}
-              />
-            ) : (
-              <>
-                {hasValidMatches && matches[currentMatchIndex] ? (
-                  <MatchDisplay
-                    key={`match-${gender}-${currentMatchIndex}-${matches.length}`} 
-                    match={matches[currentMatchIndex]}
-                    currentMatchIndex={currentMatchIndex}
-                    matches={matches}
-                    score1={score1}
-                    score2={score2}
-                    isAdmin={isAdmin}
-                    setScore1={setScore1}
-                    setScore2={setScore2}
-                    handlePreviousMatch={handlePreviousMatch}
-                    handleNextMatch={handleNextMatch}
-                    handleScoreSubmit={handleScoreSubmit}
-                    handleEditScore={handleEditScore}
-                  />
-                ) : (
-                  <div className="text-center p-8 bg-gray-50 rounded-lg mb-8">
-                    <p className="text-lg text-gray-600">
-                      {matches && matches.length > 0 
-                        ? "Loading match data..." 
-                        : "No matches available. Add at least 4 players to create matches."}
-                    </p>
-                    {isAdmin && (
+        {!showLoginForm && !showFinalMatch && (
+          <>
+            {hasMatches ? (
+              <Card className="mb-8">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-2xl font-bold">
+                      Match {currentMatchIndex + 1} of {matches.length}
+                    </CardTitle>
+                    <div className="flex gap-2">
                       <Button 
-                        onClick={() => setShowPlayerManagement(true)}
-                        className="mt-4"
+                        variant="outline" 
+                        onClick={handlePreviousMatch}
+                        disabled={currentMatchIndex === 0}
                       >
-                        Manage Players
+                        <ChevronLeft className="w-4 h-4" />
+                        Previous
                       </Button>
-                    )}
+                      <Button 
+                        variant="outline" 
+                        onClick={handleNextMatch}
+                        disabled={currentMatchIndex === matches.length - 1}
+                      >
+                        Next
+                        <ChevronRight className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
-                )}
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {currentMatch && (
+                    <>
+                      <div className="space-y-4">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                          <p className="text-lg font-semibold min-w-[200px]">
+                            {currentMatch.player1.name} & {currentMatch.player2.name}
+                          </p>
+                          {!currentMatch.isSubmitted || isAdmin ? (
+                            <Input
+                              value={currentMatch.isSubmitted && !isAdmin ? currentMatch.score1 : score1}
+                              onChange={(e) => setScore1(e.target.value)}
+                              type="number"
+                              className="w-20"
+                              inputMode="numeric"
+                              pattern="\d*"
+                              disabled={currentMatch.isSubmitted && !isAdmin}
+                            />
+                          ) : (
+                            <p className="text-xl font-bold">{currentMatch.score1}</p>
+                          )}
+                        </div>
 
-                <Rankings players={players} />
-              </>
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                          <p className="text-lg font-semibold min-w-[200px]">
+                            {currentMatch.player3.name} & {currentMatch.player4.name}
+                          </p>
+                          {!currentMatch.isSubmitted || isAdmin ? (
+                            <Input
+                              value={currentMatch.isSubmitted && !isAdmin ? currentMatch.score2 : score2}
+                              onChange={(e) => setScore2(e.target.value)}
+                              type="number"
+                              className="w-20"
+                              inputMode="numeric"
+                              pattern="\d*"
+                              disabled={currentMatch.isSubmitted && !isAdmin}
+                            />
+                          ) : (
+                            <p className="text-xl font-bold">{currentMatch.score2}</p>
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="flex flex-col items-center justify-center mb-8">
+                <p className="text-2xl font-bold">No matches found</p>
+              </div>
             )}
-          </main>
-        )}
 
-        {!showLoginForm && isAdmin && showPlayerManagement && (
-          <PlayerManagement
-            players={players}
-            newPlayerName={newPlayerName}
-            setNewPlayerName={setNewPlayerName}
-            handleAddPlayer={handleAddPlayer}
-            selectedPlayer={selectedPlayer}
-            setSelectedPlayer={setSelectedPlayer}
-            replacementName={replacementName}
-            setReplacementName={setReplacementName}
-            handleReplacePlayer={handleReplacePlayer}
-            handleRemovePlayer={handleRemovePlayer}
-          />
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-2xl font-bold">Rankings</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {topPlayers.map((player, index) => (
+                    <div
+                      key={player.name}
+                      className="flex items-center justify-between border-b border-gray-200 pb-4 last:border-0 last:pb-0"
+                    >
+                      <div className="flex items-center gap-4">
+                        <span className="text-lg font-semibold">{index + 1}</span>
+                        <div>
+                          <p className="font-semibold">{player.name}</p>
+                          <p className="text-sm text-gray-500">Total Score: {player.totalScores}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl font-bold">{player.points}</span>
+                        <span className="text-sm text-gray-500">points</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </>
         )}
       </div>
     </div>

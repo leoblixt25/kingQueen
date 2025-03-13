@@ -2,15 +2,12 @@
 export type Gender = "male" | "female";
 
 export type Player = {
-  id?: string;
   name: string;
   points: number;
   totalScores: number;
-  gender?: Gender;
 };
 
 export type Match = {
-  id?: string;
   player1: Player;
   player2: Player;
   player3: Player;

@@ -1,10 +1,9 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Check, Edit, Trash, Crown } from "lucide-react";
+import { Check, Edit, Trash, Crown, UserPlus, UserMinus, UserX } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Gender, Match, Player, FinalMatchScores, FinalMatchWinner } from "@/types";
 
@@ -88,6 +87,9 @@ export default function BeachVolleyballTracker() {
   const [selectedPlayerToReplace, setSelectedPlayerToReplace] = useState<Player | null>(null);
   const [newPlayerName, setNewPlayerName] = useState("");
   const [newPlayerGender, setNewPlayerGender] = useState<Gender>("female");
+  const [showPlayerManagement, setShowPlayerManagement] = useState(false);
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  const [replacementName, setReplacementName] = useState("");
 
   const players = gender === 'female' ? femalePlayers : malePlayers
   const matches = gender === 'female' ? femaleMatches : maleMatches
@@ -253,50 +255,62 @@ export default function BeachVolleyballTracker() {
     setFinalMatchWinner(null)
   }
 
-  const handleReplacePlayer = () => {
-    if (!selectedPlayerToReplace || !newPlayerName) {
-      alert('Please select a player to replace and enter a new player name.')
-      return
-    }
-
+  const handleAddPlayer = () => {
+    if (!newPlayerName.trim()) return;
+    
     const newPlayer: Player = {
       name: newPlayerName,
-      points: selectedPlayerToReplace.points,
-      totalScores: selectedPlayerToReplace.totalScores,
-    }
+      points: 0,
+      totalScores: 0,
+    };
 
-    const newPlayers = players.map(player => (player.name === selectedPlayerToReplace.name ? newPlayer : player))
-    setPlayers(newPlayers)
+    const updatedPlayers = [...players, newPlayer];
+    setPlayers(updatedPlayers);
+    setNewPlayerName("");
+  };
 
-    const newMatches = matches.map(match => {
-      if (match.player1.name === selectedPlayerToReplace.name) {
-        return { ...match, player1: newPlayer }
-      }
-      if (match.player2.name === selectedPlayerToReplace.name) {
-        return { ...match, player2: newPlayer }
-      }
-      if (match.player3.name === selectedPlayerToReplace.name) {
-        return { ...match, player3: newPlayer }
-      }
-      if (match.player4.name === selectedPlayerToReplace.name) {
-        return { ...match, player4: newPlayer }
-      }
-      return match
-    })
-    setMatches(newMatches)
+  const handleRemovePlayer = (playerToRemove: Player) => {
+    const updatedPlayers = players.filter(p => p.name !== playerToRemove.name);
+    setPlayers(updatedPlayers);
 
-    if (newPlayerGender === 'female') {
-      setFemalePlayers(newPlayers)
-      setFemaleMatches(newMatches)
-    } else {
-      setMalePlayers(newPlayers)
-      setMaleMatches(newMatches)
-    }
+    // Update matches to remove the player
+    const updatedMatches = matches.filter(match => 
+      match.player1.name !== playerToRemove.name &&
+      match.player2.name !== playerToRemove.name &&
+      match.player3.name !== playerToRemove.name &&
+      match.player4.name !== playerToRemove.name
+    );
+    setMatches(updatedMatches);
+  };
 
-    setSelectedPlayerToReplace(null)
-    setNewPlayerName('')
-    setNewPlayerGender('female')
-  }
+  const handleReplacePlayer = () => {
+    if (!selectedPlayer || !replacementName.trim()) return;
+
+    const newPlayer: Player = {
+      name: replacementName,
+      points: selectedPlayer.points,
+      totalScores: selectedPlayer.totalScores,
+    };
+
+    // Update players list
+    const updatedPlayers = players.map(p => 
+      p.name === selectedPlayer.name ? newPlayer : p
+    );
+    setPlayers(updatedPlayers);
+
+    // Update matches
+    const updatedMatches = matches.map(match => ({
+      ...match,
+      player1: match.player1.name === selectedPlayer.name ? newPlayer : match.player1,
+      player2: match.player2.name === selectedPlayer.name ? newPlayer : match.player2,
+      player3: match.player3.name === selectedPlayer.name ? newPlayer : match.player3,
+      player4: match.player4.name === selectedPlayer.name ? newPlayer : match.player4,
+    }));
+    setMatches(updatedMatches);
+
+    setSelectedPlayer(null);
+    setReplacementName("");
+  };
 
   const currentMatch = matches[currentMatchIndex];
 
@@ -327,6 +341,15 @@ export default function BeachVolleyballTracker() {
               >
                 Final Match
               </Button>
+              {isAdmin && (
+                <Button
+                  variant={showPlayerManagement ? "default" : "outline"}
+                  onClick={() => setShowPlayerManagement(!showPlayerManagement)}
+                  className="w-full sm:w-auto"
+                >
+                  Manage Players
+                </Button>
+              )}
             </div>
             <div className="flex items-center gap-2">
               {!isAdmin ? (
@@ -503,41 +526,8 @@ export default function BeachVolleyballTracker() {
               </Card>
             ) : (
               <>
-                {/* Rankings Table */}
+                {/* Current Match - Now First */}
                 <Card className="mb-8">
-                  <CardHeader>
-                    <CardTitle className="text-2xl font-bold">
-                      {gender.charAt(0).toUpperCase() + gender.slice(1)} Rankings
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b">
-                            <th className="text-left py-2 px-4">Rank</th>
-                            <th className="text-left py-2 px-4">Player</th>
-                            <th className="text-right py-2 px-4">Points</th>
-                            <th className="text-right py-2 px-4">Total Scores</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {players.map((player, index) => (
-                            <tr key={player.name} className="border-b last:border-0">
-                              <td className="py-2 px-4">{index + 1}</td>
-                              <td className="py-2 px-4">{player.name}</td>
-                              <td className="py-2 px-4 text-right">{player.points}</td>
-                              <td className="py-2 px-4 text-right">{player.totalScores}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Current Match */}
-                <Card>
                   <CardHeader>
                     <CardTitle className="text-2xl font-bold">
                       Match {currentMatchIndex + 1}
@@ -608,9 +598,120 @@ export default function BeachVolleyballTracker() {
                     )}
                   </CardContent>
                 </Card>
+
+                {/* Rankings Table - Now Second */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-2xl font-bold">
+                      {gender.charAt(0).toUpperCase() + gender.slice(1)} Rankings
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left py-2 px-4">Rank</th>
+                            <th className="text-left py-2 px-4">Player</th>
+                            <th className="text-right py-2 px-4">Points</th>
+                            <th className="text-right py-2 px-4">Total Scores</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {players.map((player, index) => (
+                            <tr key={player.name} className="border-b last:border-0">
+                              <td className="py-2 px-4">{index + 1}</td>
+                              <td className="py-2 px-4">{player.name}</td>
+                              <td className="py-2 px-4 text-right">{player.points}</td>
+                              <td className="py-2 px-4 text-right">{player.totalScores}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
               </>
             )}
           </main>
+        )}
+
+        {!showLoginForm && isAdmin && showPlayerManagement && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle>Player Management</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Add Player */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Add New Player</h3>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="New player name"
+                    value={newPlayerName}
+                    onChange={(e) => setNewPlayerName(e.target.value)}
+                  />
+                  <Button onClick={handleAddPlayer}>
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    Add
+                  </Button>
+                </div>
+              </div>
+
+              {/* Replace Player */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Replace Player</h3>
+                <div className="flex flex-col gap-2">
+                  <Select
+                    value={selectedPlayer?.name || ""}
+                    onValueChange={(value) => setSelectedPlayer(players.find(p => p.name === value) || null)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select player to replace" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {players.map((player) => (
+                        <SelectItem key={player.name} value={player.name}>
+                          {player.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="New player name"
+                      value={replacementName}
+                      onChange={(e) => setReplacementName(e.target.value)}
+                    />
+                    <Button onClick={handleReplacePlayer} disabled={!selectedPlayer || !replacementName}>
+                      <UserX className="w-4 h-4 mr-2" />
+                      Replace
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Remove Player */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Remove Player</h3>
+                <div className="space-y-2">
+                  {players.map((player) => (
+                    <div key={player.name} className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                      <span>{player.name}</span>
+                      <Button 
+                        variant="destructive" 
+                        size="sm" 
+                        onClick={() => handleRemovePlayer(player)}
+                      >
+                        <UserMinus className="w-4 h-4 mr-2" />
+                        Remove
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         )}
       </div>
     </div>

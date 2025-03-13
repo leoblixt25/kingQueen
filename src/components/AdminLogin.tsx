@@ -1,64 +1,50 @@
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
-import { useToast } from "@/components/ui/use-toast";
+import { Label } from "@/components/ui/label";
 
 interface AdminLoginProps {
-  onLogin: (isAdmin: boolean) => void;
+  adminUsername: string;
+  adminPassword: string;
+  setAdminUsername: (username: string) => void;
+  setAdminPassword: (password: string) => void;
+  handleAdminLogin: () => void;
 }
 
-const AdminLogin = ({ onLogin }: AdminLoginProps) => {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const { toast } = useToast();
-
-  const handleLogin = () => {
-    if (username === "leo" && password === "Woodgoat22!!") {
-      onLogin(true);
-      toast({
-        title: "Success",
-        description: "Logged in as administrator",
-      });
-    } else {
-      toast({
-        title: "Error",
-        description: "Invalid credentials",
-        variant: "destructive",
-      });
-    }
-  };
-
+export function AdminLogin({
+  adminUsername,
+  adminPassword,
+  setAdminUsername,
+  setAdminPassword,
+  handleAdminLogin,
+}: AdminLoginProps) {
   return (
-    <Card className="p-6 max-w-sm mx-auto animate-slide-up">
-      <h2 className="text-xl font-semibold mb-4">Admin Login</h2>
-      <div className="space-y-4">
-        <div>
+    <Card className="mb-8 max-w-md mx-auto">
+      <CardHeader className="text-center">
+        <CardTitle>Admin Login</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="adminUsername">Username</Label>
           <Input
+            id="adminUsername"
+            value={adminUsername}
+            onChange={(e) => setAdminUsername(e.target.value)}
             type="text"
-            placeholder="Username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
           />
         </div>
-        <div>
+        <div className="space-y-2">
+          <Label htmlFor="adminPassword">Password</Label>
           <Input
+            id="adminPassword"
+            value={adminPassword}
+            onChange={(e) => setAdminPassword(e.target.value)}
             type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
           />
         </div>
-        <Button 
-          onClick={handleLogin}
-          className="w-full"
-        >
-          Login
-        </Button>
-      </div>
+        <Button onClick={handleAdminLogin} className="w-full">Login</Button>
+      </CardContent>
     </Card>
   );
-};
-
-export default AdminLogin;
+}

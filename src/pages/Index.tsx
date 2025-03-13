@@ -1,21 +1,19 @@
-
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { AdminLogin } from "@/components/AdminLogin";
 import { PlayerManagement } from "@/components/PlayerManagement";
 import { FinalMatch } from "@/components/FinalMatch";
-import { MatchDisplay } from "@/components/match-display";
+import { MatchDisplay } from "@/components/MatchDisplay";
 import { Rankings } from "@/components/Rankings";
 import { useVolleyballData } from "@/hooks/useVolleyballData";
 import { useMatchScoring } from "@/hooks/useMatchScoring";
 import { useFinalMatch } from "@/hooks/useFinalMatch";
 import { usePlayerManagement } from "@/hooks/usePlayerManagement";
 import { useAdminControls } from "@/hooks/useAdminControls";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 export default function BeachVolleyballTracker() {
   const { toast } = useToast();
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
   
   // Use our custom hooks
   const {
@@ -130,17 +128,7 @@ export default function BeachVolleyballTracker() {
         hasNext: currentMatchIndex < matches.length - 1 
       });
     }
-    
-    if (isInitialLoad && hasValidMatches) {
-      console.log("Initial data loaded successfully");
-      setIsInitialLoad(false);
-      
-      toast({
-        title: "Ready to play!",
-        description: `${matches.length} matches available for ${gender} players.`,
-      });
-    }
-  }, [matches, currentMatchIndex, hasValidMatches, gender, isInitialLoad, toast]);
+  }, [matches, currentMatchIndex, hasValidMatches]);
 
   useEffect(() => {
     if (hasValidMatches && currentMatchIndex >= matches.length) {
@@ -249,7 +237,6 @@ export default function BeachVolleyballTracker() {
               <>
                 {hasValidMatches && matches[currentMatchIndex] ? (
                   <MatchDisplay
-                    key={`match-${gender}-${currentMatchIndex}-${matches.length}`} 
                     match={matches[currentMatchIndex]}
                     currentMatchIndex={currentMatchIndex}
                     matches={matches}

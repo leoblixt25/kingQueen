@@ -9,7 +9,164 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      final_matches: {
+        Row: {
+          created_at: string
+          female_runner_up: string | null
+          female_winner: string | null
+          id: string
+          is_submitted: boolean
+          male_runner_up: string | null
+          male_winner: string | null
+          team1_set1: number | null
+          team1_set2: number | null
+          team1_set3: number | null
+          team2_set1: number | null
+          team2_set2: number | null
+          team2_set3: number | null
+          updated_at: string
+          winner_team: string | null
+        }
+        Insert: {
+          created_at?: string
+          female_runner_up?: string | null
+          female_winner?: string | null
+          id?: string
+          is_submitted?: boolean
+          male_runner_up?: string | null
+          male_winner?: string | null
+          team1_set1?: number | null
+          team1_set2?: number | null
+          team1_set3?: number | null
+          team2_set1?: number | null
+          team2_set2?: number | null
+          team2_set3?: number | null
+          updated_at?: string
+          winner_team?: string | null
+        }
+        Update: {
+          created_at?: string
+          female_runner_up?: string | null
+          female_winner?: string | null
+          id?: string
+          is_submitted?: boolean
+          male_runner_up?: string | null
+          male_winner?: string | null
+          team1_set1?: number | null
+          team1_set2?: number | null
+          team1_set3?: number | null
+          team2_set1?: number | null
+          team2_set2?: number | null
+          team2_set3?: number | null
+          updated_at?: string
+          winner_team?: string | null
+        }
+        Relationships: []
+      }
+      matches: {
+        Row: {
+          created_at: string
+          gender: string
+          id: string
+          is_submitted: boolean
+          match_order: number
+          player1_id: string
+          player2_id: string
+          player3_id: string
+          player4_id: string
+          score1: number
+          score2: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          gender: string
+          id?: string
+          is_submitted?: boolean
+          match_order: number
+          player1_id: string
+          player2_id: string
+          player3_id: string
+          player4_id: string
+          score1?: number
+          score2?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          gender?: string
+          id?: string
+          is_submitted?: boolean
+          match_order?: number
+          player1_id?: string
+          player2_id?: string
+          player3_id?: string
+          player4_id?: string
+          score1?: number
+          score2?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matches_player1_id_fkey"
+            columns: ["player1_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_player2_id_fkey"
+            columns: ["player2_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_player3_id_fkey"
+            columns: ["player3_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_player4_id_fkey"
+            columns: ["player4_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      players: {
+        Row: {
+          created_at: string
+          gender: string
+          id: string
+          name: string
+          points: number
+          total_scores: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          gender: string
+          id?: string
+          name: string
+          points?: number
+          total_scores?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          gender?: string
+          id?: string
+          name?: string
+          points?: number
+          total_scores?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

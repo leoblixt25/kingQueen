@@ -6,85 +6,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Check, Edit, Trash, Crown, UserPlus, UserMinus, UserX, ChevronLeft, ChevronRight } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Gender, Match, Player, FinalMatchScores, FinalMatchWinner } from "@/types";
-
-const initialFemalePlayers: Player[] = [
-  { name: "Lakota", points: 0, totalScores: 0 },
-  { name: "Lidia", points: 0, totalScores: 0 },
-  { name: "Giulia", points: 0, totalScores: 0 },
-  { name: "Dina", points: 0, totalScores: 0 },
-  { name: "Catalina", points: 0, totalScores: 0 },
-  { name: "Izel", points: 0, totalScores: 0 },
-  { name: "Marta", points: 0, totalScores: 0 },
-  { name: "Eli", points: 0, totalScores: 0 },
-];
-
-const initialMalePlayers: Player[] = [
-  { name: "Giacomo", points: 0, totalScores: 0 },
-  { name: "David", points: 0, totalScores: 0 },
-  { name: "Javi", points: 0, totalScores: 0 },
-  { name: "Mauro", points: 0, totalScores: 0 },
-  { name: "Mattia", points: 0, totalScores: 0 },
-  { name: "Dani", points: 0, totalScores: 0 },
-  { name: "Leo", points: 0, totalScores: 0 },
-  { name: "Samuel", points: 0, totalScores: 0 },
-];
-
-const initialFemaleMatches: Match[] = [
-  { player1: initialFemalePlayers[0], player2: initialFemalePlayers[1], player3: initialFemalePlayers[2], player4: initialFemalePlayers[3], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialFemalePlayers[4], player2: initialFemalePlayers[5], player3: initialFemalePlayers[6], player4: initialFemalePlayers[7], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialFemalePlayers[5], player2: initialFemalePlayers[6], player3: initialFemalePlayers[7], player4: initialFemalePlayers[0], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialFemalePlayers[3], player2: initialFemalePlayers[4], player3: initialFemalePlayers[1], player4: initialFemalePlayers[2], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialFemalePlayers[6], player2: initialFemalePlayers[3], player3: initialFemalePlayers[4], player4: initialFemalePlayers[1], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialFemalePlayers[0], player2: initialFemalePlayers[2], player3: initialFemalePlayers[7], player4: initialFemalePlayers[5], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialFemalePlayers[2], player2: initialFemalePlayers[4], player3: initialFemalePlayers[3], player4: initialFemalePlayers[7], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialFemalePlayers[1], player2: initialFemalePlayers[6], player3: initialFemalePlayers[5], player4: initialFemalePlayers[0], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialFemalePlayers[5], player2: initialFemalePlayers[3], player3: initialFemalePlayers[6], player4: initialFemalePlayers[2], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialFemalePlayers[7], player2: initialFemalePlayers[1], player3: initialFemalePlayers[0], player4: initialFemalePlayers[4], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialFemalePlayers[2], player2: initialFemalePlayers[7], player3: initialFemalePlayers[1], player4: initialFemalePlayers[5], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialFemalePlayers[3], player2: initialFemalePlayers[0], player3: initialFemalePlayers[4], player4: initialFemalePlayers[6], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialFemalePlayers[7], player2: initialFemalePlayers[4], player3: initialFemalePlayers[0], player4: initialFemalePlayers[6], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialFemalePlayers[5], player2: initialFemalePlayers[2], player3: initialFemalePlayers[6], player4: initialFemalePlayers[1], score1: 0, score2: 0, isSubmitted: false },
-];
-
-const initialMaleMatches: Match[] = [
-  { player1: initialMalePlayers[0], player2: initialMalePlayers[1], player3: initialMalePlayers[2], player4: initialMalePlayers[3], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialMalePlayers[4], player2: initialMalePlayers[5], player3: initialMalePlayers[6], player4: initialMalePlayers[7], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialMalePlayers[5], player2: initialMalePlayers[6], player3: initialMalePlayers[7], player4: initialMalePlayers[0], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialMalePlayers[3], player2: initialMalePlayers[4], player3: initialMalePlayers[1], player4: initialMalePlayers[2], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialMalePlayers[6], player2: initialMalePlayers[3], player3: initialMalePlayers[4], player4: initialMalePlayers[1], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialMalePlayers[0], player2: initialMalePlayers[2], player3: initialMalePlayers[7], player4: initialMalePlayers[5], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialMalePlayers[2], player2: initialMalePlayers[4], player3: initialMalePlayers[3], player4: initialMalePlayers[7], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialMalePlayers[1], player2: initialMalePlayers[6], player3: initialMalePlayers[5], player4: initialMalePlayers[0], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialMalePlayers[5], player2: initialMalePlayers[3], player3: initialMalePlayers[6], player4: initialMalePlayers[2], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialMalePlayers[7], player2: initialMalePlayers[1], player3: initialMalePlayers[0], player4: initialMalePlayers[4], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialMalePlayers[2], player2: initialMalePlayers[7], player3: initialMalePlayers[1], player4: initialMalePlayers[5], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialMalePlayers[3], player2: initialMalePlayers[0], player3: initialMalePlayers[4], player4: initialMalePlayers[6], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialMalePlayers[7], player2: initialMalePlayers[4], player3: initialMalePlayers[0], player4: initialMalePlayers[6], score1: 0, score2: 0, isSubmitted: false },
-  { player1: initialMalePlayers[5], player2: initialMalePlayers[2], player3: initialMalePlayers[6], player4: initialMalePlayers[1], score1: 0, score2: 0, isSubmitted: false },
-];
+import { Gender, Player } from "@/types";
+import { useTournamentData } from "@/hooks/useTournamentData";
 
 export default function BeachVolleyballTracker() {
   const [gender, setGender] = useState<Gender>("female");
-  const [femalePlayers, setFemalePlayers] = useState<Player[]>(initialFemalePlayers);
-  const [malePlayers, setMalePlayers] = useState<Player[]>(initialMalePlayers);
-  const [femaleMatches, setFemaleMatches] = useState<Match[]>(initialFemaleMatches);
-  const [maleMatches, setMaleMatches] = useState<Match[]>(initialMaleMatches);
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
   const [score1, setScore1] = useState("");
   const [score2, setScore2] = useState("");
-  const [finalMatchScores, setFinalMatchScores] = useState<FinalMatchScores>({
-    team1: [null, null, null],
-    team2: [null, null, null],
-  });
-  const [finalMatchSubmitted, setFinalMatchSubmitted] = useState(false);
   const [adminUsername, setAdminUsername] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
   const [showLoginForm, setShowLoginForm] = useState(false);
   const [showFinalMatch, setShowFinalMatch] = useState(false);
   const [isEditingFinalMatch, setIsEditingFinalMatch] = useState(false);
-  const [finalMatchWinner, setFinalMatchWinner] = useState<FinalMatchWinner>(null);
   const [selectedPlayerToReplace, setSelectedPlayerToReplace] = useState<Player | null>(null);
   const [newPlayerName, setNewPlayerName] = useState("");
   const [newPlayerGender, setNewPlayerGender] = useState<Gender>("female");
@@ -92,71 +27,40 @@ export default function BeachVolleyballTracker() {
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [replacementName, setReplacementName] = useState("");
 
+  const {
+    femalePlayers,
+    malePlayers,
+    femaleMatches,
+    maleMatches,
+    finalMatchScores,
+    finalMatchSubmitted,
+    finalMatchWinner,
+    isLoading,
+    updateMatchScore,
+    updateFinalMatch,
+    resetAllData,
+    setFinalMatchScores
+  } = useTournamentData();
+
   const players = gender === 'female' ? femalePlayers : malePlayers
   const matches = gender === 'female' ? femaleMatches : maleMatches
-  const setMatches = gender === 'female' ? setFemaleMatches : setMaleMatches
-  const setPlayers = gender === 'female' ? setFemalePlayers : setMalePlayers
 
-  const topPlayers = players.slice(0, 2).sort((a, b) => {
-    if (b.points === a.points) {
-      return b.totalScores - a.totalScores;
-    }
-    return b.points - a.points;
-  });
-
-  const handleScoreSubmit = () => {
-    const newMatches = [...matches]
-    newMatches[currentMatchIndex] = {
-      ...newMatches[currentMatchIndex],
-      score1: parseInt(score1, 10) || 0,
-      score2: parseInt(score2, 10) || 0,
-      isSubmitted: true,
-    }
-    setMatches(newMatches)
-    updatePlayerPoints(newMatches[currentMatchIndex])
-    setScore1('')
-    setScore2('')
+  const handleScoreSubmit = async () => {
+    const scoreValue1 = parseInt(score1, 10) || 0;
+    const scoreValue2 = parseInt(score2, 10) || 0;
+    
+    await updateMatchScore(currentMatchIndex, scoreValue1, scoreValue2, gender);
+    
+    setScore1('');
+    setScore2('');
     
     // Auto-advance to next unfinished match
-    const nextUnfinishedIndex = newMatches.findIndex((match, index) => 
+    const nextUnfinishedIndex = matches.findIndex((match, index) => 
       index > currentMatchIndex && !match.isSubmitted
     );
     if (nextUnfinishedIndex !== -1) {
       setCurrentMatchIndex(nextUnfinishedIndex);
     }
-  }
-
-  const updatePlayerPoints = (match: Match) => {
-    const { player1, player2, player3, player4, score1, score2 } = match
-    const newPlayers = [...players]
-    const player1Index = newPlayers.findIndex(p => p.name === player1.name)
-    const player2Index = newPlayers.findIndex(p => p.name === player2.name)
-    const player3Index = newPlayers.findIndex(p => p.name === player3.name)
-    const player4Index = newPlayers.findIndex(p => p.name === player4.name)
-
-    if (score1 > score2) {
-      newPlayers[player1Index].points += 2
-      newPlayers[player2Index].points += 2
-      newPlayers[player3Index].points += 1
-      newPlayers[player4Index].points += 1
-    } else {
-      newPlayers[player1Index].points += 1
-      newPlayers[player2Index].points += 1
-      newPlayers[player3Index].points += 2
-      newPlayers[player4Index].points += 2
-    }
-
-    newPlayers[player1Index].totalScores += score1
-    newPlayers[player2Index].totalScores += score1
-    newPlayers[player3Index].totalScores += score2
-    newPlayers[player4Index].totalScores += score2
-
-    setPlayers(newPlayers.sort((a, b) => {
-      if (b.points === a.points) {
-        return b.totalScores - a.totalScores;
-      }
-      return b.points - a.points;
-    }))
   }
 
   const handleAdminLogin = () => {
@@ -172,157 +76,35 @@ export default function BeachVolleyballTracker() {
     setIsAdmin(false)
   }
 
-  const handleResetScores = () => {
-    const newFemalePlayers = femalePlayers.map(player => ({ ...player, points: 0, totalScores: 0 }))
-    setFemalePlayers(newFemalePlayers)
-    const newMalePlayers = malePlayers.map(player => ({ ...player, points: 0, totalScores: 0 }))
-    setMalePlayers(newMalePlayers)
-    const newFemaleMatches = femaleMatches.map(match => ({ ...match, score1: 0, score2: 0, isSubmitted: false }))
-    setFemaleMatches(newFemaleMatches)
-    const newMaleMatches = maleMatches.map(match => ({ ...match, score1: 0, score2: 0, isSubmitted: false }))
-    setMaleMatches(newMaleMatches)
-    setCurrentMatchIndex(0)
-    setScore1('')
-    setScore2('')
+  const handleResetScores = async () => {
+    await resetAllData();
+    setCurrentMatchIndex(0);
+    setScore1('');
+    setScore2('');
   }
 
-  const handleEditScore = (matchIndex: number, newScore1: number, newScore2: number) => {
-    const newMatches = [...matches]
-    const oldMatch = newMatches[matchIndex]
-    newMatches[matchIndex] = {
-      ...newMatches[matchIndex],
-      score1: newScore1,
-      score2: newScore2,
-      isSubmitted: true,
-    }
-
-    const oldPlayers = [...players]
-    const oldPlayer1Index = oldPlayers.findIndex(p => p.name === oldMatch.player1.name)
-    const oldPlayer2Index = oldPlayers.findIndex(p => p.name === oldMatch.player2.name)
-    const oldPlayer3Index = oldPlayers.findIndex(p => p.name === oldMatch.player3.name)
-    const oldPlayer4Index = oldPlayers.findIndex(p => p.name === oldMatch.player4.name)
-
-    oldPlayers[oldPlayer1Index].points -= oldMatch.score1 > oldMatch.score2 ? 2 : 1
-    oldPlayers[oldPlayer2Index].points -= oldMatch.score1 > oldMatch.score2 ? 2 : 1
-    oldPlayers[oldPlayer3Index].points -= oldMatch.score1 > oldMatch.score2 ? 1 : 2
-    oldPlayers[oldPlayer4Index].points -= oldMatch.score1 > oldMatch.score2 ? 1 : 2
-
-    oldPlayers[oldPlayer1Index].totalScores -= oldMatch.score1
-    oldPlayers[oldPlayer2Index].totalScores -= oldMatch.score1
-    oldPlayers[oldPlayer3Index].totalScores -= oldMatch.score2
-    oldPlayers[oldPlayer4Index].totalScores -= oldMatch.score2
-
-    updatePlayerPoints(newMatches[matchIndex])
-
-    setMatches(newMatches)
-    setPlayers(oldPlayers.sort((a, b) => {
-      if (b.points === a.points) {
-        return b.totalScores - a.totalScores;
-      }
-      return b.points - a.points;
-    }))
+  const handleEditScore = async (matchIndex: number, newScore1: number, newScore2: number) => {
+    await updateMatchScore(matchIndex, newScore1, newScore2, gender);
   }
 
-  const handleFinalMatchSubmit = () => {
-    const team1Scores = finalMatchScores.team1.filter(score => score !== null) as number[]
-    const team2Scores = finalMatchScores.team2.filter(score => score !== null) as number[]
-
-    const team1Wins = team1Scores.filter((score, index) => score > (team2Scores[index] || 0)).length
-    const team2Wins = team2Scores.filter((score, index) => score > (team1Scores[index] || 0)).length
-
-    if (team1Wins > team2Wins) {
-      setFinalMatchWinner({
-        team: 'team1',
-        malePlayer: malePlayers[0].name,
-        femalePlayer: femalePlayers[1].name,
-        losingMalePlayer: malePlayers[1].name,
-        losingFemalePlayer: femalePlayers[0].name,
-      })
-    } else if (team2Wins > team1Wins) {
-      setFinalMatchWinner({
-        team: 'team2',
-        malePlayer: malePlayers[1].name,
-        femalePlayer: femalePlayers[0].name,
-        losingMalePlayer: malePlayers[0].name,
-        losingFemalePlayer: femalePlayers[1].name,
-      })
-    } else {
-      setFinalMatchWinner(null)
-    }
-
-    setFinalMatchSubmitted(true)
+  const handleFinalMatchSubmit = async () => {
+    await updateFinalMatch(finalMatchScores);
   }
 
   const handleEditFinalMatch = () => {
     setIsEditingFinalMatch(true)
   }
 
-  const handleFinalMatchEditSubmit = () => {
-    setIsEditingFinalMatch(false)
+  const handleFinalMatchEditSubmit = async () => {
+    setIsEditingFinalMatch(false);
+    await updateFinalMatch(finalMatchScores);
   }
 
-  const handleResetFinalMatch = () => {
-    setFinalMatchScores({ team1: [null, null, null], team2: [null, null, null] })
-    setFinalMatchSubmitted(false)
-    setFinalMatchWinner(null)
+  const handleResetFinalMatch = async () => {
+    const resetScores = { team1: [null, null, null], team2: [null, null, null] } as const;
+    setFinalMatchScores(resetScores);
+    await updateFinalMatch(resetScores);
   }
-
-  const handleAddPlayer = () => {
-    if (!newPlayerName.trim()) return;
-    
-    const newPlayer: Player = {
-      name: newPlayerName,
-      points: 0,
-      totalScores: 0,
-    };
-
-    const updatedPlayers = [...players, newPlayer];
-    setPlayers(updatedPlayers);
-    setNewPlayerName("");
-  };
-
-  const handleRemovePlayer = (playerToRemove: Player) => {
-    const updatedPlayers = players.filter(p => p.name !== playerToRemove.name);
-    setPlayers(updatedPlayers);
-
-    // Update matches to remove the player
-    const updatedMatches = matches.filter(match => 
-      match.player1.name !== playerToRemove.name &&
-      match.player2.name !== playerToRemove.name &&
-      match.player3.name !== playerToRemove.name &&
-      match.player4.name !== playerToRemove.name
-    );
-    setMatches(updatedMatches);
-  };
-
-  const handleReplacePlayer = () => {
-    if (!selectedPlayer || !replacementName.trim()) return;
-
-    const newPlayer: Player = {
-      name: replacementName,
-      points: selectedPlayer.points,
-      totalScores: selectedPlayer.totalScores,
-    };
-
-    // Update players list
-    const updatedPlayers = players.map(p => 
-      p.name === selectedPlayer.name ? newPlayer : p
-    );
-    setPlayers(updatedPlayers);
-
-    // Update matches
-    const updatedMatches = matches.map(match => ({
-      ...match,
-      player1: match.player1.name === selectedPlayer.name ? newPlayer : match.player1,
-      player2: match.player2.name === selectedPlayer.name ? newPlayer : match.player2,
-      player3: match.player3.name === selectedPlayer.name ? newPlayer : match.player3,
-      player4: match.player4.name === selectedPlayer.name ? newPlayer : match.player4,
-    }));
-    setMatches(updatedMatches);
-
-    setSelectedPlayer(null);
-    setReplacementName("");
-  };
 
   const handlePreviousMatch = () => {
     if (currentMatchIndex > 0) {
@@ -340,7 +122,29 @@ export default function BeachVolleyballTracker() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-white px-4 py-6 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold mb-2">Loading Tournament Data...</h2>
+          <p className="text-gray-600">Setting up the beach volleyball tracker</p>
+        </div>
+      </div>
+    );
+  }
+
   const currentMatch = matches[currentMatchIndex];
+
+  if (!currentMatch) {
+    return (
+      <div className="min-h-screen bg-white px-4 py-6 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold mb-2">No matches available</h2>
+          <p className="text-gray-600">Please check back later</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white px-4 py-6">
@@ -370,15 +174,6 @@ export default function BeachVolleyballTracker() {
               >
                 Final Match
               </Button>
-              {isAdmin && (
-                <Button
-                  variant={showPlayerManagement ? "default" : "outline"}
-                  onClick={() => setShowPlayerManagement(!showPlayerManagement)}
-                  className="w-full"
-                >
-                  Manage Players
-                </Button>
-              )}
             </div>
             <div className="w-full">
               {!isAdmin ? (
@@ -442,7 +237,7 @@ export default function BeachVolleyballTracker() {
                   {/* Team 1 */}
                   <div className="space-y-3">
                     <h3 className="text-lg font-semibold text-center">
-                      Team 1: {malePlayers[0].name} & {femalePlayers[1].name}
+                      Team 1: {malePlayers[0]?.name} & {femalePlayers[1]?.name}
                     </h3>
                     <div className="grid grid-cols-3 gap-2">
                       {[0, 1, 2].map((setIndex) => (
@@ -473,7 +268,7 @@ export default function BeachVolleyballTracker() {
                   {/* Team 2 */}
                   <div className="space-y-3">
                     <h3 className="text-lg font-semibold text-center">
-                      Team 2: {femalePlayers[0].name} & {malePlayers[1].name}
+                      Team 2: {femalePlayers[0]?.name} & {malePlayers[1]?.name}
                     </h3>
                     <div className="grid grid-cols-3 gap-2">
                       {[0, 1, 2].map((setIndex) => (
@@ -649,10 +444,8 @@ export default function BeachVolleyballTracker() {
                     {isAdmin && currentMatch.isSubmitted && (
                       <Button 
                         onClick={() => {
-                          // Set the input values to current match scores for editing
                           setScore1(currentMatch.score1.toString());
                           setScore2(currentMatch.score2.toString());
-                          // Apply the edit with the current values in the inputs
                           handleEditScore(currentMatchIndex, currentMatch.score1, currentMatch.score2);
                         }}
                         variant="outline"
@@ -692,84 +485,6 @@ export default function BeachVolleyballTracker() {
               </>
             )}
           </main>
-        )}
-
-        {!showLoginForm && isAdmin && showPlayerManagement && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-center">Player Management</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Add Player */}
-              <div className="space-y-3">
-                <h3 className="text-lg font-semibold text-center">Add New Player</h3>
-                <div className="space-y-2">
-                  <Input
-                    placeholder="New player name"
-                    value={newPlayerName}
-                    onChange={(e) => setNewPlayerName(e.target.value)}
-                    className="w-full"
-                  />
-                  <Button onClick={handleAddPlayer} className="w-full">
-                    <UserPlus className="w-4 h-4 mr-2" />
-                    Add Player
-                  </Button>
-                </div>
-              </div>
-
-              {/* Replace Player */}
-              <div className="space-y-3">
-                <h3 className="text-lg font-semibold text-center">Replace Player</h3>
-                <div className="space-y-2">
-                  <Select
-                    value={selectedPlayer?.name || ""}
-                    onValueChange={(value) => setSelectedPlayer(players.find(p => p.name === value) || null)}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select player to replace" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {players.map((player) => (
-                        <SelectItem key={player.name} value={player.name}>
-                          {player.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    placeholder="New player name"
-                    value={replacementName}
-                    onChange={(e) => setReplacementName(e.target.value)}
-                    className="w-full"
-                  />
-                  <Button onClick={handleReplacePlayer} disabled={!selectedPlayer || !replacementName} className="w-full">
-                    <UserX className="w-4 h-4 mr-2" />
-                    Replace Player
-                  </Button>
-                </div>
-              </div>
-
-              {/* Remove Player */}
-              <div className="space-y-3">
-                <h3 className="text-lg font-semibold text-center">Remove Player</h3>
-                <div className="space-y-2">
-                  {players.map((player) => (
-                    <div key={player.name} className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                      <span className="text-sm">{player.name}</span>
-                      <Button 
-                        variant="destructive" 
-                        size="sm" 
-                        onClick={() => handleRemovePlayer(player)}
-                      >
-                        <UserMinus className="w-4 h-4 mr-1" />
-                        Remove
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         )}
       </div>
     </div>

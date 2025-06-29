@@ -339,29 +339,30 @@ export default function BeachVolleyballTracker() {
   const currentMatch = matches[currentMatchIndex];
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <header className="mb-8">
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-            <div className="flex flex-wrap items-center gap-2">
+    <div className="min-h-screen bg-white px-4 py-6">
+      <div className="max-w-md mx-auto space-y-6">
+        <header>
+          <div className="flex flex-col items-center gap-4">
+            <h1 className="text-2xl font-bold text-center">Beach Volleyball Tracker</h1>
+            <div className="flex flex-col gap-2 w-full">
               <Button 
                 variant={gender === 'female' ? "default" : "outline"} 
                 onClick={() => { setGender('female'); setShowFinalMatch(false); }}
-                className="w-full sm:w-auto"
+                className="w-full"
               >
                 Female
               </Button>
               <Button 
                 variant={gender === 'male' ? "default" : "outline"}
                 onClick={() => { setGender('male'); setShowFinalMatch(false); }}
-                className="w-full sm:w-auto"
+                className="w-full"
               >
                 Male
               </Button>
               <Button 
                 variant={showFinalMatch ? "default" : "outline"}
                 onClick={() => setShowFinalMatch(true)}
-                className="w-full sm:w-auto"
+                className="w-full"
               >
                 Final Match
               </Button>
@@ -369,19 +370,19 @@ export default function BeachVolleyballTracker() {
                 <Button
                   variant={showPlayerManagement ? "default" : "outline"}
                   onClick={() => setShowPlayerManagement(!showPlayerManagement)}
-                  className="w-full sm:w-auto"
+                  className="w-full"
                 >
                   Manage Players
                 </Button>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="w-full">
               {!isAdmin ? (
-                <Button variant="outline" onClick={() => setShowLoginForm(true)}>
+                <Button variant="outline" onClick={() => setShowLoginForm(true)} className="w-full">
                   Admin Login
                 </Button>
               ) : (
-                <Button variant="destructive" onClick={handleAdminLogout}>
+                <Button variant="destructive" onClick={handleAdminLogout} className="w-full">
                   Logout
                 </Button>
               )}
@@ -390,9 +391,9 @@ export default function BeachVolleyballTracker() {
         </header>
 
         {showLoginForm && (
-          <Card className="mb-8">
+          <Card>
             <CardHeader>
-              <CardTitle>Admin Login</CardTitle>
+              <CardTitle className="text-center">Admin Login</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -402,6 +403,7 @@ export default function BeachVolleyballTracker() {
                   value={adminUsername}
                   onChange={(e) => setAdminUsername(e.target.value)}
                   type="text"
+                  className="w-full"
                 />
               </div>
               <div className="space-y-2">
@@ -411,6 +413,7 @@ export default function BeachVolleyballTracker() {
                   value={adminPassword}
                   onChange={(e) => setAdminPassword(e.target.value)}
                   type="password"
+                  className="w-full"
                 />
               </div>
               <Button onClick={handleAdminLogin} className="w-full">Login</Button>
@@ -423,103 +426,99 @@ export default function BeachVolleyballTracker() {
             {showFinalMatch ? (
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-2xl font-bold">Final Match</CardTitle>
+                  <CardTitle className="text-xl font-bold text-center">Final Match</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-8">
+                <CardContent className="space-y-6">
                   {/* Team 1 */}
-                  <div className="space-y-4">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                      <h3 className="text-lg font-semibold min-w-[200px]">
-                        Team 1: {malePlayers[0].name} & {femalePlayers[1].name}
-                      </h3>
-                      <div className="flex gap-4">
-                        {[0, 1, 2].map((setIndex) => (
-                          <div key={setIndex} className="space-y-2">
-                            <Label htmlFor={`team1-set${setIndex + 1}`}>Set {setIndex + 1}</Label>
-                            <Input
-                              id={`team1-set${setIndex + 1}`}
-                              value={finalMatchScores.team1[setIndex] !== null ? finalMatchScores.team1[setIndex] : ''}
-                              onChange={(e) => {
-                                const newScores = [...finalMatchScores.team1];
-                                newScores[setIndex] = e.target.value === '' ? null : parseInt(e.target.value, 10);
-                                setFinalMatchScores({
-                                  ...finalMatchScores,
-                                  team1: newScores as [number | null, number | null, number | null]
-                                });
-                              }}
-                              type="number"
-                              className="w-16"
-                              inputMode="numeric"
-                              pattern="\d*"
-                              disabled={finalMatchSubmitted && !isEditingFinalMatch}
-                            />
-                          </div>
-                        ))}
-                      </div>
+                  <div className="space-y-3">
+                    <h3 className="text-lg font-semibold text-center">
+                      Team 1: {malePlayers[0].name} & {femalePlayers[1].name}
+                    </h3>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[0, 1, 2].map((setIndex) => (
+                        <div key={setIndex} className="space-y-2">
+                          <Label htmlFor={`team1-set${setIndex + 1}`} className="text-sm text-center block">Set {setIndex + 1}</Label>
+                          <Input
+                            id={`team1-set${setIndex + 1}`}
+                            value={finalMatchScores.team1[setIndex] !== null ? finalMatchScores.team1[setIndex] : ''}
+                            onChange={(e) => {
+                              const newScores = [...finalMatchScores.team1];
+                              newScores[setIndex] = e.target.value === '' ? null : parseInt(e.target.value, 10);
+                              setFinalMatchScores({
+                                ...finalMatchScores,
+                                team1: newScores as [number | null, number | null, number | null]
+                              });
+                            }}
+                            type="number"
+                            className="text-center"
+                            inputMode="numeric"
+                            pattern="\d*"
+                            disabled={finalMatchSubmitted && !isEditingFinalMatch}
+                          />
+                        </div>
+                      ))}
                     </div>
                   </div>
 
                   {/* Team 2 */}
-                  <div className="space-y-4">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                      <h3 className="text-lg font-semibold min-w-[200px]">
-                        Team 2: {femalePlayers[0].name} & {malePlayers[1].name}
-                      </h3>
-                      <div className="flex gap-4">
-                        {[0, 1, 2].map((setIndex) => (
-                          <div key={setIndex} className="space-y-2">
-                            <Label htmlFor={`team2-set${setIndex + 1}`}>Set {setIndex + 1}</Label>
-                            <Input
-                              id={`team2-set${setIndex + 1}`}
-                              value={finalMatchScores.team2[setIndex] !== null ? finalMatchScores.team2[setIndex] : ''}
-                              onChange={(e) => {
-                                const newScores = [...finalMatchScores.team2];
-                                newScores[setIndex] = e.target.value === '' ? null : parseInt(e.target.value, 10);
-                                setFinalMatchScores({
-                                  ...finalMatchScores,
-                                  team2: newScores as [number | null, number | null, number | null]
-                                });
-                              }}
-                              type="number"
-                              className="w-16"
-                              inputMode="numeric"
-                              pattern="\d*"
-                              disabled={finalMatchSubmitted && !isEditingFinalMatch}
-                            />
-                          </div>
-                        ))}
-                      </div>
+                  <div className="space-y-3">
+                    <h3 className="text-lg font-semibold text-center">
+                      Team 2: {femalePlayers[0].name} & {malePlayers[1].name}
+                    </h3>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[0, 1, 2].map((setIndex) => (
+                        <div key={setIndex} className="space-y-2">
+                          <Label htmlFor={`team2-set${setIndex + 1}`} className="text-sm text-center block">Set {setIndex + 1}</Label>
+                          <Input
+                            id={`team2-set${setIndex + 1}`}
+                            value={finalMatchScores.team2[setIndex] !== null ? finalMatchScores.team2[setIndex] : ''}
+                            onChange={(e) => {
+                              const newScores = [...finalMatchScores.team2];
+                              newScores[setIndex] = e.target.value === '' ? null : parseInt(e.target.value, 10);
+                              setFinalMatchScores({
+                                ...finalMatchScores,
+                                team2: newScores as [number | null, number | null, number | null]
+                              });
+                            }}
+                            type="number"
+                            className="text-center"
+                            inputMode="numeric"
+                            pattern="\d*"
+                            disabled={finalMatchSubmitted && !isEditingFinalMatch}
+                          />
+                        </div>
+                      ))}
                     </div>
                   </div>
 
                   {!finalMatchSubmitted ? (
-                    <Button onClick={handleFinalMatchSubmit} className="w-full sm:w-auto">
+                    <Button onClick={handleFinalMatchSubmit} className="w-full">
                       Submit Final Match
                     </Button>
                   ) : (
-                    <div className="space-y-6">
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <h3 className="text-lg font-semibold mb-4">Final Match Results</h3>
-                        <p className="text-gray-600">
+                    <div className="space-y-4">
+                      <div className="bg-gray-50 p-4 rounded-lg text-center">
+                        <h3 className="text-lg font-semibold mb-2">Final Match Results</h3>
+                        <p className="text-gray-600 text-sm">
                           Team 1: {finalMatchScores.team1.map(s => s ?? 0).join(' - ')}
                         </p>
-                        <p className="text-gray-600">
+                        <p className="text-gray-600 text-sm">
                           Team 2: {finalMatchScores.team2.map(s => s ?? 0).join(' - ')}
                         </p>
                       </div>
 
                       {finalMatchWinner && (
-                        <div className="bg-gradient-to-r from-purple-100 to-pink-100 p-6 rounded-lg">
-                          <div className="space-y-4">
+                        <div className="bg-gradient-to-r from-purple-100 to-pink-100 p-4 rounded-lg text-center">
+                          <div className="space-y-3">
                             <div>
-                              <h3 className="text-xl font-bold mb-2">👑 Champions 👑</h3>
-                              <p className="text-lg">
+                              <h3 className="text-lg font-bold mb-2">👑 Champions 👑</h3>
+                              <p className="text-sm">
                                 King {finalMatchWinner.malePlayer} & Queen {finalMatchWinner.femalePlayer}
                               </p>
                             </div>
                             <div>
-                              <h3 className="text-lg font-semibold mb-2">Runners-up</h3>
-                              <p>
+                              <h3 className="text-md font-semibold mb-1">Runners-up</h3>
+                              <p className="text-sm">
                                 Prince {finalMatchWinner.losingMalePlayer} & Princess {finalMatchWinner.losingFemalePlayer}
                               </p>
                             </div>
@@ -528,17 +527,17 @@ export default function BeachVolleyballTracker() {
                       )}
 
                       {isAdmin && (
-                        <div className="flex flex-col sm:flex-row gap-2">
-                          <Button variant="outline" onClick={handleEditFinalMatch}>
+                        <div className="flex flex-col gap-2">
+                          <Button variant="outline" onClick={handleEditFinalMatch} className="w-full">
                             <Edit className="w-4 h-4 mr-2" />
                             Edit Match
                           </Button>
-                          <Button variant="destructive" onClick={handleResetFinalMatch}>
+                          <Button variant="destructive" onClick={handleResetFinalMatch} className="w-full">
                             <Trash className="w-4 h-4 mr-2" />
                             Reset Match
                           </Button>
                           {isEditingFinalMatch && (
-                            <Button onClick={handleFinalMatchEditSubmit}>
+                            <Button onClick={handleFinalMatchEditSubmit} className="w-full">
                               Save Changes
                             </Button>
                           )}
@@ -551,20 +550,21 @@ export default function BeachVolleyballTracker() {
             ) : (
               <>
                 {/* Current Match with Navigation */}
-                <Card className="mb-8">
+                <Card>
                   <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-2xl font-bold">
+                    <div className="flex flex-col items-center gap-3">
+                      <CardTitle className="text-xl font-bold text-center">
                         Match {currentMatchIndex + 1} of {matches.length}
                       </CardTitle>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 w-full">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={handlePreviousMatch}
                           disabled={currentMatchIndex === 0}
+                          className="flex-1"
                         >
-                          <ChevronLeft className="w-4 h-4" />
+                          <ChevronLeft className="w-4 h-4 mr-1" />
                           Previous
                         </Button>
                         <Button
@@ -572,17 +572,18 @@ export default function BeachVolleyballTracker() {
                           size="sm"
                           onClick={handleNextMatch}
                           disabled={currentMatchIndex === matches.length - 1}
+                          className="flex-1"
                         >
                           Next
-                          <ChevronRight className="w-4 h-4" />
+                          <ChevronRight className="w-4 h-4 ml-1" />
                         </Button>
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-6">
+                  <CardContent className="space-y-4">
                     <div className="space-y-4">
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                        <p className="text-lg font-semibold min-w-[200px]">
+                      <div className="text-center">
+                        <p className="text-sm font-semibold mb-2">
                           {currentMatch.player1.name} & {currentMatch.player2.name}
                         </p>
                         {!currentMatch.isSubmitted || isAdmin ? (
@@ -590,18 +591,20 @@ export default function BeachVolleyballTracker() {
                             value={currentMatch.isSubmitted && !isAdmin ? currentMatch.score1 : score1}
                             onChange={(e) => setScore1(e.target.value)}
                             type="number"
-                            className="w-20"
+                            className="w-20 mx-auto text-center"
                             inputMode="numeric"
                             pattern="\d*"
                             disabled={currentMatch.isSubmitted && !isAdmin}
                           />
                         ) : (
-                          <p className="text-xl font-bold">{currentMatch.score1}</p>
+                          <p className="text-2xl font-bold text-primary">{currentMatch.score1}</p>
                         )}
                       </div>
 
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                        <p className="text-lg font-semibold min-w-[200px]">
+                      <div className="text-center text-lg font-bold">VS</div>
+
+                      <div className="text-center">
+                        <p className="text-sm font-semibold mb-2">
                           {currentMatch.player3.name} & {currentMatch.player4.name}
                         </p>
                         {!currentMatch.isSubmitted || isAdmin ? (
@@ -609,25 +612,25 @@ export default function BeachVolleyballTracker() {
                             value={currentMatch.isSubmitted && !isAdmin ? currentMatch.score2 : score2}
                             onChange={(e) => setScore2(e.target.value)}
                             type="number"
-                            className="w-20"
+                            className="w-20 mx-auto text-center"
                             inputMode="numeric"
                             pattern="\d*"
                             disabled={currentMatch.isSubmitted && !isAdmin}
                           />
                         ) : (
-                          <p className="text-xl font-bold">{currentMatch.score2}</p>
+                          <p className="text-2xl font-bold text-primary">{currentMatch.score2}</p>
                         )}
                       </div>
                     </div>
 
                     {!currentMatch.isSubmitted ? (
-                      <Button onClick={handleScoreSubmit} className="w-full sm:w-auto">
+                      <Button onClick={handleScoreSubmit} className="w-full">
                         Submit Score
                       </Button>
                     ) : (
-                      <div className="flex items-center gap-2">
-                        <Check className="text-green-500 w-6 h-6" />
-                        <p className="text-lg">
+                      <div className="flex items-center justify-center gap-2 bg-green-50 p-3 rounded-lg">
+                        <Check className="text-green-500 w-5 h-5" />
+                        <p className="text-sm font-medium">
                           Final Score: {currentMatch.score1} - {currentMatch.score2}
                         </p>
                       </div>
@@ -637,6 +640,7 @@ export default function BeachVolleyballTracker() {
                       <Button 
                         onClick={() => handleEditScore(currentMatchIndex, parseInt(score1, 10) || 0, parseInt(score2, 10) || 0)}
                         variant="outline"
+                        className="w-full"
                       >
                         <Edit className="w-4 h-4 mr-2" />
                         Edit Score
@@ -648,32 +652,24 @@ export default function BeachVolleyballTracker() {
                 {/* Rankings Table */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-2xl font-bold">
+                    <CardTitle className="text-xl font-bold text-center">
                       {gender.charAt(0).toUpperCase() + gender.slice(1)} Rankings
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b">
-                            <th className="text-left py-2 px-4">Rank</th>
-                            <th className="text-left py-2 px-4">Player</th>
-                            <th className="text-right py-2 px-4">Points</th>
-                            <th className="text-right py-2 px-4">Total Scores</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {players.map((player, index) => (
-                            <tr key={player.name} className="border-b last:border-0">
-                              <td className="py-2 px-4">{index + 1}</td>
-                              <td className="py-2 px-4">{player.name}</td>
-                              <td className="py-2 px-4 text-right">{player.points}</td>
-                              <td className="py-2 px-4 text-right">{player.totalScores}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                    <div className="space-y-2">
+                      {players.map((player, index) => (
+                        <div key={player.name} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <span className="text-lg font-bold text-primary">#{index + 1}</span>
+                            <span className="font-medium">{player.name}</span>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-sm font-bold">{player.points} pts</div>
+                            <div className="text-xs text-gray-500">{player.totalScores} total</div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </CardContent>
                 </Card>
@@ -683,36 +679,37 @@ export default function BeachVolleyballTracker() {
         )}
 
         {!showLoginForm && isAdmin && showPlayerManagement && (
-          <Card className="mb-8">
+          <Card>
             <CardHeader>
-              <CardTitle>Player Management</CardTitle>
+              <CardTitle className="text-center">Player Management</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Add Player */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Add New Player</h3>
-                <div className="flex gap-2">
+              <div className="space-y-3">
+                <h3 className="text-lg font-semibold text-center">Add New Player</h3>
+                <div className="space-y-2">
                   <Input
                     placeholder="New player name"
                     value={newPlayerName}
                     onChange={(e) => setNewPlayerName(e.target.value)}
+                    className="w-full"
                   />
-                  <Button onClick={handleAddPlayer}>
+                  <Button onClick={handleAddPlayer} className="w-full">
                     <UserPlus className="w-4 h-4 mr-2" />
-                    Add
+                    Add Player
                   </Button>
                 </div>
               </div>
 
               {/* Replace Player */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Replace Player</h3>
-                <div className="flex flex-col gap-2">
+              <div className="space-y-3">
+                <h3 className="text-lg font-semibold text-center">Replace Player</h3>
+                <div className="space-y-2">
                   <Select
                     value={selectedPlayer?.name || ""}
                     onValueChange={(value) => setSelectedPlayer(players.find(p => p.name === value) || null)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select player to replace" />
                     </SelectTrigger>
                     <SelectContent>
@@ -723,33 +720,32 @@ export default function BeachVolleyballTracker() {
                       ))}
                     </SelectContent>
                   </Select>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="New player name"
-                      value={replacementName}
-                      onChange={(e) => setReplacementName(e.target.value)}
-                    />
-                    <Button onClick={handleReplacePlayer} disabled={!selectedPlayer || !replacementName}>
-                      <UserX className="w-4 h-4 mr-2" />
-                      Replace
-                    </Button>
-                  </div>
+                  <Input
+                    placeholder="New player name"
+                    value={replacementName}
+                    onChange={(e) => setReplacementName(e.target.value)}
+                    className="w-full"
+                  />
+                  <Button onClick={handleReplacePlayer} disabled={!selectedPlayer || !replacementName} className="w-full">
+                    <UserX className="w-4 h-4 mr-2" />
+                    Replace Player
+                  </Button>
                 </div>
               </div>
 
               {/* Remove Player */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Remove Player</h3>
+              <div className="space-y-3">
+                <h3 className="text-lg font-semibold text-center">Remove Player</h3>
                 <div className="space-y-2">
                   {players.map((player) => (
                     <div key={player.name} className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                      <span>{player.name}</span>
+                      <span className="text-sm">{player.name}</span>
                       <Button 
                         variant="destructive" 
                         size="sm" 
                         onClick={() => handleRemovePlayer(player)}
                       >
-                        <UserMinus className="w-4 h-4 mr-2" />
+                        <UserMinus className="w-4 h-4 mr-1" />
                         Remove
                       </Button>
                     </div>

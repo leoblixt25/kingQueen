@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -180,6 +181,9 @@ export default function BeachVolleyballTracker() {
     setFemaleMatches(newFemaleMatches)
     const newMaleMatches = maleMatches.map(match => ({ ...match, score1: 0, score2: 0, isSubmitted: false }))
     setMaleMatches(newMaleMatches)
+    setCurrentMatchIndex(0)
+    setScore1('')
+    setScore2('')
   }
 
   const handleEditScore = (matchIndex: number, newScore1: number, newScore2: number) => {
@@ -382,9 +386,15 @@ export default function BeachVolleyballTracker() {
                   Admin Login
                 </Button>
               ) : (
-                <Button variant="destructive" onClick={handleAdminLogout} className="w-full">
-                  Logout
-                </Button>
+                <div className="flex flex-col gap-2">
+                  <Button variant="destructive" onClick={handleAdminLogout} className="w-full">
+                    Logout
+                  </Button>
+                  <Button variant="destructive" onClick={handleResetScores} className="w-full">
+                    <Trash className="w-4 h-4 mr-2" />
+                    Reset All Scores
+                  </Button>
+                </div>
               )}
             </div>
           </div>
@@ -638,7 +648,13 @@ export default function BeachVolleyballTracker() {
 
                     {isAdmin && currentMatch.isSubmitted && (
                       <Button 
-                        onClick={() => handleEditScore(currentMatchIndex, parseInt(score1, 10) || 0, parseInt(score2, 10) || 0)}
+                        onClick={() => {
+                          // Set the input values to current match scores for editing
+                          setScore1(currentMatch.score1.toString());
+                          setScore2(currentMatch.score2.toString());
+                          // Apply the edit with the current values in the inputs
+                          handleEditScore(currentMatchIndex, currentMatch.score1, currentMatch.score2);
+                        }}
                         variant="outline"
                         className="w-full"
                       >

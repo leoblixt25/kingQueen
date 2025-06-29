@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Check, Edit, Trash, Crown, UserPlus, UserMinus, UserX } from "lucide-react";
+import { Check, Edit, Trash, Crown, UserPlus, UserMinus, UserX, ChevronLeft, ChevronRight } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Gender, Match, Player, FinalMatchScores, FinalMatchWinner } from "@/types";
 
@@ -115,6 +115,14 @@ export default function BeachVolleyballTracker() {
     updatePlayerPoints(newMatches[currentMatchIndex])
     setScore1('')
     setScore2('')
+    
+    // Auto-advance to next unfinished match
+    const nextUnfinishedIndex = newMatches.findIndex((match, index) => 
+      index > currentMatchIndex && !match.isSubmitted
+    );
+    if (nextUnfinishedIndex !== -1) {
+      setCurrentMatchIndex(nextUnfinishedIndex);
+    }
   }
 
   const updatePlayerPoints = (match: Match) => {
@@ -310,6 +318,22 @@ export default function BeachVolleyballTracker() {
 
     setSelectedPlayer(null);
     setReplacementName("");
+  };
+
+  const handlePreviousMatch = () => {
+    if (currentMatchIndex > 0) {
+      setCurrentMatchIndex(currentMatchIndex - 1);
+      setScore1('');
+      setScore2('');
+    }
+  };
+
+  const handleNextMatch = () => {
+    if (currentMatchIndex < matches.length - 1) {
+      setCurrentMatchIndex(currentMatchIndex + 1);
+      setScore1('');
+      setScore2('');
+    }
   };
 
   const currentMatch = matches[currentMatchIndex];
@@ -526,12 +550,34 @@ export default function BeachVolleyballTracker() {
               </Card>
             ) : (
               <>
-                {/* Current Match - Now First */}
+                {/* Current Match with Navigation */}
                 <Card className="mb-8">
                   <CardHeader>
-                    <CardTitle className="text-2xl font-bold">
-                      Match {currentMatchIndex + 1}
-                    </CardTitle>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-2xl font-bold">
+                        Match {currentMatchIndex + 1} of {matches.length}
+                      </CardTitle>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handlePreviousMatch}
+                          disabled={currentMatchIndex === 0}
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                          Previous
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleNextMatch}
+                          disabled={currentMatchIndex === matches.length - 1}
+                        >
+                          Next
+                          <ChevronRight className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
                   </CardHeader>
                   <CardContent className="space-y-6">
                     <div className="space-y-4">
@@ -599,7 +645,7 @@ export default function BeachVolleyballTracker() {
                   </CardContent>
                 </Card>
 
-                {/* Rankings Table - Now Second */}
+                {/* Rankings Table */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-2xl font-bold">

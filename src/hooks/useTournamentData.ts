@@ -91,13 +91,30 @@ export const useTournamentData = () => {
         totalScores: p.total_scores
       }));
 
+      console.log('Female players count:', females.length);
+      console.log('Male players count:', males.length);
+
+      // Check if we have incomplete data and need to reinitialize
+      if (females.length < 8 || males.length < 8) {
+        console.log('Incomplete player data detected, reinitializing...');
+        await resetAndInitializePlayers();
+        return;
+      }
+
       setFemalePlayers(females);
       setMalePlayers(males);
     } else {
       console.log('No players found, initializing default players...');
-      // Initialize with default players if none exist
       await initializeDefaultPlayers();
     }
+  };
+
+  const resetAndInitializePlayers = async () => {
+    console.log('Resetting and reinitializing all players...');
+    // Delete existing players
+    await supabase.from('players').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    // Initialize fresh
+    await initializeDefaultPlayers();
   };
 
   const loadMatches = async () => {
@@ -256,8 +273,11 @@ export const useTournamentData = () => {
     const femalePlayers = players.filter(p => p.gender === 'female');
     const malePlayers = players.filter(p => p.gender === 'male');
 
+    console.log('Female players for matches:', femalePlayers.length);
+    console.log('Male players for matches:', malePlayers.length);
+
     if (femalePlayers.length < 8 || malePlayers.length < 8) {
-      console.error('Not enough players to create matches');
+      console.error('Not enough players to create matches. Female:', femalePlayers.length, 'Male:', malePlayers.length);
       return;
     }
 

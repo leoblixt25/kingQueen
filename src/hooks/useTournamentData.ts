@@ -94,9 +94,9 @@ export const useTournamentData = () => {
       console.log('Female players count:', females.length);
       console.log('Male players count:', males.length);
 
-      // Check if we have incomplete data and need to reinitialize
-      if (females.length < 8 || males.length < 8) {
-        console.log('Incomplete player data detected, reinitializing...');
+      // Check if we have the wrong number of players and need to reinitialize
+      if (females.length !== 8 || males.length !== 8) {
+        console.log('Incorrect player count detected. Female:', females.length, 'Male:', males.length, '. Reinitializing...');
         await resetAndInitializePlayers();
         return;
       }
@@ -111,10 +111,23 @@ export const useTournamentData = () => {
 
   const resetAndInitializePlayers = async () => {
     console.log('Resetting and reinitializing all players...');
-    // Delete existing players
-    await supabase.from('players').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-    // Initialize fresh
-    await initializeDefaultPlayers();
+    
+    try {
+      // Delete all existing data in the correct order (foreign key constraints)
+      await supabase.from('final_matches').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('matches').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('players').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      
+      console.log('All existing data cleared');
+      
+      // Wait a moment for deletions to complete
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Initialize fresh players
+      await initializeDefaultPlayers();
+    } catch (error) {
+      console.error('Error in resetAndInitializePlayers:', error);
+    }
   };
 
   const loadMatches = async () => {
@@ -161,6 +174,16 @@ export const useTournamentData = () => {
           score2: m.score2 || 0,
           isSubmitted: m.is_submitted || false
         }));
+
+      console.log('Female matches count:', femaleMatchesData.length);
+      console.log('Male matches count:', maleMatchesData.length);
+
+      // Check if we have the wrong number of matches and need to reinitialize
+      if (femaleMatchesData.length !== 14 || maleMatchesData.length !== 14) {
+        console.log('Incorrect match count detected. Female:', femaleMatchesData.length, 'Male:', maleMatchesData.length, '. Reinitializing...');
+        await resetAndInitializePlayers();
+        return;
+      }
 
       setFemaleMatches(femaleMatchesData);
       setMaleMatches(maleMatchesData);
@@ -213,6 +236,16 @@ export const useTournamentData = () => {
     ];
 
     try {
+      // Check if players already exist to prevent duplicates
+      const { data: existingPlayers } = await supabase
+        .from('players')
+        .select('name, gender');
+
+      if (existingPlayers && existingPlayers.length > 0) {
+        console.log('Players already exist, skipping initialization');
+        return;
+      }
+
       // Insert female players
       const femaleInserts = defaultFemalePlayers.map(name => ({
         name,
@@ -249,6 +282,9 @@ export const useTournamentData = () => {
 
       console.log('Default players inserted successfully');
       
+      // Wait a moment for insertions to complete
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
       // Reload players and then initialize matches
       await loadPlayers();
       await initializeMatches();
@@ -276,12 +312,22 @@ export const useTournamentData = () => {
     console.log('Female players for matches:', femalePlayers.length);
     console.log('Male players for matches:', malePlayers.length);
 
-    if (femalePlayers.length < 8 || malePlayers.length < 8) {
-      console.error('Not enough players to create matches. Female:', femalePlayers.length, 'Male:', malePlayers.length);
+    if (femalePlayers.length !== 8 || malePlayers.length !== 8) {
+      console.error('Incorrect number of players for match creation. Female:', femalePlayers.length, 'Male:', malePlayers.length);
       return;
     }
 
-    // Define match combinations
+    // Check if matches already exist to prevent duplicates
+    const { data: existingMatches } = await supabase
+      .from('matches')
+      .select('id');
+
+    if (existingMatches && existingMatches.length > 0) {
+      console.log('Matches already exist, skipping initialization');
+      return;
+    }
+
+    // Define match combinations (exactly 14 matches)
     const matchCombinations = [
       [0, 1, 2, 3], [4, 5, 6, 7], [5, 6, 7, 0], [3, 4, 1, 2],
       [6, 3, 4, 1], [0, 2, 7, 5], [2, 4, 3, 7], [1, 6, 5, 0],
@@ -340,7 +386,7 @@ export const useTournamentData = () => {
         return;
       }
 
-      console.log('Matches initialized successfully');
+      console.log('Matches initialized successfully - 14 female and 14 male matches');
       await loadMatches();
       
     } catch (error) {
@@ -532,10 +578,13 @@ export const useTournamentData = () => {
   };
 
   const resetAllData = async () => {
-    // Delete all data
+    // Delete all data in the correct order
     await supabase.from('final_matches').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     await supabase.from('matches').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     await supabase.from('players').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    
+    // Wait for deletions to complete
+    await new Promise(resolve => setTimeout(resolve, 1000));
     
     // Reinitialize
     await initializeDefaultPlayers();

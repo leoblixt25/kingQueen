@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Player, Match, FinalMatchScores, FinalMatchWinner } from '@/types';
@@ -53,11 +52,19 @@ export const useTournamentData = () => {
 
   const loadTournamentData = async () => {
     setIsLoading(true);
-    await Promise.all([loadPlayers(), loadMatches(), loadFinalMatch()]);
-    setIsLoading(false);
+    console.log('Loading tournament data...');
+    
+    try {
+      await Promise.all([loadPlayers(), loadMatches(), loadFinalMatch()]);
+    } catch (error) {
+      console.error('Error loading tournament data:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const loadPlayers = async () => {
+    console.log('Loading players...');
     const { data: players, error } = await supabase
       .from('players')
       .select('*')
@@ -68,6 +75,8 @@ export const useTournamentData = () => {
       console.error('Error loading players:', error);
       return;
     }
+
+    console.log('Players loaded:', players);
 
     if (players && players.length > 0) {
       const females = players.filter(p => p.gender === 'female').map(p => ({
@@ -85,12 +94,14 @@ export const useTournamentData = () => {
       setFemalePlayers(females);
       setMalePlayers(males);
     } else {
+      console.log('No players found, initializing default players...');
       // Initialize with default players if none exist
       await initializeDefaultPlayers();
     }
   };
 
   const loadMatches = async () => {
+    console.log('Loading matches...');
     const { data: matches, error } = await supabase
       .from('matches')
       .select(`
@@ -107,6 +118,8 @@ export const useTournamentData = () => {
       return;
     }
 
+    console.log('Matches loaded:', matches);
+
     if (matches && matches.length > 0) {
       const femaleMatchesData = matches
         .filter(m => m.gender === 'female')
@@ -115,9 +128,9 @@ export const useTournamentData = () => {
           player2: { name: m.player2?.name || '', points: 0, totalScores: 0 },
           player3: { name: m.player3?.name || '', points: 0, totalScores: 0 },
           player4: { name: m.player4?.name || '', points: 0, totalScores: 0 },
-          score1: m.score1,
-          score2: m.score2,
-          isSubmitted: m.is_submitted
+          score1: m.score1 || 0,
+          score2: m.score2 || 0,
+          isSubmitted: m.is_submitted || false
         }));
 
       const maleMatchesData = matches
@@ -127,17 +140,20 @@ export const useTournamentData = () => {
           player2: { name: m.player2?.name || '', points: 0, totalScores: 0 },
           player3: { name: m.player3?.name || '', points: 0, totalScores: 0 },
           player4: { name: m.player4?.name || '', points: 0, totalScores: 0 },
-          score1: m.score1,
-          score2: m.score2,
-          isSubmitted: m.is_submitted
+          score1: m.score1 || 0,
+          score2: m.score2 || 0,
+          isSubmitted: m.is_submitted || false
         }));
 
       setFemaleMatches(femaleMatchesData);
       setMaleMatches(maleMatchesData);
+    } else {
+      console.log('No matches found, will initialize after players are created');
     }
   };
 
   const loadFinalMatch = async () => {
+    console.log('Loading final match...');
     const { data: finalMatch, error } = await supabase
       .from('final_matches')
       .select('*')
@@ -170,6 +186,7 @@ export const useTournamentData = () => {
   };
 
   const initializeDefaultPlayers = async () => {
+    console.log('Initializing default players...');
     const defaultFemalePlayers = [
       "Lakota", "Lidia", "Giulia", "Dina", "Catalina", "Izel", "Marta", "Eli"
     ];
@@ -178,40 +195,73 @@ export const useTournamentData = () => {
       "Giacomo", "David", "Javi", "Mauro", "Mattia", "Dani", "Leo", "Samuel"
     ];
 
-    // Insert female players
-    for (const name of defaultFemalePlayers) {
-      await supabase.from('players').insert({
+    try {
+      // Insert female players
+      const femaleInserts = defaultFemalePlayers.map(name => ({
         name,
         gender: 'female',
         points: 0,
         total_scores: 0
-      });
-    }
+      }));
 
-    // Insert male players
-    for (const name of defaultMalePlayers) {
-      await supabase.from('players').insert({
+      const { error: femaleError } = await supabase
+        .from('players')
+        .insert(femaleInserts);
+
+      if (femaleError) {
+        console.error('Error inserting female players:', femaleError);
+        return;
+      }
+
+      // Insert male players
+      const maleInserts = defaultMalePlayers.map(name => ({
         name,
         gender: 'male',
         points: 0,
         total_scores: 0
-      });
-    }
+      }));
 
-    // Reload players after initialization
-    await loadPlayers();
-    await initializeMatches();
+      const { error: maleError } = await supabase
+        .from('players')
+        .insert(maleInserts);
+
+      if (maleError) {
+        console.error('Error inserting male players:', maleError);
+        return;
+      }
+
+      console.log('Default players inserted successfully');
+      
+      // Reload players and then initialize matches
+      await loadPlayers();
+      await initializeMatches();
+      
+    } catch (error) {
+      console.error('Error in initializeDefaultPlayers:', error);
+    }
   };
 
   const initializeMatches = async () => {
+    console.log('Initializing matches...');
+    
     // Get players to create matches
-    const { data: players } = await supabase.from('players').select('*');
-    if (!players) return;
+    const { data: players, error } = await supabase.from('players').select('*');
+    if (error || !players) {
+      console.error('Error fetching players for match initialization:', error);
+      return;
+    }
+
+    console.log('Players for match initialization:', players);
 
     const femalePlayers = players.filter(p => p.gender === 'female');
     const malePlayers = players.filter(p => p.gender === 'male');
 
-    // Define match combinations (same as in the original code)
+    if (femalePlayers.length < 8 || malePlayers.length < 8) {
+      console.error('Not enough players to create matches');
+      return;
+    }
+
+    // Define match combinations
     const matchCombinations = [
       [0, 1, 2, 3], [4, 5, 6, 7], [5, 6, 7, 0], [3, 4, 1, 2],
       [6, 3, 4, 1], [0, 2, 7, 5], [2, 4, 3, 7], [1, 6, 5, 0],
@@ -219,33 +269,63 @@ export const useTournamentData = () => {
       [7, 4, 0, 6], [5, 2, 6, 1]
     ];
 
-    // Create female matches
-    for (let i = 0; i < matchCombinations.length; i++) {
-      const [p1, p2, p3, p4] = matchCombinations[i];
-      await supabase.from('matches').insert({
-        player1_id: femalePlayers[p1].id,
-        player2_id: femalePlayers[p2].id,
-        player3_id: femalePlayers[p3].id,
-        player4_id: femalePlayers[p4].id,
-        gender: 'female',
-        match_order: i
+    try {
+      // Create female matches
+      const femaleMatches = matchCombinations.map((combination, index) => {
+        const [p1, p2, p3, p4] = combination;
+        return {
+          player1_id: femalePlayers[p1].id,
+          player2_id: femalePlayers[p2].id,
+          player3_id: femalePlayers[p3].id,
+          player4_id: femalePlayers[p4].id,
+          gender: 'female',
+          match_order: index,
+          score1: 0,
+          score2: 0,
+          is_submitted: false
+        };
       });
-    }
 
-    // Create male matches
-    for (let i = 0; i < matchCombinations.length; i++) {
-      const [p1, p2, p3, p4] = matchCombinations[i];
-      await supabase.from('matches').insert({
-        player1_id: malePlayers[p1].id,
-        player2_id: malePlayers[p2].id,
-        player3_id: malePlayers[p3].id,
-        player4_id: malePlayers[p4].id,
-        gender: 'male',
-        match_order: i
+      const { error: femaleMatchError } = await supabase
+        .from('matches')
+        .insert(femaleMatches);
+
+      if (femaleMatchError) {
+        console.error('Error inserting female matches:', femaleMatchError);
+        return;
+      }
+
+      // Create male matches
+      const maleMatches = matchCombinations.map((combination, index) => {
+        const [p1, p2, p3, p4] = combination;
+        return {
+          player1_id: malePlayers[p1].id,
+          player2_id: malePlayers[p2].id,
+          player3_id: malePlayers[p3].id,
+          player4_id: malePlayers[p4].id,
+          gender: 'male',
+          match_order: index,
+          score1: 0,
+          score2: 0,
+          is_submitted: false
+        };
       });
-    }
 
-    await loadMatches();
+      const { error: maleMatchError } = await supabase
+        .from('matches')
+        .insert(maleMatches);
+
+      if (maleMatchError) {
+        console.error('Error inserting male matches:', maleMatchError);
+        return;
+      }
+
+      console.log('Matches initialized successfully');
+      await loadMatches();
+      
+    } catch (error) {
+      console.error('Error in initializeMatches:', error);
+    }
   };
 
   const updateMatchScore = async (matchIndex: number, score1: number, score2: number, gender: 'male' | 'female') => {

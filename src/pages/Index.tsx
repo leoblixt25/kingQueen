@@ -44,6 +44,15 @@ export default function BeachVolleyballTracker() {
   const players = gender === 'female' ? femalePlayers : malePlayers
   const matches = gender === 'female' ? femaleMatches : maleMatches
 
+  // Reset currentMatchIndex when gender changes
+  const handleGenderChange = (newGender: Gender) => {
+    setGender(newGender);
+    setCurrentMatchIndex(0);
+    setScore1('');
+    setScore2('');
+    setShowFinalMatch(false);
+  };
+
   const handleScoreSubmit = async () => {
     const scoreValue1 = parseInt(score1, 10) || 0;
     const scoreValue2 = parseInt(score2, 10) || 0;
@@ -110,17 +119,33 @@ export default function BeachVolleyballTracker() {
 
   const handlePreviousMatch = () => {
     if (currentMatchIndex > 0) {
-      setCurrentMatchIndex(currentMatchIndex - 1);
-      setScore1('');
-      setScore2('');
+      const newIndex = currentMatchIndex - 1;
+      setCurrentMatchIndex(newIndex);
+      // Clear scores or set to current match scores if editing
+      const currentMatch = matches[newIndex];
+      if (currentMatch && currentMatch.isSubmitted && isAdmin) {
+        setScore1(currentMatch.score1.toString());
+        setScore2(currentMatch.score2.toString());
+      } else {
+        setScore1('');
+        setScore2('');
+      }
     }
   };
 
   const handleNextMatch = () => {
     if (currentMatchIndex < matches.length - 1) {
-      setCurrentMatchIndex(currentMatchIndex + 1);
-      setScore1('');
-      setScore2('');
+      const newIndex = currentMatchIndex + 1;
+      setCurrentMatchIndex(newIndex);
+      // Clear scores or set to current match scores if editing
+      const currentMatch = matches[newIndex];
+      if (currentMatch && currentMatch.isSubmitted && isAdmin) {
+        setScore1(currentMatch.score1.toString());
+        setScore2(currentMatch.score2.toString());
+      } else {
+        setScore1('');
+        setScore2('');
+      }
     }
   };
 
@@ -137,12 +162,17 @@ export default function BeachVolleyballTracker() {
 
   const currentMatch = matches[currentMatchIndex];
 
-  if (!currentMatch) {
+  if (!currentMatch || matches.length === 0) {
     return (
       <div className="min-h-screen bg-white px-4 py-6 flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-xl font-semibold mb-2">No matches available</h2>
-          <p className="text-gray-600">Please check back later</p>
+          <p className="text-gray-600">Matches are being initialized. Please wait a moment and refresh.</p>
+          {isAdmin && (
+            <Button onClick={handleResetScores} className="mt-4">
+              Reset and Reinitialize Data
+            </Button>
+          )}
         </div>
       </div>
     );
@@ -157,14 +187,14 @@ export default function BeachVolleyballTracker() {
             <div className="flex flex-col gap-2 w-full">
               <Button 
                 variant={gender === 'female' ? "default" : "outline"} 
-                onClick={() => { setGender('female'); setShowFinalMatch(false); }}
+                onClick={() => handleGenderChange('female')}
                 className="w-full"
               >
                 Female
               </Button>
               <Button 
                 variant={gender === 'male' ? "default" : "outline"}
-                onClick={() => { setGender('male'); setShowFinalMatch(false); }}
+                onClick={() => handleGenderChange('male')}
                 className="w-full"
               >
                 Male
@@ -361,7 +391,7 @@ export default function BeachVolleyballTracker() {
                   <CardHeader>
                     <div className="flex flex-col items-center gap-3">
                       <CardTitle className="text-xl font-bold text-center">
-                        Match {currentMatchIndex + 1} of {matches.length}
+                        {gender.charAt(0).toUpperCase() + gender.slice(1)} Match {currentMatchIndex + 1} of {matches.length}
                       </CardTitle>
                       <div className="flex items-center gap-2 w-full">
                         <Button
@@ -374,6 +404,9 @@ export default function BeachVolleyballTracker() {
                           <ChevronLeft className="w-4 h-4 mr-1" />
                           Previous
                         </Button>
+                        <span className="text-sm text-gray-500">
+                          {currentMatchIndex + 1}/{matches.length}
+                        </span>
                         <Button
                           variant="outline"
                           size="sm"
@@ -470,7 +503,7 @@ export default function BeachVolleyballTracker() {
                   <CardContent>
                     <div className="space-y-2">
                       {players.map((player, index) => (
-                        <div key={player.name} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div key={`${player.name}-${index}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                           <div className="flex items-center gap-3">
                             <span className="text-lg font-bold text-primary">#{index + 1}</span>
                             <span className="font-medium">{player.name}</span>

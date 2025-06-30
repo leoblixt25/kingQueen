@@ -95,10 +95,10 @@ export const useTournamentData = () => {
       .from('matches')
       .select(`
         *,
-        player1:player1_id(name),
-        player2:player2_id(name),
-        player3:player3_id(name),
-        player4:player4_id(name)
+        player1:players!matches_player1_id_fkey(name),
+        player2:players!matches_player2_id_fkey(name),
+        player3:players!matches_player3_id_fkey(name),
+        player4:players!matches_player4_id_fkey(name)
       `)
       .order('match_order');
 
@@ -111,10 +111,10 @@ export const useTournamentData = () => {
       const femaleMatchesData = matches
         .filter(m => m.gender === 'female')
         .map(m => ({
-          player1: { name: m.player1.name, points: 0, totalScores: 0 },
-          player2: { name: m.player2.name, points: 0, totalScores: 0 },
-          player3: { name: m.player3.name, points: 0, totalScores: 0 },
-          player4: { name: m.player4.name, points: 0, totalScores: 0 },
+          player1: { name: m.player1?.name || '', points: 0, totalScores: 0 },
+          player2: { name: m.player2?.name || '', points: 0, totalScores: 0 },
+          player3: { name: m.player3?.name || '', points: 0, totalScores: 0 },
+          player4: { name: m.player4?.name || '', points: 0, totalScores: 0 },
           score1: m.score1,
           score2: m.score2,
           isSubmitted: m.is_submitted
@@ -123,10 +123,10 @@ export const useTournamentData = () => {
       const maleMatchesData = matches
         .filter(m => m.gender === 'male')
         .map(m => ({
-          player1: { name: m.player1.name, points: 0, totalScores: 0 },
-          player2: { name: m.player2.name, points: 0, totalScores: 0 },
-          player3: { name: m.player3.name, points: 0, totalScores: 0 },
-          player4: { name: m.player4.name, points: 0, totalScores: 0 },
+          player1: { name: m.player1?.name || '', points: 0, totalScores: 0 },
+          player2: { name: m.player2?.name || '', points: 0, totalScores: 0 },
+          player3: { name: m.player3?.name || '', points: 0, totalScores: 0 },
+          player4: { name: m.player4?.name || '', points: 0, totalScores: 0 },
           score1: m.score1,
           score2: m.score2,
           isSubmitted: m.is_submitted
@@ -289,72 +289,94 @@ export const useTournamentData = () => {
     const winnerPoints = 2;
     const loserPoints = 1;
 
+    // Get current player data to calculate new values
+    const { data: player1 } = await supabase.from('players').select('points, total_scores').eq('id', match.player1_id).single();
+    const { data: player2 } = await supabase.from('players').select('points, total_scores').eq('id', match.player2_id).single();
+    const { data: player3 } = await supabase.from('players').select('points, total_scores').eq('id', match.player3_id).single();
+    const { data: player4 } = await supabase.from('players').select('points, total_scores').eq('id', match.player4_id).single();
+
     if (score1 > score2) {
-      // Team 1 wins - update points directly
-      await supabase
-        .from('players')
-        .update({ 
-          points: supabase.raw('points + ?', [winnerPoints]),
-          total_scores: supabase.raw('total_scores + ?', [score1])
-        })
-        .eq('id', match.player1_id);
-        
-      await supabase
-        .from('players')
-        .update({ 
-          points: supabase.raw('points + ?', [winnerPoints]),
-          total_scores: supabase.raw('total_scores + ?', [score1])
-        })
-        .eq('id', match.player2_id);
-        
-      await supabase
-        .from('players')
-        .update({ 
-          points: supabase.raw('points + ?', [loserPoints]),
-          total_scores: supabase.raw('total_scores + ?', [score2])
-        })
-        .eq('id', match.player3_id);
-        
-      await supabase
-        .from('players')
-        .update({ 
-          points: supabase.raw('points + ?', [loserPoints]),
-          total_scores: supabase.raw('total_scores + ?', [score2])
-        })
-        .eq('id', match.player4_id);
+      // Team 1 wins
+      if (player1) {
+        await supabase
+          .from('players')
+          .update({ 
+            points: player1.points + winnerPoints,
+            total_scores: player1.total_scores + score1
+          })
+          .eq('id', match.player1_id);
+      }
+      
+      if (player2) {
+        await supabase
+          .from('players')
+          .update({ 
+            points: player2.points + winnerPoints,
+            total_scores: player2.total_scores + score1
+          })
+          .eq('id', match.player2_id);
+      }
+      
+      if (player3) {
+        await supabase
+          .from('players')
+          .update({ 
+            points: player3.points + loserPoints,
+            total_scores: player3.total_scores + score2
+          })
+          .eq('id', match.player3_id);
+      }
+      
+      if (player4) {
+        await supabase
+          .from('players')
+          .update({ 
+            points: player4.points + loserPoints,
+            total_scores: player4.total_scores + score2
+          })
+          .eq('id', match.player4_id);
+      }
     } else {
       // Team 2 wins
-      await supabase
-        .from('players')
-        .update({ 
-          points: supabase.raw('points + ?', [loserPoints]),
-          total_scores: supabase.raw('total_scores + ?', [score1])
-        })
-        .eq('id', match.player1_id);
-        
-      await supabase
-        .from('players')
-        .update({ 
-          points: supabase.raw('points + ?', [loserPoints]),
-          total_scores: supabase.raw('total_scores + ?', [score1])
-        })
-        .eq('id', match.player2_id);
-        
-      await supabase
-        .from('players')
-        .update({ 
-          points: supabase.raw('points + ?', [winnerPoints]),
-          total_scores: supabase.raw('total_scores + ?', [score2])
-        })
-        .eq('id', match.player3_id);
-        
-      await supabase
-        .from('players')
-        .update({ 
-          points: supabase.raw('points + ?', [winnerPoints]),
-          total_scores: supabase.raw('total_scores + ?', [score2])
-        })
-        .eq('id', match.player4_id);
+      if (player1) {
+        await supabase
+          .from('players')
+          .update({ 
+            points: player1.points + loserPoints,
+            total_scores: player1.total_scores + score1
+          })
+          .eq('id', match.player1_id);
+      }
+      
+      if (player2) {
+        await supabase
+          .from('players')
+          .update({ 
+            points: player2.points + loserPoints,
+            total_scores: player2.total_scores + score1
+          })
+          .eq('id', match.player2_id);
+      }
+      
+      if (player3) {
+        await supabase
+          .from('players')
+          .update({ 
+            points: player3.points + winnerPoints,
+            total_scores: player3.total_scores + score2
+          })
+          .eq('id', match.player3_id);
+      }
+      
+      if (player4) {
+        await supabase
+          .from('players')
+          .update({ 
+            points: player4.points + winnerPoints,
+            total_scores: player4.total_scores + score2
+          })
+          .eq('id', match.player4_id);
+      }
     }
   };
 

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -101,7 +100,10 @@ export default function BeachVolleyballTracker() {
   }
 
   const handleResetFinalMatch = async () => {
-    const resetScores = { team1: [null, null, null], team2: [null, null, null] } as const;
+    const resetScores: FinalMatchScores = { 
+      team1: [null, null, null], 
+      team2: [null, null, null] 
+    };
     setFinalMatchScores(resetScores);
     await updateFinalMatch(resetScores);
   }
@@ -247,11 +249,11 @@ export default function BeachVolleyballTracker() {
                             id={`team1-set${setIndex + 1}`}
                             value={finalMatchScores.team1[setIndex] !== null ? finalMatchScores.team1[setIndex] : ''}
                             onChange={(e) => {
-                              const newScores = [...finalMatchScores.team1];
+                              const newScores: [number | null, number | null, number | null] = [...finalMatchScores.team1];
                               newScores[setIndex] = e.target.value === '' ? null : parseInt(e.target.value, 10);
                               setFinalMatchScores({
                                 ...finalMatchScores,
-                                team1: newScores as [number | null, number | null, number | null]
+                                team1: newScores
                               });
                             }}
                             type="number"
@@ -278,11 +280,11 @@ export default function BeachVolleyballTracker() {
                             id={`team2-set${setIndex + 1}`}
                             value={finalMatchScores.team2[setIndex] !== null ? finalMatchScores.team2[setIndex] : ''}
                             onChange={(e) => {
-                              const newScores = [...finalMatchScores.team2];
+                              const newScores: [number | null, number | null, number | null] = [...finalMatchScores.team2];
                               newScores[setIndex] = e.target.value === '' ? null : parseInt(e.target.value, 10);
                               setFinalMatchScores({
                                 ...finalMatchScores,
-                                team2: newScores as [number | null, number | null, number | null]
+                                team2: newScores
                               });
                             }}
                             type="number"

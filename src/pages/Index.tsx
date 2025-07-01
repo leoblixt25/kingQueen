@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -261,129 +262,209 @@ export default function BeachVolleyballTracker() {
         {!showLoginForm && (
           <main>
             {showFinalMatch ? (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-xl font-bold text-center">Final Match</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
+              <div className="space-y-6">
+                {/* Final Match Header */}
+                <div className="text-center">
+                  <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg p-6 shadow-lg">
+                    <h2 className="text-2xl font-bold mb-2 flex items-center justify-center gap-2">
+                      <Crown className="w-6 h-6" />
+                      Final Championship Match
+                      <Crown className="w-6 h-6" />
+                    </h2>
+                    <p className="text-blue-100">The ultimate showdown for the crown!</p>
+                  </div>
+                </div>
+
+                {/* Teams Display */}
+                <div className="grid grid-cols-1 gap-4">
                   {/* Team 1 */}
-                  <div className="space-y-3">
-                    <h3 className="text-lg font-semibold text-center">
-                      Team 1: {malePlayers[0]?.name} & {femalePlayers[1]?.name}
-                    </h3>
-                    <div className="grid grid-cols-3 gap-2">
-                      {[0, 1, 2].map((setIndex) => (
-                        <div key={setIndex} className="space-y-2">
-                          <Label htmlFor={`team1-set${setIndex + 1}`} className="text-sm text-center block">Set {setIndex + 1}</Label>
-                          <Input
-                            id={`team1-set${setIndex + 1}`}
-                            value={finalMatchScores.team1[setIndex] !== null ? finalMatchScores.team1[setIndex] : ''}
-                            onChange={(e) => {
-                              const newScores: [number | null, number | null, number | null] = [...finalMatchScores.team1];
-                              newScores[setIndex] = e.target.value === '' ? null : parseInt(e.target.value, 10);
-                              setFinalMatchScores({
-                                ...finalMatchScores,
-                                team1: newScores
-                              });
-                            }}
-                            type="number"
-                            className="text-center"
-                            inputMode="numeric"
-                            pattern="\d*"
-                            disabled={finalMatchSubmitted && !isEditingFinalMatch}
-                          />
-                        </div>
-                      ))}
+                  <Card className="border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-center text-lg font-bold text-blue-800">
+                        Team 1
+                      </CardTitle>
+                      <div className="text-center">
+                        <p className="text-sm text-blue-600 font-semibold">
+                          {malePlayers[0]?.name} & {femalePlayers[1]?.name}
+                        </p>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-3 gap-3">
+                        {[0, 1, 2].map((setIndex) => (
+                          <div key={setIndex} className="space-y-2">
+                            <Label htmlFor={`team1-set${setIndex + 1}`} className="text-xs font-medium text-center block text-blue-700">
+                              Set {setIndex + 1}
+                            </Label>
+                            <Input
+                              id={`team1-set${setIndex + 1}`}
+                              value={finalMatchScores.team1[setIndex] !== null ? finalMatchScores.team1[setIndex] : ''}
+                              onChange={(e) => {
+                                const newScores: [number | null, number | null, number | null] = [...finalMatchScores.team1];
+                                newScores[setIndex] = e.target.value === '' ? null : parseInt(e.target.value, 10);
+                                setFinalMatchScores({
+                                  ...finalMatchScores,
+                                  team1: newScores
+                                });
+                              }}
+                              type="number"
+                              className="text-center font-bold text-lg border-blue-300 focus:border-blue-500"
+                              inputMode="numeric"
+                              pattern="\d*"
+                              disabled={finalMatchSubmitted && !isEditingFinalMatch}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* VS Divider */}
+                  <div className="flex items-center justify-center">
+                    <div className="bg-gradient-to-r from-orange-400 to-red-500 text-white px-6 py-2 rounded-full font-bold text-lg shadow-lg">
+                      VS
                     </div>
                   </div>
 
                   {/* Team 2 */}
-                  <div className="space-y-3">
-                    <h3 className="text-lg font-semibold text-center">
-                      Team 2: {femalePlayers[0]?.name} & {malePlayers[1]?.name}
-                    </h3>
-                    <div className="grid grid-cols-3 gap-2">
-                      {[0, 1, 2].map((setIndex) => (
-                        <div key={setIndex} className="space-y-2">
-                          <Label htmlFor={`team2-set${setIndex + 1}`} className="text-sm text-center block">Set {setIndex + 1}</Label>
-                          <Input
-                            id={`team2-set${setIndex + 1}`}
-                            value={finalMatchScores.team2[setIndex] !== null ? finalMatchScores.team2[setIndex] : ''}
-                            onChange={(e) => {
-                              const newScores: [number | null, number | null, number | null] = [...finalMatchScores.team2];
-                              newScores[setIndex] = e.target.value === '' ? null : parseInt(e.target.value, 10);
-                              setFinalMatchScores({
-                                ...finalMatchScores,
-                                team2: newScores
-                              });
-                            }}
-                            type="number"
-                            className="text-center"
-                            inputMode="numeric"
-                            pattern="\d*"
-                            disabled={finalMatchSubmitted && !isEditingFinalMatch}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {!finalMatchSubmitted ? (
-                    <Button onClick={handleFinalMatchSubmit} className="w-full">
-                      Submit Final Match
-                    </Button>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="bg-gray-50 p-4 rounded-lg text-center">
-                        <h3 className="text-lg font-semibold mb-2">Final Match Results</h3>
-                        <p className="text-gray-600 text-sm">
-                          Team 1: {finalMatchScores.team1.map(s => s ?? 0).join(' - ')}
-                        </p>
-                        <p className="text-gray-600 text-sm">
-                          Team 2: {finalMatchScores.team2.map(s => s ?? 0).join(' - ')}
+                  <Card className="border-2 border-purple-200 bg-gradient-to-r from-purple-50 to-pink-50">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-center text-lg font-bold text-purple-800">
+                        Team 2
+                      </CardTitle>
+                      <div className="text-center">
+                        <p className="text-sm text-purple-600 font-semibold">
+                          {femalePlayers[0]?.name} & {malePlayers[1]?.name}
                         </p>
                       </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-3 gap-3">
+                        {[0, 1, 2].map((setIndex) => (
+                          <div key={setIndex} className="space-y-2">
+                            <Label htmlFor={`team2-set${setIndex + 1}`} className="text-xs font-medium text-center block text-purple-700">
+                              Set {setIndex + 1}
+                            </Label>
+                            <Input
+                              id={`team2-set${setIndex + 1}`}
+                              value={finalMatchScores.team2[setIndex] !== null ? finalMatchScores.team2[setIndex] : ''}
+                              onChange={(e) => {
+                                const newScores: [number | null, number | null, number | null] = [...finalMatchScores.team2];
+                                newScores[setIndex] = e.target.value === '' ? null : parseInt(e.target.value, 10);
+                                setFinalMatchScores({
+                                  ...finalMatchScores,
+                                  team2: newScores
+                                });
+                              }}
+                              type="number"
+                              className="text-center font-bold text-lg border-purple-300 focus:border-purple-500"
+                              inputMode="numeric"
+                              pattern="\d*"
+                              disabled={finalMatchSubmitted && !isEditingFinalMatch}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
 
-                      {finalMatchWinner && (
-                        <div className="bg-gradient-to-r from-purple-100 to-pink-100 p-4 rounded-lg text-center">
-                          <div className="space-y-3">
-                            <div>
-                              <h3 className="text-lg font-bold mb-2">👑 Champions 👑</h3>
-                              <p className="text-sm">
-                                King {finalMatchWinner.malePlayer} & Queen {finalMatchWinner.femalePlayer}
-                              </p>
-                            </div>
-                            <div>
-                              <h3 className="text-md font-semibold mb-1">Runners-up</h3>
-                              <p className="text-sm">
-                                Prince {finalMatchWinner.losingMalePlayer} & Princess {finalMatchWinner.losingFemalePlayer}
-                              </p>
-                            </div>
+                {/* Action Buttons */}
+                {!finalMatchSubmitted ? (
+                  <Button 
+                    onClick={handleFinalMatchSubmit} 
+                    className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-3 text-lg shadow-lg"
+                  >
+                    Submit Final Match
+                  </Button>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Results Summary */}
+                    <Card className="border-2 border-green-200 bg-gradient-to-r from-green-50 to-emerald-50">
+                      <CardContent className="p-4">
+                        <div className="text-center">
+                          <div className="flex items-center justify-center gap-2 mb-3">
+                            <Check className="text-green-600 w-6 h-6" />
+                            <h3 className="text-lg font-bold text-green-800">Match Complete!</h3>
+                            <Check className="text-green-600 w-6 h-6" />
+                          </div>
+                          <div className="space-y-2 text-sm">
+                            <p className="font-semibold text-green-700">
+                              Team 1: {finalMatchScores.team1.map(s => s ?? 0).join(' - ')}
+                            </p>
+                            <p className="font-semibold text-green-700">
+                              Team 2: {finalMatchScores.team2.map(s => s ?? 0).join(' - ')}
+                            </p>
                           </div>
                         </div>
-                      )}
+                      </CardContent>
+                    </Card>
 
-                      {isAdmin && (
-                        <div className="flex flex-col gap-2">
-                          <Button variant="outline" onClick={handleEditFinalMatch} className="w-full">
-                            <Edit className="w-4 h-4 mr-2" />
-                            Edit Match
+                    {/* Winners Display */}
+                    {finalMatchWinner && (
+                      <Card className="border-2 border-yellow-300 bg-gradient-to-r from-yellow-50 via-orange-50 to-yellow-50 shadow-lg">
+                        <CardContent className="p-6">
+                          <div className="text-center space-y-4">
+                            <div className="bg-gradient-to-r from-yellow-400 to-orange-400 text-white rounded-lg p-4">
+                              <h3 className="text-xl font-bold mb-3 flex items-center justify-center gap-2">
+                                <Crown className="w-8 h-8" />
+                                Champions
+                                <Crown className="w-8 h-8" />
+                              </h3>
+                              <div className="space-y-2">
+                                <p className="text-lg font-semibold">
+                                  👑 King {finalMatchWinner.malePlayer}
+                                </p>
+                                <p className="text-lg font-semibold">
+                                  👑 Queen {finalMatchWinner.femalePlayer}
+                                </p>
+                              </div>
+                            </div>
+                            
+                            <div className="bg-gradient-to-r from-gray-100 to-gray-200 rounded-lg p-4">
+                              <h3 className="text-lg font-semibold mb-2 text-gray-700">Runners-up</h3>
+                              <div className="space-y-1 text-gray-600">
+                                <p>🤴 Prince {finalMatchWinner.losingMalePlayer}</p>
+                                <p>👸 Princess {finalMatchWinner.losingFemalePlayer}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* Admin Controls */}
+                    {isAdmin && (
+                      <div className="flex flex-col gap-2">
+                        <Button 
+                          variant="outline" 
+                          onClick={handleEditFinalMatch} 
+                          className="w-full border-blue-300 text-blue-700 hover:bg-blue-50"
+                        >
+                          <Edit className="w-4 h-4 mr-2" />
+                          Edit Match
+                        </Button>
+                        <Button 
+                          variant="destructive" 
+                          onClick={handleResetFinalMatch} 
+                          className="w-full"
+                        >
+                          <Trash className="w-4 h-4 mr-2" />
+                          Reset Match
+                        </Button>
+                        {isEditingFinalMatch && (
+                          <Button 
+                            onClick={handleFinalMatchEditSubmit} 
+                            className="w-full bg-green-600 hover:bg-green-700"
+                          >
+                            Save Changes
                           </Button>
-                          <Button variant="destructive" onClick={handleResetFinalMatch} className="w-full">
-                            <Trash className="w-4 h-4 mr-2" />
-                            Reset Match
-                          </Button>
-                          {isEditingFinalMatch && (
-                            <Button onClick={handleFinalMatchEditSubmit} className="w-full">
-                              Save Changes
-                            </Button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             ) : (
               <>
                 {/* Current Match with Navigation */}

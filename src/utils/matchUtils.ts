@@ -101,29 +101,50 @@ export const initializeMatches = async () => {
 };
 
 export const updateMatchScore = async (matchIndex: number, score1: number, score2: number, gender: 'male' | 'female') => {
-  const { data: matches } = await supabase
-    .from('matches')
-    .select('id')
-    .eq('gender', gender)
-    .order('match_order');
+  console.log(`Updating match score: matchIndex=${matchIndex}, score1=${score1}, score2=${score2}, gender=${gender}`);
+  
+  try {
+    // First, get the match to update
+    const { data: matches, error: fetchError } = await supabase
+      .from('matches')
+      .select('id')
+      .eq('gender', gender)
+      .order('match_order');
 
-  if (!matches || matchIndex >= matches.length) return;
+    if (fetchError) {
+      console.error('Error fetching matches:', fetchError);
+      return null;
+    }
 
-  const matchId = matches[matchIndex].id;
+    if (!matches || matchIndex >= matches.length) {
+      console.error('Invalid match index:', matchIndex, 'Total matches:', matches?.length);
+      return null;
+    }
 
-  const { error } = await supabase
-    .from('matches')
-    .update({
-      score1,
-      score2,
-      is_submitted: true
-    })
-    .eq('id', matchId);
+    const matchId = matches[matchIndex].id;
+    console.log('Updating match with ID:', matchId);
 
-  if (error) {
-    console.error('Error updating match:', error);
-    return;
+    // Update the match
+    const { data: updatedMatch, error: updateError } = await supabase
+      .from('matches')
+      .update({
+        score1,
+        score2,
+        is_submitted: true
+      })
+      .eq('id', matchId)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error('Error updating match:', updateError);
+      return null;
+    }
+
+    console.log('Match updated successfully:', updatedMatch);
+    return matchId;
+  } catch (error) {
+    console.error('Unexpected error in updateMatchScore:', error);
+    return null;
   }
-
-  return matchId;
 };

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Player, Match, FinalMatchScores, FinalMatchWinner } from '@/types';
@@ -112,11 +111,21 @@ export const useTournamentData = () => {
   };
 
   const updateMatchScore = async (matchIndex: number, score1: number, score2: number, gender: 'male' | 'female') => {
-    const matchId = await updateMatchScoreUtil(matchIndex, score1, score2, gender);
+    console.log(`useTournamentData: Updating match score ${matchIndex} with scores ${score1}-${score2} for ${gender}`);
     
-    if (matchId) {
-      // Update player points
-      await updatePlayerPointsFromMatch(matchId, score1, score2);
+    try {
+      const matchId = await updateMatchScoreUtil(matchIndex, score1, score2, gender);
+      
+      if (matchId) {
+        console.log('Match score updated, now updating player points...');
+        // Update player points
+        await updatePlayerPointsFromMatch(matchId, score1, score2);
+        console.log('Player points updated successfully');
+      } else {
+        console.error('Failed to update match score - no match ID returned');
+      }
+    } catch (error) {
+      console.error('Error in updateMatchScore:', error);
     }
   };
 

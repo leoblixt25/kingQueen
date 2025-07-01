@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Check, Edit, Trash, Crown, UserPlus, UserMinus, UserX, ChevronLeft, ChevronRight } from "lucide-react";
+import { Check, Edit, Trash, Crown, UserPlus, UserMinus, UserX, ChevronLeft, ChevronRight, Home } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Gender, Player, FinalMatchScores } from "@/types";
 import { useTournamentData } from "@/hooks/useTournamentData";
@@ -183,7 +183,30 @@ export default function BeachVolleyballTracker() {
     <div className="min-h-screen bg-white px-4 py-6">
       <div className="max-w-md mx-auto space-y-6">
         <header>
-          <div className="flex flex-col items-center gap-4">
+          <div className="flex flex-col items-center gap-4 relative">
+            {/* Admin Login Button - Top Right */}
+            <div className="absolute top-0 right-0">
+              {!isAdmin && !showLoginForm ? (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setShowLoginForm(true)}
+                  className="text-xs px-2 py-1"
+                >
+                  Admin
+                </Button>
+              ) : isAdmin && (
+                <Button 
+                  variant="destructive" 
+                  size="sm"
+                  onClick={handleAdminLogout}
+                  className="text-xs px-2 py-1"
+                >
+                  Logout
+                </Button>
+              )}
+            </div>
+
             <h1 className="text-2xl font-bold text-center">Beach Volleyball Tracker</h1>
             <div className="flex flex-col gap-2 w-full">
               <Button 
@@ -208,30 +231,33 @@ export default function BeachVolleyballTracker() {
                 Final Match
               </Button>
             </div>
-            <div className="w-full">
-              {!isAdmin ? (
-                <Button variant="outline" onClick={() => setShowLoginForm(true)} className="w-full">
-                  Admin Login
+            
+            {/* Admin Reset Button - Only show when admin is logged in */}
+            {isAdmin && !showLoginForm && (
+              <div className="w-full">
+                <Button variant="destructive" onClick={handleResetScores} className="w-full">
+                  <Trash className="w-4 h-4 mr-2" />
+                  Reset All Scores
                 </Button>
-              ) : (
-                <div className="flex flex-col gap-2">
-                  <Button variant="destructive" onClick={handleAdminLogout} className="w-full">
-                    Logout
-                  </Button>
-                  <Button variant="destructive" onClick={handleResetScores} className="w-full">
-                    <Trash className="w-4 h-4 mr-2" />
-                    Reset All Scores
-                  </Button>
-                </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </header>
 
         {showLoginForm && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-center">Admin Login</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-center flex-1">Admin Login</CardTitle>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => setShowLoginForm(false)}
+                  className="p-1"
+                >
+                  <Home className="w-4 h-4" />
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">

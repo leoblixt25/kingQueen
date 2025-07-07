@@ -4,10 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Check, Edit, Trash, Crown, UserPlus, UserMinus, UserX, ChevronLeft, ChevronRight, Home } from "lucide-react";
+import { Check, Edit, Trash, Crown, UserPlus, UserMinus, UserX, ChevronLeft, ChevronRight, Home, Users } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Gender, Player, FinalMatchScores } from "@/types";
 import { useTournamentData } from "@/hooks/useTournamentData";
+import PlayerManagement from "@/components/PlayerManagement";
 
 export default function BeachVolleyballTracker() {
   const [gender, setGender] = useState<Gender>("female");
@@ -232,9 +233,17 @@ export default function BeachVolleyballTracker() {
               </Button>
             </div>
             
-            {/* Admin Reset Button - Only show when admin is logged in */}
+            {/* Admin Controls - Only show when admin is logged in */}
             {isAdmin && !showLoginForm && (
-              <div className="w-full">
+              <div className="w-full space-y-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowPlayerManagement(true)} 
+                  className="w-full"
+                >
+                  <Users className="w-4 h-4 mr-2" />
+                  Manage Players
+                </Button>
                 <Button variant="destructive" onClick={handleResetScores} className="w-full">
                   <Trash className="w-4 h-4 mr-2" />
                   Reset All Scores
@@ -285,7 +294,15 @@ export default function BeachVolleyballTracker() {
           </Card>
         )}
 
-        {!showLoginForm && (
+        {showPlayerManagement && isAdmin && (
+          <PlayerManagement 
+            femalePlayers={femalePlayers}
+            malePlayers={malePlayers}
+            onClose={() => setShowPlayerManagement(false)}
+          />
+        )}
+
+        {!showLoginForm && !showPlayerManagement && (
           <main>
             {showFinalMatch ? (
               <div className="space-y-6">

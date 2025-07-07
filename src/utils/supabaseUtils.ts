@@ -150,14 +150,32 @@ export const resetAndInitializePlayers = async () => {
 };
 
 export const resetAllData = async () => {
-  // Delete all data in the correct order
-  await supabase.from('final_matches').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-  await supabase.from('matches').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-  await supabase.from('players').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+  console.log('Starting resetAllData...');
   
-  // Wait for deletions to complete
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
-  // Reinitialize
-  await initializeDefaultPlayers();
+  try {
+    // Delete all data in the correct order
+    console.log('Deleting final matches...');
+    const { error: finalMatchError } = await supabase.from('final_matches').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    if (finalMatchError) console.error('Error deleting final matches:', finalMatchError);
+    
+    console.log('Deleting matches...');
+    const { error: matchesError } = await supabase.from('matches').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    if (matchesError) console.error('Error deleting matches:', matchesError);
+    
+    console.log('Deleting players...');
+    const { error: playersError } = await supabase.from('players').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    if (playersError) console.error('Error deleting players:', playersError);
+    
+    // Wait for deletions to complete
+    console.log('Waiting for deletions to complete...');
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Reinitialize
+    console.log('Reinitializing players...');
+    await initializeDefaultPlayers();
+    console.log('resetAllData completed successfully');
+  } catch (error) {
+    console.error('Error in resetAllData:', error);
+    throw error;
+  }
 };

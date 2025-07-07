@@ -26,6 +26,7 @@ export default function BeachVolleyballTracker() {
   const [showPlayerManagement, setShowPlayerManagement] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [replacementName, setReplacementName] = useState("");
+  const [isEditingMatch, setIsEditingMatch] = useState(false);
 
   const {
     femalePlayers,
@@ -92,8 +93,19 @@ export default function BeachVolleyballTracker() {
     setScore2('');
   }
 
-  const handleEditScore = async (matchIndex: number, newScore1: number, newScore2: number) => {
-    await updateMatchScore(matchIndex, newScore1, newScore2, gender);
+  const handleEditMatch = () => {
+    setIsEditingMatch(true);
+    setScore1(currentMatch.score1.toString());
+    setScore2(currentMatch.score2.toString());
+  }
+
+  const handleSaveMatchEdit = async () => {
+    const scoreValue1 = parseInt(score1, 10) || 0;
+    const scoreValue2 = parseInt(score2, 10) || 0;
+    await updateMatchScore(currentMatchIndex, scoreValue1, scoreValue2, gender);
+    setIsEditingMatch(false);
+    setScore1('');
+    setScore2('');
   }
 
   const handleFinalMatchSubmit = async () => {
@@ -122,15 +134,9 @@ export default function BeachVolleyballTracker() {
     if (currentMatchIndex > 0) {
       const newIndex = currentMatchIndex - 1;
       setCurrentMatchIndex(newIndex);
-      // Clear scores or set to current match scores if editing
-      const currentMatch = matches[newIndex];
-      if (currentMatch && currentMatch.isSubmitted && isAdmin) {
-        setScore1(currentMatch.score1.toString());
-        setScore2(currentMatch.score2.toString());
-      } else {
-        setScore1('');
-        setScore2('');
-      }
+      setIsEditingMatch(false); // Reset edit mode
+      setScore1('');
+      setScore2('');
     }
   };
 
@@ -138,15 +144,9 @@ export default function BeachVolleyballTracker() {
     if (currentMatchIndex < matches.length - 1) {
       const newIndex = currentMatchIndex + 1;
       setCurrentMatchIndex(newIndex);
-      // Clear scores or set to current match scores if editing
-      const currentMatch = matches[newIndex];
-      if (currentMatch && currentMatch.isSubmitted && isAdmin) {
-        setScore1(currentMatch.score1.toString());
-        setScore2(currentMatch.score2.toString());
-      } else {
-        setScore1('');
-        setScore2('');
-      }
+      setIsEditingMatch(false); // Reset edit mode
+      setScore1('');
+      setScore2('');
     }
   };
 
@@ -533,15 +533,15 @@ export default function BeachVolleyballTracker() {
                         <p className="text-sm font-semibold mb-2">
                           {currentMatch.player1.name} & {currentMatch.player2.name}
                         </p>
-                        {!currentMatch.isSubmitted || isAdmin ? (
+                        {!currentMatch.isSubmitted || isEditingMatch ? (
                           <Input
-                            value={currentMatch.isSubmitted && !isAdmin ? currentMatch.score1 : score1}
+                            value={isEditingMatch ? score1 : (currentMatch.isSubmitted ? currentMatch.score1 : score1)}
                             onChange={(e) => setScore1(e.target.value)}
                             type="number"
                             className="w-20 mx-auto text-center"
                             inputMode="numeric"
                             pattern="\d*"
-                            disabled={currentMatch.isSubmitted && !isAdmin}
+                            disabled={currentMatch.isSubmitted && !isEditingMatch}
                           />
                         ) : (
                           <p className="text-2xl font-bold text-primary">{currentMatch.score1}</p>
@@ -554,15 +554,15 @@ export default function BeachVolleyballTracker() {
                         <p className="text-sm font-semibold mb-2">
                           {currentMatch.player3.name} & {currentMatch.player4.name}
                         </p>
-                        {!currentMatch.isSubmitted || isAdmin ? (
+                        {!currentMatch.isSubmitted || isEditingMatch ? (
                           <Input
-                            value={currentMatch.isSubmitted && !isAdmin ? currentMatch.score2 : score2}
+                            value={isEditingMatch ? score2 : (currentMatch.isSubmitted ? currentMatch.score2 : score2)}
                             onChange={(e) => setScore2(e.target.value)}
                             type="number"
                             className="w-20 mx-auto text-center"
                             inputMode="numeric"
                             pattern="\d*"
-                            disabled={currentMatch.isSubmitted && !isAdmin}
+                            disabled={currentMatch.isSubmitted && !isEditingMatch}
                           />
                         ) : (
                           <p className="text-2xl font-bold text-primary">{currentMatch.score2}</p>
@@ -584,18 +584,24 @@ export default function BeachVolleyballTracker() {
                     )}
 
                     {isAdmin && currentMatch.isSubmitted && (
-                      <Button 
-                        onClick={() => {
-                          setScore1(currentMatch.score1.toString());
-                          setScore2(currentMatch.score2.toString());
-                          handleEditScore(currentMatchIndex, currentMatch.score1, currentMatch.score2);
-                        }}
-                        variant="outline"
-                        className="w-full"
-                      >
-                        <Edit className="w-4 h-4 mr-2" />
-                        Edit Score
-                      </Button>
+                      <div className="flex flex-col gap-2">
+                        <Button 
+                          onClick={handleEditMatch}
+                          variant="outline"
+                          className="w-full border-blue-300 text-blue-700 hover:bg-blue-50"
+                        >
+                          <Edit className="w-4 h-4 mr-2" />
+                          Edit Score
+                        </Button>
+                        {isEditingMatch && (
+                          <Button 
+                            onClick={handleSaveMatchEdit}
+                            className="w-full bg-green-600 hover:bg-green-700"
+                          >
+                            Save Changes
+                          </Button>
+                        )}
+                      </div>
                     )}
                   </CardContent>
                 </Card>

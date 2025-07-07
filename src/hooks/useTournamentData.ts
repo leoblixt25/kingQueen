@@ -60,21 +60,31 @@ export const useTournamentData = () => {
     console.log('Loading tournament data...');
     
     try {
-      await Promise.all([loadPlayersData(), loadMatchesData(), loadFinalMatchData()]);
+      console.log('Starting to load players data...');
+      await loadPlayersData();
+      console.log('Players data loaded, loading matches data...');
+      await loadMatchesData();
+      console.log('Matches data loaded, loading final match data...');
+      await loadFinalMatchData();
+      console.log('All tournament data loaded successfully');
     } catch (error) {
       console.error('Error loading tournament data:', error);
     } finally {
+      console.log('Setting isLoading to false');
       setIsLoading(false);
     }
   };
 
   const loadPlayersData = async () => {
+    console.log('Loading players from supabase...');
     const { femalePlayers: females, malePlayers: males } = await loadPlayers();
+    console.log('Players loaded:', { females: females.length, males: males.length });
     setFemalePlayers(females);
     setMalePlayers(males);
     
     // If players were just initialized, also initialize matches
     if (females.length === 0 && males.length === 0) {
+      console.log('No players found, initializing matches...');
       // Wait a moment for players to be created
       await new Promise(resolve => setTimeout(resolve, 1000));
       await initializeMatches();

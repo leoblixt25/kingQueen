@@ -103,7 +103,7 @@ export default function BeachVolleyballTracker() {
   const handleSaveMatchEdit = async () => {
     const scoreValue1 = parseInt(score1, 10) || 0;
     const scoreValue2 = parseInt(score2, 10) || 0;
-    await updateMatchScore(currentMatchIndex, scoreValue1, scoreValue2, gender);
+    await updateMatchScore(currentMatchIndex, scoreValue1, scoreValue2, gender, true);
     setIsEditingMatch(false);
     setScore1('');
     setScore2('');

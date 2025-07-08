@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      auth_config: {
+        Row: {
+          created_at: string | null
+          double_confirm_changes: boolean | null
+          email_template_forgot_password_life_seconds: number | null
+          enable_signup: boolean | null
+          id: string
+          jwt_exp_seconds: Json | null
+          mailer_autoconfirm: boolean | null
+          security_update_password_require_reauthentication: boolean | null
+          sms_autoconfirm: boolean | null
+          sms_template_verification_life_seconds: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          double_confirm_changes?: boolean | null
+          email_template_forgot_password_life_seconds?: number | null
+          enable_signup?: boolean | null
+          id?: string
+          jwt_exp_seconds?: Json | null
+          mailer_autoconfirm?: boolean | null
+          security_update_password_require_reauthentication?: boolean | null
+          sms_autoconfirm?: boolean | null
+          sms_template_verification_life_seconds?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          double_confirm_changes?: boolean | null
+          email_template_forgot_password_life_seconds?: number | null
+          enable_signup?: boolean | null
+          id?: string
+          jwt_exp_seconds?: Json | null
+          mailer_autoconfirm?: boolean | null
+          security_update_password_require_reauthentication?: boolean | null
+          sms_autoconfirm?: boolean | null
+          sms_template_verification_life_seconds?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       final_matches: {
         Row: {
           created_at: string

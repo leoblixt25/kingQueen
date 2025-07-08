@@ -64,14 +64,14 @@ export const initializeDefaultPlayers = async () => {
   }
 };
 
-export const updatePlayerPointsFromMatch = async (matchId: string, score1: number, score2: number) => {
-  console.log(`Updating player points for match ${matchId}: score1=${score1}, score2=${score2}`);
+export const updatePlayerPointsFromMatch = async (matchId: string, score1: number, score2: number, isEdit: boolean = false) => {
+  console.log(`Updating player points for match ${matchId}: score1=${score1}, score2=${score2}, isEdit=${isEdit}`);
   
   try {
-    // Get match details
+    // Get match details including previous scores if editing
     const { data: match, error: matchError } = await supabase
       .from('matches')
-      .select('player1_id, player2_id, player3_id, player4_id')
+      .select('player1_id, player2_id, player3_id, player4_id, score1, score2, is_submitted')
       .eq('id', matchId)
       .single();
 
@@ -114,96 +114,101 @@ export const updatePlayerPointsFromMatch = async (matchId: string, score1: numbe
       return acc;
     }, {} as Record<string, any>);
 
-    // Determine winners and update points
+    let player1NewPoints = playerMap[match.player1_id].points;
+    let player2NewPoints = playerMap[match.player2_id].points;
+    let player3NewPoints = playerMap[match.player3_id].points;
+    let player4NewPoints = playerMap[match.player4_id].points;
+    let player1NewScores = playerMap[match.player1_id].total_scores;
+    let player2NewScores = playerMap[match.player2_id].total_scores;
+    let player3NewScores = playerMap[match.player3_id].total_scores;
+    let player4NewScores = playerMap[match.player4_id].total_scores;
+
+    // If editing, first subtract the previous points and scores
+    if (isEdit && match.is_submitted) {
+      console.log('Editing match - removing previous points and scores');
+      
+      if (match.score1 > match.score2) {
+        // Previous team 1 win - subtract those points
+        player1NewPoints -= winnerPoints;
+        player2NewPoints -= winnerPoints;
+        player3NewPoints -= loserPoints;
+        player4NewPoints -= loserPoints;
+        player1NewScores -= match.score1;
+        player2NewScores -= match.score1;
+        player3NewScores -= match.score2;
+        player4NewScores -= match.score2;
+      } else {
+        // Previous team 2 win - subtract those points
+        player1NewPoints -= loserPoints;
+        player2NewPoints -= loserPoints;
+        player3NewPoints -= winnerPoints;
+        player4NewPoints -= winnerPoints;
+        player1NewScores -= match.score1;
+        player2NewScores -= match.score1;
+        player3NewScores -= match.score2;
+        player4NewScores -= match.score2;
+      }
+    }
+
+    // Now add the new points and scores
     if (score1 > score2) {
       // Team 1 wins (player1 & player2)
       console.log('Team 1 wins');
-      
-      const player1 = playerMap[match.player1_id];
-      const player2 = playerMap[match.player2_id];
-      const player3 = playerMap[match.player3_id];
-      const player4 = playerMap[match.player4_id];
-
-      // Update winners
-      await Promise.all([
-        supabase
-          .from('players')
-          .update({ 
-            points: player1.points + winnerPoints,
-            total_scores: player1.total_scores + score1
-          })
-          .eq('id', match.player1_id),
-        
-        supabase
-          .from('players')
-          .update({ 
-            points: player2.points + winnerPoints,
-            total_scores: player2.total_scores + score1
-          })
-          .eq('id', match.player2_id),
-        
-        // Update losers
-        supabase
-          .from('players')
-          .update({ 
-            points: player3.points + loserPoints,
-            total_scores: player3.total_scores + score2
-          })
-          .eq('id', match.player3_id),
-        
-        supabase
-          .from('players')
-          .update({ 
-            points: player4.points + loserPoints,
-            total_scores: player4.total_scores + score2
-          })
-          .eq('id', match.player4_id)
-      ]);
+      player1NewPoints += winnerPoints;
+      player2NewPoints += winnerPoints;
+      player3NewPoints += loserPoints;
+      player4NewPoints += loserPoints;
+      player1NewScores += score1;
+      player2NewScores += score1;
+      player3NewScores += score2;
+      player4NewScores += score2;
     } else {
       // Team 2 wins (player3 & player4)
       console.log('Team 2 wins');
-      
-      const player1 = playerMap[match.player1_id];
-      const player2 = playerMap[match.player2_id];
-      const player3 = playerMap[match.player3_id];
-      const player4 = playerMap[match.player4_id];
-
-      // Update winners
-      await Promise.all([
-        supabase
-          .from('players')
-          .update({ 
-            points: player3.points + winnerPoints,
-            total_scores: player3.total_scores + score2
-          })
-          .eq('id', match.player3_id),
-        
-        supabase
-          .from('players')
-          .update({ 
-            points: player4.points + winnerPoints,
-            total_scores: player4.total_scores + score2
-          })
-          .eq('id', match.player4_id),
-        
-        // Update losers
-        supabase
-          .from('players')
-          .update({ 
-            points: player1.points + loserPoints,
-            total_scores: player1.total_scores + score1
-          })
-          .eq('id', match.player1_id),
-        
-        supabase
-          .from('players')
-          .update({ 
-            points: player2.points + loserPoints,
-            total_scores: player2.total_scores + score1
-          })
-          .eq('id', match.player2_id)
-      ]);
+      player1NewPoints += loserPoints;
+      player2NewPoints += loserPoints;
+      player3NewPoints += winnerPoints;
+      player4NewPoints += winnerPoints;
+      player1NewScores += score1;
+      player2NewScores += score1;
+      player3NewScores += score2;
+      player4NewScores += score2;
     }
+
+    // Update all players with final values
+    await Promise.all([
+      supabase
+        .from('players')
+        .update({ 
+          points: player1NewPoints,
+          total_scores: player1NewScores
+        })
+        .eq('id', match.player1_id),
+      
+      supabase
+        .from('players')
+        .update({ 
+          points: player2NewPoints,
+          total_scores: player2NewScores
+        })
+        .eq('id', match.player2_id),
+      
+      supabase
+        .from('players')
+        .update({ 
+          points: player3NewPoints,
+          total_scores: player3NewScores
+        })
+        .eq('id', match.player3_id),
+      
+      supabase
+        .from('players')
+        .update({ 
+          points: player4NewPoints,
+          total_scores: player4NewScores
+        })
+        .eq('id', match.player4_id)
+    ]);
 
     console.log('Player points updated successfully');
   } catch (error) {

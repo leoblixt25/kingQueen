@@ -120,16 +120,16 @@ export const useTournamentData = () => {
     }
   };
 
-  const updateMatchScore = async (matchIndex: number, score1: number, score2: number, gender: 'male' | 'female') => {
-    console.log(`useTournamentData: Updating match score ${matchIndex} with scores ${score1}-${score2} for ${gender}`);
+  const updateMatchScore = async (matchIndex: number, score1: number, score2: number, gender: 'male' | 'female', isEdit: boolean = false) => {
+    console.log(`useTournamentData: Updating match score ${matchIndex} with scores ${score1}-${score2} for ${gender}, isEdit=${isEdit}`);
     
     try {
       const matchId = await updateMatchScoreUtil(matchIndex, score1, score2, gender);
       
       if (matchId) {
         console.log('Match score updated, now updating player points...');
-        // Update player points
-        await updatePlayerPointsFromMatch(matchId, score1, score2);
+        // Update player points with edit flag
+        await updatePlayerPointsFromMatch(matchId, score1, score2, isEdit);
         console.log('Player points updated successfully');
       } else {
         console.error('Failed to update match score - no match ID returned');

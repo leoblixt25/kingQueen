@@ -26,11 +26,14 @@ const PlayerManagement = ({ femalePlayers, malePlayers, onClose }: PlayerManagem
     if (!selectedPlayer || !replacementName.trim()) return;
 
     try {
+      // Determine gender properly
+      const playerGender = femalePlayers.find(p => p.name === selectedPlayer.name) ? 'female' : 'male';
+      
       const { error } = await supabase
         .from('players')
         .update({ name: replacementName.trim() })
         .eq('name', selectedPlayer.name)
-        .eq('gender', selectedPlayer.name.includes(femalePlayers.map(p => p.name).join('|')) ? 'female' : 'male');
+        .eq('gender', playerGender);
 
       if (error) {
         console.error('Error replacing player:', error);
@@ -48,6 +51,13 @@ const PlayerManagement = ({ femalePlayers, malePlayers, onClose }: PlayerManagem
     if (!newPlayerName.trim()) return;
 
     try {
+      // Check if adding this player would exceed the limit
+      const currentCount = newPlayerGender === 'female' ? femalePlayers.length : malePlayers.length;
+      if (currentCount >= 8) {
+        console.error(`Cannot add more ${newPlayerGender} players. Maximum is 8.`);
+        return;
+      }
+
       const { error } = await supabase
         .from('players')
         .insert({
@@ -71,6 +81,13 @@ const PlayerManagement = ({ femalePlayers, malePlayers, onClose }: PlayerManagem
   const handleRemovePlayer = async (player: Player) => {
     try {
       const playerGender = femalePlayers.find(p => p.name === player.name) ? 'female' : 'male';
+      
+      // Check if removing this player would go below minimum
+      const currentCount = playerGender === 'female' ? femalePlayers.length : malePlayers.length;
+      if (currentCount <= 8) {
+        console.error(`Cannot remove ${playerGender} players. Minimum is 8 for tournament.`);
+        return;
+      }
       
       const { error } = await supabase
         .from('players')

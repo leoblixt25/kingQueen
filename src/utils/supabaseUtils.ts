@@ -173,6 +173,13 @@ export const resetAllData = async () => {
     // Reinitialize
     console.log('Reinitializing players...');
     await initializeDefaultPlayers();
+    
+    // Wait a moment for players to be created, then initialize matches
+    console.log('Waiting for players to be created...');
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    console.log('Initializing matches...');
+    await initializeMatches();
     console.log('resetAllData completed successfully');
   } catch (error) {
     console.error('Error in resetAllData:', error);

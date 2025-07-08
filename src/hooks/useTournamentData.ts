@@ -99,6 +99,16 @@ export const useTournamentData = () => {
     const { femaleMatches: females, maleMatches: males } = await loadMatches();
     setFemaleMatches(females);
     setMaleMatches(males);
+    
+    // If we have players but no matches, initialize matches
+    if (females.length === 0 && males.length === 0 && (femalePlayers.length > 0 || malePlayers.length > 0)) {
+      console.log('Players exist but no matches found, initializing matches...');
+      await initializeMatches();
+      // Reload matches after initialization
+      const { femaleMatches: newFemales, maleMatches: newMales } = await loadMatches();
+      setFemaleMatches(newFemales);
+      setMaleMatches(newMales);
+    }
   };
 
   const loadFinalMatchData = async () => {

@@ -30,6 +30,7 @@ export const useTournamentData = () => {
     const playersChannel = supabase
       .channel('players-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, () => {
+        console.log('Players table changed - reloading players data');
         loadPlayersData();
       })
       .subscribe();
@@ -79,6 +80,8 @@ export const useTournamentData = () => {
     console.log('Loading players from supabase...');
     const { femalePlayers: females, malePlayers: males } = await loadPlayers();
     console.log('Players loaded:', { females: females.length, males: males.length });
+    console.log('Female players:', females);
+    console.log('Male players:', males);
     setFemalePlayers(females);
     setMalePlayers(males);
     

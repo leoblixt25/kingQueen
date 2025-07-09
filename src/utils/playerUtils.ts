@@ -2,11 +2,11 @@
 import { supabase } from '@/integrations/supabase/client';
 
 export const DEFAULT_FEMALE_PLAYERS = [
-  "Lakota", "Lidia", "Giulia", "Dina", "Catalina", "Izel", "Marta", "Eli"
+  "Player 1", "Player 2", "Player 3", "Player 4", "Player 5", "Player 6", "Player 7", "Player 8"
 ];
 
 export const DEFAULT_MALE_PLAYERS = [
-  "Giacomo", "David", "Javi", "Mauro", "Mattia", "Dani", "Leo", "Samuel"
+  "Player 9", "Player 10", "Player 11", "Player 12", "Player 13", "Player 14", "Player 15", "Player 16"
 ];
 
 export const initializeDefaultPlayers = async () => {

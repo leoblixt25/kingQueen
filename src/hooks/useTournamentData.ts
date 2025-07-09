@@ -100,14 +100,24 @@ export const useTournamentData = () => {
     setFemaleMatches(females);
     setMaleMatches(males);
     
-    // If we have players but no matches, initialize matches
+    // If we have players but no matches, initialize matches with retry logic
     if (females.length === 0 && males.length === 0 && (femalePlayers.length > 0 || malePlayers.length > 0)) {
       console.log('Players exist but no matches found, initializing matches...');
-      await initializeMatches();
-      // Reload matches after initialization
-      const { femaleMatches: newFemales, maleMatches: newMales } = await loadMatches();
-      setFemaleMatches(newFemales);
-      setMaleMatches(newMales);
+      
+      // Verify players are properly set up before initializing matches
+      const { data: playersCheck } = await supabase.from('players').select('id, gender');
+      const femaleCount = playersCheck?.filter(p => p.gender === 'female').length || 0;
+      const maleCount = playersCheck?.filter(p => p.gender === 'male').length || 0;
+      
+      if (femaleCount === 8 && maleCount === 8) {
+        await initializeMatches();
+        // Reload matches after initialization
+        const { femaleMatches: newFemales, maleMatches: newMales } = await loadMatches();
+        setFemaleMatches(newFemales);
+        setMaleMatches(newMales);
+      } else {
+        console.log(`Cannot initialize matches - incorrect player count: ${femaleCount} female, ${maleCount} male`);
+      }
     }
   };
 
@@ -161,6 +171,24 @@ export const useTournamentData = () => {
     await loadTournamentData();
   };
 
+  const retryMatchInitialization = async () => {
+    console.log('Manually retrying match initialization...');
+    setIsLoading(true);
+    try {
+      // Clear any existing matches first
+      await supabase.from('matches').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Initialize matches
+      await initializeMatches();
+      await loadMatchesData();
+    } catch (error) {
+      console.error('Error in retry match initialization:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return {
     femalePlayers,
     malePlayers,
@@ -173,6 +201,7 @@ export const useTournamentData = () => {
     updateMatchScore,
     updateFinalMatch,
     resetAllData: resetAllDataAndReload,
+    retryMatchInitialization,
     setFinalMatchScores
   };
 };

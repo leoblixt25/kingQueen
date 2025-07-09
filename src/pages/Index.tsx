@@ -41,6 +41,7 @@ export default function BeachVolleyballTracker() {
     updateMatchScore,
     updateFinalMatch,
     resetAllData,
+    retryMatchInitialization,
     setFinalMatchScores
   } = useTournamentData();
 
@@ -167,14 +168,22 @@ export default function BeachVolleyballTracker() {
   if (!currentMatch || matches.length === 0) {
     return (
       <div className="min-h-screen bg-white px-4 py-6 flex items-center justify-center">
-        <div className="text-center">
+        <div className="text-center space-y-4">
           <h2 className="text-xl font-semibold mb-2">No matches available</h2>
           <p className="text-gray-600">Matches are being initialized. Please wait a moment and refresh.</p>
-          {isAdmin && (
-            <Button onClick={handleResetScores} className="mt-4">
-              Reset and Reinitialize Data
+          <div className="space-y-2">
+            <Button 
+              onClick={retryMatchInitialization} 
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              Retry Match Initialization
             </Button>
-          )}
+            {isAdmin && (
+              <Button onClick={handleResetScores} variant="destructive">
+                Reset and Reinitialize Data
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     );

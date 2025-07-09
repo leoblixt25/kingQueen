@@ -31,12 +31,49 @@ const PlayerManagement = ({ femalePlayers, malePlayers, onClose }: PlayerManagem
   const clearAndReinitializeMatches = async () => {
     console.log('Clearing and reinitializing matches after player changes...');
     try {
-      // Delete existing matches
+      // Delete existing matches and final matches
+      await supabase.from('final_matches').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       await supabase.from('matches').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       
-      // Wait a moment, then reinitialize matches
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Wait for deletions to complete
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Verify all players exist before creating matches - retry up to 3 times
+      let playersReady = false;
+      let attempts = 0;
+      
+      while (!playersReady && attempts < 3) {
+        attempts++;
+        console.log(`Verifying players exist (attempt ${attempts}/3)...`);
+        
+        const { data: players, error } = await supabase.from('players').select('id, gender');
+        
+        if (error) {
+          console.error('Error fetching players:', error);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          continue;
+        }
+        
+        const femaleCount = players?.filter(p => p.gender === 'female').length || 0;
+        const maleCount = players?.filter(p => p.gender === 'male').length || 0;
+        
+        if (femaleCount === 8 && maleCount === 8) {
+          playersReady = true;
+          console.log('All players verified, proceeding with match creation...');
+        } else {
+          console.log(`Players not ready: ${femaleCount} female, ${maleCount} male. Waiting...`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+      }
+      
+      if (!playersReady) {
+        console.error('Players not ready after multiple attempts, aborting match initialization');
+        return;
+      }
+      
+      // Initialize matches
       await initializeMatches();
+      console.log('Match reinitialization completed successfully');
     } catch (error) {
       console.error('Error clearing and reinitializing matches:', error);
     }

@@ -20,12 +20,10 @@ export const useTournamentData = () => {
   const [finalMatchWinner, setFinalMatchWinner] = useState<FinalMatchWinner>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load initial data
   useEffect(() => {
     loadTournamentData();
   }, []);
 
-  // Set up real-time subscriptions
   useEffect(() => {
     const playersChannel = supabase
       .channel('players-changes')
@@ -59,7 +57,7 @@ export const useTournamentData = () => {
   const loadTournamentData = async () => {
     setIsLoading(true);
     console.log('Loading tournament data...');
-    
+
     try {
       console.log('Starting to load players data...');
       await loadPlayersData();
@@ -84,11 +82,9 @@ export const useTournamentData = () => {
     console.log('Male players:', males);
     setFemalePlayers(females);
     setMalePlayers(males);
-    
-    // If players were just initialized, also initialize matches
+
     if (females.length === 0 && males.length === 0) {
       console.log('No players found, initializing matches...');
-      // Wait a moment for players to be created
       await new Promise(resolve => setTimeout(resolve, 1000));
       await initializeMatches();
       await loadMatchesData();
@@ -99,19 +95,16 @@ export const useTournamentData = () => {
     const { femaleMatches: females, maleMatches: males } = await loadMatches();
     setFemaleMatches(females);
     setMaleMatches(males);
-    
-    // If we have players but no matches, initialize matches with retry logic
+
     if (females.length === 0 && males.length === 0 && (femalePlayers.length > 0 || malePlayers.length > 0)) {
       console.log('Players exist but no matches found, initializing matches...');
-      
-      // Verify players are properly set up before initializing matches
+
       const { data: playersCheck } = await supabase.from('players').select('id, gender');
       const femaleCount = playersCheck?.filter(p => p.gender === 'female').length || 0;
       const maleCount = playersCheck?.filter(p => p.gender === 'male').length || 0;
-      
+
       if (femaleCount === 8 && maleCount === 8) {
         await initializeMatches();
-        // Reload matches after initialization
         const { femaleMatches: newFemales, maleMatches: newMales } = await loadMatches();
         setFemaleMatches(newFemales);
         setMaleMatches(newMales);
@@ -123,14 +116,14 @@ export const useTournamentData = () => {
 
   const loadFinalMatchData = async () => {
     const finalMatch = await loadFinalMatch();
-    
+
     if (finalMatch) {
       setFinalMatchScores({
         team1: [finalMatch.team1_set1, finalMatch.team1_set2, finalMatch.team1_set3],
         team2: [finalMatch.team2_set1, finalMatch.team2_set2, finalMatch.team2_set3],
       });
       setFinalMatchSubmitted(finalMatch.is_submitted);
-      
+
       if (finalMatch.winner_team) {
         setFinalMatchWinner({
           team: finalMatch.winner_team as 'team1' | 'team2',
@@ -143,17 +136,26 @@ export const useTournamentData = () => {
     }
   };
 
-  const updateMatchScore = async (matchIndex: number, score1: number, score2: number, gender: 'male' | 'female', isEdit: boolean = false) => {
+  const updateMatchScore = async (
+    matchIndex: number,
+    score1: number,
+    score2: number,
+    gender: 'male' | 'female',
+    isEdit: boolean = false
+  ) => {
     console.log(`useTournamentData: Updating match score ${matchIndex} with scores ${score1}-${score2} for ${gender}, isEdit=${isEdit}`);
-    
+
     try {
       const matchId = await updateMatchScoreUtil(matchIndex, score1, score2, gender);
-      
+
       if (matchId) {
         console.log('Match score updated, now updating player points...');
-        // Update player points with edit flag
         await updatePlayerPointsFromMatch(matchId, score1, score2, isEdit);
         console.log('Player points updated successfully');
+
+        // ✅ Manually reload players and matches
+        await loadPlayersData();
+        await loadMatchesData();
       } else {
         console.error('Failed to update match score - no match ID returned');
       }
@@ -175,11 +177,8 @@ export const useTournamentData = () => {
     console.log('Manually retrying match initialization...');
     setIsLoading(true);
     try {
-      // Clear any existing matches first
       await supabase.from('matches').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Initialize matches
       await initializeMatches();
       await loadMatchesData();
     } catch (error) {

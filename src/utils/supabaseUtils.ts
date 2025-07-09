@@ -1,14 +1,10 @@
+
 import { supabase } from '@/integrations/supabase/client';
-import { Player, Match, FinalMatch } from '@/types';
 import { initializeDefaultPlayers } from './playerUtils';
 import { initializeMatches } from './matchUtils';
 
-export const loadPlayers = async (): Promise<{
-  femalePlayers: Player[];
-  malePlayers: Player[];
-}> => {
+export const loadPlayers = async () => {
   console.log('Loading players...');
-
   const { data: players, error } = await supabase
     .from('players')
     .select('*')
@@ -20,73 +16,211 @@ export const loadPlayers = async (): Promise<{
     return { femalePlayers: [], malePlayers: [] };
   }
 
-  if (!players || players.length === 0) {
-    console.log('No players found. Initializing default players...');
+  console.log('Players loaded:', players);
+
+  if (players && players.length > 0) {
+    const females = players.filter(p => p.gender === 'female').map(p => ({
+      name: p.name,
+      points: p.points,
+      totalScores: p.total_scores
+    }));
+    
+    const males = players.filter(p => p.gender === 'male').map(p => ({
+      name: p.name,
+      points: p.points,
+      totalScores: p.total_scores
+    }));
+
+    console.log('Female players count:', females.length);
+    console.log('Male players count:', males.length);
+
+    // Check if we have the wrong number of players and need to reinitialize
+    if (females.length !== 8 || males.length !== 8) {
+      console.log('Incorrect player count detected. Female:', females.length, 'Male:', males.length, '. Reinitializing...');
+      await resetAndInitializePlayers();
+      return { femalePlayers: [], malePlayers: [] };
+    }
+
+    return { femalePlayers: females, malePlayers: males };
+  } else {
+    console.log('No players found, initializing default players...');
     await initializeDefaultPlayers();
     return { femalePlayers: [], malePlayers: [] };
   }
-
-  const femalePlayers = players.filter(p => p.gender === 'female');
-  const malePlayers = players.filter(p => p.gender === 'male');
-
-  console.log(`Loaded ${femalePlayers.length} female and ${malePlayers.length} male players`);
-
-  if (femalePlayers.length !== 8 || malePlayers.length !== 8) {
-    console.warn('Expected 8 male and 8 female players. Something may be wrong.');
-  }
-
-  return { femalePlayers, malePlayers };
 };
 
-export const loadMatches = async (): Promise<{
-  femaleMatches: Match[];
-  maleMatches: Match[];
-}> => {
+export const loadMatches = async () => {
+  console.log('Loading matches...');
   const { data: matches, error } = await supabase
     .from('matches')
-    .select('*')
-    .order('match_order', { ascending: true });
+    .select(`
+      *,
+      player1:players!matches_player1_id_fkey(name),
+      player2:players!matches_player2_id_fkey(name),
+      player3:players!matches_player3_id_fkey(name),
+      player4:players!matches_player4_id_fkey(name)
+    `)
+    .order('match_order');
 
   if (error) {
     console.error('Error loading matches:', error);
     return { femaleMatches: [], maleMatches: [] };
   }
 
-  const femaleMatches = matches.filter(match => match.gender === 'female');
-  const maleMatches = matches.filter(match => match.gender === 'male');
+  console.log('Matches loaded:', matches);
 
-  return { femaleMatches, maleMatches };
+  if (matches && matches.length > 0) {
+    const femaleMatchesData = matches
+      .filter(m => m.gender === 'female')
+      .map(m => ({
+        player1: { name: m.player1?.name || '', points: 0, totalScores: 0 },
+        player2: { name: m.player2?.name || '', points: 0, totalScores: 0 },
+        player3: { name: m.player3?.name || '', points: 0, totalScores: 0 },
+        player4: { name: m.player4?.name || '', points: 0, totalScores: 0 },
+        score1: m.score1 || 0,
+        score2: m.score2 || 0,
+        isSubmitted: m.is_submitted || false
+      }));
+
+    const maleMatchesData = matches
+      .filter(m => m.gender === 'male')
+      .map(m => ({
+        player1: { name: m.player1?.name || '', points: 0, totalScores: 0 },
+        player2: { name: m.player2?.name || '', points: 0, totalScores: 0 },
+        player3: { name: m.player3?.name || '', points: 0, totalScores: 0 },
+        player4: { name: m.player4?.name || '', points: 0, totalScores: 0 },
+        score1: m.score1 || 0,
+        score2: m.score2 || 0,
+        isSubmitted: m.is_submitted || false
+      }));
+
+    console.log('Female matches count:', femaleMatchesData.length);
+    console.log('Male matches count:', maleMatchesData.length);
+
+    // Check if we have the wrong number of matches and need to reinitialize
+    if (femaleMatchesData.length !== 14 || maleMatchesData.length !== 14) {
+      console.log('Incorrect match count detected. Female:', femaleMatchesData.length, 'Male:', maleMatchesData.length, '. Reinitializing...');
+      await resetAndInitializePlayers();
+      return { femaleMatches: [], maleMatches: [] };
+    }
+
+    return { femaleMatches: femaleMatchesData, maleMatches: maleMatchesData };
+  } else {
+    console.log('No matches found, will initialize after players are created');
+    return { femaleMatches: [], maleMatches: [] };
+  }
 };
 
-export const loadFinalMatch = async (): Promise<FinalMatch | null> => {
-  const { data, error } = await supabase
+export const loadFinalMatch = async () => {
+  console.log('Loading final match...');
+  const { data: finalMatch, error } = await supabase
     .from('final_matches')
     .select('*')
     .order('created_at', { ascending: false })
     .limit(1)
-    .single();
+    .maybeSingle();
 
   if (error) {
     console.error('Error loading final match:', error);
     return null;
   }
 
-  return data;
+  return finalMatch;
+};
+
+export const resetAndInitializePlayers = async () => {
+  console.log('Resetting and reinitializing all players...');
+  
+  try {
+    // Delete all existing data in the correct order (foreign key constraints)
+    await supabase.from('final_matches').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    await supabase.from('matches').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    await supabase.from('players').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    
+    console.log('All existing data cleared');
+    
+    // Wait a moment for deletions to complete
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Initialize fresh players
+    await initializeDefaultPlayers();
+  } catch (error) {
+    console.error('Error in resetAndInitializePlayers:', error);
+  }
 };
 
 export const resetAllData = async () => {
-  console.log('Resetting all tournament data...');
-
+  console.log('Starting resetAllData...');
+  
   try {
-    await supabase.from('players').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-    await supabase.from('matches').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-    await supabase.from('final_matches').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-
+    // Delete all data in the correct order using proper deletion syntax
+    console.log('Deleting final matches...');
+    const { error: finalMatchError } = await supabase.from('final_matches').delete().gt('created_at', '1900-01-01');
+    if (finalMatchError) console.error('Error deleting final matches:', finalMatchError);
+    
+    console.log('Deleting matches...');
+    const { error: matchesError } = await supabase.from('matches').delete().gt('created_at', '1900-01-01');
+    if (matchesError) console.error('Error deleting matches:', matchesError);
+    
+    console.log('Deleting players...');
+    const { error: playersError } = await supabase.from('players').delete().gt('created_at', '1900-01-01');
+    if (playersError) console.error('Error deleting players:', playersError);
+    
+    // Wait for deletions to complete and verify they're actually deleted
+    console.log('Waiting for deletions to complete...');
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Verify all data is actually deleted
+    const { data: remainingPlayers } = await supabase.from('players').select('id');
+    const { data: remainingMatches } = await supabase.from('matches').select('id');
+    
+    if (remainingPlayers && remainingPlayers.length > 0) {
+      console.log(`Still ${remainingPlayers.length} players remaining, forcing deletion...`);
+      // Force delete any remaining players
+      for (const player of remainingPlayers) {
+        await supabase.from('players').delete().eq('id', player.id);
+      }
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+    
+    if (remainingMatches && remainingMatches.length > 0) {
+      console.log(`Still ${remainingMatches.length} matches remaining, forcing deletion...`);
+      // Force delete any remaining matches
+      for (const match of remainingMatches) {
+        await supabase.from('matches').delete().eq('id', match.id);
+      }
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+    
+    // Reinitialize players and wait for them to be fully created
+    console.log('Reinitializing players...');
     await initializeDefaultPlayers();
+    
+    // Wait and verify players exist before creating matches
+    console.log('Waiting for players to be created...');
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    
+    // Verify exactly 16 players exist
+    const { data: playersCheck } = await supabase.from('players').select('id, gender');
+    const femaleCount = playersCheck?.filter(p => p.gender === 'female').length || 0;
+    const maleCount = playersCheck?.filter(p => p.gender === 'male').length || 0;
+    
+    console.log(`Players created: ${femaleCount} female, ${maleCount} male`);
+    
+    if (femaleCount !== 8 || maleCount !== 8) {
+      console.error(`Incorrect player count: ${femaleCount} female, ${maleCount} male. Retrying player creation...`);
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Try one more time
+      await initializeDefaultPlayers();
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+    
+    console.log('Initializing matches...');
     await initializeMatches();
-
-    console.log('Tournament reset complete.');
+    console.log('resetAllData completed successfully');
   } catch (error) {
-    console.error('Error resetting tournament data:', error);
+    console.error('Error in resetAllData:', error);
+    throw error;
   }
 };

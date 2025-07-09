@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Check } from "lucide-react";
 import { Match } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
-import { recalculatePlayerStats } from "@/utils/statUtils";
+import { updatePlayerPointsFromMatch } from "@/utils/playerUtils";
 
 interface MatchDisplayProps {
   match: Match;
@@ -16,7 +16,7 @@ interface MatchDisplayProps {
   onScore1Change: (value: string) => void;
   onScore2Change: (value: string) => void;
   onSubmit: () => void;
-  onEdit: (matchIndex: number, score1: number, score2: number) => void;
+  onRefresh?: () => void; // Optional prop to refetch data
 }
 
 export function MatchDisplay({
@@ -28,7 +28,7 @@ export function MatchDisplay({
   onScore1Change,
   onScore2Change,
   onSubmit,
-  onEdit,
+  onRefresh,
 }: MatchDisplayProps) {
   const [localScore1, setLocalScore1] = useState(score1);
   const [localScore2, setLocalScore2] = useState(score2);
@@ -60,7 +60,9 @@ export function MatchDisplay({
         return;
       }
 
-      await recalculatePlayerStats(); // Update points, rankings, etc.
+      await updatePlayerPointsFromMatch(match.id, parsedScore1, parsedScore2, true);
+      if (onRefresh) onRefresh();
+
       alert("Match score updated and player stats recalculated.");
     } catch (err) {
       console.error("Unexpected error:", err);
@@ -80,17 +82,15 @@ export function MatchDisplay({
           <p className="text-lg font-semibold">
             {match.player1.name} & {match.player2.name}
           </p>
-          {!match.isSubmitted || isAdmin ? (
+          {!match.is_submitted || isAdmin ? (
             <Input
               type="number"
               className="w-16"
               value={isAdmin ? localScore1 : score1}
               onChange={(e) =>
-                isAdmin
-                  ? setLocalScore1(e.target.value)
-                  : onScore1Change(e.target.value)
+                isAdmin ? setLocalScore1(e.target.value) : onScore1Change(e.target.value)
               }
-              disabled={match.isSubmitted && !isAdmin}
+              disabled={match.is_submitted && !isAdmin}
             />
           ) : (
             <p>{match.score1}</p>
@@ -100,31 +100,29 @@ export function MatchDisplay({
           <p className="text-lg font-semibold">
             {match.player3.name} & {match.player4.name}
           </p>
-          {!match.isSubmitted || isAdmin ? (
+          {!match.is_submitted || isAdmin ? (
             <Input
               type="number"
               className="w-16"
               value={isAdmin ? localScore2 : score2}
               onChange={(e) =>
-                isAdmin
-                  ? setLocalScore2(e.target.value)
-                  : onScore2Change(e.target.value)
+                isAdmin ? setLocalScore2(e.target.value) : onScore2Change(e.target.value)
               }
-              disabled={match.isSubmitted && !isAdmin}
+              disabled={match.is_submitted && !isAdmin}
             />
           ) : (
             <p>{match.score2}</p>
           )}
         </div>
 
-        {!match.isSubmitted ? (
+        {!match.is_submitted ? (
           <div className="flex items-center space-x-4">
             <Button onClick={onSubmit}>Submit</Button>
           </div>
         ) : (
           <div className="flex items-center space-x-4">
             <p>
-              Match Score: {match.score1} - {match.score2}
+              Final Score: {match.score1} - {match.score2}
             </p>
             <Check className="text-green-500" />
           </div>

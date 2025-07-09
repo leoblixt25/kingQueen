@@ -1,217 +1,132 @@
-
 import { supabase } from '@/integrations/supabase/client';
+import { Gender, Match, Player, FinalMatch } from '@/types';
 
-export const DEFAULT_FEMALE_PLAYERS = [
-  "Player 1", "Player 2", "Player 3", "Player 4", "Player 5", "Player 6", "Player 7", "Player 8"
-];
+export const loadPlayers = async (): Promise<{
+  femalePlayers: Player[];
+  malePlayers: Player[];
+}> => {
+  const { data: players, error } = await supabase
+    .from('players')
+    .select('id, name, gender, points, total_scores')
+    .order('name', { ascending: true });
 
-export const DEFAULT_MALE_PLAYERS = [
-  "Player 9", "Player 10", "Player 11", "Player 12", "Player 13", "Player 14", "Player 15", "Player 16"
-];
-
-export const initializeDefaultPlayers = async () => {
-  console.log('Initializing default players...');
-  
-  try {
-    // Check if players already exist to prevent duplicates
-    const { data: existingPlayers } = await supabase
-      .from('players')
-      .select('name, gender');
-
-    if (existingPlayers && existingPlayers.length > 0) {
-      console.log('Players already exist, skipping initialization');
-      return;
-    }
-
-    // Insert female players
-    const femaleInserts = DEFAULT_FEMALE_PLAYERS.map(name => ({
-      name,
-      gender: 'female',
-      points: 0,
-      total_scores: 0
-    }));
-
-    const { error: femaleError } = await supabase
-      .from('players')
-      .insert(femaleInserts);
-
-    if (femaleError) {
-      console.error('Error inserting female players:', femaleError);
-      return;
-    }
-
-    // Insert male players
-    const maleInserts = DEFAULT_MALE_PLAYERS.map(name => ({
-      name,
-      gender: 'male',
-      points: 0,
-      total_scores: 0
-    }));
-
-    const { error: maleError } = await supabase
-      .from('players')
-      .insert(maleInserts);
-
-    if (maleError) {
-      console.error('Error inserting male players:', maleError);
-      return;
-    }
-
-    console.log('Default players inserted successfully');
-    
-  } catch (error) {
-    console.error('Error in initializeDefaultPlayers:', error);
+  if (error || !players) {
+    console.error('Error loading players:', error);
+    return { femalePlayers: [], malePlayers: [] };
   }
+
+  const formatPlayer = (p: any): Player => ({
+    id: p.id,
+    name: p.name,
+    gender: p.gender,
+    points: p.points,
+    totalScores: p.total_scores,
+  });
+
+  const femalePlayers = players
+    .filter(p => p.gender === 'female')
+    .map(formatPlayer);
+
+  const malePlayers = players
+    .filter(p => p.gender === 'male')
+    .map(formatPlayer);
+
+  return { femalePlayers, malePlayers };
 };
 
-export const updatePlayerPointsFromMatch = async (matchId: string, score1: number, score2: number, isEdit: boolean = false) => {
-  console.log(`Updating player points for match ${matchId}: score1=${score1}, score2=${score2}, isEdit=${isEdit}`);
-  
+export const loadMatches = async (): Promise<{
+  femaleMatches: Match[];
+  maleMatches: Match[];
+}> => {
+  const { data: matches, error } = await supabase
+    .from('matches')
+    .select(`
+      id,
+      gender,
+      score1,
+      score2,
+      is_submitted,
+      match_order,
+      player1:player1_id (id, name, gender, points, total_scores),
+      player2:player2_id (id, name, gender, points, total_scores),
+      player3:player3_id (id, name, gender, points, total_scores),
+      player4:player4_id (id, name, gender, points, total_scores)
+    `)
+    .order('match_order', { ascending: true });
+
+  if (error || !matches) {
+    console.error('Error loading matches:', error);
+    return { femaleMatches: [], maleMatches: [] };
+  }
+
+  const formatMatch = (m: any): Match => ({
+    id: m.id,
+    gender: m.gender,
+    score1: m.score1,
+    score2: m.score2,
+    isSubmitted: m.is_submitted,
+    player1: {
+      id: m.player1.id,
+      name: m.player1.name,
+      gender: m.player1.gender,
+      points: m.player1.points,
+      totalScores: m.player1.total_scores,
+    },
+    player2: {
+      id: m.player2.id,
+      name: m.player2.name,
+      gender: m.player2.gender,
+      points: m.player2.points,
+      totalScores: m.player2.total_scores,
+    },
+    player3: {
+      id: m.player3.id,
+      name: m.player3.name,
+      gender: m.player3.gender,
+      points: m.player3.points,
+      totalScores: m.player3.total_scores,
+    },
+    player4: {
+      id: m.player4.id,
+      name: m.player4.name,
+      gender: m.player4.gender,
+      points: m.player4.points,
+      totalScores: m.player4.total_scores,
+    },
+  });
+
+  const femaleMatches = matches.filter(m => m.gender === 'female').map(formatMatch);
+  const maleMatches = matches.filter(m => m.gender === 'male').map(formatMatch);
+
+  return { femaleMatches, maleMatches };
+};
+
+export const loadFinalMatch = async (): Promise<FinalMatch | null> => {
+  const { data, error } = await supabase
+    .from('final_matches')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (error) {
+    console.error('Error loading final match:', error);
+    return null;
+  }
+
+  return data;
+};
+
+export const resetAllData = async (): Promise<void> => {
   try {
-    // Get match details including previous scores if editing
-    const { data: match, error: matchError } = await supabase
-      .from('matches')
-      .select('player1_id, player2_id, player3_id, player4_id, score1, score2, is_submitted')
-      .eq('id', matchId)
-      .single();
-
-    if (matchError) {
-      console.error('Error fetching match for points update:', matchError);
-      return;
-    }
-
-    if (!match) {
-      console.error('Match not found for points update:', matchId);
-      return;
-    }
-
-    console.log('Match details for points update:', match);
-
-    const winnerPoints = 2;
-    const loserPoints = 1;
-
-    // Get current player data
-    const { data: players, error: playersError } = await supabase
-      .from('players')
-      .select('id, points, total_scores')
-      .in('id', [match.player1_id, match.player2_id, match.player3_id, match.player4_id]);
-
-    if (playersError) {
-      console.error('Error fetching players for points update:', playersError);
-      return;
-    }
-
-    if (!players || players.length !== 4) {
-      console.error('Could not fetch all 4 players for points update');
-      return;
-    }
-
-    console.log('Current player data:', players);
-
-    // Create a map for easier lookup
-    const playerMap = players.reduce((acc, player) => {
-      acc[player.id] = player;
-      return acc;
-    }, {} as Record<string, any>);
-
-    let player1NewPoints = playerMap[match.player1_id].points;
-    let player2NewPoints = playerMap[match.player2_id].points;
-    let player3NewPoints = playerMap[match.player3_id].points;
-    let player4NewPoints = playerMap[match.player4_id].points;
-    let player1NewScores = playerMap[match.player1_id].total_scores;
-    let player2NewScores = playerMap[match.player2_id].total_scores;
-    let player3NewScores = playerMap[match.player3_id].total_scores;
-    let player4NewScores = playerMap[match.player4_id].total_scores;
-
-    // If editing, first subtract the previous points and scores
-    if (isEdit && match.is_submitted) {
-      console.log('Editing match - removing previous points and scores');
-      
-      if (match.score1 > match.score2) {
-        // Previous team 1 win - subtract those points
-        player1NewPoints -= winnerPoints;
-        player2NewPoints -= winnerPoints;
-        player3NewPoints -= loserPoints;
-        player4NewPoints -= loserPoints;
-        player1NewScores -= match.score1;
-        player2NewScores -= match.score1;
-        player3NewScores -= match.score2;
-        player4NewScores -= match.score2;
-      } else {
-        // Previous team 2 win - subtract those points
-        player1NewPoints -= loserPoints;
-        player2NewPoints -= loserPoints;
-        player3NewPoints -= winnerPoints;
-        player4NewPoints -= winnerPoints;
-        player1NewScores -= match.score1;
-        player2NewScores -= match.score1;
-        player3NewScores -= match.score2;
-        player4NewScores -= match.score2;
-      }
-    }
-
-    // Now add the new points and scores
-    if (score1 > score2) {
-      // Team 1 wins (player1 & player2)
-      console.log('Team 1 wins');
-      player1NewPoints += winnerPoints;
-      player2NewPoints += winnerPoints;
-      player3NewPoints += loserPoints;
-      player4NewPoints += loserPoints;
-      player1NewScores += score1;
-      player2NewScores += score1;
-      player3NewScores += score2;
-      player4NewScores += score2;
-    } else {
-      // Team 2 wins (player3 & player4)
-      console.log('Team 2 wins');
-      player1NewPoints += loserPoints;
-      player2NewPoints += loserPoints;
-      player3NewPoints += winnerPoints;
-      player4NewPoints += winnerPoints;
-      player1NewScores += score1;
-      player2NewScores += score1;
-      player3NewScores += score2;
-      player4NewScores += score2;
-    }
-
-    // Update all players with final values
+    console.log('Resetting all data...');
     await Promise.all([
-      supabase
-        .from('players')
-        .update({ 
-          points: player1NewPoints,
-          total_scores: player1NewScores
-        })
-        .eq('id', match.player1_id),
-      
-      supabase
-        .from('players')
-        .update({ 
-          points: player2NewPoints,
-          total_scores: player2NewScores
-        })
-        .eq('id', match.player2_id),
-      
-      supabase
-        .from('players')
-        .update({ 
-          points: player3NewPoints,
-          total_scores: player3NewScores
-        })
-        .eq('id', match.player3_id),
-      
-      supabase
-        .from('players')
-        .update({ 
-          points: player4NewPoints,
-          total_scores: player4NewScores
-        })
-        .eq('id', match.player4_id)
+      supabase.from('matches').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+      supabase.from('players').update({ points: 0, total_scores: 0 }),
+      supabase.from('final_matches').delete().neq('id', '00000000-0000-0000-0000-000000000000')
     ]);
-
-    console.log('Player points updated successfully');
+    console.log('Data reset successfully');
   } catch (error) {
-    console.error('Unexpected error in updatePlayerPointsFromMatch:', error);
+    console.error('Error resetting data:', error);
   }
 };

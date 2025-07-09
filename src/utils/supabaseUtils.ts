@@ -170,13 +170,20 @@ export const resetAllData = async () => {
     console.log('Waiting for deletions to complete...');
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    // Reinitialize
+    // Reinitialize players and wait for them to be fully created
     console.log('Reinitializing players...');
     await initializeDefaultPlayers();
     
-    // Wait a moment for players to be created, then initialize matches
+    // Wait longer and verify players exist before creating matches
     console.log('Waiting for players to be created...');
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Verify players exist before initializing matches
+    const { data: playersCheck } = await supabase.from('players').select('id');
+    if (!playersCheck || playersCheck.length !== 16) {
+      console.error('Players not properly created, retrying...');
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
     
     console.log('Initializing matches...');
     await initializeMatches();

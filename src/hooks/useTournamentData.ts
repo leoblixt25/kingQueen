@@ -29,7 +29,7 @@ export const useTournamentData = () => {
   useEffect(() => {
     const playersChannel = supabase
       .channel('players-changes')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'players' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, () => {
         console.log('Players table changed - reloading players data');
         loadPlayersData();
       })

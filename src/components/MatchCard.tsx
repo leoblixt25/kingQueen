@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Match } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,9 @@ interface MatchCardProps {
 }
 
 export function MatchCard({ match, isAdmin, onScoreSubmit }: MatchCardProps) {
+  const [score1, setScore1] = useState(match.score1);
+  const [score2, setScore2] = useState(match.score2);
+
   return (
     <Card>
       <CardHeader>
@@ -24,7 +28,8 @@ export function MatchCard({ match, isAdmin, onScoreSubmit }: MatchCardProps) {
           <Input
             type="number"
             className="w-16"
-            defaultValue={match.score1}
+            value={score1}
+            onChange={(e) => setScore1(parseInt(e.target.value, 10) || 0)}
             disabled={!isAdmin}
           />
         </div>
@@ -35,12 +40,13 @@ export function MatchCard({ match, isAdmin, onScoreSubmit }: MatchCardProps) {
           <Input
             type="number"
             className="w-16"
-            defaultValue={match.score2}
+            value={score2}
+            onChange={(e) => setScore2(parseInt(e.target.value, 10) || 0)}
             disabled={!isAdmin}
           />
         </div>
         <div className="flex items-center space-x-4">
-          <Button onClick={() => onScoreSubmit(match.score1, match.score2)}>
+          <Button onClick={() => onScoreSubmit(score1, score2)}>
             {match.isSubmitted ? <Check className="text-green-500" /> : "Submit"}
           </Button>
         </div>

@@ -153,35 +153,66 @@ export const resetAllData = async () => {
   console.log('Starting resetAllData...');
   
   try {
-    // Delete all data in the correct order
+    // Delete all data in the correct order using proper deletion syntax
     console.log('Deleting final matches...');
-    const { error: finalMatchError } = await supabase.from('final_matches').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    const { error: finalMatchError } = await supabase.from('final_matches').delete().gt('created_at', '1900-01-01');
     if (finalMatchError) console.error('Error deleting final matches:', finalMatchError);
     
     console.log('Deleting matches...');
-    const { error: matchesError } = await supabase.from('matches').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    const { error: matchesError } = await supabase.from('matches').delete().gt('created_at', '1900-01-01');
     if (matchesError) console.error('Error deleting matches:', matchesError);
     
     console.log('Deleting players...');
-    const { error: playersError } = await supabase.from('players').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    const { error: playersError } = await supabase.from('players').delete().gt('created_at', '1900-01-01');
     if (playersError) console.error('Error deleting players:', playersError);
     
-    // Wait for deletions to complete
+    // Wait for deletions to complete and verify they're actually deleted
     console.log('Waiting for deletions to complete...');
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Verify all data is actually deleted
+    const { data: remainingPlayers } = await supabase.from('players').select('id');
+    const { data: remainingMatches } = await supabase.from('matches').select('id');
+    
+    if (remainingPlayers && remainingPlayers.length > 0) {
+      console.log(`Still ${remainingPlayers.length} players remaining, forcing deletion...`);
+      // Force delete any remaining players
+      for (const player of remainingPlayers) {
+        await supabase.from('players').delete().eq('id', player.id);
+      }
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+    
+    if (remainingMatches && remainingMatches.length > 0) {
+      console.log(`Still ${remainingMatches.length} matches remaining, forcing deletion...`);
+      // Force delete any remaining matches
+      for (const match of remainingMatches) {
+        await supabase.from('matches').delete().eq('id', match.id);
+      }
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
     
     // Reinitialize players and wait for them to be fully created
     console.log('Reinitializing players...');
     await initializeDefaultPlayers();
     
-    // Wait longer and verify players exist before creating matches
+    // Wait and verify players exist before creating matches
     console.log('Waiting for players to be created...');
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise(resolve => setTimeout(resolve, 3000));
     
-    // Verify players exist before initializing matches
-    const { data: playersCheck } = await supabase.from('players').select('id');
-    if (!playersCheck || playersCheck.length !== 16) {
-      console.error('Players not properly created, retrying...');
+    // Verify exactly 16 players exist
+    const { data: playersCheck } = await supabase.from('players').select('id, gender');
+    const femaleCount = playersCheck?.filter(p => p.gender === 'female').length || 0;
+    const maleCount = playersCheck?.filter(p => p.gender === 'male').length || 0;
+    
+    console.log(`Players created: ${femaleCount} female, ${maleCount} male`);
+    
+    if (femaleCount !== 8 || maleCount !== 8) {
+      console.error(`Incorrect player count: ${femaleCount} female, ${maleCount} male. Retrying player creation...`);
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Try one more time
+      await initializeDefaultPlayers();
       await new Promise(resolve => setTimeout(resolve, 2000));
     }
     

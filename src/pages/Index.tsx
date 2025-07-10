@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Check, Edit, Trash, Crown, ChevronLeft, ChevronRight, Home, Users, RotateCcw } from "lucide-react";
 import { Gender, FinalMatchScores } from "@/types";
 import { useTournamentData } from "@/hooks/useTournamentData";
-import { AdminEditScore } from "@/components/AdminEditScore";
+
 import { PlayerReplacer } from "@/components/PlayerReplacer";
 import { toast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
@@ -24,8 +24,8 @@ export default function KingQueenOfTheBeach() {
   const [showFinalMatch, setShowFinalMatch] = useState(false);
   const [isEditingFinalMatch, setIsEditingFinalMatch] = useState(false);
   const [showPlayerReplacer, setShowPlayerReplacer] = useState(false);
-  const [showAdminEditScore, setShowAdminEditScore] = useState(false);
-  const [isEditingMatch, setIsEditingMatch] = useState(false);
+  
+  const [editingMatchId, setEditingMatchId] = useState<string | null>(null);
 
   const {
     femalePlayers,
@@ -121,17 +121,45 @@ export default function KingQueenOfTheBeach() {
     }
   };
 
-  const handleEditMatch = () => {
-    setIsEditingMatch(true);
-    setScore1(currentMatch.score1.toString());
-    setScore2(currentMatch.score2.toString());
+  const handleEditMatch = (match: any, matchIndex: number) => {
+    setEditingMatchId(match.id);
+    setCurrentMatchIndex(matchIndex);
+    setScore1(match.score1.toString());
+    setScore2(match.score2.toString());
   }
 
   const handleSaveMatchEdit = async () => {
+    if (!editingMatchId) return;
+    
     const scoreValue1 = parseInt(score1, 10) || 0;
     const scoreValue2 = parseInt(score2, 10) || 0;
-    await updateMatchScore(currentMatchIndex, scoreValue1, scoreValue2, gender, true);
-    setIsEditingMatch(false);
+    
+    try {
+      await updateMatchScore(currentMatchIndex, scoreValue1, scoreValue2, gender, true);
+      
+      // Force reload the data to ensure rankings update
+      await loadTournamentData();
+      
+      setEditingMatchId(null);
+      setScore1('');
+      setScore2('');
+      
+      toast({
+        title: "Score Updated",
+        description: "Match score and rankings updated successfully",
+      });
+    } catch (error) {
+      console.error('Error updating match score:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update match score",
+        variant: "destructive",
+      });
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setEditingMatchId(null);
     setScore1('');
     setScore2('');
   }
@@ -162,7 +190,7 @@ export default function KingQueenOfTheBeach() {
     if (currentMatchIndex > 0) {
       const newIndex = currentMatchIndex - 1;
       setCurrentMatchIndex(newIndex);
-      setIsEditingMatch(false); // Reset edit mode
+      setEditingMatchId(null); // Reset edit mode
       setScore1('');
       setScore2('');
     }
@@ -172,7 +200,7 @@ export default function KingQueenOfTheBeach() {
     if (currentMatchIndex < matches.length - 1) {
       const newIndex = currentMatchIndex + 1;
       setCurrentMatchIndex(newIndex);
-      setIsEditingMatch(false); // Reset edit mode
+      setEditingMatchId(null); // Reset edit mode
       setScore1('');
       setScore2('');
     }
@@ -348,23 +376,8 @@ export default function KingQueenOfTheBeach() {
           />
         )}
 
-        {showAdminEditScore && isAdmin && currentMatch && (
-          <AdminEditScore
-            match={{ ...currentMatch, id: currentMatch.id! }}
-            matchIndex={currentMatchIndex}
-            onClose={() => setShowAdminEditScore(false)}
-            onSuccess={async () => {
-              // Force reload to ensure rankings update immediately
-              await loadTournamentData();
-              toast({
-                title: "Score Updated",
-                description: "Match score and rankings updated successfully",
-              });
-            }}
-          />
-        )}
 
-        {!showLoginForm && !showPlayerReplacer && !showAdminEditScore && (
+        {!showLoginForm && !showPlayerReplacer && (
           <main>
             {showFinalMatch ? (
               <div className="space-y-6">
@@ -612,15 +625,15 @@ export default function KingQueenOfTheBeach() {
                         <p className="text-sm font-semibold mb-2">
                           {currentMatch.player1.name} & {currentMatch.player2.name}
                         </p>
-                        {!currentMatch.isSubmitted || isEditingMatch ? (
+                        {!currentMatch.isSubmitted || editingMatchId === currentMatch.id ? (
                           <Input
-                            value={isEditingMatch ? score1 : (currentMatch.isSubmitted ? currentMatch.score1 : score1)}
+                            value={editingMatchId === currentMatch.id ? score1 : (currentMatch.isSubmitted ? currentMatch.score1 : score1)}
                             onChange={(e) => setScore1(e.target.value)}
                             type="number"
                             className="w-20 mx-auto text-center"
                             inputMode="numeric"
                             pattern="\d*"
-                            disabled={currentMatch.isSubmitted && !isEditingMatch}
+                            disabled={currentMatch.isSubmitted && editingMatchId !== currentMatch.id}
                           />
                         ) : (
                           <p className="text-2xl font-bold text-primary">{currentMatch.score1}</p>
@@ -633,15 +646,15 @@ export default function KingQueenOfTheBeach() {
                         <p className="text-sm font-semibold mb-2">
                           {currentMatch.player3.name} & {currentMatch.player4.name}
                         </p>
-                        {!currentMatch.isSubmitted || isEditingMatch ? (
+                        {!currentMatch.isSubmitted || editingMatchId === currentMatch.id ? (
                           <Input
-                            value={isEditingMatch ? score2 : (currentMatch.isSubmitted ? currentMatch.score2 : score2)}
+                            value={editingMatchId === currentMatch.id ? score2 : (currentMatch.isSubmitted ? currentMatch.score2 : score2)}
                             onChange={(e) => setScore2(e.target.value)}
                             type="number"
                             className="w-20 mx-auto text-center"
                             inputMode="numeric"
                             pattern="\d*"
-                            disabled={currentMatch.isSubmitted && !isEditingMatch}
+                            disabled={currentMatch.isSubmitted && editingMatchId !== currentMatch.id}
                           />
                         ) : (
                           <p className="text-2xl font-bold text-primary">{currentMatch.score2}</p>
@@ -649,30 +662,38 @@ export default function KingQueenOfTheBeach() {
                       </div>
                     </div>
 
-                    {!currentMatch.isSubmitted ? (
+                    {!currentMatch.isSubmitted && editingMatchId !== currentMatch.id ? (
                       <Button onClick={handleScoreSubmit} className="w-full">
                         Submit Score
                       </Button>
-                    ) : (
-                      <div className="flex items-center justify-center gap-2 bg-green-50 p-3 rounded-lg">
-                        <Check className="text-green-500 w-5 h-5" />
-                        <p className="text-sm font-medium">
-                          Final Score: {currentMatch.score1} - {currentMatch.score2}
-                        </p>
-                      </div>
-                    )}
-
-                     {isAdmin && currentMatch.isSubmitted && (
-                      <div className="flex flex-col gap-2">
-                        <Button 
-                          onClick={() => setShowAdminEditScore(true)}
-                          variant="outline"
-                          className="w-full border-blue-300 text-blue-700 hover:bg-blue-50"
-                        >
-                          <Edit className="w-4 h-4 mr-2" />
-                          Edit Score
+                    ) : editingMatchId === currentMatch.id ? (
+                      <div className="flex gap-2">
+                        <Button onClick={handleSaveMatchEdit} className="flex-1">
+                          Save Score
+                        </Button>
+                        <Button onClick={handleCancelEdit} variant="outline" className="flex-1">
+                          Cancel
                         </Button>
                       </div>
+                    ) : (
+                      <>
+                        <div className="flex items-center justify-center gap-2 bg-green-50 p-3 rounded-lg">
+                          <Check className="text-green-500 w-5 h-5" />
+                          <p className="text-sm font-medium">
+                            Final Score: {currentMatch.score1} - {currentMatch.score2}
+                          </p>
+                        </div>
+                        {isAdmin && (
+                          <Button 
+                            onClick={() => handleEditMatch(currentMatch, currentMatchIndex)}
+                            variant="outline"
+                            className="w-full border-blue-300 text-blue-700 hover:bg-blue-50"
+                          >
+                            <Edit className="w-4 h-4 mr-2" />
+                            Edit Score
+                          </Button>
+                        )}
+                      </>
                     )}
                   </CardContent>
                 </Card>

@@ -20,7 +20,7 @@ export const resetScoresOnly = async () => {
       // Reset all match scores
       supabase
         .from('matches')
-        .update({ score1: 0, score2: 0, is_submitted: false })
+        .update({ score1: 0, score2: 0, is_completed: false })
         .neq('id', '00000000-0000-0000-0000-000000000000'),
       
       // Reset final match

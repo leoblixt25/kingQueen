@@ -34,14 +34,31 @@ export const loadPlayers = async () => {
     console.log('Female players count:', females.length);
     console.log('Male players count:', males.length);
 
-    // Check if we have the wrong number of players and need to reinitialize
-    if (females.length !== 8 || males.length !== 8) {
-      console.log('Incorrect player count detected. Female:', females.length, 'Male:', males.length, '. Reinitializing...');
-      await initializePlayers();
-      return { femalePlayers: [], malePlayers: [] };
+    // If we have the exact count expected, return the data
+    if (females.length === 8 && males.length === 8) {
+      return { femalePlayers: females, malePlayers: males };
     }
 
-    return { femalePlayers: females, malePlayers: males };
+    // If we have duplicates, clean up and use the unique names with highest scores
+    if (females.length > 8 || males.length > 8) {
+      console.log('Duplicate players detected. Female:', females.length, 'Male:', males.length, '. Using top 8 by points...');
+      
+      // Get unique names with highest points/scores for each gender
+      const uniqueFemales = Array.from(
+        new Map(females.map(p => [p.name, p])).values()
+      ).slice(0, 8);
+      
+      const uniqueMales = Array.from(
+        new Map(males.map(p => [p.name, p])).values()
+      ).slice(0, 8);
+      
+      return { femalePlayers: uniqueFemales, malePlayers: uniqueMales };
+    }
+
+    // If we have less than 8, reinitialize
+    console.log('Insufficient player count detected. Female:', females.length, 'Male:', males.length, '. Reinitializing...');
+    await initializePlayers();
+    return { femalePlayers: [], malePlayers: [] };
   } else {
     console.log('No players found, initializing players...');
     await initializePlayers();

@@ -134,9 +134,18 @@ export default function KingQueenOfTheBeach() {
     const scoreValue1 = parseInt(score1, 10) || 0;
     const scoreValue2 = parseInt(score2, 10) || 0;
     
+    console.log(`🚀 EDIT SCORE STARTED: match=${currentMatchIndex}, scores=${scoreValue1}-${scoreValue2}, gender=${gender}`);
+    
     try {
       // Use the same approach as handleScoreSubmit - let real-time subscriptions handle updates
       await updateMatchScore(currentMatchIndex, scoreValue1, scoreValue2, gender, true);
+      
+      console.log(`🚀 EDIT SCORE COMPLETED, forcing data reload...`);
+      
+      // Force reload data after edit
+      await loadTournamentData();
+      
+      console.log(`🚀 FORCED RELOAD COMPLETED`);
       
       setEditingMatchId(null);
       setScore1('');

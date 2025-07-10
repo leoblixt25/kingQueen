@@ -13,29 +13,34 @@ export const useTournamentRealtimeSubscriptions = ({
   loadFinalMatchData,
 }: UseRealtimeSubscriptionsProps) => {
   useEffect(() => {
+    console.log('🔔 Setting up real-time subscriptions...');
+    
     const playersChannel = supabase
       .channel('players-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, () => {
-        console.log('Players table changed - reloading players data');
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, (payload) => {
+        console.log('🔔 Players table changed - reloading players data', payload);
         loadPlayersData();
       })
       .subscribe();
 
     const matchesChannel = supabase
       .channel('matches-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, (payload) => {
+        console.log('🔔 Matches table changed - reloading matches data', payload);
         loadMatchesData();
       })
       .subscribe();
 
     const finalMatchChannel = supabase
       .channel('final-match-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'final_matches' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'final_matches' }, (payload) => {
+        console.log('🔔 Final match table changed - reloading final match data', payload);
         loadFinalMatchData();
       })
       .subscribe();
 
     return () => {
+      console.log('🔔 Cleaning up real-time subscriptions...');
       supabase.removeChannel(playersChannel);
       supabase.removeChannel(matchesChannel);
       supabase.removeChannel(finalMatchChannel);

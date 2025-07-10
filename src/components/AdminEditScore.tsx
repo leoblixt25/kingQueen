@@ -12,7 +12,7 @@ interface AdminEditScoreProps {
   match: Match & { id: string };
   matchIndex: number;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: () => Promise<void>;
 }
 
 export function AdminEditScore({ match, matchIndex, onClose, onSuccess }: AdminEditScoreProps) {
@@ -58,12 +58,8 @@ export function AdminEditScore({ match, matchIndex, onClose, onSuccess }: AdminE
       // Update player points (with edit flag)
       await updatePlayerPointsFromMatch(match.id, parsedScore1, parsedScore2, true);
 
-      toast({
-        title: "Score Updated",
-        description: "Match score and player rankings updated successfully",
-      });
-
-      onSuccess();
+      // Wait for parent component to handle success callback (which reloads data)
+      await onSuccess();
       onClose();
     } catch (err) {
       console.error("Unexpected error:", err);

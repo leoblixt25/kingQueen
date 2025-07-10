@@ -315,15 +315,11 @@ export default function KingQueenOfTheBeach() {
 
             <div className="text-center pt-8">
               <div className="relative">
-                <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-ocean-gradient bg-clip-text mb-3 drop-shadow-sm">
-                  🏐 King & Queen
+                <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-beach-gradient bg-clip-text mb-4 drop-shadow-sm">
+                  🏐 King & Queen of the Beach
                 </h1>
-                <h2 className="text-3xl md:text-4xl font-bold text-transparent bg-sunset-gradient bg-clip-text mb-4">
-                  Of The Beach
-                </h2>
-                <div className="w-16 h-1 bg-sunset mx-auto rounded-full mb-3"></div>
+                <div className="w-16 h-1 bg-sunset mx-auto rounded-full"></div>
               </div>
-              <p className="text-foreground/70 text-sm font-medium">🌴 Beach Volleyball Tournament 🌊</p>
             </div>
 
             {/* Navigation Buttons */}
@@ -834,7 +830,7 @@ export default function KingQueenOfTheBeach() {
                               index === 2 ? 'text-palm' : 
                               'text-foreground'
                             }`}>
-                              {index === 0 ? '👑' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
+                              #{index + 1}
                             </span>
                             <span className={`font-bold text-lg ${
                               index === 0 ? 'text-white' : 'text-foreground'

@@ -76,20 +76,24 @@ export const initializeMatches = async () => {
       return;
     }
 
-    // Get players
+    // Get players and sort them according to static order
     const { data: players, error: playersError } = await supabase
       .from('players')
-      .select('*')
-      .order('gender')
-      .order('name');
+      .select('*');
 
     if (playersError || !players) {
       console.error('Error fetching players:', playersError);
       throw playersError;
     }
 
-    const femalePlayers = players.filter(p => p.gender === 'female');
-    const malePlayers = players.filter(p => p.gender === 'male');
+    // Sort players according to the static order defined in staticMatchups.ts
+    const femalePlayers = FEMALE_PLAYERS.map(name => 
+      players.find(p => p.gender === 'female' && p.name === name)
+    ).filter(Boolean);
+    
+    const malePlayers = MALE_PLAYERS.map(name =>
+      players.find(p => p.gender === 'male' && p.name === name)
+    ).filter(Boolean);
 
     if (femalePlayers.length !== 8 || malePlayers.length !== 8) {
       throw new Error(`Expected 8 players of each gender, got ${femalePlayers.length} female and ${malePlayers.length} male`);

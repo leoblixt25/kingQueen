@@ -83,24 +83,38 @@ export const useTournamentDataLoaders = ({
   };
 
   const loadFinalMatchData = async () => {
+    console.log('Loading final match...');
     const finalMatch = await loadFinalMatch();
 
-    if (finalMatch) {
+    if (finalMatch && finalMatch.is_completed) {
+      // Only load scores if match is actually completed with valid data
       setFinalMatchScores({
-        team1: [finalMatch.team1_score, null, null],
-        team2: [finalMatch.team2_score, null, null],
+        team1: [null, null, null],
+        team2: [null, null, null],
       });
-      setFinalMatchSubmitted(finalMatch.is_completed);
+      setFinalMatchSubmitted(true);
 
       if (finalMatch.winner_team) {
+        // Get player names from the database using the stored IDs
+        const { data: players } = await supabase.from('players').select('id, name');
+        const getPlayerName = (id: string) => players?.find(p => p.id === id)?.name || '';
+        
         setFinalMatchWinner({
           team: finalMatch.winner_team === 1 ? 'team1' : 'team2',
-          malePlayer: 'King',
-          femalePlayer: 'Queen', 
-          losingMalePlayer: 'Prince',
-          losingFemalePlayer: 'Princess'
+          malePlayer: getPlayerName(finalMatch.male_king_id || ''),
+          femalePlayer: getPlayerName(finalMatch.female_queen_id || ''), 
+          losingMalePlayer: getPlayerName(finalMatch.male_prince_id || ''),
+          losingFemalePlayer: getPlayerName(finalMatch.female_princess_id || '')
         });
       }
+    } else {
+      // Reset to default state if no completed final match
+      setFinalMatchScores({
+        team1: [null, null, null],
+        team2: [null, null, null],
+      });
+      setFinalMatchSubmitted(false);
+      setFinalMatchWinner(null);
     }
   };
 

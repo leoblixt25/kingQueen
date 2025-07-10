@@ -11,6 +11,7 @@ import { useTournamentData } from "@/hooks/useTournamentData";
 import { PlayerReplacer } from "@/components/PlayerReplacer";
 import { toast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function KingQueenOfTheBeach() {
   const [gender, setGender] = useState<Gender>("female");
@@ -185,12 +186,23 @@ export default function KingQueenOfTheBeach() {
   }
 
   const handleResetFinalMatch = async () => {
+    // Reset the database final match record
+    const { error } = await supabase
+      .from('final_matches')
+      .delete()
+      .eq('is_completed', true);
+    
+    if (error) {
+      console.error('Error resetting final match:', error);
+    }
+    
+    // Reset local state
     const resetScores: FinalMatchScores = { 
       team1: [null, null, null], 
       team2: [null, null, null] 
     };
     setFinalMatchScores(resetScores);
-    await updateFinalMatch(resetScores);
+    setIsEditingFinalMatch(false);
   }
 
   const handlePreviousMatch = () => {
@@ -627,46 +639,73 @@ export default function KingQueenOfTheBeach() {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="space-y-4">
-                      <div className="text-center">
-                        <p className="text-sm font-semibold mb-2">
-                          {currentMatch.player1.name} & {currentMatch.player2.name}
-                        </p>
-                        {!currentMatch.isSubmitted || editingMatchId === currentMatch.id ? (
-                          <Input
-                            value={editingMatchId === currentMatch.id ? score1 : (currentMatch.isSubmitted ? currentMatch.score1 : score1)}
-                            onChange={(e) => setScore1(e.target.value)}
-                            type="number"
-                            className="w-20 mx-auto text-center"
-                            inputMode="numeric"
-                            pattern="\d*"
-                            disabled={currentMatch.isSubmitted && editingMatchId !== currentMatch.id}
-                          />
-                        ) : (
-                          <p className="text-2xl font-bold text-primary">{currentMatch.score1}</p>
-                        )}
+                    <div className="space-y-6">
+                      {/* Team 1 */}
+                      <Card className="border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-blue-100">
+                        <CardContent className="p-4">
+                          <div className="text-center space-y-3">
+                            <div className="bg-blue-600 text-white rounded-lg py-2 px-4">
+                              <h3 className="text-sm font-semibold mb-1">TEAM A</h3>
+                              <p className="text-lg font-bold">
+                                {currentMatch.player1.name} & {currentMatch.player2.name}
+                              </p>
+                            </div>
+                            {!currentMatch.isSubmitted || editingMatchId === currentMatch.id ? (
+                              <Input
+                                value={editingMatchId === currentMatch.id ? score1 : (currentMatch.isSubmitted ? currentMatch.score1 : score1)}
+                                onChange={(e) => setScore1(e.target.value)}
+                                type="number"
+                                className="w-24 mx-auto text-center text-xl font-bold border-blue-300 focus:border-blue-500"
+                                inputMode="numeric"
+                                pattern="\d*"
+                                disabled={currentMatch.isSubmitted && editingMatchId !== currentMatch.id}
+                                placeholder="Score"
+                              />
+                            ) : (
+                              <div className="bg-blue-600 text-white rounded-lg py-3">
+                                <p className="text-3xl font-bold">{currentMatch.score1}</p>
+                              </div>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* VS Divider */}
+                      <div className="flex items-center justify-center">
+                        <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-8 py-3 rounded-full font-bold text-xl shadow-lg">
+                          VS
+                        </div>
                       </div>
 
-                      <div className="text-center text-lg font-bold">VS</div>
-
-                      <div className="text-center">
-                        <p className="text-sm font-semibold mb-2">
-                          {currentMatch.player3.name} & {currentMatch.player4.name}
-                        </p>
-                        {!currentMatch.isSubmitted || editingMatchId === currentMatch.id ? (
-                          <Input
-                            value={editingMatchId === currentMatch.id ? score2 : (currentMatch.isSubmitted ? currentMatch.score2 : score2)}
-                            onChange={(e) => setScore2(e.target.value)}
-                            type="number"
-                            className="w-20 mx-auto text-center"
-                            inputMode="numeric"
-                            pattern="\d*"
-                            disabled={currentMatch.isSubmitted && editingMatchId !== currentMatch.id}
-                          />
-                        ) : (
-                          <p className="text-2xl font-bold text-primary">{currentMatch.score2}</p>
-                        )}
-                      </div>
+                      {/* Team 2 */}
+                      <Card className="border-2 border-purple-200 bg-gradient-to-r from-purple-50 to-purple-100">
+                        <CardContent className="p-4">
+                          <div className="text-center space-y-3">
+                            <div className="bg-purple-600 text-white rounded-lg py-2 px-4">
+                              <h3 className="text-sm font-semibold mb-1">TEAM B</h3>
+                              <p className="text-lg font-bold">
+                                {currentMatch.player3.name} & {currentMatch.player4.name}
+                              </p>
+                            </div>
+                            {!currentMatch.isSubmitted || editingMatchId === currentMatch.id ? (
+                              <Input
+                                value={editingMatchId === currentMatch.id ? score2 : (currentMatch.isSubmitted ? currentMatch.score2 : score2)}
+                                onChange={(e) => setScore2(e.target.value)}
+                                type="number"
+                                className="w-24 mx-auto text-center text-xl font-bold border-purple-300 focus:border-purple-500"
+                                inputMode="numeric"
+                                pattern="\d*"
+                                disabled={currentMatch.isSubmitted && editingMatchId !== currentMatch.id}
+                                placeholder="Score"
+                              />
+                            ) : (
+                              <div className="bg-purple-600 text-white rounded-lg py-3">
+                                <p className="text-3xl font-bold">{currentMatch.score2}</p>
+                              </div>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
                     </div>
 
                     {!currentMatch.isSubmitted && editingMatchId !== currentMatch.id ? (

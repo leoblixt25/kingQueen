@@ -242,10 +242,13 @@ export default function KingQueenOfTheBeach() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white px-4 py-6 flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold mb-2">Loading Tournament Data...</h2>
-          <p className="text-gray-600">Setting up the beach volleyball tracker</p>
+      <div className="min-h-screen bg-sand-gradient px-4 py-6 flex items-center justify-center">
+        <div className="text-center animate-fade-in">
+          <div className="text-6xl mb-4 animate-bounce-gentle">🏐</div>
+          <h2 className="text-2xl font-bold mb-3 bg-ocean-gradient bg-clip-text text-transparent">
+            Loading Tournament Data...
+          </h2>
+          <p className="text-foreground/70 font-medium">🌊 Setting up the beach volleyball tracker 🏖️</p>
         </div>
       </div>
     );
@@ -255,19 +258,24 @@ export default function KingQueenOfTheBeach() {
 
   if (!currentMatch || matches.length === 0) {
     return (
-      <div className="min-h-screen bg-white px-4 py-6 flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <h2 className="text-xl font-semibold mb-2">No matches available</h2>
-          <p className="text-gray-600">Matches are being initialized. Please wait a moment and refresh.</p>
-          <div className="space-y-2">
+      <div className="min-h-screen bg-sand-gradient px-4 py-6 flex items-center justify-center">
+        <div className="text-center space-y-4 animate-fade-in">
+          <div className="text-6xl mb-4">🚫</div>
+          <h2 className="text-2xl font-bold mb-3 bg-sunset-gradient bg-clip-text text-transparent">No matches available</h2>
+          <p className="text-foreground/70 font-medium mb-6">Matches are being initialized. Please wait a moment and refresh.</p>
+          <div className="space-y-3 max-w-sm mx-auto">
             <Button 
               onClick={retryMatchInitialization} 
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="w-full touch-target bg-ocean hover:bg-ocean-dark text-white font-semibold py-3 transition-all duration-300"
             >
-              Retry Match Initialization
+              🔄 Retry Match Initialization
             </Button>
             {isAdmin && (
-              <Button onClick={handleResetScores} variant="destructive">
+              <Button 
+                onClick={handleResetScores} 
+                variant="destructive"
+                className="w-full touch-target bg-coral hover:bg-coral-dark text-white transition-all duration-300"
+              >
                 Reset and Reinitialize Data
               </Button>
             )}
@@ -278,8 +286,8 @@ export default function KingQueenOfTheBeach() {
   }
 
   return (
-    <div className="min-h-screen bg-white px-4 py-6">
-      <div className="max-w-md mx-auto space-y-6">
+    <div className="min-h-screen bg-sand-gradient px-4 py-6">
+      <div className="max-w-lg mx-auto space-y-6 animate-fade-in">
         <header>
           <div className="flex flex-col items-center gap-6 relative">
             {/* Admin Login Button - Top Right */}
@@ -289,16 +297,16 @@ export default function KingQueenOfTheBeach() {
                   variant="outline" 
                   size="sm"
                   onClick={() => setShowLoginForm(true)}
-                  className="text-xs px-3 py-1.5"
+                  className="text-xs px-4 py-2 touch-target bg-white/80 backdrop-blur-sm border-ocean/20 hover:bg-ocean hover:text-white transition-all duration-300"
                 >
-                  Admin
+                  🏖️ Admin
                 </Button>
               ) : isAdmin && (
                 <Button 
                   variant="destructive" 
                   size="sm"
                   onClick={handleAdminLogout}
-                  className="text-xs px-3 py-1.5"
+                  className="text-xs px-4 py-2 touch-target bg-coral hover:bg-coral-dark transition-all duration-300"
                 >
                   Logout
                 </Button>
@@ -306,42 +314,65 @@ export default function KingQueenOfTheBeach() {
             </div>
 
             <div className="text-center pt-8">
-              <h1 className="text-4xl font-bold text-transparent bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text mb-2">
-                King & Queen Of The Beach
-              </h1>
-              <p className="text-gray-600 text-sm">Beach Volleyball Tournament Tracker</p>
+              <div className="relative">
+                <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-ocean-gradient bg-clip-text mb-3 drop-shadow-sm">
+                  🏐 King & Queen
+                </h1>
+                <h2 className="text-3xl md:text-4xl font-bold text-transparent bg-sunset-gradient bg-clip-text mb-4">
+                  Of The Beach
+                </h2>
+                <div className="w-16 h-1 bg-sunset mx-auto rounded-full mb-3"></div>
+              </div>
+              <p className="text-foreground/70 text-sm font-medium">🌴 Beach Volleyball Tournament 🌊</p>
             </div>
-            <div className="flex flex-col gap-2 w-full">
+
+            {/* Navigation Buttons */}
+            <div className="flex flex-col gap-3 w-full max-w-sm">
               <Button 
                 variant={gender === 'female' ? "default" : "outline"} 
                 onClick={() => handleGenderChange('female')}
-                className="w-full"
+                className={`w-full touch-target font-semibold text-lg py-4 transition-all duration-300 ${
+                  gender === 'female' 
+                    ? 'bg-sunset hover:bg-sunset-dark text-white shadow-beach animate-pulse-glow' 
+                    : 'bg-white/70 hover:bg-sunset hover:text-white border-sunset/30 text-sunset-dark shadow-sand'
+                }`}
               >
-                Female
+                👩 Female Division
               </Button>
               <Button 
                 variant={gender === 'male' ? "default" : "outline"}
                 onClick={() => handleGenderChange('male')}
-                className="w-full"
+                className={`w-full touch-target font-semibold text-lg py-4 transition-all duration-300 ${
+                  gender === 'male' 
+                    ? 'bg-ocean hover:bg-ocean-dark text-white shadow-beach animate-pulse-glow' 
+                    : 'bg-white/70 hover:bg-ocean hover:text-white border-ocean/30 text-ocean-dark shadow-sand'
+                }`}
               >
-                Male
+                👨 Male Division  
               </Button>
               <Button 
                 variant={showFinalMatch ? "default" : "outline"}
                 onClick={() => setShowFinalMatch(true)}
-                className="w-full"
+                className={`w-full touch-target font-semibold text-lg py-4 transition-all duration-300 ${
+                  showFinalMatch 
+                    ? 'bg-beach-gradient text-white shadow-beach animate-bounce-gentle' 
+                    : 'bg-white/70 hover:bg-beach-gradient hover:text-white border-primary/20 text-primary shadow-sand'
+                }`}
               >
-                Final Match
+                👑 Championship Final
               </Button>
             </div>
             
             {/* Admin Controls - Only show when admin is logged in */}
             {isAdmin && !showLoginForm && (
-              <div className="w-full space-y-2">
+              <div className="w-full max-w-sm space-y-3 p-4 bg-white/60 backdrop-blur-sm rounded-2xl border border-sand-dark/20 shadow-sand">
+                <div className="text-center mb-2">
+                  <p className="text-sm font-semibold text-foreground/70">🔧 Admin Controls</p>
+                </div>
                 <Button 
                   variant="outline" 
                   onClick={() => setShowPlayerReplacer(true)} 
-                  className="w-full"
+                  className="w-full touch-target bg-white/70 hover:bg-palm hover:text-white border-palm/30 text-palm-dark transition-all duration-300"
                 >
                   <Users className="w-4 h-4 mr-2" />
                   Replace Players
@@ -349,12 +380,16 @@ export default function KingQueenOfTheBeach() {
                 <Button 
                   variant="outline" 
                   onClick={handleResetScores} 
-                  className="w-full"
+                  className="w-full touch-target bg-white/70 hover:bg-sunset hover:text-white border-sunset/30 text-sunset-dark transition-all duration-300"
                 >
                   <RotateCcw className="w-4 h-4 mr-2" />
                   Reset Scores Only
                 </Button>
-                <Button variant="destructive" onClick={handleFullReset} className="w-full">
+                <Button 
+                  variant="destructive" 
+                  onClick={handleFullReset} 
+                  className="w-full touch-target bg-coral hover:bg-coral-dark text-white transition-all duration-300"
+                >
                   <Trash className="w-4 h-4 mr-2" />
                   Reset Everything
                 </Button>
@@ -364,42 +399,47 @@ export default function KingQueenOfTheBeach() {
         </header>
 
         {showLoginForm && (
-          <Card>
-            <CardHeader>
+          <Card className="bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach">
+            <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-center flex-1">Admin Login</CardTitle>
+                <CardTitle className="text-center flex-1 text-ocean font-bold">🔐 Admin Login</CardTitle>
                 <Button 
                   variant="ghost" 
                   size="sm"
                   onClick={() => setShowLoginForm(false)}
-                  className="p-1"
+                  className="p-2 hover:bg-sand-light rounded-full transition-colors"
                 >
-                  <Home className="w-4 h-4" />
+                  <Home className="w-4 h-4 text-ocean" />
                 </Button>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="adminUsername">Username</Label>
+                <Label htmlFor="adminUsername" className="text-foreground font-medium">Username</Label>
                 <Input
                   id="adminUsername"
                   value={adminUsername}
                   onChange={(e) => setAdminUsername(e.target.value)}
                   type="text"
-                  className="w-full"
+                  className="w-full touch-target bg-white/70 border-sand-dark/30 focus:border-ocean"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="adminPassword">Password</Label>
+                <Label htmlFor="adminPassword" className="text-foreground font-medium">Password</Label>
                 <Input
                   id="adminPassword"
                   value={adminPassword}
                   onChange={(e) => setAdminPassword(e.target.value)}
                   type="password"
-                  className="w-full"
+                  className="w-full touch-target bg-white/70 border-sand-dark/30 focus:border-ocean"
                 />
               </div>
-              <Button onClick={handleAdminLogin} className="w-full">Login</Button>
+              <Button 
+                onClick={handleAdminLogin} 
+                className="w-full touch-target bg-ocean hover:bg-ocean-dark text-white font-semibold py-3 transition-all duration-300"
+              >
+                🚀 Login
+              </Button>
             </CardContent>
           </Card>
         )}
@@ -422,26 +462,26 @@ export default function KingQueenOfTheBeach() {
               <div className="space-y-6">
                 {/* Final Match Header */}
                 <div className="text-center">
-                  <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg p-6 shadow-lg">
+                  <div className="bg-beach-gradient text-white rounded-2xl p-6 shadow-beach">
                     <h2 className="text-2xl font-bold mb-2 flex items-center justify-center gap-2">
                       <Crown className="w-6 h-6" />
-                      Final Championship Match
+                      🏆 Championship Final 🏆
                       <Crown className="w-6 h-6" />
                     </h2>
-                    <p className="text-blue-100">The ultimate showdown for the crown!</p>
+                    <p className="text-white/90">The ultimate showdown for the crown!</p>
                   </div>
                 </div>
 
                 {/* Teams Display */}
                 <div className="grid grid-cols-1 gap-4">
                   {/* Team 1 */}
-                  <Card className="border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+                  <Card className="border-2 border-ocean/20 bg-white/80 backdrop-blur-sm shadow-beach">
                     <CardHeader className="pb-3">
-                      <CardTitle className="text-center text-lg font-bold text-blue-800">
-                        Team 1
+                      <CardTitle className="text-center text-lg font-bold text-ocean">
+                        🏐 Team 1
                       </CardTitle>
                       <div className="text-center">
-                        <p className="text-sm text-blue-600 font-semibold">
+                        <p className="text-sm text-ocean-dark font-semibold">
                           {malePlayers[0]?.name} & {femalePlayers[1]?.name}
                         </p>
                       </div>
@@ -450,7 +490,7 @@ export default function KingQueenOfTheBeach() {
                       <div className="grid grid-cols-3 gap-3">
                         {[0, 1, 2].map((setIndex) => (
                           <div key={setIndex} className="space-y-2">
-                            <Label htmlFor={`team1-set${setIndex + 1}`} className="text-xs font-medium text-center block text-blue-700">
+                            <Label htmlFor={`team1-set${setIndex + 1}`} className="text-xs font-medium text-center block text-ocean">
                               Set {setIndex + 1}
                             </Label>
                             <Input
@@ -465,7 +505,7 @@ export default function KingQueenOfTheBeach() {
                                 });
                               }}
                               type="number"
-                              className="text-center font-bold text-lg border-blue-300 focus:border-blue-500"
+                              className="text-center font-bold text-xl touch-target border-ocean/30 focus:border-ocean bg-white/70"
                               inputMode="numeric"
                               pattern="\d*"
                               disabled={finalMatchSubmitted && !isEditingFinalMatch}
@@ -478,19 +518,19 @@ export default function KingQueenOfTheBeach() {
 
                   {/* VS Divider */}
                   <div className="flex items-center justify-center">
-                    <div className="bg-gradient-to-r from-orange-400 to-red-500 text-white px-6 py-2 rounded-full font-bold text-lg shadow-lg">
-                      VS
+                    <div className="bg-sunset-gradient text-white px-8 py-3 rounded-full font-bold text-xl shadow-beach animate-pulse-glow">
+                      ⚡ VS ⚡
                     </div>
                   </div>
 
                   {/* Team 2 */}
-                  <Card className="border-2 border-purple-200 bg-gradient-to-r from-purple-50 to-pink-50">
+                  <Card className="border-2 border-sunset/20 bg-white/80 backdrop-blur-sm shadow-beach">
                     <CardHeader className="pb-3">
-                      <CardTitle className="text-center text-lg font-bold text-purple-800">
-                        Team 2
+                      <CardTitle className="text-center text-lg font-bold text-sunset">
+                        🏐 Team 2
                       </CardTitle>
                       <div className="text-center">
-                        <p className="text-sm text-purple-600 font-semibold">
+                        <p className="text-sm text-sunset-dark font-semibold">
                           {femalePlayers[0]?.name} & {malePlayers[1]?.name}
                         </p>
                       </div>
@@ -499,7 +539,7 @@ export default function KingQueenOfTheBeach() {
                       <div className="grid grid-cols-3 gap-3">
                         {[0, 1, 2].map((setIndex) => (
                           <div key={setIndex} className="space-y-2">
-                            <Label htmlFor={`team2-set${setIndex + 1}`} className="text-xs font-medium text-center block text-purple-700">
+                            <Label htmlFor={`team2-set${setIndex + 1}`} className="text-xs font-medium text-center block text-sunset">
                               Set {setIndex + 1}
                             </Label>
                             <Input
@@ -514,7 +554,7 @@ export default function KingQueenOfTheBeach() {
                                 });
                               }}
                               type="number"
-                              className="text-center font-bold text-lg border-purple-300 focus:border-purple-500"
+                              className="text-center font-bold text-xl touch-target border-sunset/30 focus:border-sunset bg-white/70"
                               inputMode="numeric"
                               pattern="\d*"
                               disabled={finalMatchSubmitted && !isEditingFinalMatch}
@@ -530,26 +570,26 @@ export default function KingQueenOfTheBeach() {
                 {!finalMatchSubmitted ? (
                   <Button 
                     onClick={handleFinalMatchSubmit} 
-                    className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-3 text-lg shadow-lg"
+                    className="w-full touch-target bg-palm hover:bg-palm-dark text-white font-bold py-4 text-lg shadow-beach transition-all duration-300"
                   >
-                    Submit Final Match
+                    🚀 Submit Championship Match
                   </Button>
                 ) : (
                   <div className="space-y-4">
                     {/* Results Summary */}
-                    <Card className="border-2 border-green-200 bg-gradient-to-r from-green-50 to-emerald-50">
+                    <Card className="border-2 border-palm/30 bg-palm-light/20 backdrop-blur-sm shadow-beach">
                       <CardContent className="p-4">
                         <div className="text-center">
                           <div className="flex items-center justify-center gap-2 mb-3">
-                            <Check className="text-green-600 w-6 h-6" />
-                            <h3 className="text-lg font-bold text-green-800">Match Complete!</h3>
-                            <Check className="text-green-600 w-6 h-6" />
+                            <Check className="text-palm w-6 h-6" />
+                            <h3 className="text-lg font-bold text-palm-dark">🎉 Match Complete! 🎉</h3>
+                            <Check className="text-palm w-6 h-6" />
                           </div>
                           <div className="space-y-2 text-sm">
-                            <p className="font-semibold text-green-700">
+                            <p className="font-semibold text-palm-dark">
                               Team 1: {finalMatchScores.team1.map(s => s ?? 0).join(' - ')}
                             </p>
-                            <p className="font-semibold text-green-700">
+                            <p className="font-semibold text-palm-dark">
                               Team 2: {finalMatchScores.team2.map(s => s ?? 0).join(' - ')}
                             </p>
                           </div>
@@ -559,13 +599,13 @@ export default function KingQueenOfTheBeach() {
 
                     {/* Winners Display */}
                     {finalMatchWinner && (
-                      <Card className="border-2 border-yellow-300 bg-gradient-to-r from-yellow-50 via-orange-50 to-yellow-50 shadow-lg">
+                      <Card className="border-2 border-sunset/30 bg-sunset-gradient shadow-beach">
                         <CardContent className="p-6">
                           <div className="text-center space-y-4">
-                            <div className="bg-gradient-to-r from-yellow-400 to-orange-400 text-white rounded-lg p-4">
+                            <div className="bg-white/20 backdrop-blur-sm text-white rounded-2xl p-4">
                               <h3 className="text-xl font-bold mb-3 flex items-center justify-center gap-2">
                                 <Crown className="w-8 h-8" />
-                                Champions
+                                🏆 Champions 🏆
                                 <Crown className="w-8 h-8" />
                               </h3>
                               <div className="space-y-2">
@@ -578,9 +618,9 @@ export default function KingQueenOfTheBeach() {
                               </div>
                             </div>
                             
-                            <div className="bg-gradient-to-r from-gray-100 to-gray-200 rounded-lg p-4">
-                              <h3 className="text-lg font-semibold mb-2 text-gray-700">Runners-up</h3>
-                              <div className="space-y-1 text-gray-600">
+                            <div className="bg-white/60 backdrop-blur-sm rounded-xl p-4">
+                              <h3 className="text-lg font-semibold mb-2 text-foreground/80">🥈 Runners-up</h3>
+                              <div className="space-y-1 text-foreground/70">
                                 <p>🤴 Prince <span className="font-bold">{finalMatchWinner.losingMalePlayer}</span></p>
                                 <p>👸 Princess <span className="font-bold">{finalMatchWinner.losingFemalePlayer}</span></p>
                               </div>
@@ -592,11 +632,11 @@ export default function KingQueenOfTheBeach() {
 
                     {/* Admin Controls */}
                     {isAdmin && (
-                      <div className="flex flex-col gap-2">
+                      <div className="flex flex-col gap-3">
                         <Button 
                           variant="outline" 
                           onClick={handleEditFinalMatch} 
-                          className="w-full border-blue-300 text-blue-700 hover:bg-blue-50"
+                          className="w-full touch-target bg-white/70 hover:bg-ocean hover:text-white border-ocean/30 text-ocean transition-all duration-300"
                         >
                           <Edit className="w-4 h-4 mr-2" />
                           Edit Match
@@ -604,7 +644,7 @@ export default function KingQueenOfTheBeach() {
                         <Button 
                           variant="destructive" 
                           onClick={handleResetFinalMatch} 
-                          className="w-full"
+                          className="w-full touch-target bg-coral hover:bg-coral-dark transition-all duration-300"
                         >
                           <Trash className="w-4 h-4 mr-2" />
                           Reset Match
@@ -612,9 +652,9 @@ export default function KingQueenOfTheBeach() {
                         {isEditingFinalMatch && (
                           <Button 
                             onClick={handleFinalMatchEditSubmit} 
-                            className="w-full bg-green-600 hover:bg-green-700"
+                            className="w-full touch-target bg-palm hover:bg-palm-dark text-white transition-all duration-300"
                           >
-                            Save Changes
+                            💾 Save Changes
                           </Button>
                         )}
                       </div>
@@ -625,11 +665,11 @@ export default function KingQueenOfTheBeach() {
             ) : (
               <>
                 {/* Current Match with Navigation */}
-                <Card>
+                <Card className="bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach">
                   <CardHeader>
                     <div className="flex flex-col items-center gap-3">
-                      <CardTitle className="text-xl font-bold text-center">
-                        {gender.charAt(0).toUpperCase() + gender.slice(1)} Match {currentMatchIndex + 1} of {matches.length}
+                      <CardTitle className="text-xl font-bold text-center bg-ocean-gradient bg-clip-text text-transparent">
+                        🏐 {gender.charAt(0).toUpperCase() + gender.slice(1)} Match {currentMatchIndex + 1} of {matches.length}
                       </CardTitle>
                       <div className="flex items-center gap-2 w-full">
                         <Button
@@ -637,12 +677,12 @@ export default function KingQueenOfTheBeach() {
                           size="sm"
                           onClick={handlePreviousMatch}
                           disabled={currentMatchIndex === 0}
-                          className="flex-1"
+                          className="flex-1 touch-target bg-white/70 hover:bg-ocean hover:text-white border-ocean/30 text-ocean transition-all duration-300"
                         >
                           <ChevronLeft className="w-4 h-4 mr-1" />
                           Previous
                         </Button>
-                        <span className="text-sm text-gray-500">
+                        <span className="text-sm font-bold text-foreground/70 px-2">
                           {currentMatchIndex + 1}/{matches.length}
                         </span>
                         <Button
@@ -650,7 +690,7 @@ export default function KingQueenOfTheBeach() {
                           size="sm"
                           onClick={handleNextMatch}
                           disabled={currentMatchIndex === matches.length - 1}
-                          className="flex-1"
+                          className="flex-1 touch-target bg-white/70 hover:bg-ocean hover:text-white border-ocean/30 text-ocean transition-all duration-300"
                         >
                           Next
                           <ChevronRight className="w-4 h-4 ml-1" />
@@ -658,103 +698,112 @@ export default function KingQueenOfTheBeach() {
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-6">
-                      {/* Team 1 */}
-                      <Card className="border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-blue-100">
-                        <CardContent className="p-4">
-                          <div className="text-center space-y-3">
-                            <div className="bg-blue-600 text-white rounded-lg py-3 px-4">
-                              <p className="text-lg font-bold">
-                                {currentMatch.player1.name} & {currentMatch.player2.name}
-                              </p>
-                            </div>
-                            {!currentMatch.isSubmitted || editingMatchId === currentMatch.id ? (
-                              <Input
-                                value={editingMatchId === currentMatch.id ? score1 : (currentMatch.isSubmitted ? currentMatch.score1 : score1)}
-                                onChange={(e) => setScore1(e.target.value)}
-                                type="number"
-                                className="w-24 mx-auto text-center text-xl font-bold border-blue-300 focus:border-blue-500"
-                                inputMode="numeric"
-                                pattern="\d*"
-                                disabled={currentMatch.isSubmitted && editingMatchId !== currentMatch.id}
-                                placeholder="Score"
-                              />
-                            ) : (
-                              <div className="bg-blue-600 text-white rounded-lg py-3">
-                                <p className="text-3xl font-bold">{currentMatch.score1}</p>
-                              </div>
-                            )}
+                  <CardContent className="space-y-6">
+                    {/* Team 1 */}
+                    <Card className="border-2 border-ocean/20 bg-ocean/5 shadow-sand">
+                      <CardContent className="p-4">
+                        <div className="text-center space-y-3">
+                          <div className="bg-ocean text-white rounded-xl py-4 px-4 shadow-beach">
+                            <p className="text-lg font-bold">
+                              {currentMatch.player1.name} & {currentMatch.player2.name}
+                            </p>
                           </div>
-                        </CardContent>
-                      </Card>
-
-                      {/* VS Divider */}
-                      <div className="flex items-center justify-center">
-                        <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-8 py-3 rounded-full font-bold text-xl shadow-lg">
-                          VS
+                          {!currentMatch.isSubmitted || editingMatchId === currentMatch.id ? (
+                            <Input
+                              value={editingMatchId === currentMatch.id ? score1 : (currentMatch.isSubmitted ? currentMatch.score1 : score1)}
+                              onChange={(e) => setScore1(e.target.value)}
+                              type="number"
+                              className="w-24 mx-auto text-center text-2xl font-bold touch-target border-ocean/30 focus:border-ocean bg-white/80"
+                              inputMode="numeric"
+                              pattern="\d*"
+                              disabled={currentMatch.isSubmitted && editingMatchId !== currentMatch.id}
+                              placeholder="0"
+                            />
+                          ) : (
+                            <div className="bg-ocean text-white rounded-xl py-4 shadow-beach">
+                              <p className="text-4xl font-bold">{currentMatch.score1}</p>
+                            </div>
+                          )}
                         </div>
-                      </div>
+                      </CardContent>
+                    </Card>
 
-                      {/* Team 2 */}
-                      <Card className="border-2 border-purple-200 bg-gradient-to-r from-purple-50 to-purple-100">
-                        <CardContent className="p-4">
-                          <div className="text-center space-y-3">
-                            <div className="bg-purple-600 text-white rounded-lg py-3 px-4">
-                              <p className="text-lg font-bold">
-                                {currentMatch.player3.name} & {currentMatch.player4.name}
-                              </p>
-                            </div>
-                            {!currentMatch.isSubmitted || editingMatchId === currentMatch.id ? (
-                              <Input
-                                value={editingMatchId === currentMatch.id ? score2 : (currentMatch.isSubmitted ? currentMatch.score2 : score2)}
-                                onChange={(e) => setScore2(e.target.value)}
-                                type="number"
-                                className="w-24 mx-auto text-center text-xl font-bold border-purple-300 focus:border-purple-500"
-                                inputMode="numeric"
-                                pattern="\d*"
-                                disabled={currentMatch.isSubmitted && editingMatchId !== currentMatch.id}
-                                placeholder="Score"
-                              />
-                            ) : (
-                              <div className="bg-purple-600 text-white rounded-lg py-3">
-                                <p className="text-3xl font-bold">{currentMatch.score2}</p>
-                              </div>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
+                    {/* VS Divider */}
+                    <div className="flex items-center justify-center">
+                      <div className="bg-sunset-gradient text-white px-8 py-3 rounded-full font-bold text-xl shadow-beach animate-pulse-glow">
+                        ⚡ VS ⚡
+                      </div>
                     </div>
 
+                    {/* Team 2 */}
+                    <Card className="border-2 border-sunset/20 bg-sunset/5 shadow-sand">
+                      <CardContent className="p-4">
+                        <div className="text-center space-y-3">
+                          <div className="bg-sunset text-white rounded-xl py-4 px-4 shadow-beach">
+                            <p className="text-lg font-bold">
+                              {currentMatch.player3.name} & {currentMatch.player4.name}
+                            </p>
+                          </div>
+                          {!currentMatch.isSubmitted || editingMatchId === currentMatch.id ? (
+                            <Input
+                              value={editingMatchId === currentMatch.id ? score2 : (currentMatch.isSubmitted ? currentMatch.score2 : score2)}
+                              onChange={(e) => setScore2(e.target.value)}
+                              type="number"
+                              className="w-24 mx-auto text-center text-2xl font-bold touch-target border-sunset/30 focus:border-sunset bg-white/80"
+                              inputMode="numeric"
+                              pattern="\d*"
+                              disabled={currentMatch.isSubmitted && editingMatchId !== currentMatch.id}
+                              placeholder="0"
+                            />
+                          ) : (
+                            <div className="bg-sunset text-white rounded-xl py-4 shadow-beach">
+                              <p className="text-4xl font-bold">{currentMatch.score2}</p>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Action Buttons */}
                     {!currentMatch.isSubmitted && editingMatchId !== currentMatch.id ? (
-                      <Button onClick={handleScoreSubmit} className="w-full">
-                        Submit Score
+                      <Button 
+                        onClick={handleScoreSubmit} 
+                        className="w-full touch-target bg-palm hover:bg-palm-dark text-white font-bold py-4 text-lg shadow-beach transition-all duration-300"
+                      >
+                        🚀 Submit Score
                       </Button>
                     ) : editingMatchId === currentMatch.id ? (
-                      <div className="flex gap-2">
-                        <Button onClick={handleSaveMatchEdit} className="flex-1">
-                          Save Score
+                      <div className="flex gap-3">
+                        <Button 
+                          onClick={handleSaveMatchEdit} 
+                          className="flex-1 touch-target bg-palm hover:bg-palm-dark text-white transition-all duration-300"
+                        >
+                          💾 Save Score
                         </Button>
-                        <Button onClick={handleCancelEdit} variant="outline" className="flex-1">
-                          Cancel
+                        <Button 
+                          onClick={handleCancelEdit} 
+                          variant="outline" 
+                          className="flex-1 touch-target bg-white/70 hover:bg-coral hover:text-white border-coral/30 text-coral transition-all duration-300"
+                        >
+                          ❌ Cancel
                         </Button>
                       </div>
                     ) : (
                       <>
-                        <div className="flex items-center justify-center gap-2 bg-green-50 p-3 rounded-lg">
-                          <Check className="text-green-500 w-5 h-5" />
-                          <p className="text-sm font-medium">
-                            Final Score: {currentMatch.score1} - {currentMatch.score2}
+                        <div className="flex items-center justify-center gap-2 bg-palm/10 p-4 rounded-xl border border-palm/20">
+                          <Check className="text-palm w-6 h-6" />
+                          <p className="font-bold text-palm-dark">
+                            🎯 Final Score: {currentMatch.score1} - {currentMatch.score2}
                           </p>
                         </div>
                         {isAdmin && (
                           <Button 
                             onClick={() => handleEditMatch(currentMatch, currentMatchIndex)}
                             variant="outline"
-                            className="w-full border-blue-300 text-blue-700 hover:bg-blue-50"
+                            className="w-full touch-target bg-white/70 hover:bg-ocean hover:text-white border-ocean/30 text-ocean transition-all duration-300"
                           >
                             <Edit className="w-4 h-4 mr-2" />
-                            Edit Score
+                            ✏️ Edit Score
                           </Button>
                         )}
                       </>
@@ -763,23 +812,41 @@ export default function KingQueenOfTheBeach() {
                 </Card>
 
                 {/* Rankings Table */}
-                <Card>
+                <Card className="bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach">
                   <CardHeader>
-                    <CardTitle className="text-xl font-bold text-center">
-                      {gender.charAt(0).toUpperCase() + gender.slice(1)} Rankings
+                    <CardTitle className="text-xl font-bold text-center bg-sunset-gradient bg-clip-text text-transparent">
+                      🏆 {gender.charAt(0).toUpperCase() + gender.slice(1)} Rankings
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       {players.map((player, index) => (
-                        <div key={`${player.name}-${index}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div key={`${player.name}-${index}`} className={`flex items-center justify-between p-4 rounded-xl shadow-sand transition-all duration-300 ${
+                          index === 0 ? 'bg-sunset-gradient text-white' : 
+                          index === 1 ? 'bg-ocean/20 border-2 border-ocean/30' : 
+                          index === 2 ? 'bg-palm/20 border-2 border-palm/30' : 
+                          'bg-sand-light/50'
+                        }`}>
                           <div className="flex items-center gap-3">
-                            <span className="text-lg font-bold text-primary">#{index + 1}</span>
-                            <span className="font-medium">{player.name}</span>
+                            <span className={`text-xl font-bold ${
+                              index === 0 ? 'text-white' : 
+                              index === 1 ? 'text-ocean' : 
+                              index === 2 ? 'text-palm' : 
+                              'text-foreground'
+                            }`}>
+                              {index === 0 ? '👑' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
+                            </span>
+                            <span className={`font-bold text-lg ${
+                              index === 0 ? 'text-white' : 'text-foreground'
+                            }`}>{player.name}</span>
                           </div>
                           <div className="text-right">
-                            <div className="text-sm font-bold">{player.points} pts</div>
-                            <div className="text-xs text-gray-500">{player.totalScores} total</div>
+                            <div className={`text-lg font-bold ${
+                              index === 0 ? 'text-white' : 'text-foreground'
+                            }`}>{player.points} pts</div>
+                            <div className={`text-sm ${
+                              index === 0 ? 'text-white/80' : 'text-foreground/60'
+                            }`}>{player.totalScores} total</div>
                           </div>
                         </div>
                       ))}

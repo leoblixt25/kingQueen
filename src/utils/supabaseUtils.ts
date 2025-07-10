@@ -1,6 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { initializePlayers, initializeMatches as initSimpleMatches } from './simpleTournamentUtils';
+import { initializePlayers } from './playerInitUtils';
+import { initializeMatches as initSimpleMatches } from './matchInitUtils';
 
 export const loadPlayers = async () => {
   console.log('Loading players...');

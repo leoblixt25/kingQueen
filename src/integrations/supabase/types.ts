@@ -58,100 +58,123 @@ export type Database = {
       }
       final_matches: {
         Row: {
-          created_at: string
-          female_runner_up: string | null
-          female_winner: string | null
+          completed_at: string | null
+          created_at: string | null
+          female_princess_id: string | null
+          female_queen_id: string | null
           id: string
-          is_submitted: boolean
-          male_runner_up: string | null
-          male_winner: string | null
-          team1_set1: number | null
-          team1_set2: number | null
-          team1_set3: number | null
-          team2_set1: number | null
-          team2_set2: number | null
-          team2_set3: number | null
-          updated_at: string
-          winner_team: string | null
+          is_completed: boolean
+          male_king_id: string | null
+          male_prince_id: string | null
+          team1_score: number | null
+          team2_score: number | null
+          updated_at: string | null
+          winner_team: number | null
         }
         Insert: {
-          created_at?: string
-          female_runner_up?: string | null
-          female_winner?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          female_princess_id?: string | null
+          female_queen_id?: string | null
           id?: string
-          is_submitted?: boolean
-          male_runner_up?: string | null
-          male_winner?: string | null
-          team1_set1?: number | null
-          team1_set2?: number | null
-          team1_set3?: number | null
-          team2_set1?: number | null
-          team2_set2?: number | null
-          team2_set3?: number | null
-          updated_at?: string
-          winner_team?: string | null
+          is_completed?: boolean
+          male_king_id?: string | null
+          male_prince_id?: string | null
+          team1_score?: number | null
+          team2_score?: number | null
+          updated_at?: string | null
+          winner_team?: number | null
         }
         Update: {
-          created_at?: string
-          female_runner_up?: string | null
-          female_winner?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          female_princess_id?: string | null
+          female_queen_id?: string | null
           id?: string
-          is_submitted?: boolean
-          male_runner_up?: string | null
-          male_winner?: string | null
-          team1_set1?: number | null
-          team1_set2?: number | null
-          team1_set3?: number | null
-          team2_set1?: number | null
-          team2_set2?: number | null
-          team2_set3?: number | null
-          updated_at?: string
-          winner_team?: string | null
+          is_completed?: boolean
+          male_king_id?: string | null
+          male_prince_id?: string | null
+          team1_score?: number | null
+          team2_score?: number | null
+          updated_at?: string | null
+          winner_team?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "final_matches_female_princess_id_fkey"
+            columns: ["female_princess_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "final_matches_female_queen_id_fkey"
+            columns: ["female_queen_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "final_matches_male_king_id_fkey"
+            columns: ["male_king_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "final_matches_male_prince_id_fkey"
+            columns: ["male_prince_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       matches: {
         Row: {
-          created_at: string
+          completed_at: string | null
+          created_at: string | null
           gender: string
           id: string
-          is_submitted: boolean
-          match_order: number
+          is_completed: boolean
+          match_number: number
           player1_id: string
           player2_id: string
           player3_id: string
           player4_id: string
           score1: number
           score2: number
-          updated_at: string
+          updated_at: string | null
         }
         Insert: {
-          created_at?: string
+          completed_at?: string | null
+          created_at?: string | null
           gender: string
           id?: string
-          is_submitted?: boolean
-          match_order: number
+          is_completed?: boolean
+          match_number: number
           player1_id: string
           player2_id: string
           player3_id: string
           player4_id: string
           score1?: number
           score2?: number
-          updated_at?: string
+          updated_at?: string | null
         }
         Update: {
-          created_at?: string
+          completed_at?: string | null
+          created_at?: string | null
           gender?: string
           id?: string
-          is_submitted?: boolean
-          match_order?: number
+          is_completed?: boolean
+          match_number?: number
           player1_id?: string
           player2_id?: string
           player3_id?: string
           player4_id?: string
           score1?: number
           score2?: number
-          updated_at?: string
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -186,31 +209,58 @@ export type Database = {
       }
       players: {
         Row: {
-          created_at: string
+          created_at: string | null
           gender: string
           id: string
+          matches_played: number
           name: string
           points: number
+          position: number
           total_scores: number
-          updated_at: string
+          updated_at: string | null
         }
         Insert: {
-          created_at?: string
+          created_at?: string | null
           gender: string
           id?: string
+          matches_played?: number
           name: string
           points?: number
+          position: number
           total_scores?: number
-          updated_at?: string
+          updated_at?: string | null
         }
         Update: {
-          created_at?: string
+          created_at?: string | null
           gender?: string
           id?: string
+          matches_played?: number
           name?: string
           points?: number
+          position?: number
           total_scores?: number
-          updated_at?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      tournament_config: {
+        Row: {
+          id: string
+          key: string
+          updated_at: string | null
+          value: Json
+        }
+        Insert: {
+          id?: string
+          key: string
+          updated_at?: string | null
+          value: Json
+        }
+        Update: {
+          id?: string
+          key?: string
+          updated_at?: string | null
+          value?: Json
         }
         Relationships: []
       }

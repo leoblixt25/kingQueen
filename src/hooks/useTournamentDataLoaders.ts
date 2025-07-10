@@ -87,18 +87,18 @@ export const useTournamentDataLoaders = ({
 
     if (finalMatch) {
       setFinalMatchScores({
-        team1: [finalMatch.team1_set1, finalMatch.team1_set2, finalMatch.team1_set3],
-        team2: [finalMatch.team2_set1, finalMatch.team2_set2, finalMatch.team2_set3],
+        team1: [finalMatch.team1_score, null, null],
+        team2: [finalMatch.team2_score, null, null],
       });
-      setFinalMatchSubmitted(finalMatch.is_submitted);
+      setFinalMatchSubmitted(finalMatch.is_completed);
 
       if (finalMatch.winner_team) {
         setFinalMatchWinner({
-          team: finalMatch.winner_team as 'team1' | 'team2',
-          malePlayer: finalMatch.male_winner || '',
-          femalePlayer: finalMatch.female_winner || '',
-          losingMalePlayer: finalMatch.male_runner_up || '',
-          losingFemalePlayer: finalMatch.female_runner_up || ''
+          team: finalMatch.winner_team === 1 ? 'team1' : 'team2',
+          malePlayer: 'King',
+          femalePlayer: 'Queen', 
+          losingMalePlayer: 'Prince',
+          losingFemalePlayer: 'Princess'
         });
       }
     }

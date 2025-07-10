@@ -52,10 +52,10 @@ export const initializeMatches = async () => {
         player3_id: femalePlayers[p3].id,
         player4_id: femalePlayers[p4].id,
         gender: 'female',
-        match_order: index,
+        match_number: index + 1,
         score1: 0,
         score2: 0,
-        is_submitted: false
+        is_completed: false
       };
     });
 
@@ -77,10 +77,10 @@ export const initializeMatches = async () => {
         player3_id: malePlayers[p3].id,
         player4_id: malePlayers[p4].id,
         gender: 'male',
-        match_order: index,
+        match_number: index + 1,
         score1: 0,
         score2: 0,
-        is_submitted: false
+        is_completed: false
       };
     });
 
@@ -109,7 +109,7 @@ export const updateMatchScore = async (matchIndex: number, score1: number, score
       .from('matches')
       .select('id')
       .eq('gender', gender)
-      .order('match_order');
+      .order('match_number');
 
     if (fetchError) {
       console.error('Error fetching matches:', fetchError);
@@ -130,7 +130,7 @@ export const updateMatchScore = async (matchIndex: number, score1: number, score
       .update({
         score1,
         score2,
-        is_submitted: true  // Always set to submitted when updating scores
+        is_completed: true  // Always set to completed when updating scores
       })
       .eq('id', matchId)
       .select()

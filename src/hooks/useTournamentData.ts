@@ -70,7 +70,9 @@ export const useTournamentData = () => {
   };
 
   const loadPlayersData = async () => {
+    console.log('🔄 Loading players data...');
     const { femalePlayers: females, malePlayers: males } = await loadPlayers();
+    console.log('📊 Players loaded - Females:', females.length, 'Males:', males.length);
     setFemalePlayers(females);
     setMalePlayers(males);
 
@@ -198,6 +200,7 @@ export const useTournamentData = () => {
     resetScores: resetScoresAndReload,
     resetAllData: resetAllDataAndReload,
     retryMatchInitialization,
-    setFinalMatchScores
+    setFinalMatchScores,
+    loadTournamentData
   };
 };

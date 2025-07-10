@@ -41,7 +41,8 @@ export default function KingQueenOfTheBeach() {
     resetScores,
     resetAllData,
     retryMatchInitialization,
-    setFinalMatchScores
+    setFinalMatchScores,
+    loadTournamentData
   } = useTournamentData();
 
   const players = gender === 'female' ? femalePlayers : malePlayers
@@ -352,8 +353,9 @@ export default function KingQueenOfTheBeach() {
             match={{ ...currentMatch, id: currentMatch.id! }}
             matchIndex={currentMatchIndex}
             onClose={() => setShowAdminEditScore(false)}
-            onSuccess={() => {
-              // Force reload of tournament data to update rankings immediately
+            onSuccess={async () => {
+              // Force reload to ensure rankings update immediately
+              await loadTournamentData();
               toast({
                 title: "Score Updated",
                 description: "Match score and rankings updated successfully",

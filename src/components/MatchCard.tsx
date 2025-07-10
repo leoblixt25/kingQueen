@@ -4,7 +4,7 @@ import { Match } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Check } from "lucide-react";
-import { updatePlayerPointsFromMatch } from "@/utils/playerUtils";
+// Database trigger handles player stats automatically
 import { supabase } from "@/integrations/supabase/client";
 
 interface MatchCardProps {
@@ -32,7 +32,7 @@ export function MatchCard({ match, isAdmin, onScoreSubmit }: MatchCardProps) {
         .update({
           score1,
           score2,
-          is_submitted: true,
+          is_completed: true,
         })
         .eq("id", match.id);
 
@@ -42,7 +42,7 @@ export function MatchCard({ match, isAdmin, onScoreSubmit }: MatchCardProps) {
         return;
       }
 
-      await updatePlayerPointsFromMatch(match.id, score1, score2, true);
+      // Database trigger handles player stats calculation automatically
       if (onScoreSubmit) onScoreSubmit();
 
       alert("Match score and player rankings updated.");

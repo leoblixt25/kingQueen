@@ -1,6 +1,5 @@
 import { Player, FinalMatchScores } from '@/types';
 import { updateMatchScore as updateMatchScoreUtil } from '@/utils/matchUtils';
-import { updatePlayerPointsFromMatch } from '@/utils/playerUtils';
 import { updateFinalMatch as updateFinalMatchUtil } from '@/utils/finalMatchUtils';
 import { resetScoresOnly, fullTournamentReset } from '@/utils/resetUtils';
 
@@ -25,9 +24,9 @@ export const useTournamentActions = ({
       const matchId = await updateMatchScoreUtil(matchIndex, score1, score2, gender, isEdit);
       console.log(`🏐 Match updated, ID: ${matchId}`);
       if (matchId) {
-        console.log(`🏐 Updating player points for match ${matchId}`);
-        await updatePlayerPointsFromMatch(matchId, score1, score2, isEdit);
-        console.log(`🏐 Player points updated, now reloading data...`);
+        console.log(`🏐 Match updated successfully, database trigger will handle player stats automatically`);
+        // Database trigger handles player stats calculation automatically
+        // No need for manual updatePlayerPointsFromMatch call
         await loadPlayersData();
         await loadMatchesData();
         console.log(`🏐 Data reloaded successfully`);

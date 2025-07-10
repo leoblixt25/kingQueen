@@ -82,7 +82,7 @@ export function MatchDisplay({
           <p className="text-lg font-semibold">
             {match.player1.name} & {match.player2.name}
           </p>
-          {!match.is_submitted || isAdmin ? (
+          {!match.isSubmitted || isAdmin ? (
             <Input
               type="number"
               className="w-16"
@@ -90,9 +90,9 @@ export function MatchDisplay({
               onChange={(e) =>
                 isAdmin ? setLocalScore1(e.target.value) : onScore1Change(e.target.value)
               }
-              disabled={match.is_submitted && !isAdmin}
+          disabled={match.isSubmitted && !isAdmin}
             />
-          ) : (
+           ) : (
             <p>{match.score1}</p>
           )}
         </div>
@@ -100,7 +100,7 @@ export function MatchDisplay({
           <p className="text-lg font-semibold">
             {match.player3.name} & {match.player4.name}
           </p>
-          {!match.is_submitted || isAdmin ? (
+          {!match.isSubmitted || isAdmin ? (
             <Input
               type="number"
               className="w-16"
@@ -108,14 +108,14 @@ export function MatchDisplay({
               onChange={(e) =>
                 isAdmin ? setLocalScore2(e.target.value) : onScore2Change(e.target.value)
               }
-              disabled={match.is_submitted && !isAdmin}
+              disabled={match.isSubmitted && !isAdmin}
             />
           ) : (
             <p>{match.score2}</p>
           )}
         </div>
 
-        {!match.is_submitted ? (
+        {!match.isSubmitted ? (
           <div className="flex items-center space-x-4">
             <Button onClick={onSubmit}>Submit</Button>
           </div>

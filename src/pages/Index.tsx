@@ -4,13 +4,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Check, Edit, Trash, Crown, UserPlus, UserMinus, UserX, ChevronLeft, ChevronRight, Home, Users } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Gender, Player, FinalMatchScores } from "@/types";
+import { Check, Edit, Trash, Crown, ChevronLeft, ChevronRight, Home, Users, RotateCcw } from "lucide-react";
+import { Gender, FinalMatchScores } from "@/types";
 import { useTournamentData } from "@/hooks/useTournamentData";
-import PlayerManagement from "@/components/PlayerManagement";
+import { AdminEditScore } from "@/components/AdminEditScore";
+import { PlayerReplacer } from "@/components/PlayerReplacer";
+import { toast } from "@/hooks/use-toast";
+import { Toaster } from "@/components/ui/toaster";
 
-export default function BeachVolleyballTracker() {
+export default function KingQueenOfTheBeach() {
   const [gender, setGender] = useState<Gender>("female");
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
@@ -21,12 +23,8 @@ export default function BeachVolleyballTracker() {
   const [showLoginForm, setShowLoginForm] = useState(false);
   const [showFinalMatch, setShowFinalMatch] = useState(false);
   const [isEditingFinalMatch, setIsEditingFinalMatch] = useState(false);
-  const [selectedPlayerToReplace, setSelectedPlayerToReplace] = useState<Player | null>(null);
-  const [newPlayerName, setNewPlayerName] = useState("");
-  const [newPlayerGender, setNewPlayerGender] = useState<Gender>("female");
-  const [showPlayerManagement, setShowPlayerManagement] = useState(false);
-  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
-  const [replacementName, setReplacementName] = useState("");
+  const [showPlayerReplacer, setShowPlayerReplacer] = useState(false);
+  const [showAdminEditScore, setShowAdminEditScore] = useState(false);
   const [isEditingMatch, setIsEditingMatch] = useState(false);
 
   const {
@@ -40,6 +38,7 @@ export default function BeachVolleyballTracker() {
     isLoading,
     updateMatchScore,
     updateFinalMatch,
+    resetScores,
     resetAllData,
     retryMatchInitialization,
     setFinalMatchScores
@@ -89,11 +88,30 @@ export default function BeachVolleyballTracker() {
   }
 
   const handleResetScores = async () => {
-    await resetAllData();
-    setCurrentMatchIndex(0);
-    setScore1('');
-    setScore2('');
-  }
+    if (window.confirm('Are you sure you want to reset all scores? This will clear all match scores and player points but keep player names and matchups.')) {
+      await resetScores();
+      setCurrentMatchIndex(0);
+      setScore1('');
+      setScore2('');
+      toast({
+        title: "Scores Reset",
+        description: "All scores have been reset successfully",
+      });
+    }
+  };
+
+  const handleFullReset = async () => {
+    if (window.confirm('Are you sure you want to completely reset everything? This will delete all data and reinitialize the tournament.')) {
+      await resetAllData();
+      setCurrentMatchIndex(0);
+      setScore1('');
+      setScore2('');
+      toast({
+        title: "Tournament Reset",
+        description: "Tournament has been completely reset",
+      });
+    }
+  };
 
   const handleEditMatch = () => {
     setIsEditingMatch(true);
@@ -217,7 +235,7 @@ export default function BeachVolleyballTracker() {
               )}
             </div>
 
-            <h1 className="text-2xl font-bold text-center">Beach Volleyball Tracker</h1>
+            <h1 className="text-2xl font-bold text-center">King & Queen Of The Beach</h1>
             <div className="flex flex-col gap-2 w-full">
               <Button 
                 variant={gender === 'female' ? "default" : "outline"} 
@@ -247,15 +265,23 @@ export default function BeachVolleyballTracker() {
               <div className="w-full space-y-2">
                 <Button 
                   variant="outline" 
-                  onClick={() => setShowPlayerManagement(true)} 
+                  onClick={() => setShowPlayerReplacer(true)} 
                   className="w-full"
                 >
                   <Users className="w-4 h-4 mr-2" />
-                  Manage Players
+                  Replace Players
                 </Button>
-                <Button variant="destructive" onClick={handleResetScores} className="w-full">
+                <Button 
+                  variant="outline" 
+                  onClick={handleResetScores} 
+                  className="w-full"
+                >
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Reset Scores Only
+                </Button>
+                <Button variant="destructive" onClick={handleFullReset} className="w-full">
                   <Trash className="w-4 h-4 mr-2" />
-                  Reset All Scores
+                  Reset Everything
                 </Button>
               </div>
             )}
@@ -303,15 +329,29 @@ export default function BeachVolleyballTracker() {
           </Card>
         )}
 
-        {showPlayerManagement && isAdmin && (
-          <PlayerManagement 
+        {showPlayerReplacer && isAdmin && (
+          <PlayerReplacer 
             femalePlayers={femalePlayers}
             malePlayers={malePlayers}
-            onClose={() => setShowPlayerManagement(false)}
+            onClose={() => setShowPlayerReplacer(false)}
+            onSuccess={() => {
+              // Data will be automatically refreshed via real-time subscriptions
+            }}
           />
         )}
 
-        {!showLoginForm && !showPlayerManagement && (
+        {showAdminEditScore && isAdmin && currentMatch && (
+          <AdminEditScore
+            match={{ ...currentMatch, id: currentMatch.id! }}
+            matchIndex={currentMatchIndex}
+            onClose={() => setShowAdminEditScore(false)}
+            onSuccess={() => {
+              // Data will be automatically refreshed via real-time subscriptions
+            }}
+          />
+        )}
+
+        {!showLoginForm && !showPlayerReplacer && !showAdminEditScore && (
           <main>
             {showFinalMatch ? (
               <div className="space-y-6">
@@ -609,24 +649,16 @@ export default function BeachVolleyballTracker() {
                       </div>
                     )}
 
-                    {isAdmin && currentMatch.isSubmitted && (
+                     {isAdmin && currentMatch.isSubmitted && (
                       <div className="flex flex-col gap-2">
                         <Button 
-                          onClick={handleEditMatch}
+                          onClick={() => setShowAdminEditScore(true)}
                           variant="outline"
                           className="w-full border-blue-300 text-blue-700 hover:bg-blue-50"
                         >
                           <Edit className="w-4 h-4 mr-2" />
                           Edit Score
                         </Button>
-                        {isEditingMatch && (
-                          <Button 
-                            onClick={handleSaveMatchEdit}
-                            className="w-full bg-green-600 hover:bg-green-700"
-                          >
-                            Save Changes
-                          </Button>
-                        )}
                       </div>
                     )}
                   </CardContent>
@@ -661,6 +693,7 @@ export default function BeachVolleyballTracker() {
           </main>
         )}
       </div>
+      <Toaster />
     </div>
   );
 }

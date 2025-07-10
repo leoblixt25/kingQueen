@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Player, Match, FinalMatchScores, FinalMatchWinner } from '@/types';
-import { loadPlayers, loadMatches, loadFinalMatch, resetAllData } from '@/utils/supabaseUtils';
-import { initializeDefaultPlayers } from '@/utils/playerUtils';
-import { initializeMatches, updateMatchScore as updateMatchScoreUtil } from '@/utils/matchUtils';
+import { loadPlayers, loadMatches, loadFinalMatch } from '@/utils/supabaseUtils';
+import { initializePlayers, initializeMatches, resetScoresOnly, fullTournamentReset } from '@/utils/simpleTournamentUtils';
+import { updateMatchScore as updateMatchScoreUtil } from '@/utils/matchUtils';
 import { updatePlayerPointsFromMatch } from '@/utils/playerUtils';
 import { updateFinalMatch as updateFinalMatchUtil } from '@/utils/finalMatchUtils';
 
@@ -73,6 +73,7 @@ export const useTournamentData = () => {
     setMalePlayers(males);
 
     if (females.length === 0 && males.length === 0) {
+      await initializePlayers();
       await new Promise(resolve => setTimeout(resolve, 1000));
       await initializeMatches();
       await loadMatchesData();
@@ -139,8 +140,13 @@ export const useTournamentData = () => {
     await updateFinalMatchUtil(scores, malePlayers, femalePlayers);
   };
 
+  const resetScoresAndReload = async () => {
+    await resetScoresOnly();
+    await loadTournamentData();
+  };
+
   const resetAllDataAndReload = async () => {
-    await resetAllData();
+    await fullTournamentReset();
     await loadTournamentData();
   };
 
@@ -169,6 +175,7 @@ export const useTournamentData = () => {
     isLoading,
     updateMatchScore,
     updateFinalMatch,
+    resetScores: resetScoresAndReload,
     resetAllData: resetAllDataAndReload,
     retryMatchInitialization,
     setFinalMatchScores

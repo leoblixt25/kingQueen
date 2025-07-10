@@ -86,7 +86,7 @@ export function MatchCard({ match, isAdmin, onScoreSubmit }: MatchCardProps) {
         </div>
         <div className="flex items-center space-x-4">
           <Button onClick={handleSubmit} disabled={isSaving}>
-            {match.is_submitted ? <Check className="text-green-500" /> : "Submit"}
+            {match.isSubmitted ? <Check className="text-green-500" /> : "Submit"}
           </Button>
         </div>
       </CardContent>

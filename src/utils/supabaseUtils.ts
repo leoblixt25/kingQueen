@@ -44,13 +44,28 @@ export const loadPlayers = async () => {
       console.log('Duplicate players detected. Female:', females.length, 'Male:', males.length, '. Using top 8 by points...');
       
       // Get unique names with highest points/scores for each gender
-      const uniqueFemales = Array.from(
-        new Map(females.map(p => [p.name, p])).values()
-      ).slice(0, 8);
+      const uniqueFemales = [];
+      const seenFemaleNames = new Set();
+      for (const player of females) {
+        if (!seenFemaleNames.has(player.name)) {
+          seenFemaleNames.add(player.name);
+          uniqueFemales.push(player);
+          if (uniqueFemales.length >= 8) break;
+        }
+      }
       
-      const uniqueMales = Array.from(
-        new Map(males.map(p => [p.name, p])).values()
-      ).slice(0, 8);
+      const uniqueMales = [];
+      const seenMaleNames = new Set();
+      for (const player of males) {
+        if (!seenMaleNames.has(player.name)) {
+          seenMaleNames.add(player.name);
+          uniqueMales.push(player);
+          if (uniqueMales.length >= 8) break;
+        }
+      }
+      
+      console.log('Unique females selected:', uniqueFemales);
+      console.log('Unique males selected:', uniqueMales);
       
       return { femalePlayers: uniqueFemales, malePlayers: uniqueMales };
     }

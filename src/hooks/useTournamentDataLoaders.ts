@@ -46,6 +46,8 @@ export const useTournamentDataLoaders = ({
     console.log('🔄 Loading players data...');
     const { femalePlayers: females, malePlayers: males } = await loadPlayers();
     console.log('📊 Players loaded - Females:', females.length, 'Males:', males.length);
+    console.log('📊 Female players data:', females.map(p => ({ name: p.name, points: p.points, totalScores: p.totalScores })));
+    console.log('📊 Male players data:', males.map(p => ({ name: p.name, points: p.points, totalScores: p.totalScores })));
     setFemalePlayers(females);
     setMalePlayers(males);
 

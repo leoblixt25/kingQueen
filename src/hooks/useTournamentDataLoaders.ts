@@ -87,10 +87,18 @@ export const useTournamentDataLoaders = ({
     const finalMatch = await loadFinalMatch();
 
     if (finalMatch && finalMatch.is_completed) {
-      // Only load scores if match is actually completed with valid data
+      // Load actual set scores from database
       setFinalMatchScores({
-        team1: [null, null, null],
-        team2: [null, null, null],
+        team1: [
+          finalMatch.team1_set1 || null,
+          finalMatch.team1_set2 || null, 
+          finalMatch.team1_set3 || null
+        ],
+        team2: [
+          finalMatch.team2_set1 || null,
+          finalMatch.team2_set2 || null,
+          finalMatch.team2_set3 || null
+        ],
       });
       setFinalMatchSubmitted(true);
 

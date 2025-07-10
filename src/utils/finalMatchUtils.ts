@@ -47,6 +47,12 @@ export const updateFinalMatch = async (scores: FinalMatchScores, malePlayers: Pl
     .upsert({
       team1_score: team1TotalScore,
       team2_score: team2TotalScore,
+      team1_set1: scores.team1[0],
+      team1_set2: scores.team1[1], 
+      team1_set3: scores.team1[2],
+      team2_set1: scores.team2[0],
+      team2_set2: scores.team2[1],
+      team2_set3: scores.team2[2],
       is_completed: true,
       winner_team: winnerTeam,
       male_king_id: maleKingId,
@@ -58,5 +64,8 @@ export const updateFinalMatch = async (scores: FinalMatchScores, malePlayers: Pl
 
   if (error) {
     console.error('Error updating final match:', error);
+    throw error;
+  } else {
+    console.log('✅ Final match saved successfully with individual set scores');
   }
 };

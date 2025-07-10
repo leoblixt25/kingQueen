@@ -67,7 +67,13 @@ export type Database = {
           male_king_id: string | null
           male_prince_id: string | null
           team1_score: number | null
+          team1_set1: number | null
+          team1_set2: number | null
+          team1_set3: number | null
           team2_score: number | null
+          team2_set1: number | null
+          team2_set2: number | null
+          team2_set3: number | null
           updated_at: string | null
           winner_team: number | null
         }
@@ -81,7 +87,13 @@ export type Database = {
           male_king_id?: string | null
           male_prince_id?: string | null
           team1_score?: number | null
+          team1_set1?: number | null
+          team1_set2?: number | null
+          team1_set3?: number | null
           team2_score?: number | null
+          team2_set1?: number | null
+          team2_set2?: number | null
+          team2_set3?: number | null
           updated_at?: string | null
           winner_team?: number | null
         }
@@ -95,7 +107,13 @@ export type Database = {
           male_king_id?: string | null
           male_prince_id?: string | null
           team1_score?: number | null
+          team1_set1?: number | null
+          team1_set2?: number | null
+          team1_set3?: number | null
           team2_score?: number | null
+          team2_set1?: number | null
+          team2_set2?: number | null
+          team2_set3?: number | null
           updated_at?: string | null
           winner_team?: number | null
         }

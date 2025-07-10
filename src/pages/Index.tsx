@@ -186,23 +186,38 @@ export default function KingQueenOfTheBeach() {
   }
 
   const handleResetFinalMatch = async () => {
-    // Reset the database final match record
-    const { error } = await supabase
-      .from('final_matches')
-      .delete()
-      .eq('is_completed', true);
-    
-    if (error) {
-      console.error('Error resetting final match:', error);
+    if (!window.confirm('Are you sure you want to reset the final match? This will clear all final match data.')) {
+      return;
     }
     
-    // Reset local state
-    const resetScores: FinalMatchScores = { 
-      team1: [null, null, null], 
-      team2: [null, null, null] 
-    };
-    setFinalMatchScores(resetScores);
-    setIsEditingFinalMatch(false);
+    try {
+      // Reset the database final match record
+      const { error } = await supabase
+        .from('final_matches')
+        .delete()
+        .eq('is_completed', true);
+      
+      if (error) {
+        console.error('Error resetting final match:', error);
+        throw error;
+      }
+      
+      // Reset local state
+      const resetScores: FinalMatchScores = { 
+        team1: [null, null, null], 
+        team2: [null, null, null] 
+      };
+      setFinalMatchScores(resetScores);
+      setIsEditingFinalMatch(false);
+      
+      // Reload data to ensure consistency
+      await loadTournamentData();
+      
+      console.log('✅ Final match reset successfully');
+    } catch (error) {
+      console.error('❌ Error resetting final match:', error);
+      alert('Failed to reset final match. Please try again.');
+    }
   }
 
   const handlePreviousMatch = () => {
@@ -555,10 +570,10 @@ export default function KingQueenOfTheBeach() {
                               </h3>
                               <div className="space-y-2">
                                 <p className="text-lg font-semibold">
-                                  👑 King {finalMatchWinner.malePlayer}
+                                  👑 King <span className="font-bold">{finalMatchWinner.malePlayer}</span>
                                 </p>
                                 <p className="text-lg font-semibold">
-                                  👑 Queen {finalMatchWinner.femalePlayer}
+                                  👑 Queen <span className="font-bold">{finalMatchWinner.femalePlayer}</span>
                                 </p>
                               </div>
                             </div>
@@ -566,8 +581,8 @@ export default function KingQueenOfTheBeach() {
                             <div className="bg-gradient-to-r from-gray-100 to-gray-200 rounded-lg p-4">
                               <h3 className="text-lg font-semibold mb-2 text-gray-700">Runners-up</h3>
                               <div className="space-y-1 text-gray-600">
-                                <p>🤴 Prince {finalMatchWinner.losingMalePlayer}</p>
-                                <p>👸 Princess {finalMatchWinner.losingFemalePlayer}</p>
+                                <p>🤴 Prince <span className="font-bold">{finalMatchWinner.losingMalePlayer}</span></p>
+                                <p>👸 Princess <span className="font-bold">{finalMatchWinner.losingFemalePlayer}</span></p>
                               </div>
                             </div>
                           </div>

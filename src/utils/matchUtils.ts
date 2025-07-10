@@ -100,8 +100,8 @@ export const initializeMatches = async () => {
   }
 };
 
-export const updateMatchScore = async (matchIndex: number, score1: number, score2: number, gender: 'male' | 'female') => {
-  console.log(`Updating match score: matchIndex=${matchIndex}, score1=${score1}, score2=${score2}, gender=${gender}`);
+export const updateMatchScore = async (matchIndex: number, score1: number, score2: number, gender: 'male' | 'female', isEdit: boolean = false) => {
+  console.log(`Updating match score: matchIndex=${matchIndex}, score1=${score1}, score2=${score2}, gender=${gender}, isEdit=${isEdit}`);
   
   try {
     // First, get the match to update
@@ -124,13 +124,13 @@ export const updateMatchScore = async (matchIndex: number, score1: number, score
     const matchId = matches[matchIndex].id;
     console.log('Updating match with ID:', matchId);
 
-    // Update the match
+    // Update the match - only set is_submitted to true if not editing or if it's a new submission
     const { data: updatedMatch, error: updateError } = await supabase
       .from('matches')
       .update({
         score1,
         score2,
-        is_submitted: true
+        is_submitted: true  // Always set to submitted when updating scores
       })
       .eq('id', matchId)
       .select()

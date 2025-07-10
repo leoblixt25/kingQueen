@@ -21,7 +21,7 @@ export const useTournamentActions = ({
 }: UseTournamentActionsProps) => {
   const updateMatchScore = async (matchIndex: number, score1: number, score2: number, gender: 'male' | 'female', isEdit: boolean = false) => {
     try {
-      const matchId = await updateMatchScoreUtil(matchIndex, score1, score2, gender);
+      const matchId = await updateMatchScoreUtil(matchIndex, score1, score2, gender, isEdit);
       if (matchId) {
         await updatePlayerPointsFromMatch(matchId, score1, score2, isEdit);
         await loadPlayersData();

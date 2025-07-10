@@ -346,7 +346,11 @@ export default function KingQueenOfTheBeach() {
             matchIndex={currentMatchIndex}
             onClose={() => setShowAdminEditScore(false)}
             onSuccess={() => {
-              // Data will be automatically refreshed via real-time subscriptions
+              // Force reload of tournament data to update rankings immediately
+              toast({
+                title: "Score Updated",
+                description: "Match score and rankings updated successfully",
+              });
             }}
           />
         )}

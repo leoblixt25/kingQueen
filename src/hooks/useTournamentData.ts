@@ -141,13 +141,27 @@ export const useTournamentData = () => {
   };
 
   const resetScoresAndReload = async () => {
-    await resetScoresOnly();
-    await loadTournamentData();
+    try {
+      await resetScoresOnly();
+      // Real-time subscriptions will handle the reload automatically
+      // but we can force a reload for immediate feedback
+      await loadTournamentData();
+    } catch (error) {
+      console.error('Error in resetScoresAndReload:', error);
+      throw error;
+    }
   };
 
   const resetAllDataAndReload = async () => {
-    await fullTournamentReset();
-    await loadTournamentData();
+    try {
+      await fullTournamentReset();
+      // Real-time subscriptions will handle most of the reload
+      // but we ensure data is fresh with a manual reload
+      await loadTournamentData();
+    } catch (error) {
+      console.error('Error in resetAllDataAndReload:', error);
+      throw error;
+    }
   };
 
   const retryMatchInitialization = async () => {

@@ -11,41 +11,49 @@ export const updateFinalMatch = async (scores: FinalMatchScores, malePlayers: Pl
     score !== null && scores.team1[index] !== null && score > scores.team1[index]!
   ).length;
 
+  // Calculate total scores for each team
+  const team1TotalScore = scores.team1.reduce((sum, score) => sum + (score || 0), 0);
+  const team2TotalScore = scores.team2.reduce((sum, score) => sum + (score || 0), 0);
+
+  // Get player IDs by looking them up in the database
+  const { data: allPlayers } = await supabase.from('players').select('id, name, gender');
+  
+  const getPlayerId = (name: string, gender: string) => {
+    return allPlayers?.find(p => p.name === name && p.gender === gender)?.id || null;
+  };
+
   let winnerTeam = null;
-  let maleWinner = null;
-  let femaleWinner = null;
-  let maleRunnerUp = null;
-  let femaleRunnerUp = null;
+  let maleKingId = null;
+  let femaleQueenId = null;
+  let malePrinceId = null;
+  let femalePrincessId = null;
 
   if (team1Wins > team2Wins) {
-    winnerTeam = 'team1';
-    maleWinner = malePlayers[0]?.name;
-    femaleWinner = femalePlayers[1]?.name;
-    maleRunnerUp = malePlayers[1]?.name;
-    femaleRunnerUp = femalePlayers[0]?.name;
+    winnerTeam = 1;
+    maleKingId = getPlayerId(malePlayers[0]?.name, 'male');
+    femaleQueenId = getPlayerId(femalePlayers[1]?.name, 'female');
+    malePrinceId = getPlayerId(malePlayers[1]?.name, 'male');
+    femalePrincessId = getPlayerId(femalePlayers[0]?.name, 'female');
   } else if (team2Wins > team1Wins) {
-    winnerTeam = 'team2';
-    maleWinner = malePlayers[1]?.name;
-    femaleWinner = femalePlayers[0]?.name;
-    maleRunnerUp = malePlayers[0]?.name;
-    femaleRunnerUp = femalePlayers[1]?.name;
+    winnerTeam = 2;
+    maleKingId = getPlayerId(malePlayers[1]?.name, 'male');
+    femaleQueenId = getPlayerId(femalePlayers[0]?.name, 'female');
+    malePrinceId = getPlayerId(malePlayers[0]?.name, 'male');
+    femalePrincessId = getPlayerId(femalePlayers[1]?.name, 'female');
   }
 
   const { error } = await supabase
     .from('final_matches')
     .upsert({
-      team1_set1: scores.team1[0],
-      team1_set2: scores.team1[1],
-      team1_set3: scores.team1[2],
-      team2_set1: scores.team2[0],
-      team2_set2: scores.team2[1],
-      team2_set3: scores.team2[2],
-      is_submitted: true,
+      team1_score: team1TotalScore,
+      team2_score: team2TotalScore,
+      is_completed: true,
       winner_team: winnerTeam,
-      male_winner: maleWinner,
-      female_winner: femaleWinner,
-      male_runner_up: maleRunnerUp,
-      female_runner_up: femaleRunnerUp
+      male_king_id: maleKingId,
+      female_queen_id: femaleQueenId,
+      male_prince_id: malePrinceId,
+      female_princess_id: femalePrincessId,
+      completed_at: new Date().toISOString()
     });
 
   if (error) {

@@ -135,15 +135,8 @@ export default function KingQueenOfTheBeach() {
     const scoreValue2 = parseInt(score2, 10) || 0;
     
     try {
+      // Use the same approach as handleScoreSubmit - let real-time subscriptions handle updates
       await updateMatchScore(currentMatchIndex, scoreValue1, scoreValue2, gender, true);
-      
-      // Add delay to ensure database updates are complete
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Force multiple reloads to ensure data consistency
-      await loadTournamentData();
-      await new Promise(resolve => setTimeout(resolve, 100));
-      await loadTournamentData();
       
       setEditingMatchId(null);
       setScore1('');

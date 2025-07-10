@@ -77,6 +77,10 @@ export const useTournamentData = () => {
     if (females.length === 0 && males.length === 0) {
       await initializePlayers();
       await new Promise(resolve => setTimeout(resolve, 1000));
+      // Reload players after initialization
+      const { femalePlayers: newFemales, malePlayers: newMales } = await loadPlayers();
+      setFemalePlayers(newFemales);
+      setMalePlayers(newMales);
       await initializeMatches();
       await loadMatchesData();
     }

@@ -266,15 +266,15 @@ export default function KingQueenOfTheBeach() {
     <div className="min-h-screen bg-white px-4 py-6">
       <div className="max-w-md mx-auto space-y-6">
         <header>
-          <div className="flex flex-col items-center gap-4 relative">
+          <div className="flex flex-col items-center gap-6 relative">
             {/* Admin Login Button - Top Right */}
-            <div className="absolute top-0 right-0">
+            <div className="absolute -top-2 right-0">
               {!isAdmin && !showLoginForm ? (
                 <Button 
                   variant="outline" 
                   size="sm"
                   onClick={() => setShowLoginForm(true)}
-                  className="text-xs px-2 py-1"
+                  className="text-xs px-3 py-1.5"
                 >
                   Admin
                 </Button>
@@ -283,14 +283,19 @@ export default function KingQueenOfTheBeach() {
                   variant="destructive" 
                   size="sm"
                   onClick={handleAdminLogout}
-                  className="text-xs px-2 py-1"
+                  className="text-xs px-3 py-1.5"
                 >
                   Logout
                 </Button>
               )}
             </div>
 
-            <h1 className="text-2xl font-bold text-center">King & Queen Of The Beach</h1>
+            <div className="text-center pt-8">
+              <h1 className="text-4xl font-bold text-transparent bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text mb-2">
+                King & Queen Of The Beach
+              </h1>
+              <p className="text-gray-600 text-sm">Beach Volleyball Tournament Tracker</p>
+            </div>
             <div className="flex flex-col gap-2 w-full">
               <Button 
                 variant={gender === 'female' ? "default" : "outline"} 
@@ -644,8 +649,7 @@ export default function KingQueenOfTheBeach() {
                       <Card className="border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-blue-100">
                         <CardContent className="p-4">
                           <div className="text-center space-y-3">
-                            <div className="bg-blue-600 text-white rounded-lg py-2 px-4">
-                              <h3 className="text-sm font-semibold mb-1">TEAM A</h3>
+                            <div className="bg-blue-600 text-white rounded-lg py-3 px-4">
                               <p className="text-lg font-bold">
                                 {currentMatch.player1.name} & {currentMatch.player2.name}
                               </p>
@@ -681,8 +685,7 @@ export default function KingQueenOfTheBeach() {
                       <Card className="border-2 border-purple-200 bg-gradient-to-r from-purple-50 to-purple-100">
                         <CardContent className="p-4">
                           <div className="text-center space-y-3">
-                            <div className="bg-purple-600 text-white rounded-lg py-2 px-4">
-                              <h3 className="text-sm font-semibold mb-1">TEAM B</h3>
+                            <div className="bg-purple-600 text-white rounded-lg py-3 px-4">
                               <p className="text-lg font-bold">
                                 {currentMatch.player3.name} & {currentMatch.player4.name}
                               </p>

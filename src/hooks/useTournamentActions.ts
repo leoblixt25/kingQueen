@@ -39,7 +39,16 @@ export const useTournamentActions = ({
   };
 
   const updateFinalMatch = async (scores: FinalMatchScores) => {
-    await updateFinalMatchUtil(scores, malePlayers, femalePlayers);
+    console.log('🏆 Final match update called with scores:', scores);
+    try {
+      await updateFinalMatchUtil(scores, malePlayers, femalePlayers);
+      console.log('🏆 Final match updated successfully');
+      // Reload tournament data to get the updated final match state
+      await loadTournamentData();
+    } catch (error) {
+      console.error('🏆 Error updating final match:', error);
+      throw error;
+    }
   };
 
   const resetScoresAndReload = async () => {

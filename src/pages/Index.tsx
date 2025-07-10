@@ -137,7 +137,12 @@ export default function KingQueenOfTheBeach() {
     try {
       await updateMatchScore(currentMatchIndex, scoreValue1, scoreValue2, gender, true);
       
-      // Force reload the data to ensure rankings update
+      // Add delay to ensure database updates are complete
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Force multiple reloads to ensure data consistency
+      await loadTournamentData();
+      await new Promise(resolve => setTimeout(resolve, 100));
       await loadTournamentData();
       
       setEditingMatchId(null);

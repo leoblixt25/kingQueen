@@ -92,7 +92,7 @@ export const loadMatches = async () => {
       player3:players!matches_player3_id_fkey(name),
       player4:players!matches_player4_id_fkey(name)
     `)
-    .order('match_order');
+    .order('match_number');
 
   if (error) {
     console.error('Error loading matches:', error);
@@ -112,7 +112,7 @@ export const loadMatches = async () => {
         player4: { name: m.player4?.name || '', points: 0, totalScores: 0 },
         score1: m.score1 || 0,
         score2: m.score2 || 0,
-        isSubmitted: m.is_submitted || false
+        isSubmitted: m.is_completed || false
       }));
 
     const maleMatchesData = matches
@@ -125,7 +125,7 @@ export const loadMatches = async () => {
         player4: { name: m.player4?.name || '', points: 0, totalScores: 0 },
         score1: m.score1 || 0,
         score2: m.score2 || 0,
-        isSubmitted: m.is_submitted || false
+        isSubmitted: m.is_completed || false
       }));
 
     console.log('Female matches count:', femaleMatchesData.length);

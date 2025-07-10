@@ -50,10 +50,10 @@ export const initializeMatches = async () => {
         player3_id: femalePlayers[p3].id,
         player4_id: femalePlayers[p4].id,
         gender: 'female',
-        match_order: index,
+        match_number: index + 1,
         score1: 0,
         score2: 0,
-        is_submitted: false
+        is_completed: false
       };
     });
 
@@ -66,10 +66,10 @@ export const initializeMatches = async () => {
         player3_id: malePlayers[p3].id,
         player4_id: malePlayers[p4].id,
         gender: 'male',
-        match_order: index,
+        match_number: index + 1,
         score1: 0,
         score2: 0,
-        is_submitted: false
+        is_completed: false
       };
     });
 

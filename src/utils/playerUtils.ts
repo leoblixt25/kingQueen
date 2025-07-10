@@ -24,11 +24,12 @@ export const initializeDefaultPlayers = async () => {
     }
 
     // Insert female players
-    const femaleInserts = DEFAULT_FEMALE_PLAYERS.map(name => ({
+    const femaleInserts = DEFAULT_FEMALE_PLAYERS.map((name, index) => ({
       name,
       gender: 'female',
       points: 0,
-      total_scores: 0
+      total_scores: 0,
+      position: index + 1
     }));
 
     const { error: femaleError } = await supabase
@@ -41,11 +42,12 @@ export const initializeDefaultPlayers = async () => {
     }
 
     // Insert male players
-    const maleInserts = DEFAULT_MALE_PLAYERS.map(name => ({
+    const maleInserts = DEFAULT_MALE_PLAYERS.map((name, index) => ({
       name,
       gender: 'male',
       points: 0,
-      total_scores: 0
+      total_scores: 0,
+      position: index + 9  // Continue numbering after female players
     }));
 
     const { error: maleError } = await supabase
@@ -71,7 +73,7 @@ export const updatePlayerPointsFromMatch = async (matchId: string, score1: numbe
     // Get match details including previous scores if editing
     const { data: match, error: matchError } = await supabase
       .from('matches')
-      .select('player1_id, player2_id, player3_id, player4_id, score1, score2, is_submitted')
+      .select('player1_id, player2_id, player3_id, player4_id, score1, score2, is_completed')
       .eq('id', matchId)
       .single();
 
@@ -124,7 +126,7 @@ export const updatePlayerPointsFromMatch = async (matchId: string, score1: numbe
     let player4NewScores = playerMap[match.player4_id].total_scores;
 
     // If editing, first subtract the previous points and scores
-    if (isEdit && match.is_submitted) {
+    if (isEdit && match.is_completed) {
       console.log('Editing match - removing previous points and scores');
       
       if (match.score1 > match.score2) {

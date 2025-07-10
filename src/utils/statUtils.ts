@@ -4,7 +4,7 @@ export async function recalculatePlayerStats() {
   const { data: matches, error: matchError } = await supabase
     .from("matches")
     .select("*")
-    .eq("is_submitted", true);
+    .eq("is_completed", true);
 
   if (matchError || !matches) {
     console.error("Failed to fetch matches", matchError);

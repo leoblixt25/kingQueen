@@ -19,11 +19,12 @@ export const initializePlayers = async () => {
     }
 
     // Insert female players
-    const femaleInserts = FEMALE_PLAYERS.map(name => ({
+    const femaleInserts = FEMALE_PLAYERS.map((name, index) => ({
       name,
       gender: 'female',
       points: 0,
-      total_scores: 0
+      total_scores: 0,
+      position: index + 1
     }));
 
     const { error: femaleError } = await supabase
@@ -36,11 +37,12 @@ export const initializePlayers = async () => {
     }
 
     // Insert male players
-    const maleInserts = MALE_PLAYERS.map(name => ({
+    const maleInserts = MALE_PLAYERS.map((name, index) => ({
       name,
       gender: 'male',
       points: 0,
-      total_scores: 0
+      total_scores: 0,
+      position: index + 1
     }));
 
     const { error: maleError } = await supabase

@@ -47,6 +47,13 @@ export default function KingQueenOfTheBeach() {
   const players = gender === 'female' ? femalePlayers : malePlayers
   const matches = gender === 'female' ? femaleMatches : maleMatches
 
+  // Debug logging
+  console.log('Current gender:', gender);
+  console.log('Female players:', femalePlayers);
+  console.log('Male players:', malePlayers);
+  console.log('Current players array:', players);
+  console.log('Players length:', players.length);
+
   // Reset currentMatchIndex when gender changes
   const handleGenderChange = (newGender: Gender) => {
     setGender(newGender);

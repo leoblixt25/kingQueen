@@ -67,7 +67,9 @@ useTournamentRealtimeSubscriptions({
     const scoreValue2 = parseInt(score2, 10) || 0;
     
     await updateMatchScore(currentMatchIndex, scoreValue1, scoreValue2, gender);
-    
+      // 🔔 Trigger a refresh across all clients
+  await supabase.from("app_refresh").insert({});
+
     setScore1('');
     setScore2('');
     

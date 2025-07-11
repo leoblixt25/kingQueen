@@ -461,10 +461,9 @@ export default function KingQueenOfTheBeach() {
                   <div className="bg-beach-gradient text-white rounded-2xl p-6 shadow-beach">
                     <h2 className="text-2xl font-bold mb-2 flex items-center justify-center gap-2">
                       <Crown className="w-6 h-6" />
-                      🏆 Championship Final 🏆
+                       Championship Final 
                       <Crown className="w-6 h-6" />
                     </h2>
-                    <p className="text-white/90">The ultimate showdown for the crown!</p>
                   </div>
                 </div>
 

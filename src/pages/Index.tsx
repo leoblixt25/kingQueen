@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Check, Edit, Trash, Crown, ChevronLeft, ChevronRight, Home, Users, RotateCcw } from "lucide-react";
 import { Gender, FinalMatchScores } from "@/types";
 import { useTournamentData } from "@/hooks/useTournamentData";
-
+import { useTournamentRealtimeSubscriptions } from "@/hooks/useTournamentRealtimeSubscriptions";
 import { PlayerReplacer } from "@/components/PlayerReplacer";
 import { toast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
@@ -44,6 +44,11 @@ export default function KingQueenOfTheBeach() {
     setFinalMatchScores,
     loadTournamentData
   } = useTournamentData();
+useTournamentRealtimeSubscriptions({
+  loadPlayersData: loadTournamentData,
+  loadMatchesData: loadTournamentData,
+  loadFinalMatchData: loadTournamentData,
+});
 
   const players = gender === 'female' ? femalePlayers : malePlayers
   const matches = gender === 'female' ? femaleMatches : maleMatches

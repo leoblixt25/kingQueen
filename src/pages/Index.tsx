@@ -699,7 +699,7 @@ export default function KingQueenOfTheBeach() {
                       <CardContent className="p-4">
                         <div className="text-center space-y-3">
                           <div className="bg-ocean text-white rounded-xl py-4 px-4 shadow-beach">
-                            <p className="text-lg font-bold">
+                            <p className="text-xl font-bold">
                               {currentMatch.player1.name} & {currentMatch.player2.name}
                             </p>
                           </div>
@@ -735,7 +735,7 @@ export default function KingQueenOfTheBeach() {
                       <CardContent className="p-4">
                         <div className="text-center space-y-3">
                           <div className="bg-sunset text-white rounded-xl py-4 px-4 shadow-beach">
-                            <p className="text-lg font-bold">
+                            <p className="text-xl font-bold">
                               {currentMatch.player3.name} & {currentMatch.player4.name}
                             </p>
                           </div>

@@ -65,21 +65,28 @@ useTournamentRealtimeSubscriptions({
   const handleScoreSubmit = async () => {
     const scoreValue1 = parseInt(score1, 10) || 0;
     const scoreValue2 = parseInt(score2, 10) || 0;
-    
+
     await updateMatchScore(currentMatchIndex, scoreValue1, scoreValue2, gender);
-      // 🔔 Trigger a refresh across all clients
-  await supabase.from("app_refresh").insert({});
+
+    // 🔔 Trigger a refresh across all clients
+    console.log("👉 Inserting app_refresh row...");
+    const { error } = await supabase.from("app_refresh").insert({});
+    if (error) {
+      console.error("❌ Failed to insert into app_refresh:", error);
+    } else {
+      console.log("✅ app_refresh row inserted successfully");
+    }
 
     setScore1('');
     setScore2('');
-    
+
     const nextUnfinishedIndex = matches.findIndex((match, index) => 
       index > currentMatchIndex && !match.isSubmitted
     );
     if (nextUnfinishedIndex !== -1) {
       setCurrentMatchIndex(nextUnfinishedIndex);
     }
-  }
+  };
 
   const handleAdminLogin = () => {
     if (adminUsername === 'leo' && adminPassword === 'Woodgoat22!!') {

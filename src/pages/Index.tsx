@@ -486,7 +486,7 @@ export default function KingQueenOfTheBeach() {
                       <div className="grid grid-cols-3 gap-3">
                         {[0, 1, 2].map((setIndex) => (
                           <div key={setIndex} className="space-y-2">
-                            <Label htmlFor={`team1-set${setIndex + 1}`} className="text-xs font-medium text-center block text-ocean">
+                            <Label htmlFor={`team1-set${setIndex + 1}`} className="text-sm font-medium text-center block text-ocean">
                               Set {setIndex + 1}
                             </Label>
                             <Input
@@ -535,7 +535,7 @@ export default function KingQueenOfTheBeach() {
                       <div className="grid grid-cols-3 gap-3">
                         {[0, 1, 2].map((setIndex) => (
                           <div key={setIndex} className="space-y-2">
-                            <Label htmlFor={`team2-set${setIndex + 1}`} className="text-xs font-medium text-center block text-sunset">
+                            <Label htmlFor={`team2-set${setIndex + 1}`} className="text-sm font-medium text-center block text-sunset">
                               Set {setIndex + 1}
                             </Label>
                             <Input

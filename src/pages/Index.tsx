@@ -290,28 +290,7 @@ export default function KingQueenOfTheBeach() {
       <div className="max-w-lg mx-auto space-y-6 animate-fade-in">
         <header>
           <div className="flex flex-col items-center gap-6 relative">
-            {/* Admin Login Button - Top Right */}
-            <div className="absolute -top-2 right-0">
-              {!isAdmin && !showLoginForm ? (
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => setShowLoginForm(true)}
-                  className="text-xs px-4 py-2 touch-target bg-white/80 backdrop-blur-sm border-ocean/20 hover:bg-ocean hover:text-white transition-all duration-300"
-                >
-                  🏖️ Admin
-                </Button>
-              ) : isAdmin && (
-                <Button 
-                  variant="destructive" 
-                  size="sm"
-                  onClick={handleAdminLogout}
-                  className="text-xs px-4 py-2 touch-target bg-coral hover:bg-coral-dark transition-all duration-300"
-                >
-                  Logout
-                </Button>
-              )}
-            </div>
+            
 
             <div className="text-center pt-8">
               <div className="relative">
@@ -853,6 +832,28 @@ export default function KingQueenOfTheBeach() {
           </main>
         )}
       </div>
+      <div className="flex justify-center mt-6"> {/* ← Centers the button */}
+      {!isAdmin && !showLoginForm ? (
+        <Button 
+          variant="outline" 
+          size="sm"
+          onClick={() => setShowLoginForm(true)}
+          className="px-4 py-2 touch-target bg-white/80 backdrop-blur-sm border-ocean/20 hover:bg-ocean hover:text-white transition-all duration-300"
+        >
+          🏖️ Admin
+        </Button>
+      ) : isAdmin && (
+        <Button 
+          variant="destructive" 
+          size="sm"
+          onClick={handleAdminLogout}
+          className="px-4 py-2 touch-target bg-coral hover:bg-coral-dark transition-all duration-300"
+        >
+          Logout
+        </Button>
+      )}
+    </div>
+  </div>
       <Toaster />
     </div>
   );

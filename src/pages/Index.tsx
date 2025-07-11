@@ -315,8 +315,8 @@ export default function KingQueenOfTheBeach() {
 
             <div className="text-center pt-8">
               <div className="relative">
-                <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-beach-gradient bg-clip-text mb-4 drop-shadow-sm">
-                  🏐 King & Queen of the Beach
+                <h1 className="text-2xl md:text-3xl font-bold text-transparent bg-beach-gradient bg-clip-text mb-4 drop-shadow-sm">
+                  King & Queen of the Beach
                 </h1>
                 <div className="w-16 h-1 bg-sunset mx-auto rounded-full"></div>
               </div>

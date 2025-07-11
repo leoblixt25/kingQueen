@@ -807,7 +807,7 @@ export default function KingQueenOfTheBeach() {
                 </Card>
 
                 {/* Rankings Table */}
-                <Card className="bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach">
+                <Card className="mt-6 bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach">
                   <CardHeader>
                     <CardTitle className="text-xl font-bold text-center bg-sunset-gradient bg-clip-text text-transparent">
                       🏆 {gender.charAt(0).toUpperCase() + gender.slice(1)} Rankings

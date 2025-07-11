@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -49,13 +48,6 @@ export default function KingQueenOfTheBeach() {
   const players = gender === 'female' ? femalePlayers : malePlayers
   const matches = gender === 'female' ? femaleMatches : maleMatches
 
-  // Debug logging
-  console.log('Current gender:', gender);
-  console.log('Female players:', femalePlayers);
-  console.log('Male players:', malePlayers);
-  console.log('Current players array:', players);
-  console.log('Players length:', players.length);
-
   // Reset currentMatchIndex when gender changes
   const handleGenderChange = (newGender: Gender) => {
     setGender(newGender);
@@ -74,7 +66,6 @@ export default function KingQueenOfTheBeach() {
     setScore1('');
     setScore2('');
     
-    // Auto-advance to next unfinished match
     const nextUnfinishedIndex = matches.findIndex((match, index) => 
       index > currentMatchIndex && !match.isSubmitted
     );
@@ -135,23 +126,12 @@ export default function KingQueenOfTheBeach() {
     const scoreValue1 = parseInt(score1, 10) || 0;
     const scoreValue2 = parseInt(score2, 10) || 0;
     
-    console.log(`🚀 EDIT SCORE STARTED: match=${currentMatchIndex}, scores=${scoreValue1}-${scoreValue2}, gender=${gender}`);
-    
     try {
-      // Use the same approach as handleScoreSubmit - let real-time subscriptions handle updates
       await updateMatchScore(currentMatchIndex, scoreValue1, scoreValue2, gender, true);
-      
-      console.log(`🚀 EDIT SCORE COMPLETED, forcing data reload...`);
-      
-      // Force reload data after edit
       await loadTournamentData();
-      
-      console.log(`🚀 FORCED RELOAD COMPLETED`);
-      
       setEditingMatchId(null);
       setScore1('');
       setScore2('');
-      
       toast({
         title: "Score Updated",
         description: "Match score and rankings updated successfully",
@@ -191,31 +171,22 @@ export default function KingQueenOfTheBeach() {
     }
     
     try {
-      // Reset the database final match record
       const { error } = await supabase
         .from('final_matches')
         .delete()
         .eq('is_completed', true);
       
-      if (error) {
-        console.error('Error resetting final match:', error);
-        throw error;
-      }
+      if (error) throw error;
       
-      // Reset local state
       const resetScores: FinalMatchScores = { 
         team1: [null, null, null], 
         team2: [null, null, null] 
       };
       setFinalMatchScores(resetScores);
       setIsEditingFinalMatch(false);
-      
-      // Reload data to ensure consistency
       await loadTournamentData();
-      
-      console.log('✅ Final match reset successfully');
     } catch (error) {
-      console.error('❌ Error resetting final match:', error);
+      console.error('Error resetting final match:', error);
       alert('Failed to reset final match. Please try again.');
     }
   }
@@ -224,7 +195,7 @@ export default function KingQueenOfTheBeach() {
     if (currentMatchIndex > 0) {
       const newIndex = currentMatchIndex - 1;
       setCurrentMatchIndex(newIndex);
-      setEditingMatchId(null); // Reset edit mode
+      setEditingMatchId(null);
       setScore1('');
       setScore2('');
     }
@@ -234,7 +205,7 @@ export default function KingQueenOfTheBeach() {
     if (currentMatchIndex < matches.length - 1) {
       const newIndex = currentMatchIndex + 1;
       setCurrentMatchIndex(newIndex);
-      setEditingMatchId(null); // Reset edit mode
+      setEditingMatchId(null);
       setScore1('');
       setScore2('');
     }
@@ -289,9 +260,7 @@ export default function KingQueenOfTheBeach() {
     <div className="min-h-screen bg-sand-gradient px-4 py-6">
       <div className="max-w-lg mx-auto space-y-6 animate-fade-in">
         <header>
-          <div className="flex flex-col items-center gap-6 relative">
-            
-
+          <div className="flex flex-col items-center gap-6">
             <div className="text-center pt-8">
               <div className="relative">
                 <h1 className="text-2xl md:text-3xl font-bold text-transparent bg-beach-gradient bg-clip-text mb-4 drop-shadow-sm">
@@ -301,7 +270,6 @@ export default function KingQueenOfTheBeach() {
               </div>
             </div>
 
-            {/* Navigation Buttons */}
             <div className="flex flex-col gap-3 w-full max-w-sm">
               <Button 
                 variant={gender === 'female' ? "default" : "outline"} 
@@ -338,7 +306,6 @@ export default function KingQueenOfTheBeach() {
               </Button>
             </div>
             
-            {/* Admin Controls - Only show when admin is logged in */}
             {isAdmin && !showLoginForm && (
               <div className="w-full max-w-sm space-y-3 p-4 bg-white/60 backdrop-blur-sm rounded-2xl border border-sand-dark/20 shadow-sand">
                 <div className="text-center mb-2">
@@ -424,31 +391,25 @@ export default function KingQueenOfTheBeach() {
             femalePlayers={femalePlayers}
             malePlayers={malePlayers}
             onClose={() => setShowPlayerReplacer(false)}
-            onSuccess={() => {
-              // Data will be automatically refreshed via real-time subscriptions
-            }}
+            onSuccess={() => {}}
           />
         )}
-
 
         {!showLoginForm && !showPlayerReplacer && (
           <main>
             {showFinalMatch ? (
               <div className="space-y-6">
-                {/* Final Match Header */}
                 <div className="text-center">
                   <div className="bg-beach-gradient text-white rounded-2xl p-6 shadow-beach">
-                    <h2 className="text-2xl font-bold mb-2 flex items-center justify-center gap-2">
+                    <h2 className="text-2xl font-bold flex items-center justify-center gap-2">
                       <Crown className="w-6 h-6" />
-                       Championship Final 
+                      Championship Final
                       <Crown className="w-6 h-6" />
                     </h2>
                   </div>
                 </div>
 
-                {/* Teams Display */}
                 <div className="grid grid-cols-1 gap-4">
-                  {/* Team 1 */}
                   <Card className="border-2 border-ocean/20 bg-white/80 backdrop-blur-sm shadow-beach">
                     <CardHeader className="pb-3">
                       <CardTitle className="text-center text-lg font-bold text-ocean">
@@ -471,11 +432,11 @@ export default function KingQueenOfTheBeach() {
                               id={`team1-set${setIndex + 1}`}
                               value={finalMatchScores.team1[setIndex] !== null ? finalMatchScores.team1[setIndex] : ''}
                               onChange={(e) => {
-                                const newScores: [number | null, number | null, number | null] = [...finalMatchScores.team1];
+                                const newScores = [...finalMatchScores.team1];
                                 newScores[setIndex] = e.target.value === '' ? null : parseInt(e.target.value, 10);
                                 setFinalMatchScores({
                                   ...finalMatchScores,
-                                  team1: newScores
+                                  team1: newScores as [number | null, number | null, number | null]
                                 });
                               }}
                               type="number"
@@ -490,14 +451,12 @@ export default function KingQueenOfTheBeach() {
                     </CardContent>
                   </Card>
 
-                  {/* VS Divider */}
                   <div className="flex items-center justify-center">
                     <div className="bg-sunset-gradient text-white px-8 py-3 rounded-full font-bold text-xl shadow-beach animate-pulse-glow">
                       ⚡ VS ⚡
                     </div>
                   </div>
 
-                  {/* Team 2 */}
                   <Card className="border-2 border-sunset/20 bg-white/80 backdrop-blur-sm shadow-beach">
                     <CardHeader className="pb-3">
                       <CardTitle className="text-center text-lg font-bold text-sunset">
@@ -520,11 +479,11 @@ export default function KingQueenOfTheBeach() {
                               id={`team2-set${setIndex + 1}`}
                               value={finalMatchScores.team2[setIndex] !== null ? finalMatchScores.team2[setIndex] : ''}
                               onChange={(e) => {
-                                const newScores: [number | null, number | null, number | null] = [...finalMatchScores.team2];
+                                const newScores = [...finalMatchScores.team2];
                                 newScores[setIndex] = e.target.value === '' ? null : parseInt(e.target.value, 10);
                                 setFinalMatchScores({
                                   ...finalMatchScores,
-                                  team2: newScores
+                                  team2: newScores as [number | null, number | null, number | null]
                                 });
                               }}
                               type="number"
@@ -540,7 +499,6 @@ export default function KingQueenOfTheBeach() {
                   </Card>
                 </div>
 
-                {/* Action Buttons */}
                 {!finalMatchSubmitted ? (
                   <Button 
                     onClick={handleFinalMatchSubmit} 
@@ -550,7 +508,6 @@ export default function KingQueenOfTheBeach() {
                   </Button>
                 ) : (
                   <div className="space-y-4">
-                    {/* Results Summary */}
                     <Card className="border-2 border-palm/30 bg-palm-light/20 backdrop-blur-sm shadow-beach">
                       <CardContent className="p-4">
                         <div className="text-center">
@@ -571,7 +528,6 @@ export default function KingQueenOfTheBeach() {
                       </CardContent>
                     </Card>
 
-                    {/* Winners Display */}
                     {finalMatchWinner && (
                       <Card className="border-2 border-sunset/30 bg-sunset-gradient shadow-beach">
                         <CardContent className="p-6">
@@ -604,7 +560,6 @@ export default function KingQueenOfTheBeach() {
                       </Card>
                     )}
 
-                    {/* Admin Controls */}
                     {isAdmin && (
                       <div className="flex flex-col gap-3">
                         <Button 
@@ -638,7 +593,6 @@ export default function KingQueenOfTheBeach() {
               </div>
             ) : (
               <>
-                {/* Current Match with Navigation */}
                 <Card className="bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach">
                   <CardHeader>
                     <div className="flex flex-col items-center gap-3">
@@ -673,7 +627,6 @@ export default function KingQueenOfTheBeach() {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    {/* Team 1 */}
                     <Card className="border-2 border-ocean/20 bg-ocean/5 shadow-sand">
                       <CardContent className="p-4">
                         <div className="text-center space-y-3">
@@ -702,14 +655,12 @@ export default function KingQueenOfTheBeach() {
                       </CardContent>
                     </Card>
 
-                    {/* VS Divider */}
                     <div className="flex items-center justify-center">
                       <div className="bg-sunset-gradient text-white px-8 py-3 rounded-full font-bold text-xl shadow-beach animate-pulse-glow">
                         ⚡ VS ⚡
                       </div>
                     </div>
 
-                    {/* Team 2 */}
                     <Card className="border-2 border-sunset/20 bg-sunset/5 shadow-sand">
                       <CardContent className="p-4">
                         <div className="text-center space-y-3">
@@ -738,7 +689,6 @@ export default function KingQueenOfTheBeach() {
                       </CardContent>
                     </Card>
 
-                    {/* Action Buttons */}
                     {!currentMatch.isSubmitted && editingMatchId !== currentMatch.id ? (
                       <Button 
                         onClick={handleScoreSubmit} 
@@ -785,7 +735,6 @@ export default function KingQueenOfTheBeach() {
                   </CardContent>
                 </Card>
 
-                {/* Rankings Table */}
                 <Card className="mt-6 bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach">
                   <CardHeader>
                     <CardTitle className="text-xl font-bold text-center bg-sunset-gradient bg-clip-text text-transparent">
@@ -831,29 +780,30 @@ export default function KingQueenOfTheBeach() {
             )}
           </main>
         )}
+
+        {/* Admin button moved to bottom-center */}
+        <div className="flex justify-center mt-6">
+          {!isAdmin && !showLoginForm ? (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setShowLoginForm(true)}
+              className="px-4 py-2 touch-target bg-white/80 backdrop-blur-sm border-ocean/20 hover:bg-ocean hover:text-white transition-all duration-300"
+            >
+              🏖️ Admin
+            </Button>
+          ) : isAdmin && (
+            <Button 
+              variant="destructive" 
+              size="sm"
+              onClick={handleAdminLogout}
+              className="px-4 py-2 touch-target bg-coral hover:bg-coral-dark transition-all duration-300"
+            >
+              Logout
+            </Button>
+          )}
+        </div>
       </div>
-      <div className="flex justify-center mt-6"> {/* ← Centers the button */}
-      {!isAdmin && !showLoginForm ? (
-        <Button 
-          variant="outline" 
-          size="sm"
-          onClick={() => setShowLoginForm(true)}
-          className="px-4 py-2 touch-target bg-white/80 backdrop-blur-sm border-ocean/20 hover:bg-ocean hover:text-white transition-all duration-300"
-        >
-          🏖️ Admin
-        </Button>
-      ) : isAdmin && (
-        <Button 
-          variant="destructive" 
-          size="sm"
-          onClick={handleAdminLogout}
-          className="px-4 py-2 touch-target bg-coral hover:bg-coral-dark transition-all duration-300"
-        >
-          Logout
-        </Button>
-      )}
-    </div>
-  </div>
       <Toaster />
     </div>
   );

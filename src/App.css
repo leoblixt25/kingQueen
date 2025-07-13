@@ -40,3 +40,9 @@
 .read-the-docs {
   color: #888;
 }
+/* Hide the "Edit with Lovable" floating button */
+.lovable-editor-button,
+.edit-with-lovable,
+[data-testid="edit-with-lovable"] {
+  display: none !important;
+}

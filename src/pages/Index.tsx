@@ -7,7 +7,10 @@ import { Check, Edit, Trash, Crown, ChevronLeft, ChevronRight, Home, Users, Rota
 import { Gender, FinalMatchScores } from "@/types";
 import { useTournamentData } from "@/hooks/useTournamentData";
 import { useTournamentRealtimeSubscriptions } from "@/hooks/useTournamentRealtimeSubscriptions";
+import { useRegistrationCheck } from "@/hooks/useRegistrationCheck";
 import { PlayerReplacer } from "@/components/PlayerReplacer";
+import { AdminPanel } from "@/components/AdminPanel";
+import { PlayerUnregistration } from "@/components/PlayerUnregistration";
 import { toast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,6 +27,8 @@ export default function KingQueenOfTheBeach() {
   const [showFinalMatch, setShowFinalMatch] = useState(false);
   const [isEditingFinalMatch, setIsEditingFinalMatch] = useState(false);
   const [showPlayerReplacer, setShowPlayerReplacer] = useState(false);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [showUnregistration, setShowUnregistration] = useState(false);
   
   const [editingMatchId, setEditingMatchId] = useState<string | null>(null);
 
@@ -44,6 +49,9 @@ export default function KingQueenOfTheBeach() {
     setFinalMatchScores,
     loadTournamentData
   } = useTournamentData();
+  // Check registration status
+  const { isRegistered, isLoading: registrationLoading } = useRegistrationCheck();
+
 useTournamentRealtimeSubscriptions({
   loadPlayersData: loadTournamentData,
   loadMatchesData: loadTournamentData,
@@ -52,6 +60,20 @@ useTournamentRealtimeSubscriptions({
 
   const players = gender === 'female' ? femalePlayers : malePlayers
   const matches = gender === 'female' ? femaleMatches : maleMatches
+
+  // Show loading screen while checking registration
+  if (registrationLoading) {
+    return (
+      <div className="min-h-screen bg-sand-gradient px-4 py-6 flex items-center justify-center">
+        <div className="text-center animate-fade-in">
+          <div className="text-6xl mb-4 animate-bounce-gentle">🏐</div>
+          <h2 className="text-2xl font-bold mb-3 bg-ocean-gradient bg-clip-text text-transparent">
+            Checking Registration...
+          </h2>
+        </div>
+      </div>
+    );
+  }
 
   // Reset currentMatchIndex when gender changes
   const handleGenderChange = (newGender: Gender) => {
@@ -327,6 +349,14 @@ useTournamentRealtimeSubscriptions({
                 </div>
                 <Button 
                   variant="outline" 
+                  onClick={() => setShowAdminPanel(true)} 
+                  className="w-full touch-target bg-white/70 hover:bg-sunset hover:text-white border-sunset/30 text-sunset-dark transition-all duration-300"
+                >
+                  <Users className="w-4 h-4 mr-2" />
+                  Registration Panel
+                </Button>
+                <Button 
+                  variant="outline" 
                   onClick={() => setShowPlayerReplacer(true)} 
                   className="w-full touch-target bg-white/70 hover:bg-palm hover:text-white border-palm/30 text-palm-dark transition-all duration-300"
                 >
@@ -405,6 +435,19 @@ useTournamentRealtimeSubscriptions({
             femalePlayers={femalePlayers}
             malePlayers={malePlayers}
             onClose={() => setShowPlayerReplacer(false)}
+            onSuccess={() => {}}
+          />
+        )}
+
+        {showAdminPanel && isAdmin && (
+          <AdminPanel 
+            onClose={() => setShowAdminPanel(false)}
+          />
+        )}
+
+        {showUnregistration && (
+          <PlayerUnregistration 
+            onClose={() => setShowUnregistration(false)}
             onSuccess={() => {}}
           />
         )}
@@ -798,14 +841,24 @@ useTournamentRealtimeSubscriptions({
         {/* Admin button moved to bottom-center */}
         <div className="flex justify-center mt-6">
           {!isAdmin && !showLoginForm ? (
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setShowLoginForm(true)}
-              className="px-4 py-2 touch-target bg-white/80 backdrop-blur-sm border-ocean/20 hover:bg-ocean hover:text-white transition-all duration-300"
-            >
-              🏖️ Admin
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setShowLoginForm(true)}
+                className="px-4 py-2 touch-target bg-white/80 backdrop-blur-sm border-ocean/20 hover:bg-ocean hover:text-white transition-all duration-300"
+              >
+                🏖️ Admin
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setShowUnregistration(true)}
+                className="px-4 py-2 touch-target bg-white/80 backdrop-blur-sm border-coral/20 hover:bg-coral hover:text-white transition-all duration-300"
+              >
+                📧 Cancel Registration
+              </Button>
+            </div>
           ) : isAdmin && (
             <Button 
               variant="destructive" 

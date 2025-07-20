@@ -230,10 +230,13 @@ export type Database = {
           created_at: string | null
           gender: string
           id: string
+          email: string | null
+          is_confirmed: boolean | null
           matches_played: number
           name: string
           points: number
           position: number
+          registered_at: string | null
           total_scores: number
           updated_at: string | null
         }
@@ -241,10 +244,13 @@ export type Database = {
           created_at?: string | null
           gender: string
           id?: string
+          email?: string | null
+          is_confirmed?: boolean | null
           matches_played?: number
           name: string
           points?: number
           position: number
+          registered_at?: string | null
           total_scores?: number
           updated_at?: string | null
         }
@@ -252,11 +258,41 @@ export type Database = {
           created_at?: string | null
           gender?: string
           id?: string
+          email?: string | null
+          is_confirmed?: boolean | null
           matches_played?: number
           name?: string
           points?: number
           position?: number
+          registered_at?: string | null
           total_scores?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      settings: {
+        Row: {
+          created_at: string | null
+          id: string
+          max_players_per_gender: number | null
+          registration_cutoff_days: number | null
+          tournament_date: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          max_players_per_gender?: number | null
+          registration_cutoff_days?: number | null
+          tournament_date: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          max_players_per_gender?: number | null
+          registration_cutoff_days?: number | null
+          tournament_date?: string
           updated_at?: string | null
         }
         Relationships: []

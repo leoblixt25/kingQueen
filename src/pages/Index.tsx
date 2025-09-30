@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Check, Edit, Trash, Crown, ChevronLeft, ChevronRight, Home, Users, RotateCcw, UserPlus } from "lucide-react";
+import { Check, Edit, Trash, Crown, ChevronLeft, ChevronRight, Home, Users, RotateCcw, UserPlus, LogOut } from "lucide-react";
 import { Gender, FinalMatchScores } from "@/types";
 import { useTournamentData } from "@/hooks/useTournamentData";
 import { useTournamentRealtimeSubscriptions } from "@/hooks/useTournamentRealtimeSubscriptions";
@@ -14,6 +14,7 @@ import { PlayerUnregistration } from "@/components/PlayerUnregistration";
 import { toast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { supabase } from "@/integrations/supabase/client";
+import { getCurrentUser, isAdmin as checkIsAdmin, adminSignOut, signOut, getCurrentUserTournamentData } from "@/utils/authUtils";
 
 export default function KingQueenOfTheBeach() {
   const navigate = useNavigate();
@@ -30,7 +31,10 @@ export default function KingQueenOfTheBeach() {
   const [showPlayerReplacer, setShowPlayerReplacer] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [showUnregistration, setShowUnregistration] = useState(false);
-  const [isCheckingRegistration, setIsCheckingRegistration] = useState(true);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [userIsAdmin, setUserIsAdmin] = useState(false);
+  const [userGender, setUserGender] = useState<Gender | null>(null);
+  const [isLoadingUserData, setIsLoadingUserData] = useState(true);
   
   const [editingMatchId, setEditingMatchId] = useState<string | null>(null);
 
@@ -61,32 +65,78 @@ export default function KingQueenOfTheBeach() {
   const players = gender === 'female' ? femalePlayers : malePlayers
   const matches = gender === 'female' ? femaleMatches : maleMatches
 
-  // Check registration status on mount
+  // Initialize user state on mount
   useEffect(() => {
-    const registeredEmail = localStorage.getItem('tournament_registered_email');
-    if (!registeredEmail) {
-      navigate('/register');
+    initializeUserState();
+  }, []);
+
+  const initializeUserState = async () => {
+    try {
+      setIsLoadingUserData(true);
+      const user = await getCurrentUser();
+      const adminStatus = checkIsAdmin();
+      
+      setCurrentUser(user);
+      setUserIsAdmin(adminStatus);
+      
+      // If user is admin, they can access all divisions
+      if (adminStatus) {
+        setUserGender(null); // null means admin can access all
+        setIsLoadingUserData(false);
+        return;
+      }
+      
+      // For regular users, get their tournament registration data to determine gender
+      const playerData = await getCurrentUserTournamentData();
+      if (playerData) {
+        const playerGender = playerData.gender as Gender;
+        setUserGender(playerGender);
+        // Set the initial gender view to match user's registration
+        setGender(playerGender);
+      } else {
+        // If no tournament data found, redirect to landing
+        navigate('/');
+        return;
+      }
+    } catch (error) {
+      console.error('Error initializing user state:', error);
+      navigate('/');
+    } finally {
+      setIsLoadingUserData(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      if (userIsAdmin) {
+        adminSignOut();
+      } else {
+        await signOut();
+      }
+      
+      // Clear registration data
+      localStorage.removeItem('tournament_registered_email');
+      localStorage.removeItem('tournament_registered_name');
+      
+      toast({
+        title: "Signed Out",
+        description: "You've been signed out successfully.",
+      });
+      
+      navigate('/');
+    } catch (error) {
+      console.error('Sign out error:', error);
+      navigate('/');
+    }
+  };
+
+  // Reset currentMatchIndex when gender changes (admin only)
+  const handleGenderChange = (newGender: Gender) => {
+    // Only allow gender switching for admins
+    if (!userIsAdmin) {
       return;
     }
-    setIsCheckingRegistration(false);
-  }, [navigate]);
-
-  // Show loading screen while checking registration
-  if (isCheckingRegistration) {
-    return (
-      <div className="min-h-screen bg-sand-gradient px-4 py-6 flex items-center justify-center">
-        <div className="text-center animate-fade-in">
-          <div className="text-6xl mb-4 animate-bounce-gentle">🏐</div>
-          <h2 className="text-2xl font-bold mb-3 bg-ocean-gradient bg-clip-text text-transparent">
-            Checking Registration...
-          </h2>
-        </div>
-      </div>
-    );
-  }
-
-  // Reset currentMatchIndex when gender changes
-  const handleGenderChange = (newGender: Gender) => {
+    
     setGender(newGender);
     setCurrentMatchIndex(0);
     setScore1('');
@@ -119,19 +169,6 @@ export default function KingQueenOfTheBeach() {
       setCurrentMatchIndex(nextUnfinishedIndex);
     }
   };
-
-  const handleAdminLogin = () => {
-    if (adminUsername === 'leo' && adminPassword === 'Woodgoat22!!') {
-      setIsAdmin(true)
-      setShowLoginForm(false)
-    } else {
-      alert('Invalid username or password')
-    }
-  }
-
-  const handleAdminLogout = () => {
-    setIsAdmin(false)
-  }
 
   const handleResetScores = async () => {
     if (window.confirm('Are you sure you want to reset all scores? This will clear all match scores and player points but keep player names and matchups.')) {
@@ -257,13 +294,13 @@ export default function KingQueenOfTheBeach() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || isLoadingUserData) {
     return (
       <div className="min-h-screen bg-sand-gradient px-4 py-6 flex items-center justify-center">
         <div className="text-center animate-fade-in">
           <div className="text-6xl mb-4 animate-bounce-gentle">🏐</div>
           <h2 className="text-2xl font-bold mb-3 bg-ocean-gradient bg-clip-text text-transparent">
-            Loading Tournament Data...
+            {isLoadingUserData ? 'Loading Your Access...' : 'Loading Tournament Data...'}
           </h2>
           <p className="text-foreground/70 font-medium">🌊 Setting up the beach volleyball tracker 🏖️</p>
         </div>
@@ -307,20 +344,46 @@ export default function KingQueenOfTheBeach() {
       <div className="max-w-lg mx-auto space-y-6 animate-fade-in">
         <header>
           <div className="flex flex-col items-center gap-6">
-            <div className="text-center pt-8 relative w-full">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  localStorage.removeItem('tournament_registered_email');
-                  localStorage.removeItem('tournament_registered_name');
-                  navigate('/register');
-                }}
-                className="absolute top-0 right-0 bg-white/80 hover:bg-coral hover:text-white border-coral/30 text-coral transition-all duration-300"
-              >
-                <UserPlus className="w-4 h-4 mr-1" />
-                Register
-              </Button>
+            {/* User Status Header */}
+            <div className="w-full bg-white/70 backdrop-blur-sm rounded-xl p-3 border border-sand-dark/20 shadow-sand">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {userIsAdmin ? (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Crown className="w-4 h-4 text-sunset" />
+                      <span className="font-semibold text-sunset">Admin Access</span>
+                    </div>
+                  ) : currentUser ? (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Users className="w-4 h-4 text-ocean" />
+                      <span className="font-medium text-ocean truncate max-w-[120px]">
+                        {currentUser.email || localStorage.getItem('tournament_registered_name') || 'Player'}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Users className="w-4 h-4 text-palm" />
+                      <span className="font-medium text-palm">
+                        {localStorage.getItem('tournament_registered_name') || 'Registered'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSignOut}
+                    className="bg-white/80 hover:bg-coral hover:text-white border-coral/30 text-coral transition-all duration-300"
+                  >
+                    <LogOut className="w-4 h-4 mr-1" />
+                    Sign Out
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            <div className="text-center pt-4 relative w-full">
               <div className="relative">
                 <h1 className="text-2xl md:text-3xl font-bold text-transparent bg-beach-gradient bg-clip-text mb-4 drop-shadow-sm">
                   King & Queen of the Beach
@@ -330,28 +393,63 @@ export default function KingQueenOfTheBeach() {
             </div>
 
             <div className="flex flex-col gap-3 w-full max-w-sm">
-              <Button 
-                variant={gender === 'female' ? "default" : "outline"} 
-                onClick={() => handleGenderChange('female')}
-                className={`w-full touch-target font-semibold text-lg py-4 transition-all duration-300 ${
-                  gender === 'female' 
-                    ? 'bg-sunset hover:bg-sunset-dark text-white shadow-beach animate-pulse-glow' 
-                    : 'bg-white/70 hover:bg-sunset hover:text-white border-sunset/30 text-sunset-dark shadow-sand'
-                }`}
-              >
-                👩 Female Division
-              </Button>
-              <Button 
-                variant={gender === 'male' ? "default" : "outline"}
-                onClick={() => handleGenderChange('male')}
-                className={`w-full touch-target font-semibold text-lg py-4 transition-all duration-300 ${
-                  gender === 'male' 
-                    ? 'bg-ocean hover:bg-ocean-dark text-white shadow-beach animate-pulse-glow' 
-                    : 'bg-white/70 hover:bg-ocean hover:text-white border-ocean/30 text-ocean-dark shadow-sand'
-                }`}
-              >
-                👨 Male Division  
-              </Button>
+              {/* Show gender division access info for regular users */}
+              {!userIsAdmin && userGender && (
+                <div className="bg-white/70 backdrop-blur-sm rounded-xl p-3 border border-sand-dark/20 shadow-sand">
+                  <div className="text-center">
+                    <p className="text-sm font-semibold text-foreground/70 mb-1">🏐 Your Division Access</p>
+                    <p className="text-xs text-foreground/60">
+                      You can only view matches for the {userGender} division that you registered for.
+                    </p>
+                  </div>
+                </div>
+              )}
+              
+              {/* Admin can see all divisions */}
+              {userIsAdmin && (
+                <>
+                  <Button 
+                    variant={gender === 'female' ? "default" : "outline"} 
+                    onClick={() => handleGenderChange('female')}
+                    className={`w-full touch-target font-semibold text-lg py-4 transition-all duration-300 ${
+                      gender === 'female' 
+                        ? 'bg-sunset hover:bg-sunset-dark text-white shadow-beach animate-pulse-glow' 
+                        : 'bg-white/70 hover:bg-sunset hover:text-white border-sunset/30 text-sunset-dark shadow-sand'
+                    }`}
+                  >
+                    👩 Female Division
+                  </Button>
+                  <Button 
+                    variant={gender === 'male' ? "default" : "outline"}
+                    onClick={() => handleGenderChange('male')}
+                    className={`w-full touch-target font-semibold text-lg py-4 transition-all duration-300 ${
+                      gender === 'male' 
+                        ? 'bg-ocean hover:bg-ocean-dark text-white shadow-beach animate-pulse-glow' 
+                        : 'bg-white/70 hover:bg-ocean hover:text-white border-ocean/30 text-ocean-dark shadow-sand'
+                    }`}
+                  >
+                    👨 Male Division  
+                  </Button>
+                </>
+              )}
+              
+              {/* Regular user sees only their division - show as info card */}
+              {!userIsAdmin && userGender && (
+                <div className={`w-full rounded-xl p-4 text-center transition-all duration-300 ${
+                  userGender === 'female'
+                    ? 'bg-sunset text-white shadow-beach'
+                    : 'bg-ocean text-white shadow-beach'
+                }`}>
+                  <div className="text-xl font-bold mb-1">
+                    {userGender === 'female' ? '👩 Female Division' : '👨 Male Division'}
+                  </div>
+                  <div className="text-sm opacity-90">
+                    Your registered division
+                  </div>
+                </div>
+              )}
+              
+              {/* Championship Final - available to all */}
               <Button 
                 variant={showFinalMatch ? "default" : "outline"}
                 onClick={() => setShowFinalMatch(true)}
@@ -360,12 +458,24 @@ export default function KingQueenOfTheBeach() {
                     ? 'bg-beach-gradient text-white shadow-beach animate-bounce-gentle' 
                     : 'bg-white/70 hover:bg-beach-gradient hover:text-white border-primary/20 text-primary shadow-sand'
                 }`}
+                disabled={showFinalMatch}
               >
                 👑 Championship Final
               </Button>
+              
+              {/* Back to Division button for regular users when viewing Championship Final */}
+              {!userIsAdmin && userGender && showFinalMatch && (
+                <Button 
+                  variant="outline"
+                  onClick={() => setShowFinalMatch(false)}
+                  className="w-full touch-target font-semibold text-lg py-4 transition-all duration-300 bg-white/70 hover:bg-sunset hover:text-white border-sunset/30 text-sunset-dark shadow-sand"
+                >
+                  ← Back to {userGender === 'female' ? 'Female' : 'Male'} Division
+                </Button>
+              )}
             </div>
             
-            {isAdmin && !showLoginForm && (
+            {userIsAdmin && (
               <div className="w-full max-w-sm space-y-3 p-4 bg-white/60 backdrop-blur-sm rounded-2xl border border-sand-dark/20 shadow-sand">
                 <div className="text-center mb-2">
                   <p className="text-sm font-semibold text-foreground/70">🔧 Admin Controls</p>
@@ -407,53 +517,7 @@ export default function KingQueenOfTheBeach() {
           </div>
         </header>
 
-        {showLoginForm && (
-          <Card className="bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach">
-            <CardHeader className="pb-4">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-center flex-1 text-ocean font-bold">🔐 Admin Login</CardTitle>
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={() => setShowLoginForm(false)}
-                  className="p-2 hover:bg-sand-light rounded-full transition-colors"
-                >
-                  <Home className="w-4 h-4 text-ocean" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="adminUsername" className="text-foreground font-medium">Username</Label>
-                <Input
-                  id="adminUsername"
-                  value={adminUsername}
-                  onChange={(e) => setAdminUsername(e.target.value)}
-                  type="text"
-                  className="w-full touch-target bg-white/70 border-sand-dark/30 focus:border-ocean"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="adminPassword" className="text-foreground font-medium">Password</Label>
-                <Input
-                  id="adminPassword"
-                  value={adminPassword}
-                  onChange={(e) => setAdminPassword(e.target.value)}
-                  type="password"
-                  className="w-full touch-target bg-white/70 border-sand-dark/30 focus:border-ocean"
-                />
-              </div>
-              <Button 
-                onClick={handleAdminLogin} 
-                className="w-full touch-target bg-ocean hover:bg-ocean-dark text-white font-semibold py-3 transition-all duration-300"
-              >
-                🚀 Login
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {showPlayerReplacer && isAdmin && (
+        {showPlayerReplacer && userIsAdmin && (
           <PlayerReplacer 
             femalePlayers={femalePlayers}
             malePlayers={malePlayers}
@@ -462,7 +526,7 @@ export default function KingQueenOfTheBeach() {
           />
         )}
 
-        {showAdminPanel && isAdmin && (
+        {showAdminPanel && userIsAdmin && (
           <AdminPanel 
             onClose={() => setShowAdminPanel(false)}
           />
@@ -640,7 +704,7 @@ export default function KingQueenOfTheBeach() {
                       </Card>
                     )}
 
-                    {isAdmin && (
+                    {userIsAdmin && (
                       <div className="flex flex-col gap-3">
                         <Button 
                           variant="outline" 
@@ -800,7 +864,7 @@ export default function KingQueenOfTheBeach() {
                             🎯 Final Score: {currentMatch.score1} - {currentMatch.score2}
                           </p>
                         </div>
-                        {isAdmin && (
+                        {userIsAdmin && (
                           <Button 
                             onClick={() => handleEditMatch(currentMatch, currentMatchIndex)}
                             variant="outline"
@@ -861,38 +925,20 @@ export default function KingQueenOfTheBeach() {
           </main>
         )}
 
-        {/* Admin button moved to bottom-center */}
-        <div className="flex justify-center mt-6">
-          {!isAdmin && !showLoginForm ? (
-            <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setShowLoginForm(true)}
-                className="px-4 py-2 touch-target bg-white/80 backdrop-blur-sm border-ocean/20 hover:bg-ocean hover:text-white transition-all duration-300"
-              >
-                🏖️ Admin
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setShowUnregistration(true)}
-                className="px-4 py-2 touch-target bg-white/80 backdrop-blur-sm border-coral/20 hover:bg-coral hover:text-white transition-all duration-300"
-              >
-                📧 Cancel Registration
-              </Button>
-            </div>
-          ) : isAdmin && (
+        {/* Cancel Registration button for non-admin users */}
+        {!userIsAdmin && (
+          <div className="flex justify-center mt-6">
             <Button 
-              variant="destructive" 
+              variant="outline" 
               size="sm"
-              onClick={handleAdminLogout}
-              className="px-4 py-2 touch-target bg-coral hover:bg-coral-dark transition-all duration-300"
+              onClick={() => setShowUnregistration(true)}
+              className="px-4 py-2 touch-target bg-white/80 backdrop-blur-sm border-coral/20 hover:bg-coral hover:text-white transition-all duration-300"
             >
-              Logout
+              📧 Cancel Registration
             </Button>
-          )}
-        </div>
+          </div>
+        )}
+
       </div>
       <Toaster />
     </div>

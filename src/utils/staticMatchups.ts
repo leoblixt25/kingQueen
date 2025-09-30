@@ -18,26 +18,26 @@ export const STATIC_MATCHUPS = [
   [5, 2, 3, 1]  // Match 14: Julia & Diana vs Svetlana & Alexandra / Igor & Yura vs Artisom & Kevin
 ];
 
-// Female player names in order - placeholders
+// Female player names in order - placeholders that will be replaced when players register
 export const FEMALE_PLAYERS = [
-  "Female Player 1",  // 0
-  "Female Player 2",  // 1
-  "Female Player 3",  // 2
-  "Female Player 4",  // 3
-  "Female Player 5",  // 4
-  "Female Player 6",  // 5
-  "Female Player 7",  // 6
-  "Female Player 8"   // 7
+  "Female Player 1",  // 0 - Position 1
+  "Female Player 2",  // 1 - Position 2
+  "Female Player 3",  // 2 - Position 3
+  "Female Player 4",  // 3 - Position 4
+  "Female Player 5",  // 4 - Position 5
+  "Female Player 6",  // 5 - Position 6
+  "Female Player 7",  // 6 - Position 7
+  "Female Player 8"   // 7 - Position 8
 ];
 
-// Male player names in order - placeholders
+// Male player names in order - placeholders that will be replaced when players register
 export const MALE_PLAYERS = [
-  "Male Player 1",    // 0
-  "Male Player 2",    // 1
-  "Male Player 3",    // 2
-  "Male Player 4",    // 3
-  "Male Player 5",    // 4
-  "Male Player 6",    // 5
-  "Male Player 7",    // 6
-  "Male Player 8"     // 7
+  "Male Player 1",    // 0 - Position 1
+  "Male Player 2",    // 1 - Position 2
+  "Male Player 3",    // 2 - Position 3
+  "Male Player 4",    // 3 - Position 4
+  "Male Player 5",    // 4 - Position 5
+  "Male Player 6",    // 5 - Position 6
+  "Male Player 7",    // 6 - Position 7
+  "Male Player 8"     // 7 - Position 8
 ];

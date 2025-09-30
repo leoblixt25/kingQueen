@@ -7,6 +7,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Calendar, Users, Trash2, Settings, Crown, Mail } from "lucide-react";
+import { resetPlayersToPlaceholders } from "@/utils/placeholderUtils";
+import { initializeTournamentDatabase } from "@/utils/tournamentInit";
 
 interface ConfirmedPlayer {
   id: string;
@@ -154,6 +156,70 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
     }
   };
 
+  const handleResetToPlaceholders = async () => {
+    if (!window.confirm(
+      'This will reset ALL players to placeholder names ("Female Player 1", "Male Player 1", etc.) and mark them as unconfirmed. All registrations will be lost. Are you sure?'
+    )) {
+      return;
+    }
+
+    if (!window.confirm(
+      'This action cannot be undone. All registered players will lose their registration status. Continue?'
+    )) {
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      await resetPlayersToPlaceholders();
+      
+      toast({
+        title: "Players Reset",
+        description: "All players have been reset to placeholder names. Registration can now begin fresh.",
+      });
+      
+      await loadAdminData();
+    } catch (error) {
+      console.error('Error resetting players:', error);
+      toast({
+        title: "Reset Failed",
+        description: "Failed to reset players to placeholders",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleInitializeDatabase = async () => {
+    if (!window.confirm(
+      'This will completely initialize the tournament database with fresh placeholder players. All existing data will be reset. Continue?'
+    )) {
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      await initializeTournamentDatabase();
+      
+      toast({
+        title: "Database Initialized",
+        description: "Tournament database has been set up with placeholder players and is ready for registration.",
+      });
+      
+      await loadAdminData();
+    } catch (error) {
+      console.error('Error initializing database:', error);
+      toast({
+        title: "Initialization Failed",
+        description: "Failed to initialize tournament database",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const maleCount = confirmedPlayers.filter(p => p.gender === 'male').length;
   const femaleCount = confirmedPlayers.filter(p => p.gender === 'female').length;
 
@@ -219,6 +285,31 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
                 <p>Max {settings.max_players_per_gender} players per gender</p>
               </div>
             )}
+            
+            <div className="pt-4 border-t border-ocean/20 space-y-3">
+              <Button
+                onClick={handleInitializeDatabase}
+                disabled={isLoading}
+                className="w-full bg-palm hover:bg-palm-dark text-white"
+              >
+                Initialize Tournament Database
+              </Button>
+              <p className="text-xs text-foreground/60">
+                Complete setup with placeholder players and fresh tournament settings.
+              </p>
+              
+              <Button
+                onClick={handleResetToPlaceholders}
+                disabled={isLoading}
+                variant="destructive"
+                className="w-full"
+              >
+                Reset Players Only
+              </Button>
+              <p className="text-xs text-foreground/60">
+                Reset only players to placeholders, keeping existing matches and settings.
+              </p>
+            </div>
           </CardContent>
         </Card>
 

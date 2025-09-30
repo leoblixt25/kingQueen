@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { AlertTriangle, Mail, UserX } from "lucide-react";
+import { unregisterPlayer } from "@/utils/placeholderUtils";
 
 interface PlayerUnregistrationProps {
   onClose: () => void;
@@ -53,57 +54,36 @@ export function PlayerUnregistration({ onClose, onSuccess }: PlayerUnregistratio
         return;
       }
 
-      // Find and remove the player
-      const { data: player, error: findError } = await supabase
-        .from('players')
-        .select('id, name')
-        .eq('email', email.toLowerCase())
-        .eq('is_confirmed', true)
-        .single();
-
-      if (findError || !player) {
-        toast({
-          title: "Player Not Found",
-          description: "No confirmed registration found for this email address",
-          variant: "destructive",
-        });
-        return;
-      }
-
       // Confirm unregistration
       if (!window.confirm(`Are you sure you want to cancel your registration for the tournament?`)) {
         return;
       }
 
-      // Remove the player
-      const { error: deleteError } = await supabase
-        .from('players')
-        .delete()
-        .eq('id', player.id);
-
-      if (deleteError) {
-        console.error('Error unregistering player:', deleteError);
-        toast({
-          title: "Unregistration Failed",
-          description: "Failed to cancel registration. Please try again.",
-          variant: "destructive",
-        });
-        return;
-      }
+      // Use the new unregistration system
+      await unregisterPlayer(email);
 
       toast({
         title: "Registration Cancelled",
-        description: "Your tournament registration has been cancelled successfully.",
+        description: "Your tournament registration has been cancelled successfully. Your slot is now available for other players.",
       });
 
       onSuccess();
       onClose();
 
-    } catch (error) {
-      console.error('Unexpected error:', error);
+    } catch (error: any) {
+      console.error('Unregistration error:', error);
+      
+      let errorMessage = "An unexpected error occurred. Please try again.";
+      let errorTitle = "Unregistration Failed";
+      
+      if (error.message === 'PLAYER_NOT_FOUND') {
+        errorTitle = "Player Not Found";
+        errorMessage = "No confirmed registration found for this email address";
+      }
+      
       toast({
-        title: "Error",
-        description: "An unexpected error occurred. Please try again.",
+        title: errorTitle,
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

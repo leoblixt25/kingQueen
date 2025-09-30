@@ -9,7 +9,10 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
-import { Crown, Users, Calendar, AlertCircle, CheckCircle } from "lucide-react";
+import { Crown, Users, Calendar, AlertCircle, CheckCircle, LogIn, UserPlus, Mail } from "lucide-react";
+import { registerPlayerToSlot } from "@/utils/placeholderUtils";
+import { AuthModal } from "@/components/AuthModal";
+import { getCurrentUser, isAdmin, adminSignOut } from "@/utils/authUtils";
 
 interface AvailableSpots {
   gender: string;
@@ -34,10 +37,65 @@ export default function Register() {
   const [availableSpots, setAvailableSpots] = useState<AvailableSpots[]>([]);
   const [settings, setSettings] = useState<TournamentSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [userIsAdmin, setUserIsAdmin] = useState(false);
 
   useEffect(() => {
     loadRegistrationData();
+    handleAuthCallback();
   }, []);
+
+  const handleAuthCallback = async () => {
+    // Handle OAuth callback from Google or email confirmation
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('auth') === 'callback') {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          setCurrentUser(user);
+          // Redirect to tournament page after successful auth
+          setTimeout(() => {
+            navigate('/tournament');
+          }, 1000);
+          toast({
+            title: "Authentication Successful!",
+            description: "Welcome! Redirecting to tournament...",
+          });
+        }
+      } catch (error) {
+        console.error('Auth callback error:', error);
+      }
+    }
+  };
+
+  const handleAuthSuccess = (user: any, isAdminUser = false) => {
+    setCurrentUser(user);
+    setUserIsAdmin(isAdminUser);
+    setShowAuthModal(false);
+    
+    toast({
+      title: isAdminUser ? "Admin Access Granted" : "Welcome!",
+      description: isAdminUser ? "Redirecting to tournament management..." : "Redirecting to tournament...",
+    });
+    
+    // Redirect to tournament page for both admin and regular users
+    setTimeout(() => {
+      navigate('/tournament');
+    }, 1500);
+  };
+
+  const handleSignOut = () => {
+    if (userIsAdmin) {
+      adminSignOut();
+    }
+    setCurrentUser(null);
+    setUserIsAdmin(false);
+    toast({
+      title: "Signed Out",
+      description: "You've been successfully signed out.",
+    });
+  };
 
   const loadRegistrationData = async () => {
     try {
@@ -133,64 +191,12 @@ export default function Register() {
     setIsSubmitting(true);
 
     try {
-      // Check if email already exists
-      const { data: existingPlayer } = await supabase
-        .from('players')
-        .select('email')
-        .eq('email', formData.email)
-        .single();
-
-      if (existingPlayer) {
-        toast({
-          title: "Email Already Registered",
-          description: "This email is already registered for the tournament",
-          variant: "destructive",
-        });
-        setIsSubmitting(false);
-        return;
-      }
-
-      // Find the first available placeholder player slot
-      const placeholderPrefix = formData.gender === 'male' ? 'Male Player' : 'Female Player';
-      const { data: placeholderPlayer } = await supabase
-        .from('players')
-        .select('id, name, position')
-        .eq('gender', formData.gender)
-        .ilike('name', `${placeholderPrefix}%`)
-        .eq('is_confirmed', false)
-        .order('position', { ascending: true })
-        .limit(1)
-        .single();
-
-      if (!placeholderPlayer) {
-        toast({
-          title: "Registration Full",
-          description: "All slots for this division are taken",
-          variant: "destructive",
-        });
-        setIsSubmitting(false);
-        return;
-      }
-
-      // Update the placeholder with actual player info
-      const { error } = await supabase
-        .from('players')
-        .update({
-          name: formData.name.trim(),
-          email: formData.email.trim().toLowerCase(),
-          is_confirmed: true
-        })
-        .eq('id', placeholderPlayer.id);
-
-      if (error) {
-        console.error('Registration error:', error);
-        toast({
-          title: "Registration Failed",
-          description: "Failed to register. Please try again.",
-          variant: "destructive",
-        });
-        return;
-      }
+      // Use the new placeholder registration system
+      const result = await registerPlayerToSlot(
+        formData.name,
+        formData.email,
+        formData.gender as 'male' | 'female'
+      );
 
       // Store registration in localStorage
       localStorage.setItem('tournament_registered_email', formData.email.trim().toLowerCase());
@@ -199,17 +205,29 @@ export default function Register() {
       // Send confirmation email (simulated)
       toast({
         title: "Registration Successful!",
-        description: "You're registered for King & Queen of the Beach! A confirmation email has been sent.",
+        description: `You're registered for King & Queen of the Beach as ${formData.gender === 'male' ? 'Male' : 'Female'} Player ${result.position}! A confirmation email has been sent.`,
       });
 
       // Redirect to main app
       navigate('/');
       
-    } catch (error) {
-      console.error('Unexpected error:', error);
+    } catch (error: any) {
+      console.error('Registration error:', error);
+      
+      let errorMessage = "An unexpected error occurred. Please try again.";
+      let errorTitle = "Registration Failed";
+      
+      if (error.message === 'EMAIL_ALREADY_EXISTS') {
+        errorTitle = "Email Already Registered";
+        errorMessage = "This email is already registered for the tournament";
+      } else if (error.message === 'NO_SLOTS_AVAILABLE') {
+        errorTitle = "Registration Full";
+        errorMessage = "All slots for this division are taken";
+      }
+      
       toast({
-        title: "Error",
-        description: "An unexpected error occurred. Please try again.",
+        title: errorTitle,
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -246,13 +264,53 @@ export default function Register() {
               King & Queen of the Beach
             </h1>
             <div className="w-16 h-1 bg-sunset mx-auto rounded-full mb-6"></div>
-            <h2 className="text-xl font-semibold text-ocean mb-2">Tournament Registration</h2>
+            <h2 className="text-xl font-semibold text-ocean mb-2">Tournament Access Portal</h2>
             {settings && (
               <div className="flex items-center justify-center gap-2 text-sm text-foreground/70">
                 <Calendar className="w-4 h-4" />
                 <span>Tournament Date: {new Date(settings.tournament_date).toLocaleDateString()}</span>
               </div>
             )}
+            
+            {/* Authentication Status */}
+            <div className="mt-4 flex justify-center gap-2">
+              {currentUser ? (
+                <div className="flex items-center gap-2 text-sm">
+                  <div className="flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full">
+                    <CheckCircle className="w-4 h-4" />
+                    {userIsAdmin ? 'Admin' : currentUser.email}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSignOut}
+                    className="text-xs"
+                  >
+                    Sign Out
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAuthModal(true)}
+                    className="flex items-center gap-1"
+                  >
+                    <LogIn className="w-4 h-4" />
+                    Sign In
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => setShowAuthModal(true)}
+                    className="flex items-center gap-1 bg-ocean hover:bg-ocean-dark text-white"
+                  >
+                    <UserPlus className="w-4 h-4" />
+                    Register
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
@@ -414,7 +472,36 @@ export default function Register() {
             ← Back to Tournament
           </Button>
         </div>
+        
+        {/* Enhanced Registration Option */}
+        <Card className="bg-white/80 backdrop-blur-sm border border-ocean/20 shadow-beach">
+          <CardContent className="p-6">
+            <div className="text-center space-y-4">
+              <h3 className="text-lg font-semibold text-ocean">Enhanced Registration</h3>
+              <p className="text-sm text-foreground/70">
+                Sign up with email confirmation for secure account access and real-time updates.
+              </p>
+              <Button
+                onClick={() => setShowAuthModal(true)}
+                className="w-full bg-gradient-to-r from-ocean to-sunset hover:from-ocean-dark hover:to-sunset-dark text-white font-semibold py-3"
+              >
+                <Mail className="w-4 h-4 mr-2" />
+                Register with Email Authentication
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
+      
+      {/* Authentication Modal */}
+      {showAuthModal && (
+        <AuthModal 
+          onClose={() => setShowAuthModal(false)}
+          onSuccess={handleAuthSuccess}
+          availableSpots={availableSpots}
+        />
+      )}
+      
       <Toaster />
     </div>
   );

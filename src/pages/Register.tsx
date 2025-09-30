@@ -173,6 +173,10 @@ export default function Register() {
         return;
       }
 
+      // Store registration in localStorage
+      localStorage.setItem('tournament_registered_email', formData.email.trim().toLowerCase());
+      localStorage.setItem('tournament_registered_name', formData.name.trim());
+
       // Send confirmation email (simulated)
       toast({
         title: "Registration Successful!",

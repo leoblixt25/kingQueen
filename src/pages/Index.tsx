@@ -1,13 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Check, Edit, Trash, Crown, ChevronLeft, ChevronRight, Home, Users, RotateCcw } from "lucide-react";
+import { Check, Edit, Trash, Crown, ChevronLeft, ChevronRight, Home, Users, RotateCcw, UserPlus } from "lucide-react";
 import { Gender, FinalMatchScores } from "@/types";
 import { useTournamentData } from "@/hooks/useTournamentData";
 import { useTournamentRealtimeSubscriptions } from "@/hooks/useTournamentRealtimeSubscriptions";
-import { useRegistrationCheck } from "@/hooks/useRegistrationCheck";
 import { PlayerReplacer } from "@/components/PlayerReplacer";
 import { AdminPanel } from "@/components/AdminPanel";
 import { PlayerUnregistration } from "@/components/PlayerUnregistration";
@@ -16,6 +16,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { supabase } from "@/integrations/supabase/client";
 
 export default function KingQueenOfTheBeach() {
+  const navigate = useNavigate();
   const [gender, setGender] = useState<Gender>("female");
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
@@ -29,6 +30,7 @@ export default function KingQueenOfTheBeach() {
   const [showPlayerReplacer, setShowPlayerReplacer] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [showUnregistration, setShowUnregistration] = useState(false);
+  const [isCheckingRegistration, setIsCheckingRegistration] = useState(true);
   
   const [editingMatchId, setEditingMatchId] = useState<string | null>(null);
 
@@ -49,20 +51,28 @@ export default function KingQueenOfTheBeach() {
     setFinalMatchScores,
     loadTournamentData
   } = useTournamentData();
-  // Check registration status
-  const { isRegistered, isLoading: registrationLoading } = useRegistrationCheck();
 
-useTournamentRealtimeSubscriptions({
-  loadPlayersData: loadTournamentData,
-  loadMatchesData: loadTournamentData,
-  loadFinalMatchData: loadTournamentData,
-});
+  useTournamentRealtimeSubscriptions({
+    loadPlayersData: loadTournamentData,
+    loadMatchesData: loadTournamentData,
+    loadFinalMatchData: loadTournamentData,
+  });
 
   const players = gender === 'female' ? femalePlayers : malePlayers
   const matches = gender === 'female' ? femaleMatches : maleMatches
 
+  // Check registration status on mount
+  useEffect(() => {
+    const registeredEmail = localStorage.getItem('tournament_registered_email');
+    if (!registeredEmail) {
+      navigate('/register');
+      return;
+    }
+    setIsCheckingRegistration(false);
+  }, [navigate]);
+
   // Show loading screen while checking registration
-  if (registrationLoading) {
+  if (isCheckingRegistration) {
     return (
       <div className="min-h-screen bg-sand-gradient px-4 py-6 flex items-center justify-center">
         <div className="text-center animate-fade-in">
@@ -297,7 +307,20 @@ useTournamentRealtimeSubscriptions({
       <div className="max-w-lg mx-auto space-y-6 animate-fade-in">
         <header>
           <div className="flex flex-col items-center gap-6">
-            <div className="text-center pt-8">
+            <div className="text-center pt-8 relative w-full">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  localStorage.removeItem('tournament_registered_email');
+                  localStorage.removeItem('tournament_registered_name');
+                  navigate('/register');
+                }}
+                className="absolute top-0 right-0 bg-white/80 hover:bg-coral hover:text-white border-coral/30 text-coral transition-all duration-300"
+              >
+                <UserPlus className="w-4 h-4 mr-1" />
+                Register
+              </Button>
               <div className="relative">
                 <h1 className="text-2xl md:text-3xl font-bold text-transparent bg-beach-gradient bg-clip-text mb-4 drop-shadow-sm">
                   King & Queen of the Beach

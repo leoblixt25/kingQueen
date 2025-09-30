@@ -150,18 +150,37 @@ export default function Register() {
         return;
       }
 
-      // Register the player
+      // Find the first available placeholder player slot
+      const placeholderPrefix = formData.gender === 'male' ? 'Male Player' : 'Female Player';
+      const { data: placeholderPlayer } = await supabase
+        .from('players')
+        .select('id, name, position')
+        .eq('gender', formData.gender)
+        .ilike('name', `${placeholderPrefix}%`)
+        .eq('is_confirmed', false)
+        .order('position', { ascending: true })
+        .limit(1)
+        .single();
+
+      if (!placeholderPlayer) {
+        toast({
+          title: "Registration Full",
+          description: "All slots for this division are taken",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Update the placeholder with actual player info
       const { error } = await supabase
         .from('players')
-        .insert({
+        .update({
           name: formData.name.trim(),
           email: formData.email.trim().toLowerCase(),
-          gender: formData.gender,
-          is_confirmed: true,
-          points: 0,
-          total_scores: 0,
-          position: 0 // Will be updated by admin or automatically
-        });
+          is_confirmed: true
+        })
+        .eq('id', placeholderPlayer.id);
 
       if (error) {
         console.error('Registration error:', error);

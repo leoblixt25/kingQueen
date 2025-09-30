@@ -31,7 +31,7 @@ export function PlayerUnregistration({ onClose, onSuccess }: PlayerUnregistratio
 
     try {
       // Check if player can unregister
-      const { data: canUnregister, error: checkError } = await supabase
+      const { data: canUnregister, error: checkError } = await (supabase as any)
         .rpc('can_unregister', { player_email: email.toLowerCase() });
 
       if (checkError) {

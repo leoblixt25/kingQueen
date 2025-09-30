@@ -42,7 +42,7 @@ export default function Register() {
   const loadRegistrationData = async () => {
     try {
       // Load available spots
-      const { data: spots, error: spotsError } = await supabase
+      const { data: spots, error: spotsError } = await (supabase as any)
         .rpc('get_available_spots');
       
       if (spotsError) {

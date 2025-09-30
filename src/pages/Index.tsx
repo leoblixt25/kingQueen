@@ -102,7 +102,7 @@ export default function KingQueenOfTheBeach() {
 
     // 🔔 Trigger a refresh across all clients
     console.log("👉 Inserting app_refresh row...");
-    const { error } = await supabase.from("app_refresh").insert({});
+    const { error } = await (supabase as any).from("app_refresh").insert({});
     if (error) {
       console.error("❌ Failed to insert into app_refresh:", error);
     } else {

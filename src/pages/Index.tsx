@@ -150,15 +150,7 @@ export default function KingQueenOfTheBeach() {
 
     await updateMatchScore(currentMatchIndex, scoreValue1, scoreValue2, gender);
 
-    // 🔔 Trigger a refresh across all clients
-    console.log("👉 Inserting app_refresh row...");
-    const { error } = await (supabase as any).from("app_refresh").insert({});
-    if (error) {
-      console.error("❌ Failed to insert into app_refresh:", error);
-    } else {
-      console.log("✅ app_refresh row inserted successfully");
-    }
-
+    // Clear the score inputs - the match data will update via realtime subscriptions
     setScore1('');
     setScore2('');
 

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Auth Debug Helper</title>
+</head>
+<body>
+    <h2>Authentication Debug Information</h2>
+    <div id="debug-info"></div>
+    
+    <script>
+        document.getElementById('debug-info').innerHTML = `
+            <p><strong>Current Origin:</strong> ${window.location.origin}</p>
+            <p><strong>Current URL:</strong> ${window.location.href}</p>
+            <p><strong>Expected Redirect:</strong> ${window.location.origin}/?auth=callback</p>
+            <p><strong>Registration Redirect:</strong> ${window.location.origin}/?intent=register</p>
+            <hr>
+            <p>Copy these URLs and add them to:</p>
+            <ul>
+                <li>Supabase → Authentication → Settings → URL Configuration</li>
+                <li>Google Cloud Console → Credentials → OAuth 2.0 Client</li>
+            </ul>
+        `;
+    </script>
+</body>
+</html>

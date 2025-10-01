@@ -42,8 +42,11 @@ export const useTournamentRealtimeSubscriptions = ({
     const refreshChannel = supabase
       .channel('app-refresh')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'app_refresh' }, (payload) => {
-        console.log('♻️ App refresh triggered:', payload);
-        window.location.reload(); // Force a full reload of the app
+        console.log('⚙️ App refresh triggered - updating data without page reload:', payload);
+        // Instead of full page reload, just refresh the data
+        loadPlayersData();
+        loadMatchesData();
+        loadFinalMatchData();
       })
       .subscribe();
 

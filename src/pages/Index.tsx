@@ -162,12 +162,8 @@ export default function KingQueenOfTheBeach() {
     setScore1('');
     setScore2('');
 
-    const nextUnfinishedIndex = matches.findIndex((match, index) => 
-      index > currentMatchIndex && !match.isSubmitted
-    );
-    if (nextUnfinishedIndex !== -1) {
-      setCurrentMatchIndex(nextUnfinishedIndex);
-    }
+    // Stay on the current match after score submission
+    // Users can manually navigate to other matches using Previous/Next buttons
   };
 
   const handleResetScores = async () => {

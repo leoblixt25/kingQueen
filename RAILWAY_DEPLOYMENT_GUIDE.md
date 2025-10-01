@@ -208,6 +208,21 @@ railway status
 
 ## 🔧 Troubleshooting
 
+### Build Fails with npm Cache Error?
+```bash
+# Error: EBUSY: resource busy or locked, rmdir '/app/node_modules/.cache'
+```
+
+**Solution**: The project has been configured to handle this automatically with:
+- Updated `nixpacks.toml` with cache clearing
+- Added `.dockerignore` to exclude problematic files
+- Modified build process to clean cache before install
+
+**Manual Fix** (if needed):
+1. In Railway dashboard, go to **Settings** → **Environment**
+2. Add variable: `NPM_CONFIG_CACHE=/tmp/.npm`
+3. Redeploy
+
 ### Build Fails?
 ```bash
 # Check build logs

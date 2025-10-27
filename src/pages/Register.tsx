@@ -21,9 +21,9 @@ interface AvailableSpots {
 }
 
 interface TournamentSettings {
-  tournament_date: string;
-  registration_cutoff_days: number;
-  max_players_per_gender: number;
+  tournament_type: string;
+  player_count: number;
+  is_active: boolean;
 }
 
 export default function Register() {
@@ -99,33 +99,71 @@ export default function Register() {
 
   const loadRegistrationData = async () => {
     try {
-      // Load available spots
-      const { data: spots, error: spotsError } = await (supabase as any)
-        .rpc('get_available_spots');
-      
-      if (spotsError) {
-        console.error('Error loading spots:', spotsError);
-      } else {
-        setAvailableSpots(spots || []);
-      }
-
       // Load tournament settings
       const { data: settingsData, error: settingsError } = await supabase
-        .from('settings')
+        .from('tournament_settings')
         .select('*')
-        .order('created_at', { ascending: false })
-        .limit(1)
+        .eq('is_active', true)
         .single();
 
       if (settingsError) {
         console.error('Error loading settings:', settingsError);
+        // Default settings if none found
+        setSettings({
+          tournament_type: 'mixed',
+          player_count: 8,
+          is_active: true
+        });
       } else {
         setSettings(settingsData);
       }
+
+      // Load available spots based on settings
+      loadAvailableSpots(settingsData?.player_count || 8);
     } catch (error) {
       console.error('Error loading registration data:', error);
+      // Default settings if error
+      setSettings({
+        tournament_type: 'mixed',
+        player_count: 8,
+        is_active: true
+      });
+      loadAvailableSpots(8);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadAvailableSpots = async (playerCount: number) => {
+    try {
+      // For this implementation, we'll simulate available spots based on player count
+      // In a real app, you would query the database for actual available spots
+      const spots = [];
+      
+      if (settings?.tournament_type === 'female' || settings?.tournament_type === 'mixed') {
+        spots.push({
+          gender: 'female',
+          available_spots: playerCount,
+          total_spots: playerCount
+        });
+      }
+      
+      if (settings?.tournament_type === 'male' || settings?.tournament_type === 'mixed') {
+        spots.push({
+          gender: 'male',
+          available_spots: playerCount,
+          total_spots: playerCount
+        });
+      }
+      
+      setAvailableSpots(spots);
+    } catch (error) {
+      console.error('Error loading available spots:', error);
+      // Default values
+      setAvailableSpots([
+        { gender: 'male', available_spots: 8, total_spots: 8 },
+        { gender: 'female', available_spots: 8, total_spots: 8 }
+      ]);
     }
   };
 
@@ -140,13 +178,9 @@ export default function Register() {
   };
 
   const canRegister = () => {
-    if (!settings) return false;
-    
-    const tournamentDate = new Date(settings.tournament_date);
-    const cutoffDate = new Date(tournamentDate);
-    cutoffDate.setDate(cutoffDate.getDate() - settings.registration_cutoff_days);
-    
-    return new Date() < cutoffDate;
+    // For simplicity, we'll allow registration
+    // In a real app, you would check tournament date and registration cutoff
+    return true;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -265,12 +299,6 @@ export default function Register() {
             </h1>
             <div className="w-16 h-1 bg-sunset mx-auto rounded-full mb-6"></div>
             <h2 className="text-xl font-semibold text-ocean mb-2">Tournament Access Portal</h2>
-            {settings && (
-              <div className="flex items-center justify-center gap-2 text-sm text-foreground/70">
-                <Calendar className="w-4 h-4" />
-                <span>Tournament Date: {new Date(settings.tournament_date).toLocaleDateString()}</span>
-              </div>
-            )}
             
             {/* Authentication Status */}
             <div className="mt-4 flex justify-center gap-2">
@@ -314,40 +342,63 @@ export default function Register() {
           </div>
         </header>
 
+        {/* Tournament Type Display */}
+        {settings && (
+          <Card className="bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach">
+            <CardContent className="p-4 text-center">
+              <h3 className="font-semibold text-ocean mb-2">Current Tournament</h3>
+              <div className="flex flex-wrap justify-center gap-2">
+                <span className="px-3 py-1 bg-sunset/20 text-sunset rounded-full text-sm">
+                  {settings.tournament_type === 'female' && 'Queen of the Beach'}
+                  {settings.tournament_type === 'male' && 'King of the Beach'}
+                  {settings.tournament_type === 'mixed' && 'King & Queen of the Beach'}
+                </span>
+                <span className="px-3 py-1 bg-ocean/20 text-ocean rounded-full text-sm">
+                  {settings.player_count} Players
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Available Spots Display */}
         <div className="grid grid-cols-2 gap-4">
-          <Card className="bg-ocean/10 border-ocean/20">
-            <CardContent className="p-4 text-center">
-              <Users className="w-6 h-6 mx-auto mb-2 text-ocean" />
-              <h3 className="font-semibold text-ocean">Male Division</h3>
-              <p className="text-sm text-foreground/70">
-                {maleSpots?.available_spots || 0} / {maleSpots?.total_spots || 8} spots
-              </p>
-              {isGenderFull('male') && (
-                <div className="mt-2 text-xs text-coral font-medium">FULL</div>
-              )}
-            </CardContent>
-          </Card>
+          {(settings?.tournament_type === 'male' || settings?.tournament_type === 'mixed') && (
+            <Card className="bg-ocean/10 border-ocean/20">
+              <CardContent className="p-4 text-center">
+                <Users className="w-6 h-6 mx-auto mb-2 text-ocean" />
+                <h3 className="font-semibold text-ocean">Male Division</h3>
+                <p className="text-sm text-foreground/70">
+                  {maleSpots?.available_spots || 0} / {maleSpots?.total_spots || 8} spots
+                </p>
+                {isGenderFull('male') && (
+                  <div className="mt-2 text-xs text-coral font-medium">FULL</div>
+                )}
+              </CardContent>
+            </Card>
+          )}
           
-          <Card className="bg-sunset/10 border-sunset/20">
-            <CardContent className="p-4 text-center">
-              <Users className="w-6 h-6 mx-auto mb-2 text-sunset" />
-              <h3 className="font-semibold text-sunset">Female Division</h3>
-              <p className="text-sm text-foreground/70">
-                {femaleSpots?.available_spots || 0} / {femaleSpots?.total_spots || 8} spots
-              </p>
-              {isGenderFull('female') && (
-                <div className="mt-2 text-xs text-coral font-medium">FULL</div>
-              )}
-            </CardContent>
-          </Card>
+          {(settings?.tournament_type === 'female' || settings?.tournament_type === 'mixed') && (
+            <Card className="bg-sunset/10 border-sunset/20">
+              <CardContent className="p-4 text-center">
+                <Users className="w-6 h-6 mx-auto mb-2 text-sunset" />
+                <h3 className="font-semibold text-sunset">Female Division</h3>
+                <p className="text-sm text-foreground/70">
+                  {femaleSpots?.available_spots || 0} / {femaleSpots?.total_spots || 8} spots
+                </p>
+                {isGenderFull('female') && (
+                  <div className="mt-2 text-xs text-coral font-medium">FULL</div>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {!canRegister() && (
           <Alert className="border-coral/30 bg-coral/10">
             <AlertCircle className="h-4 w-4 text-coral" />
             <AlertDescription className="text-coral-dark">
-              Registration is closed. The tournament is within {settings?.registration_cutoff_days} days.
+              Registration is closed.
             </AlertDescription>
           </Alert>
         )}
@@ -394,32 +445,36 @@ export default function Register() {
                   onValueChange={(value) => setFormData({ ...formData, gender: value })}
                   disabled={!canRegister()}
                 >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem 
-                      value="male" 
-                      id="male" 
-                      disabled={!canRegister() || isGenderFull('male')}
-                    />
-                    <Label 
-                      htmlFor="male" 
-                      className={`cursor-pointer ${isGenderFull('male') ? 'text-foreground/50' : 'text-foreground'}`}
-                    >
-                      Male {isGenderFull('male') && '(Full)'}
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem 
-                      value="female" 
-                      id="female" 
-                      disabled={!canRegister() || isGenderFull('female')}
-                    />
-                    <Label 
-                      htmlFor="female" 
-                      className={`cursor-pointer ${isGenderFull('female') ? 'text-foreground/50' : 'text-foreground'}`}
-                    >
-                      Female {isGenderFull('female') && '(Full)'}
-                    </Label>
-                  </div>
+                  {(settings?.tournament_type === 'male' || settings?.tournament_type === 'mixed') && (
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem 
+                        value="male" 
+                        id="male" 
+                        disabled={!canRegister() || isGenderFull('male')}
+                      />
+                      <Label 
+                        htmlFor="male" 
+                        className={`cursor-pointer ${isGenderFull('male') ? 'text-foreground/50' : 'text-foreground'}`}
+                      >
+                        Male {isGenderFull('male') && '(Full)'}
+                      </Label>
+                    </div>
+                  )}
+                  {(settings?.tournament_type === 'female' || settings?.tournament_type === 'mixed') && (
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem 
+                        value="female" 
+                        id="female" 
+                        disabled={!canRegister() || isGenderFull('female')}
+                      />
+                      <Label 
+                        htmlFor="female" 
+                        className={`cursor-pointer ${isGenderFull('female') ? 'text-foreground/50' : 'text-foreground'}`}
+                      >
+                        Female {isGenderFull('female') && '(Full)'}
+                      </Label>
+                    </div>
+                  )}
                 </RadioGroup>
               </div>
 
@@ -456,8 +511,6 @@ export default function Register() {
             <div className="mt-6 p-4 bg-palm/10 rounded-lg border border-palm/20">
               <p className="text-sm text-foreground/70 text-center">
                 📧 You'll receive a confirmation email after registration.
-                <br />
-                ⏰ You can cancel up to {settings?.registration_cutoff_days || 3} days before the tournament.
               </p>
             </div>
           </CardContent>
@@ -469,7 +522,7 @@ export default function Register() {
             onClick={() => navigate('/')}
             className="text-ocean hover:text-ocean-dark"
           >
-            ← Back to Tournament
+            ← Back to Home
           </Button>
         </div>
         

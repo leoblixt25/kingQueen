@@ -15,6 +15,13 @@ import { toast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { supabase } from "@/integrations/supabase/client";
 import { getCurrentUser, isAdmin as checkIsAdmin, adminSignOut, signOut, getCurrentUserTournamentData } from "@/utils/authUtils";
+import { updateFinalMatch } from "@/utils/finalMatchUtils";
+
+interface TournamentSettings {
+  tournament_type: string;
+  player_count: number;
+  is_active: boolean;
+}
 
 export default function KingQueenOfTheBeach() {
   const navigate = useNavigate();
@@ -23,9 +30,6 @@ export default function KingQueenOfTheBeach() {
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
   const [score1, setScore1] = useState("");
   const [score2, setScore2] = useState("");
-  const [adminUsername, setAdminUsername] = useState("");
-  const [adminPassword, setAdminPassword] = useState("");
-  const [showLoginForm, setShowLoginForm] = useState(false);
   const [showFinalMatch, setShowFinalMatch] = useState(false);
   const [isEditingFinalMatch, setIsEditingFinalMatch] = useState(false);
   const [showPlayerReplacer, setShowPlayerReplacer] = useState(false);
@@ -35,6 +39,7 @@ export default function KingQueenOfTheBeach() {
   const [userIsAdmin, setUserIsAdmin] = useState(false);
   const [userGender, setUserGender] = useState<Gender | null>(null);
   const [isLoadingUserData, setIsLoadingUserData] = useState(true);
+  const [tournamentSettings, setTournamentSettings] = useState<TournamentSettings | null>(null);
   
   const [editingMatchId, setEditingMatchId] = useState<string | null>(null);
 
@@ -48,7 +53,7 @@ export default function KingQueenOfTheBeach() {
     finalMatchWinner,
     isLoading,
     updateMatchScore,
-    updateFinalMatch,
+    updateFinalMatch: updateFinalMatchData,
     resetScores,
     resetAllData,
     retryMatchInitialization,
@@ -68,7 +73,34 @@ export default function KingQueenOfTheBeach() {
   // Initialize user state on mount
   useEffect(() => {
     initializeUserState();
+    loadTournamentSettings();
   }, []);
+
+  const loadTournamentSettings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('tournament_settings')
+        .select('*')
+        .eq('is_active', true)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        throw error;
+      }
+
+      if (data) {
+        setTournamentSettings(data);
+        // Set initial gender based on tournament type
+        if (data.tournament_type === 'male') {
+          setGender('male');
+        } else if (data.tournament_type === 'female') {
+          setGender('female');
+        }
+      }
+    } catch (error) {
+      console.error('Error loading tournament settings:', error);
+    }
+  };
 
   const initializeUserState = async () => {
     try {
@@ -224,7 +256,26 @@ export default function KingQueenOfTheBeach() {
   }
 
   const handleFinalMatchSubmit = async () => {
-    await updateFinalMatch(finalMatchScores);
+    try {
+      // Use the updated final match logic based on tournament type
+      await updateFinalMatch(
+        finalMatchScores, 
+        malePlayers, 
+        femalePlayers, 
+        tournamentSettings?.tournament_type || 'mixed'
+      );
+      toast({
+        title: "Final Match Submitted",
+        description: "Championship match results saved successfully",
+      });
+    } catch (error) {
+      console.error('Error submitting final match:', error);
+      toast({
+        title: "Error",
+        description: "Failed to submit final match",
+        variant: "destructive",
+      });
+    }
   }
 
   const handleEditFinalMatch = () => {
@@ -233,7 +284,25 @@ export default function KingQueenOfTheBeach() {
 
   const handleFinalMatchEditSubmit = async () => {
     setIsEditingFinalMatch(false);
-    await updateFinalMatch(finalMatchScores);
+    try {
+      await updateFinalMatch(
+        finalMatchScores, 
+        malePlayers, 
+      femalePlayers, 
+        tournamentSettings?.tournament_type || 'mixed'
+      );
+      toast({
+        title: "Final Match Updated",
+        description: "Championship match results updated successfully",
+      });
+    } catch (error) {
+      console.error('Error updating final match:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update final match",
+        variant: "destructive",
+      });
+    }
   }
 
   const handleResetFinalMatch = async () => {
@@ -374,7 +443,9 @@ export default function KingQueenOfTheBeach() {
             <div className="text-center pt-4 relative w-full">
               <div className="relative">
                 <h1 className="text-2xl md:text-3xl font-bold text-transparent bg-beach-gradient bg-clip-text mb-4 drop-shadow-sm">
-                  King & Queen of the Beach
+                  {tournamentSettings?.tournament_type === 'female' && 'Queen of the Beach'}
+                  {tournamentSettings?.tournament_type === 'male' && 'King of the Beach'}
+                  {tournamentSettings?.tournament_type === 'mixed' && 'King & Queen of the Beach'}
                 </h1>
                 <div className="w-16 h-1 bg-sunset mx-auto rounded-full"></div>
               </div>
@@ -396,28 +467,32 @@ export default function KingQueenOfTheBeach() {
               {/* Admin can see all divisions */}
               {userIsAdmin && (
                 <>
-                  <Button 
-                    variant={gender === 'female' ? "default" : "outline"} 
-                    onClick={() => handleGenderChange('female')}
-                    className={`w-full touch-target font-semibold text-lg py-4 transition-all duration-300 ${
-                      gender === 'female' 
-                        ? 'bg-sunset hover:bg-sunset-dark text-white shadow-beach animate-pulse-glow' 
-                        : 'bg-white/70 hover:bg-sunset hover:text-white border-sunset/30 text-sunset-dark shadow-sand'
-                    }`}
-                  >
-                    👩 Female Division
-                  </Button>
-                  <Button 
-                    variant={gender === 'male' ? "default" : "outline"}
-                    onClick={() => handleGenderChange('male')}
-                    className={`w-full touch-target font-semibold text-lg py-4 transition-all duration-300 ${
-                      gender === 'male' 
-                        ? 'bg-ocean hover:bg-ocean-dark text-white shadow-beach animate-pulse-glow' 
-                        : 'bg-white/70 hover:bg-ocean hover:text-white border-ocean/30 text-ocean-dark shadow-sand'
-                    }`}
-                  >
-                    👨 Male Division  
-                  </Button>
+                  {(tournamentSettings?.tournament_type === 'mixed' || tournamentSettings?.tournament_type === 'female') && (
+                    <Button 
+                      variant={gender === 'female' ? "default" : "outline"} 
+                      onClick={() => handleGenderChange('female')}
+                      className={`w-full touch-target font-semibold text-lg py-4 transition-all duration-300 ${
+                        gender === 'female' 
+                          ? 'bg-sunset hover:bg-sunset-dark text-white shadow-beach animate-pulse-glow' 
+                          : 'bg-white/70 hover:bg-sunset hover:text-white border-sunset/30 text-sunset-dark shadow-sand'
+                      }`}
+                    >
+                      👩 Female Division
+                    </Button>
+                  )}
+                  {(tournamentSettings?.tournament_type === 'mixed' || tournamentSettings?.tournament_type === 'male') && (
+                    <Button 
+                      variant={gender === 'male' ? "default" : "outline"}
+                      onClick={() => handleGenderChange('male')}
+                      className={`w-full touch-target font-semibold text-lg py-4 transition-all duration-300 ${
+                        gender === 'male' 
+                          ? 'bg-ocean hover:bg-ocean-dark text-white shadow-beach animate-pulse-glow' 
+                          : 'bg-white/70 hover:bg-ocean hover:text-white border-ocean/30 text-ocean-dark shadow-sand'
+                      }`}
+                    >
+                      👨 Male Division  
+                    </Button>
+                  )}
                 </>
               )}
               
@@ -527,7 +602,7 @@ export default function KingQueenOfTheBeach() {
           />
         )}
 
-        {!showLoginForm && !showPlayerReplacer && (
+        {!showPlayerReplacer && (
           <main>
             {showFinalMatch ? (
               <div className="space-y-6">
@@ -548,9 +623,19 @@ export default function KingQueenOfTheBeach() {
                         🏐 Team 1
                       </CardTitle>
                       <div className="text-center">
-                        <p className="text-xl text-ocean-dark font-semibold">
-                          {malePlayers[0]?.name} & {femalePlayers[1]?.name}
-                        </p>
+                        {tournamentSettings?.tournament_type === 'female' ? (
+                          <p className="text-xl text-ocean-dark font-semibold">
+                            {femalePlayers[0]?.name} & {femalePlayers[1]?.name}
+                          </p>
+                        ) : tournamentSettings?.tournament_type === 'male' ? (
+                          <p className="text-xl text-ocean-dark font-semibold">
+                            {malePlayers[0]?.name} & {malePlayers[1]?.name}
+                          </p>
+                        ) : (
+                          <p className="text-xl text-ocean-dark font-semibold">
+                            {malePlayers[0]?.name} & {femalePlayers[1]?.name}
+                          </p>
+                        )}
                       </div>
                     </CardHeader>
                     <CardContent>
@@ -595,9 +680,19 @@ export default function KingQueenOfTheBeach() {
                         🏐 Team 2
                       </CardTitle>
                       <div className="text-center">
-                        <p className="text-xl text-sunset-dark font-semibold">
-                          {femalePlayers[0]?.name} & {malePlayers[1]?.name}
-                        </p>
+                        {tournamentSettings?.tournament_type === 'female' ? (
+                          <p className="text-xl text-sunset-dark font-semibold">
+                            {femalePlayers[2]?.name} & {femalePlayers[3]?.name}
+                          </p>
+                        ) : tournamentSettings?.tournament_type === 'male' ? (
+                          <p className="text-xl text-sunset-dark font-semibold">
+                            {malePlayers[2]?.name} & {malePlayers[3]?.name}
+                          </p>
+                        ) : (
+                          <p className="text-xl text-sunset-dark font-semibold">
+                            {femalePlayers[0]?.name} & {malePlayers[1]?.name}
+                          </p>
+                        )}
                       </div>
                     </CardHeader>
                     <CardContent>
@@ -671,20 +766,54 @@ export default function KingQueenOfTheBeach() {
                                 <Crown className="w-8 h-8" />
                               </h3>
                               <div className="space-y-2">
-                                <p className="text-lg font-semibold">
-                                  👑 King <span className="font-bold">{finalMatchWinner.malePlayer}</span>
-                                </p>
-                                <p className="text-lg font-semibold">
-                                  👑 Queen <span className="font-bold">{finalMatchWinner.femalePlayer}</span>
-                                </p>
+                                {tournamentSettings?.tournament_type === 'female' ? (
+                                  <>
+                                    <p className="text-lg font-semibold">
+                                      👑 Queen <span className="font-bold">{finalMatchWinner.femalePlayer}</span>
+                                    </p>
+                                    <p className="text-lg font-semibold">
+                                      👸 Princess <span className="font-bold">{finalMatchWinner.losingFemalePlayer}</span>
+                                    </p>
+                                  </>
+                                ) : tournamentSettings?.tournament_type === 'male' ? (
+                                  <>
+                                    <p className="text-lg font-semibold">
+                                      👑 King <span className="font-bold">{finalMatchWinner.malePlayer}</span>
+                                    </p>
+                                    <p className="text-lg font-semibold">
+                                      🤴 Prince <span className="font-bold">{finalMatchWinner.losingMalePlayer}</span>
+                                    </p>
+                                  </>
+                                ) : (
+                                  <>
+                                    <p className="text-lg font-semibold">
+                                      👑 King <span className="font-bold">{finalMatchWinner.malePlayer}</span>
+                                    </p>
+                                    <p className="text-lg font-semibold">
+                                      👑 Queen <span className="font-bold">{finalMatchWinner.femalePlayer}</span>
+                                    </p>
+                                  </>
+                                )}
                               </div>
                             </div>
                             
                             <div className="bg-white/60 backdrop-blur-sm rounded-xl p-4">
                               <h3 className="text-lg font-semibold mb-2 text-foreground/80">🥈 Runners-up</h3>
                               <div className="space-y-1 text-foreground/70">
-                                <p>🤴 Prince <span className="font-bold">{finalMatchWinner.losingMalePlayer}</span></p>
-                                <p>👸 Princess <span className="font-bold">{finalMatchWinner.losingFemalePlayer}</span></p>
+                                {tournamentSettings?.tournament_type === 'female' ? (
+                                  <>
+                                    <p>👸 Princess <span className="font-bold">{finalMatchWinner.losingFemalePlayer}</span></p>
+                                  </>
+                                ) : tournamentSettings?.tournament_type === 'male' ? (
+                                  <>
+                                    <p>🤴 Prince <span className="font-bold">{finalMatchWinner.losingMalePlayer}</span></p>
+                                  </>
+                                ) : (
+                                  <>
+                                    <p>🤴 Prince <span className="font-bold">{finalMatchWinner.losingMalePlayer}</span></p>
+                                    <p>👸 Princess <span className="font-bold">{finalMatchWinner.losingFemalePlayer}</span></p>
+                                  </>
+                                )}
                               </div>
                             </div>
                           </div>

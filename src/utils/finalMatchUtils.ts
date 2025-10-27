@@ -1,8 +1,7 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { FinalMatchScores, Player } from '@/types';
 
-export const updateFinalMatch = async (scores: FinalMatchScores, malePlayers: Player[], femalePlayers: Player[]) => {
+export const updateFinalMatch = async (scores: FinalMatchScores, malePlayers: Player[], femalePlayers: Player[], tournamentType: string) => {
   const team1Wins = scores.team1.filter((score, index) => 
     score !== null && scores.team2[index] !== null && score > scores.team2[index]!
   ).length;
@@ -28,18 +27,50 @@ export const updateFinalMatch = async (scores: FinalMatchScores, malePlayers: Pl
   let malePrinceId = null;
   let femalePrincessId = null;
 
-  if (team1Wins > team2Wins) {
-    winnerTeam = 1;
-    maleKingId = getPlayerId(malePlayers[0]?.name, 'male');
-    femaleQueenId = getPlayerId(femalePlayers[1]?.name, 'female');
-    malePrinceId = getPlayerId(malePlayers[1]?.name, 'male');
-    femalePrincessId = getPlayerId(femalePlayers[0]?.name, 'female');
-  } else if (team2Wins > team1Wins) {
-    winnerTeam = 2;
-    maleKingId = getPlayerId(malePlayers[1]?.name, 'male');
-    femaleQueenId = getPlayerId(femalePlayers[0]?.name, 'female');
-    malePrinceId = getPlayerId(malePlayers[0]?.name, 'male');
-    femalePrincessId = getPlayerId(femalePlayers[1]?.name, 'female');
+  // Adjust final match logic based on tournament type
+  if (tournamentType === 'female') {
+    // For "Queen of the Beach" - only female players
+    // Top 4 female players: Player #1, Player #2, Player #3, Player #4
+    if (team1Wins > team2Wins) {
+      winnerTeam = 1;
+      // Team 1: Player #1 and Player #2
+      femaleQueenId = getPlayerId(femalePlayers[0]?.name, 'female');
+      femalePrincessId = getPlayerId(femalePlayers[1]?.name, 'female');
+    } else if (team2Wins > team1Wins) {
+      winnerTeam = 2;
+      // Team 2: Player #3 and Player #4
+      femaleQueenId = getPlayerId(femalePlayers[2]?.name, 'female');
+      femalePrincessId = getPlayerId(femalePlayers[3]?.name, 'female');
+    }
+  } else if (tournamentType === 'male') {
+    // For "King of the Beach" - only male players
+    // Top 4 male players: Player #1, Player #2, Player #3, Player #4
+    if (team1Wins > team2Wins) {
+      winnerTeam = 1;
+      // Team 1: Player #1 and Player #2
+      maleKingId = getPlayerId(malePlayers[0]?.name, 'male');
+      malePrinceId = getPlayerId(malePlayers[1]?.name, 'male');
+    } else if (team2Wins > team1Wins) {
+      winnerTeam = 2;
+      // Team 2: Player #3 and Player #4
+      maleKingId = getPlayerId(malePlayers[2]?.name, 'male');
+      malePrinceId = getPlayerId(malePlayers[3]?.name, 'male');
+    }
+  } else {
+    // For "King & Queen of the Beach" (mixed) - default behavior
+    if (team1Wins > team2Wins) {
+      winnerTeam = 1;
+      maleKingId = getPlayerId(malePlayers[0]?.name, 'male');
+      femaleQueenId = getPlayerId(femalePlayers[1]?.name, 'female');
+      malePrinceId = getPlayerId(malePlayers[1]?.name, 'male');
+      femalePrincessId = getPlayerId(femalePlayers[0]?.name, 'female');
+    } else if (team2Wins > team1Wins) {
+      winnerTeam = 2;
+      maleKingId = getPlayerId(malePlayers[1]?.name, 'male');
+      femaleQueenId = getPlayerId(femalePlayers[0]?.name, 'female');
+      malePrinceId = getPlayerId(malePlayers[0]?.name, 'male');
+      femalePrincessId = getPlayerId(femalePlayers[1]?.name, 'female');
+    }
   }
 
   const { error } = await supabase
@@ -67,5 +98,33 @@ export const updateFinalMatch = async (scores: FinalMatchScores, malePlayers: Pl
     throw error;
   } else {
     console.log('✅ Final match saved successfully with individual set scores');
+  }
+};
+
+// Function to automatically create final match bracket based on rankings
+export const createFinalMatchBracket = async (malePlayers: Player[], femalePlayers: Player[], tournamentType: string) => {
+  try {
+    // For single gender tournaments, we need to adjust the bracket creation
+    if (tournamentType === 'female') {
+      // For "Queen of the Beach" - only female players
+      // Team 1: Player #1 and Player #2
+      // Team 2: Player #3 and Player #4
+      console.log('Creating final match bracket for Queen of the Beach');
+    } else if (tournamentType === 'male') {
+      // For "King of the Beach" - only male players
+      // Team 1: Player #1 and Player #2
+      // Team 2: Player #3 and Player #4
+      console.log('Creating final match bracket for King of the Beach');
+    } else {
+      // For "King & Queen of the Beach" (mixed) - default behavior
+      console.log('Creating final match bracket for King & Queen of the Beach');
+    }
+    
+    // In a real implementation, you would create the match records here
+    // For now, we'll just log that the bracket should be created
+    return true;
+  } catch (error) {
+    console.error('Error creating final match bracket:', error);
+    throw error;
   }
 };

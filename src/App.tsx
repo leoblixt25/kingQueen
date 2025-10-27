@@ -6,6 +6,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Landing from "./pages/Landing";
 import Register from "./pages/Register";
+import AdminLogin from "./pages/AdminLogin";
+import AdminControl from "./pages/AdminControl";
 import NotFound from "./pages/NotFound";
 import { DatabaseInit } from "./components/DatabaseInit";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -24,6 +26,12 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Landing />} />
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/admin/control" element={
+            <ProtectedRoute adminOnly={true}>
+              <AdminControl />
+            </ProtectedRoute>
+          } />
           <Route path="/tournament" element={
             <ProtectedRoute>
               <Index />

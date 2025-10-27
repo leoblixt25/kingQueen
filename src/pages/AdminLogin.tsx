@@ -8,6 +8,7 @@ import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, LogIn, Info } from "lucide-react";
+import { isAdmin } from "@/utils/authUtils";
 
 export default function AdminLogin() {
   const navigate = useNavigate();
@@ -30,24 +31,27 @@ export default function AdminLogin() {
 
       if (error) throw error;
 
-      // Check if user has admin role
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Failed to get user");
+      // Check if user has admin privileges
+      const isAdminUser = await isAdmin();
+      
+      if (!isAdminUser) {
+        // Sign out the user since they're not an admin
+        await supabase.auth.signOut();
+        throw new Error("Access denied. Admin privileges required.");
+      }
 
-      // For demo purposes, we'll allow any authenticated user to access admin
-      // In a production app, you would check user role from your database
       toast({
         title: "Success",
-        description: "Logged in successfully",
+        description: "Logged in as administrator",
       });
       
       navigate('/admin/control');
     } catch (error: any) {
       console.error("Login error:", error);
-      setError(error.message || "Invalid credentials or connection error");
+      setError(error.message || "Invalid credentials or insufficient privileges");
       toast({
         title: "Error",
-        description: error.message || "Invalid credentials or connection error",
+        description: error.message || "Invalid credentials or insufficient privileges",
         variant: "destructive",
       });
     } finally {
@@ -108,10 +112,11 @@ export default function AdminLogin() {
               <Alert className="border-sunset/30 bg-sunset/10">
                 <Info className="h-4 w-4 text-sunset" />
                 <AlertDescription className="text-sunset-dark">
-                  <p className="font-medium mb-1">First time logging in?</p>
+                  <p className="font-medium mb-1">Admin Access Required</p>
                   <p className="text-sm">
-                    Make sure you have created an account in your Supabase Auth system.
-                    Any authenticated user can access the admin panel in this demo.
+                    Only users with admin privileges can access this panel.
+                    Your user ID must be d2ddca83-929d-47cb-bf76-a0d364429b0a
+                    or email must be leo.blixt77@gmail.com
                   </p>
                 </AlertDescription>
               </Alert>

@@ -21,7 +21,7 @@ export default function ProtectedRoute({ children, adminOnly = false }: Protecte
   const checkAuthentication = async () => {
     try {
       const user = await getCurrentUser();
-      const adminStatus = checkIsAdmin();
+      const adminStatus = await checkIsAdmin();
       
       setIsAdminUser(adminStatus);
       

@@ -194,40 +194,30 @@ export const checkTournamentRegistration = async (email: string) => {
 };
 
 /**
- * Admin sign in with hardcoded credentials
- */
-export const adminSignIn = async (username: string, password: string): Promise<AuthResult> => {
-  if (username === 'leo' && password === 'Woodgoat22!!') {
-    // Create a fake admin session in localStorage
-    localStorage.setItem('admin_session', JSON.stringify({
-      username: 'leo',
-      role: 'admin',
-      loginTime: new Date().toISOString()
-    }));
-
-    return {
-      success: true,
-      user: { role: 'admin', username: 'leo' }
-    };
-  }
-
-  return {
-    success: false,
-    error: 'Invalid admin credentials'
-  };
-};
-
-/**
  * Check if current user is admin
  */
-export const isAdmin = (): boolean => {
-  const adminSession = localStorage.getItem('admin_session');
-  if (!adminSession) return false;
-
+export const isAdmin = async (): Promise<boolean> => {
   try {
-    const session = JSON.parse(adminSession);
-    return session.username === 'leo' && session.role === 'admin';
-  } catch {
+    const user = await getCurrentUser();
+    if (!user) return false;
+
+    // Hardcoded admin user ID
+    const adminUserId = 'd2ddca83-929d-47cb-bf76-a0d364429b0a';
+    
+    // Check if user ID matches hardcoded admin ID
+    if (user.id === adminUserId) {
+      return true;
+    }
+
+    // Also check if email matches admin email
+    const adminEmail = 'leo.blixt77@gmail.com';
+    if (user.email === adminEmail) {
+      return true;
+    }
+
+    return false;
+  } catch (error) {
+    console.error('Error checking admin status:', error);
     return false;
   }
 };
@@ -236,5 +226,6 @@ export const isAdmin = (): boolean => {
  * Admin sign out
  */
 export const adminSignOut = (): void => {
-  localStorage.removeItem('admin_session');
+  // For now, we're using the same sign out function for both admin and regular users
+  signOut();
 };

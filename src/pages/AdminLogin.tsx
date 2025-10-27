@@ -7,17 +7,19 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, LogIn } from "lucide-react";
+import { AlertCircle, LogIn, Info } from "lucide-react";
 
 export default function AdminLogin() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError(null);
 
     try {
       // Sign in with Supabase Auth
@@ -32,20 +34,20 @@ export default function AdminLogin() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Failed to get user");
 
-      // In a real app, you would check user role from your database
-      // For now, we'll assume the user is an admin if they can sign in
-      // and redirect to the admin control page
+      // For demo purposes, we'll allow any authenticated user to access admin
+      // In a production app, you would check user role from your database
       toast({
         title: "Success",
-        description: "Logged in as administrator",
+        description: "Logged in successfully",
       });
       
       navigate('/admin/control');
     } catch (error: any) {
       console.error("Login error:", error);
+      setError(error.message || "Invalid credentials or connection error");
       toast({
         title: "Error",
-        description: error.message || "Invalid credentials",
+        description: error.message || "Invalid credentials or connection error",
         variant: "destructive",
       });
     } finally {
@@ -94,10 +96,23 @@ export default function AdminLogin() {
                 />
               </div>
               
-              <Alert className="border-coral/30 bg-coral/10">
-                <AlertCircle className="h-4 w-4 text-coral" />
-                <AlertDescription className="text-coral-dark">
-                  Only users with admin role can access this page
+              {error && (
+                <Alert className="border-coral/30 bg-coral/10">
+                  <AlertCircle className="h-4 w-4 text-coral" />
+                  <AlertDescription className="text-coral-dark">
+                    {error}
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              <Alert className="border-sunset/30 bg-sunset/10">
+                <Info className="h-4 w-4 text-sunset" />
+                <AlertDescription className="text-sunset-dark">
+                  <p className="font-medium mb-1">First time logging in?</p>
+                  <p className="text-sm">
+                    Make sure you have created an account in your Supabase Auth system.
+                    Any authenticated user can access the admin panel in this demo.
+                  </p>
                 </AlertDescription>
               </Alert>
               

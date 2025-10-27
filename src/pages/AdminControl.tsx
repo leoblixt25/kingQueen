@@ -10,17 +10,19 @@ import { LogOut, Save, Crown, Users } from "lucide-react";
 
 interface TournamentSettings {
   id?: string;
-  tournament_type: string;
-  player_count: number;
-  is_active: boolean;
+  tournament_date: string;
+  max_players_per_gender: number;
+  registration_cutoff_days: number;
 }
 
 export default function AdminControl() {
   const navigate = useNavigate();
-  const [tournamentType, setTournamentType] = useState("mixed");
-  const [playerCount, setPlayerCount] = useState(8);
+  const [tournamentDate, setTournamentDate] = useState("");
+  const [maxPlayers, setMaxPlayers] = useState(8);
+  const [registrationCutoff, setRegistrationCutoff] = useState(3);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [existingSettingsId, setExistingSettingsId] = useState<string | null>(null);
 
   useEffect(() => {
     loadTournamentSettings();
@@ -29,9 +31,10 @@ export default function AdminControl() {
   const loadTournamentSettings = async () => {
     try {
       const { data, error } = await supabase
-        .from('tournament_settings')
+        .from('settings')
         .select('*')
-        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
         .single();
 
       if (error && error.code !== 'PGRST116') {
@@ -39,8 +42,15 @@ export default function AdminControl() {
       }
 
       if (data) {
-        setTournamentType(data.tournament_type);
-        setPlayerCount(data.player_count);
+        setTournamentDate(data.tournament_date);
+        setMaxPlayers(data.max_players_per_gender || 8);
+        setRegistrationCutoff(data.registration_cutoff_days || 3);
+        setExistingSettingsId(data.id);
+      } else {
+        // Set default values if no settings exist
+        setTournamentDate(new Date().toISOString().split('T')[0]);
+        setMaxPlayers(8);
+        setRegistrationCutoff(3);
       }
     } catch (error) {
       console.error('Error loading settings:', error);
@@ -57,21 +67,28 @@ export default function AdminControl() {
   const handleSaveSettings = async () => {
     setIsSaving(true);
     try {
-      // First, deactivate any existing active settings
-      await supabase
-        .from('tournament_settings')
-        .update({ is_active: false })
-        .eq('is_active', true);
+      const settingsData = {
+        tournament_date: tournamentDate,
+        max_players_per_gender: maxPlayers,
+        registration_cutoff_days: registrationCutoff,
+        updated_at: new Date().toISOString(),
+      };
 
-      // Insert new settings
-      const { error } = await supabase
-        .from('tournament_settings')
-        .insert({
-          tournament_type: tournamentType,
-          player_count: playerCount,
-          is_active: true,
-          created_at: new Date().toISOString(),
-        });
+      let error;
+      if (existingSettingsId) {
+        // Update existing settings
+        const result = await supabase
+          .from('settings')
+          .update(settingsData)
+          .eq('id', existingSettingsId);
+        error = result.error;
+      } else {
+        // Insert new settings
+        const result = await supabase
+          .from('settings')
+          .insert(settingsData);
+        error = result.error;
+      }
 
       if (error) throw error;
 
@@ -140,22 +157,19 @@ export default function AdminControl() {
           <CardContent className="space-y-6">
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="tournamentType">Tournament Type</Label>
-                <Select value={tournamentType} onValueChange={setTournamentType}>
-                  <SelectTrigger className="bg-white/70 border-sand-dark/30 focus:border-ocean">
-                    <SelectValue placeholder="Select tournament type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="female">Queen of the Beach (Female Division)</SelectItem>
-                    <SelectItem value="male">King of the Beach (Male Division)</SelectItem>
-                    <SelectItem value="mixed">King & Queen of the Beach (Mixed Division)</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="tournamentDate">Tournament Date</Label>
+                <input
+                  id="tournamentDate"
+                  type="date"
+                  value={tournamentDate}
+                  onChange={(e) => setTournamentDate(e.target.value)}
+                  className="w-full px-3 py-2 border border-sand-dark/30 rounded-md bg-white/70 focus:border-ocean focus:outline-none"
+                />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="playerCount">Player Count</Label>
-                <Select value={playerCount.toString()} onValueChange={(value) => setPlayerCount(Number(value))}>
+                <Label htmlFor="maxPlayers">Max Players per Gender</Label>
+                <Select value={maxPlayers.toString()} onValueChange={(value) => setMaxPlayers(Number(value))}>
                   <SelectTrigger className="bg-white/70 border-sand-dark/30 focus:border-ocean">
                     <SelectValue placeholder="Select player count" />
                   </SelectTrigger>
@@ -165,6 +179,19 @@ export default function AdminControl() {
                     <SelectItem value="12">12 Players</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="registrationCutoff">Registration Cutoff (Days)</Label>
+                <input
+                  id="registrationCutoff"
+                  type="number"
+                  value={registrationCutoff}
+                  onChange={(e) => setRegistrationCutoff(Number(e.target.value))}
+                  className="w-full px-3 py-2 border border-sand-dark/30 rounded-md bg-white/70 focus:border-ocean focus:outline-none"
+                  min="1"
+                  max="30"
+                />
               </div>
             </div>
 
@@ -200,16 +227,16 @@ export default function AdminControl() {
           <CardContent>
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-sunset/10 p-4 rounded-lg border border-sunset/20">
-                <p className="text-sm text-foreground/60">Tournament Type</p>
-                <p className="font-semibold">
-                  {tournamentType === 'female' && 'Queen of the Beach'}
-                  {tournamentType === 'male' && 'King of the Beach'}
-                  {tournamentType === 'mixed' && 'King & Queen of the Beach'}
-                </p>
+                <p className="text-sm text-foreground/60">Tournament Date</p>
+                <p className="font-semibold">{new Date(tournamentDate).toLocaleDateString()}</p>
               </div>
               <div className="bg-ocean/10 p-4 rounded-lg border border-ocean/20">
-                <p className="text-sm text-foreground/60">Player Count</p>
-                <p className="font-semibold">{playerCount} Players</p>
+                <p className="text-sm text-foreground/60">Max Players per Gender</p>
+                <p className="font-semibold">{maxPlayers} Players</p>
+              </div>
+              <div className="bg-palm/10 p-4 rounded-lg border border-palm/20">
+                <p className="text-sm text-foreground/60">Registration Cutoff</p>
+                <p className="font-semibold">{registrationCutoff} Days</p>
               </div>
             </div>
           </CardContent>

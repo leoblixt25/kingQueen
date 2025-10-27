@@ -1,10 +1,28 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Crown, Users } from "lucide-react";
+import { Crown, Users, Info } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Landing() {
   const navigate = useNavigate();
+  const [isAdminRegistered, setIsAdminRegistered] = useState(false);
+
+  useEffect(() => {
+    checkAdminStatus();
+  }, []);
+
+  const checkAdminStatus = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      // In a real app, you would check if the user has admin role
+      // For now, we'll just check if user is authenticated
+      setIsAdminRegistered(!!user);
+    } catch (error) {
+      console.error("Error checking admin status:", error);
+    }
+  };
 
   const handleAdminClick = () => {
     navigate('/admin/login');
@@ -21,6 +39,19 @@ export default function Landing() {
         <h1 className="text-3xl md:text-4xl font-bold text-transparent bg-beach-gradient bg-clip-text mb-8 drop-shadow-sm">
           King & Queen of the Beach
         </h1>
+        
+        <Alert className="mb-8 border-sunset/30 bg-sunset/10">
+          <Info className="h-4 w-4 text-sunset" />
+          <AlertDescription className="text-sunset-dark">
+            <p className="font-medium">Welcome to the Tournament Tracker!</p>
+            <p className="text-sm mt-1">
+              {isAdminRegistered 
+                ? "You're already registered. Choose your access level below." 
+                : "Register as a player or log in as admin to get started."}
+            </p>
+          </AlertDescription>
+        </Alert>
+        
         <div className="space-y-6">
           <Button
             onClick={handleAdminClick}
@@ -37,9 +68,15 @@ export default function Landing() {
             Player
           </Button>
         </div>
-        <p className="text-sm text-foreground/60 mt-8">
-          🌊 Beach Volleyball Tournament Tracker 🏖️
-        </p>
+        
+        <div className="mt-8 text-sm text-foreground/60">
+          <p>🌊 Beach Volleyball Tournament Tracker 🏖️</p>
+          <p className="mt-2 text-xs">
+            {isAdminRegistered 
+              ? "As an authenticated user, you can access both admin and player features." 
+              : "First-time users should register as a player."}
+          </p>
+        </div>
       </div>
     </div>
   );

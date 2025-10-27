@@ -9,7 +9,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
-import { Crown, Users, Calendar, AlertCircle, CheckCircle, LogIn, UserPlus, Mail } from "lucide-react";
+import { Crown, Users, Calendar, AlertCircle, CheckCircle, LogIn, UserPlus, Mail, Info } from "lucide-react";
 import { registerPlayerToSlot } from "@/utils/placeholderUtils";
 import { AuthModal } from "@/components/AuthModal";
 import { getCurrentUser, isAdmin, adminSignOut } from "@/utils/authUtils";
@@ -21,9 +21,9 @@ interface AvailableSpots {
 }
 
 interface TournamentSettings {
-  tournament_type: string;
-  player_count: number;
-  is_active: boolean;
+  tournament_date: string;
+  max_players_per_gender: number;
+  registration_cutoff_days: number;
 }
 
 export default function Register() {
@@ -101,32 +101,33 @@ export default function Register() {
     try {
       // Load tournament settings
       const { data: settingsData, error: settingsError } = await supabase
-        .from('tournament_settings')
+        .from('settings')
         .select('*')
-        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
         .single();
 
       if (settingsError) {
         console.error('Error loading settings:', settingsError);
         // Default settings if none found
         setSettings({
-          tournament_type: 'mixed',
-          player_count: 8,
-          is_active: true
+          tournament_date: new Date().toISOString(),
+          max_players_per_gender: 8,
+          registration_cutoff_days: 3
         });
       } else {
         setSettings(settingsData);
       }
 
       // Load available spots based on settings
-      loadAvailableSpots(settingsData?.player_count || 8);
+      loadAvailableSpots(8);
     } catch (error) {
       console.error('Error loading registration data:', error);
       // Default settings if error
       setSettings({
-        tournament_type: 'mixed',
-        player_count: 8,
-        is_active: true
+        tournament_date: new Date().toISOString(),
+        max_players_per_gender: 8,
+        registration_cutoff_days: 3
       });
       loadAvailableSpots(8);
     } finally {
@@ -138,23 +139,10 @@ export default function Register() {
     try {
       // For this implementation, we'll simulate available spots based on player count
       // In a real app, you would query the database for actual available spots
-      const spots = [];
-      
-      if (settings?.tournament_type === 'female' || settings?.tournament_type === 'mixed') {
-        spots.push({
-          gender: 'female',
-          available_spots: playerCount,
-          total_spots: playerCount
-        });
-      }
-      
-      if (settings?.tournament_type === 'male' || settings?.tournament_type === 'mixed') {
-        spots.push({
-          gender: 'male',
-          available_spots: playerCount,
-          total_spots: playerCount
-        });
-      }
+      const spots = [
+        { gender: 'male', available_spots: playerCount, total_spots: playerCount },
+        { gender: 'female', available_spots: playerCount, total_spots: playerCount }
+      ];
       
       setAvailableSpots(spots);
     } catch (error) {
@@ -349,12 +337,10 @@ export default function Register() {
               <h3 className="font-semibold text-ocean mb-2">Current Tournament</h3>
               <div className="flex flex-wrap justify-center gap-2">
                 <span className="px-3 py-1 bg-sunset/20 text-sunset rounded-full text-sm">
-                  {settings.tournament_type === 'female' && 'Queen of the Beach'}
-                  {settings.tournament_type === 'male' && 'King of the Beach'}
-                  {settings.tournament_type === 'mixed' && 'King & Queen of the Beach'}
+                  King & Queen of the Beach
                 </span>
                 <span className="px-3 py-1 bg-ocean/20 text-ocean rounded-full text-sm">
-                  {settings.player_count} Players
+                  {settings.max_players_per_gender || 8} Players per Gender
                 </span>
               </div>
             </CardContent>
@@ -363,35 +349,31 @@ export default function Register() {
 
         {/* Available Spots Display */}
         <div className="grid grid-cols-2 gap-4">
-          {(settings?.tournament_type === 'male' || settings?.tournament_type === 'mixed') && (
-            <Card className="bg-ocean/10 border-ocean/20">
-              <CardContent className="p-4 text-center">
-                <Users className="w-6 h-6 mx-auto mb-2 text-ocean" />
-                <h3 className="font-semibold text-ocean">Male Division</h3>
-                <p className="text-sm text-foreground/70">
-                  {maleSpots?.available_spots || 0} / {maleSpots?.total_spots || 8} spots
-                </p>
-                {isGenderFull('male') && (
-                  <div className="mt-2 text-xs text-coral font-medium">FULL</div>
-                )}
-              </CardContent>
-            </Card>
-          )}
+          <Card className="bg-ocean/10 border-ocean/20">
+            <CardContent className="p-4 text-center">
+              <Users className="w-6 h-6 mx-auto mb-2 text-ocean" />
+              <h3 className="font-semibold text-ocean">Male Division</h3>
+              <p className="text-sm text-foreground/70">
+                {maleSpots?.available_spots || 0} / {maleSpots?.total_spots || 8} spots
+              </p>
+              {isGenderFull('male') && (
+                <div className="mt-2 text-xs text-coral font-medium">FULL</div>
+              )}
+            </CardContent>
+          </Card>
           
-          {(settings?.tournament_type === 'female' || settings?.tournament_type === 'mixed') && (
-            <Card className="bg-sunset/10 border-sunset/20">
-              <CardContent className="p-4 text-center">
-                <Users className="w-6 h-6 mx-auto mb-2 text-sunset" />
-                <h3 className="font-semibold text-sunset">Female Division</h3>
-                <p className="text-sm text-foreground/70">
-                  {femaleSpots?.available_spots || 0} / {femaleSpots?.total_spots || 8} spots
-                </p>
-                {isGenderFull('female') && (
-                  <div className="mt-2 text-xs text-coral font-medium">FULL</div>
-                )}
-              </CardContent>
-            </Card>
-          )}
+          <Card className="bg-sunset/10 border-sunset/20">
+            <CardContent className="p-4 text-center">
+              <Users className="w-6 h-6 mx-auto mb-2 text-sunset" />
+              <h3 className="font-semibold text-sunset">Female Division</h3>
+              <p className="text-sm text-foreground/70">
+                {femaleSpots?.available_spots || 0} / {femaleSpots?.total_spots || 8} spots
+              </p>
+              {isGenderFull('female') && (
+                <div className="mt-2 text-xs text-coral font-medium">FULL</div>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         {!canRegister() && (
@@ -445,36 +427,32 @@ export default function Register() {
                   onValueChange={(value) => setFormData({ ...formData, gender: value })}
                   disabled={!canRegister()}
                 >
-                  {(settings?.tournament_type === 'male' || settings?.tournament_type === 'mixed') && (
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem 
-                        value="male" 
-                        id="male" 
-                        disabled={!canRegister() || isGenderFull('male')}
-                      />
-                      <Label 
-                        htmlFor="male" 
-                        className={`cursor-pointer ${isGenderFull('male') ? 'text-foreground/50' : 'text-foreground'}`}
-                      >
-                        Male {isGenderFull('male') && '(Full)'}
-                      </Label>
-                    </div>
-                  )}
-                  {(settings?.tournament_type === 'female' || settings?.tournament_type === 'mixed') && (
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem 
-                        value="female" 
-                        id="female" 
-                        disabled={!canRegister() || isGenderFull('female')}
-                      />
-                      <Label 
-                        htmlFor="female" 
-                        className={`cursor-pointer ${isGenderFull('female') ? 'text-foreground/50' : 'text-foreground'}`}
-                      >
-                        Female {isGenderFull('female') && '(Full)'}
-                      </Label>
-                    </div>
-                  )}
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem 
+                      value="male" 
+                      id="male" 
+                      disabled={!canRegister() || isGenderFull('male')}
+                    />
+                    <Label 
+                      htmlFor="male" 
+                      className={`cursor-pointer ${isGenderFull('male') ? 'text-foreground/50' : 'text-foreground'}`}
+                    >
+                      Male {isGenderFull('male') && '(Full)'}
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem 
+                      value="female" 
+                      id="female" 
+                      disabled={!canRegister() || isGenderFull('female')}
+                    />
+                    <Label 
+                      htmlFor="female" 
+                      className={`cursor-pointer ${isGenderFull('female') ? 'text-foreground/50' : 'text-foreground'}`}
+                    >
+                      Female {isGenderFull('female') && '(Full)'}
+                    </Label>
+                  </div>
                 </RadioGroup>
               </div>
 
@@ -508,11 +486,16 @@ export default function Register() {
               </div>
             </form>
 
-            <div className="mt-6 p-4 bg-palm/10 rounded-lg border border-palm/20">
-              <p className="text-sm text-foreground/70 text-center">
-                📧 You'll receive a confirmation email after registration.
-              </p>
-            </div>
+            <Alert className="mt-6 border-sunset/30 bg-sunset/10">
+              <Info className="h-4 w-4 text-sunset" />
+              <AlertDescription className="text-sunset-dark">
+                <p className="font-medium mb-1">Admin Access</p>
+                <p className="text-sm">
+                  After registering, you can use the same email and password to log in as an admin.
+                  Any registered user can access the admin panel in this demo.
+                </p>
+              </AlertDescription>
+            </Alert>
           </CardContent>
         </Card>
 

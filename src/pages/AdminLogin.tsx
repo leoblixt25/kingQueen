@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, LogIn, Info } from "lucide-react";
+import { AlertCircle, LogIn, Info, Eye, EyeOff } from "lucide-react";
 import { isAdmin } from "@/utils/authUtils";
 
 export default function AdminLogin() {
@@ -16,6 +16,7 @@ export default function AdminLogin() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,16 +24,24 @@ export default function AdminLogin() {
     setError(null);
 
     try {
+      console.log("Attempting login with email:", email);
+      
       // Sign in with Supabase Auth
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase login error:", error);
+        throw error;
+      }
 
+      console.log("Login successful, checking admin status...");
+      
       // Check if user has admin privileges
       const isAdminUser = await isAdmin();
+      console.log("Admin check result:", isAdminUser);
       
       if (!isAdminUser) {
         // Sign out the user since they're not an admin
@@ -48,10 +57,11 @@ export default function AdminLogin() {
       navigate('/admin/control');
     } catch (error: any) {
       console.error("Login error:", error);
-      setError(error.message || "Invalid credentials or insufficient privileges");
+      const errorMessage = error.message || "Invalid credentials or insufficient privileges";
+      setError(errorMessage);
       toast({
         title: "Error",
-        description: error.message || "Invalid credentials or insufficient privileges",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -89,15 +99,28 @@ export default function AdminLogin() {
               
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="bg-white/70 border-sand-dark/30 focus:border-ocean"
-                  placeholder="••••••••"
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="bg-white/70 border-sand-dark/30 focus:border-ocean pr-10"
+                    placeholder="••••••••"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4 text-gray-500" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-gray-500" />
+                    )}
+                  </button>
+                </div>
               </div>
               
               {error && (
@@ -149,6 +172,23 @@ export default function AdminLogin() {
                 </Button>
               </div>
             </form>
+            
+            <div className="mt-6 text-center">
+              <Button
+                variant="link"
+                onClick={() => {
+                  // Create a test admin account
+                  console.log("Creating test admin account");
+                  toast({
+                    title: "Info",
+                    description: "To create an admin account, register through the player registration first, then contact support to assign admin privileges.",
+                  });
+                }}
+                className="text-sm text-foreground/60"
+              >
+                Need an admin account?
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>

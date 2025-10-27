@@ -199,22 +199,30 @@ export const checkTournamentRegistration = async (email: string) => {
 export const isAdmin = async (): Promise<boolean> => {
   try {
     const user = await getCurrentUser();
-    if (!user) return false;
+    console.log("Checking admin status for user:", user);
+    
+    if (!user) {
+      console.log("No user found");
+      return false;
+    }
 
     // Hardcoded admin user ID
     const adminUserId = 'd2ddca83-929d-47cb-bf76-a0d364429b0a';
     
     // Check if user ID matches hardcoded admin ID
     if (user.id === adminUserId) {
+      console.log("User ID matches admin ID");
       return true;
     }
 
     // Also check if email matches admin email
     const adminEmail = 'leo.blixt77@gmail.com';
     if (user.email === adminEmail) {
+      console.log("User email matches admin email");
       return true;
     }
 
+    console.log("User is not admin");
     return false;
   } catch (error) {
     console.error('Error checking admin status:', error);

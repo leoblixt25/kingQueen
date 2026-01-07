@@ -18,6 +18,7 @@ interface AvailableSpots {
   gender: string;
   available_spots: number;
   total_spots: number;
+  registered_count?: number;
 }
 
 interface TournamentSettings {
@@ -67,6 +68,13 @@ export default function Register() {
     handleAuthCallback();
     checkGoogleAuthSession();
   }, []);
+
+  // Refresh available spots when settings change
+  useEffect(() => {
+    if (settings && availableSpots.length === 0) {
+      loadAvailableSpots(settings.max_players_per_gender || 8);
+    }
+  }, [settings]);
 
   const checkRegistrationStatus = async () => {
     try {
@@ -314,13 +322,38 @@ export default function Register() {
     }
   };
 
-  const loadAvailableSpots = async (playerCount: number) => {
+  const loadAvailableSpots = async (maxPlayersPerGender: number) => {
     try {
-      // For this implementation, we'll simulate available spots based on player count
-      // In a real app, you would query the database for actual available spots
+      // Query the database for actual registered players
+      const { count: maleCount, error: maleError } = await supabase
+        .from('players')
+        .select('*', { count: 'exact', head: true })
+        .eq('gender', 'male')
+        .eq('is_confirmed', true);
+
+      const { count: femaleCount, error: femaleError } = await supabase
+        .from('players')
+        .select('*', { count: 'exact', head: true })
+        .eq('gender', 'female')
+        .eq('is_confirmed', true);
+
+      // Calculate available spots based on registered players
+      const maleRegisteredCount = maleCount || 0;
+      const femaleRegisteredCount = femaleCount || 0;
+      
       const spots = [
-        { gender: 'male', available_spots: playerCount, total_spots: playerCount },
-        { gender: 'female', available_spots: playerCount, total_spots: playerCount }
+        { 
+          gender: 'male', 
+          available_spots: maxPlayersPerGender - maleRegisteredCount, 
+          total_spots: maxPlayersPerGender,
+          registered_count: maleRegisteredCount
+        },
+        { 
+          gender: 'female', 
+          available_spots: maxPlayersPerGender - femaleRegisteredCount, 
+          total_spots: maxPlayersPerGender,
+          registered_count: femaleRegisteredCount
+        }
       ];
       
       setAvailableSpots(spots);
@@ -328,8 +361,8 @@ export default function Register() {
       console.error('Error loading available spots:', error);
       // Default values
       setAvailableSpots([
-        { gender: 'male', available_spots: 8, total_spots: 8 },
-        { gender: 'female', available_spots: 8, total_spots: 8 }
+        { gender: 'male', available_spots: 8, total_spots: 8, registered_count: 0 },
+        { gender: 'female', available_spots: 8, total_spots: 8, registered_count: 0 }
       ]);
     }
   };
@@ -409,6 +442,11 @@ export default function Register() {
         description: `You're registered for King & Queen of the Beach as ${formData.gender === 'male' ? 'Male' : 'Female'} Player ${result.position}! A confirmation email has been sent.`,
       });
 
+      // Refresh available spots to reflect the new registration
+      if (settings) {
+        loadAvailableSpots(settings.max_players_per_gender || 8);
+      }
+      
       // Redirect to tournament page with user's gender
       navigate(`/tournament/${formData.gender}`);
       

@@ -154,14 +154,40 @@ export default function Register() {
               email: user.email
             }));
           }
-          // Redirect to tournament page after successful auth
-          setTimeout(() => {
-            navigate('/tournament');
-          }, 1000);
-          toast({
-            title: "Authentication Successful!",
-            description: "Welcome! Redirecting to tournament...",
-          });
+          
+          // Check if user is registered for the tournament
+          const { data: player } = await supabase
+            .from('players')
+            .select('*')
+            .eq('email', user.email.toLowerCase())
+            .eq('is_confirmed', true)
+            .single();
+            
+          if (player) {
+            // Player is already registered, redirect to their division
+            toast({
+              title: "Welcome Back!",
+              description: "You're already registered. Redirecting to tournament...",
+            });
+            
+            setTimeout(() => {
+              navigate(`/tournament/${player.gender}`);
+            }, 1000);
+          } else {
+            // Player is not registered, show a message and allow registration
+            toast({
+              title: "Account Signed In!",
+              description: "You're signed in but not registered for this tournament. Please complete registration.",
+            });
+            
+            // Keep user on the registration page to complete registration
+            if (user.email && !formData.email) {
+              setFormData(prev => ({
+                ...prev,
+                email: user.email
+              }));
+            }
+          }
         }
       } catch (error) {
         console.error('Auth callback error:', error);
@@ -181,11 +207,6 @@ export default function Register() {
         email: user.email
       }));
     }
-    
-    toast({
-      title: isAdminUser ? "Admin Access Granted" : "Welcome!",
-      description: isAdminUser ? "Redirecting to tournament management..." : "Redirecting to tournament...",
-    });
     
     // Check if user is already registered for the tournament
     checkTournamentRegistrationAndRedirect(user);
@@ -229,6 +250,15 @@ export default function Register() {
           title: "Account Signed In!",
           description: "You're signed in but not registered for this tournament. Please complete registration.",
         });
+        
+        // Keep user on the registration page to complete registration
+        // The registration form will be pre-filled with their email
+        if (user.email && !formData.email) {
+          setFormData(prev => ({
+            ...prev,
+            email: user.email
+          }));
+        }
       }
     } catch (error) {
       console.error('Error checking tournament registration:', error);
@@ -237,6 +267,14 @@ export default function Register() {
         title: "Account Signed In!",
         description: "You're signed in but not registered for this tournament. Please complete registration.",
       });
+      
+      // Keep user on the registration page
+      if (user.email && !formData.email) {
+        setFormData(prev => ({
+          ...prev,
+          email: user.email
+        }));
+      }
     }
   };
 

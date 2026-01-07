@@ -51,7 +51,7 @@ export default function PlayerAccess() {
   };
 
   const handleSignIn = () => {
-    navigate('/register');
+    navigate('/sign-in');
   };
 
   const handleRegister = () => {

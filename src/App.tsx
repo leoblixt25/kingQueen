@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Landing from "./pages/Landing";
 import Register from "./pages/Register";
+import SignIn from "./pages/SignIn";
 import PlayerAccess from "./pages/PlayerAccess";
 import AdminLogin from "./pages/AdminLogin";
 import AdminControl from "./pages/AdminControl";
@@ -43,6 +44,7 @@ const App = () => (
               <Index />
             </ProtectedRoute>
           } />
+          <Route path="/sign-in" element={<SignIn />} />
           <Route path="/player-access" element={<PlayerAccess />} />
           <Route path="/register" element={<Register />} />
           <Route path="/setup" element={

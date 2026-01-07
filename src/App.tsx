@@ -37,11 +37,7 @@ const App = () => (
               <Index />
             </ProtectedRoute>
           } />
-          <Route path="/register" element={
-            <ProtectedRoute>
-              <Register />
-            </ProtectedRoute>
-          } />
+          <Route path="/register" element={<Register />} />
           <Route path="/setup" element={
             <ProtectedRoute adminOnly={true}>
               <DatabaseInit />

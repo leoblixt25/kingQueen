@@ -126,6 +126,10 @@ export default function AdminControl() {
     }
   };
 
+  const handleGoToSetup = () => {
+    navigate('/setup'); // Navigate to DatabaseInit page
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-sand-gradient px-4 py-6 flex items-center justify-center">
@@ -216,6 +220,23 @@ export default function AdminControl() {
             </div>
           </CardContent>
         </Card>
+
+        <div className="flex flex-col sm:flex-row gap-4">
+          <Button
+            onClick={handleGoToSetup}
+            className="flex-1 bg-sunset hover:bg-sunset-dark text-white font-semibold py-3 transition-all duration-300 flex items-center justify-center gap-2"
+          >
+            <Crown className="w-4 h-4" />
+            Configure Tournament
+          </Button>
+          <Button
+            onClick={() => navigate('/tournament')}
+            className="flex-1 bg-ocean hover:bg-ocean-dark text-white font-semibold py-3 transition-all duration-300 flex items-center justify-center gap-2"
+          >
+            <Users className="w-4 h-4" />
+            View Tournament
+          </Button>
+        </div>
 
         <Card className="bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach">
           <CardHeader>

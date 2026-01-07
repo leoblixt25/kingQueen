@@ -42,9 +42,81 @@ export default function Register() {
   const [userIsAdmin, setUserIsAdmin] = useState(false);
 
   useEffect(() => {
+    checkRegistrationStatus();
     loadRegistrationData();
     handleAuthCallback();
   }, []);
+
+  const checkRegistrationStatus = async () => {
+    try {
+      // Check if user is already authenticated
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        // Check if user is registered in the tournament
+        const { data: player, error } = await supabase
+          .from('players')
+          .select('*')
+          .eq('email', user.email.toLowerCase())
+          .eq('is_confirmed', true)
+          .single();
+          
+        if (player) {
+          // Player is already registered, redirect to tournament
+          setCurrentUser(user);
+          
+          // Check if user is admin
+          const adminStatus = await isAdmin();
+          setUserIsAdmin(adminStatus);
+          
+          toast({
+            title: "Welcome Back!",
+            description: "You're already registered. Redirecting to tournament...",
+          });
+          
+          setTimeout(() => {
+            navigate('/tournament');
+          }, 1000);
+          
+          return;
+        }
+      }
+      
+      // Check for local registration data as fallback
+      const registeredEmail = localStorage.getItem('tournament_registered_email');
+      const registeredName = localStorage.getItem('tournament_registered_name');
+      
+      if (registeredEmail && registeredName) {
+        // Check if user exists in the database
+        const { data: player } = await supabase
+          .from('players')
+          .select('*')
+          .eq('email', registeredEmail)
+          .eq('is_confirmed', true)
+          .single();
+          
+        if (player) {
+          // Player is already registered, redirect to tournament
+          toast({
+            title: "Welcome Back!",
+            description: "You're already registered. Redirecting to tournament...",
+          });
+          
+          setTimeout(() => {
+            navigate('/tournament');
+          }, 1000);
+          
+          return;
+        }
+      }
+      
+      // If no existing registration found, continue to registration form
+      setCurrentUser(user || null);
+    } catch (error) {
+      console.error('Error checking registration status:', error);
+      // Continue to registration form even if there's an error
+    }
+  };
 
   const handleAuthCallback = async () => {
     // Handle OAuth callback from Google or email confirmation

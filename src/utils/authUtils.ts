@@ -206,9 +206,8 @@ export const isAdmin = async (): Promise<boolean> => {
       return false;
     }
 
-    // Check if email matches admin email
-    const adminEmails = ['leo.blixt77@gmail.com', 'leo']; // Added 'leo' as requested admin name
-    if (adminEmails.includes(user.email) || adminEmails.some(email => user.email?.includes(email))) {
+    // Check if email matches the specific admin email
+    if (user.email === 'leo.blixt77@gmail.com') {
       console.log("User email matches admin email");
       return true;
     }

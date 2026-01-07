@@ -142,7 +142,7 @@ export default function Register() {
   const handleAuthCallback = async () => {
     // Handle OAuth callback from Google or email confirmation
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('auth') === 'callback') {
+    if (urlParams.get('auth') === 'callback' || urlParams.get('auth') === 'google') {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
@@ -197,8 +197,6 @@ export default function Register() {
 
   const handleAuthSuccess = (user: any, isAdminUser = false) => {
     setCurrentUser(user);
-    setUserIsAdmin(isAdminUser);
-    setShowAuthModal(false);
     
     // Pre-fill the email field if it's empty
     if (user.email && !formData.email) {
@@ -488,41 +486,16 @@ export default function Register() {
                 </div>
               ) : (
                 <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      // Check if user is already authenticated and prefill email
-                      if (currentUser?.email) {
-                        setFormData(prev => ({
-                          ...prev,
-                          email: currentUser.email
-                        }));
-                      }
-                      setShowAuthModal(true);
-                    }}
-                    className="flex items-center gap-1"
-                  >
-                    <LogIn className="w-4 h-4" />
-                    Sign In
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      // Check if user is already authenticated and prefill email
-                      if (currentUser?.email) {
-                        setFormData(prev => ({
-                          ...prev,
-                          email: currentUser.email
-                        }));
-                      }
-                      setShowAuthModal(true);
-                    }}
-                    className="flex items-center gap-1 bg-ocean hover:bg-ocean-dark text-white"
-                  >
-                    <UserPlus className="w-4 h-4" />
-                    Register
-                  </Button>
+                  <div className="text-center text-sm text-foreground/60 mt-2">
+                    Already have an account?{' '}
+                    <Button
+                      variant="link"
+                      onClick={() => navigate('/sign-in')}
+                      className="p-0 h-auto text-ocean hover:text-ocean-dark font-medium"
+                    >
+                      Sign in here
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>
@@ -722,25 +695,18 @@ export default function Register() {
                 Sign up with email confirmation for secure account access and real-time updates.
               </p>
               <Button
-                onClick={() => setShowAuthModal(true)}
+                onClick={() => navigate('/sign-in')}
                 className="w-full bg-gradient-to-r from-ocean to-sunset hover:from-ocean-dark hover:to-sunset-dark text-white font-semibold py-3"
               >
                 <Mail className="w-4 h-4 mr-2" />
-                Register with Email Authentication
+                Sign In or Register with Email Authentication
               </Button>
             </div>
           </CardContent>
         </Card>
       </div>
       
-      {/* Authentication Modal */}
-      {showAuthModal && (
-        <AuthModal 
-          onClose={() => setShowAuthModal(false)}
-          onSuccess={handleAuthSuccess}
-          availableSpots={availableSpots}
-        />
-      )}
+      {/* AuthModal removed as per simplification requirements - all auth flows now handled through dedicated pages */}
       
       <Toaster />
     </div>

@@ -461,7 +461,7 @@ export function AuthModal({ onClose, onSuccess, availableSpots, googleUser, show
         </CardHeader>
         <CardContent className="space-y-4">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className={`grid w-full ${showGoogleRegistrationForm ? 'grid-cols-1' : 'grid-cols-3'} gap-1`}>
+            <TabsList className={`grid w-full ${showGoogleRegistrationForm ? 'grid-cols-1' : 'grid-cols-2'} gap-1`}>
               {!showGoogleRegistrationForm && (
                 <>
                   <TabsTrigger value="signin" className="flex items-center gap-1 text-xs sm:text-sm px-2 sm:px-3">
@@ -473,10 +473,6 @@ export function AuthModal({ onClose, onSuccess, availableSpots, googleUser, show
                     <UserPlus className="w-3 h-3 sm:w-4 sm:h-4" />
                     <span className="hidden sm:inline">Register</span>
                     <span className="sm:hidden">Join</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="admin" className="flex items-center gap-1 text-xs sm:text-sm px-2 sm:px-3">
-                    <Crown className="w-3 h-3 sm:w-4 sm:h-4" />
-                    <span>Admin</span>
                   </TabsTrigger>
                 </>
               )}

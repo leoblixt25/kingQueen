@@ -25,6 +25,55 @@ export default function SignIn() {
     email: "",
     password: ""
   });
+
+  // Handle Google auth callback
+  useEffect(() => {
+    const authParam = searchParams.get('auth');
+    if (authParam === 'google') {
+      handleGoogleAuthCallback();
+    }
+  }, [searchParams]);
+
+  const handleGoogleAuthCallback = async () => {
+    try {
+      // Get current user after Google auth
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        // Check if user is registered for the tournament
+        const player = await getCurrentUserTournamentData();
+        
+        if (player && player.is_confirmed) {
+          // Player is already registered, redirect to their division
+          toast({
+            title: "Welcome Back!",
+            description: "You're already registered. Redirecting to tournament...",
+          });
+          
+          setTimeout(() => {
+            navigate(`/tournament/${player.gender}`);
+          }, 1500);
+        } else {
+          // Player is not registered, redirect to registration
+          toast({
+            title: "Account Signed In!",
+            description: "You're signed in but not registered for this tournament. Redirecting to registration...",
+          });
+          
+          setTimeout(() => {
+            navigate('/register');
+          }, 2000);
+        }
+      }
+    } catch (error) {
+      console.error('Error in Google auth callback:', error);
+      toast({
+        title: "Error",
+        description: "An error occurred during authentication. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -76,7 +125,8 @@ export default function SignIn() {
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
     try {
-      const result = await signInWithGoogle();
+      // Use a specific redirect for Google auth to handle post-auth flow
+      const result = await signInWithGoogle(`${window.location.origin}/sign-in?auth=google`);
       
       if (result.success) {
         toast({

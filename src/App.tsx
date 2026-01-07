@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Landing from "./pages/Landing";
 import Register from "./pages/Register";
+import PlayerAccess from "./pages/PlayerAccess";
 import AdminLogin from "./pages/AdminLogin";
 import AdminControl from "./pages/AdminControl";
 import NotFound from "./pages/NotFound";
@@ -37,6 +38,12 @@ const App = () => (
               <Index />
             </ProtectedRoute>
           } />
+          <Route path="/tournament/:gender" element={
+            <ProtectedRoute>
+              <Index />
+            </ProtectedRoute>
+          } />
+          <Route path="/player-access" element={<PlayerAccess />} />
           <Route path="/register" element={<Register />} />
           <Route path="/setup" element={
             <ProtectedRoute adminOnly={true}>

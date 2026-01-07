@@ -41,10 +41,31 @@ export default function Register() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [userIsAdmin, setUserIsAdmin] = useState(false);
 
+  const checkGoogleAuthSession = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user && user.email) {
+        // User is already authenticated via Google or other method
+        // Pre-fill the email field if it's empty
+        if (!formData.email) {
+          setFormData(prev => ({
+            ...prev,
+            email: user.email
+          }));
+        }
+        setCurrentUser(user);
+      }
+    } catch (error) {
+      console.error('Error checking auth session:', error);
+    }
+  };
+
   useEffect(() => {
     checkRegistrationStatus();
     loadRegistrationData();
     handleAuthCallback();
+    checkGoogleAuthSession();
   }, []);
 
   const checkRegistrationStatus = async () => {
@@ -75,7 +96,7 @@ export default function Register() {
           });
           
           setTimeout(() => {
-            navigate('/tournament');
+            navigate(`/tournament/${player.gender}`);
           }, 1000);
           
           return;
@@ -103,7 +124,7 @@ export default function Register() {
           });
           
           setTimeout(() => {
-            navigate('/tournament');
+            navigate(`/tournament/${player.gender}`);
           }, 1000);
           
           return;
@@ -126,6 +147,13 @@ export default function Register() {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           setCurrentUser(user);
+          // Pre-fill the email field if it's empty
+          if (!formData.email) {
+            setFormData(prev => ({
+              ...prev,
+              email: user.email
+            }));
+          }
           // Redirect to tournament page after successful auth
           setTimeout(() => {
             navigate('/tournament');
@@ -146,15 +174,21 @@ export default function Register() {
     setUserIsAdmin(isAdminUser);
     setShowAuthModal(false);
     
+    // Pre-fill the email field if it's empty
+    if (user.email && !formData.email) {
+      setFormData(prev => ({
+        ...prev,
+        email: user.email
+      }));
+    }
+    
     toast({
       title: isAdminUser ? "Admin Access Granted" : "Welcome!",
       description: isAdminUser ? "Redirecting to tournament management..." : "Redirecting to tournament...",
     });
     
-    // Redirect to tournament page for both admin and regular users
-    setTimeout(() => {
-      navigate('/tournament');
-    }, 1500);
+    // Check if user is already registered for the tournament
+    checkTournamentRegistrationAndRedirect(user);
   };
 
   const handleSignOut = () => {
@@ -167,6 +201,43 @@ export default function Register() {
       title: "Signed Out",
       description: "You've been successfully signed out.",
     });
+  };
+
+  const checkTournamentRegistrationAndRedirect = async (user: any) => {
+    try {
+      // Check if user is registered in the tournament
+      const { data: player } = await supabase
+        .from('players')
+        .select('*')
+        .eq('email', user.email.toLowerCase())
+        .eq('is_confirmed', true)
+        .single();
+        
+      if (player) {
+        // Player is already registered, redirect to their division
+        toast({
+          title: "Welcome Back!",
+          description: "You're already registered. Redirecting to tournament...",
+        });
+        
+        setTimeout(() => {
+          navigate(`/tournament/${player.gender}`);
+        }, 1500);
+      } else {
+        // Player is not registered, show a message and allow registration
+        toast({
+          title: "Account Signed In!",
+          description: "You're signed in but not registered for this tournament. Please complete registration.",
+        });
+      }
+    } catch (error) {
+      console.error('Error checking tournament registration:', error);
+      // If there's an error, allow registration
+      toast({
+        title: "Account Signed In!",
+        description: "You're signed in but not registered for this tournament. Please complete registration.",
+      });
+    }
   };
 
   const loadRegistrationData = async () => {
@@ -302,8 +373,8 @@ export default function Register() {
         description: `You're registered for King & Queen of the Beach as ${formData.gender === 'male' ? 'Male' : 'Female'} Player ${result.position}! A confirmation email has been sent.`,
       });
 
-      // Redirect to tournament page
-      navigate('/tournament');
+      // Redirect to tournament page with user's gender
+      navigate(`/tournament/${formData.gender}`);
       
     } catch (error: any) {
       console.error('Registration error:', error);
@@ -382,7 +453,16 @@ export default function Register() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setShowAuthModal(true)}
+                    onClick={() => {
+                      // Check if user is already authenticated and prefill email
+                      if (currentUser?.email) {
+                        setFormData(prev => ({
+                          ...prev,
+                          email: currentUser.email
+                        }));
+                      }
+                      setShowAuthModal(true);
+                    }}
                     className="flex items-center gap-1"
                   >
                     <LogIn className="w-4 h-4" />
@@ -390,7 +470,16 @@ export default function Register() {
                   </Button>
                   <Button
                     size="sm"
-                    onClick={() => setShowAuthModal(true)}
+                    onClick={() => {
+                      // Check if user is already authenticated and prefill email
+                      if (currentUser?.email) {
+                        setFormData(prev => ({
+                          ...prev,
+                          email: currentUser.email
+                        }));
+                      }
+                      setShowAuthModal(true);
+                    }}
                     className="flex items-center gap-1 bg-ocean hover:bg-ocean-dark text-white"
                   >
                     <UserPlus className="w-4 h-4" />
@@ -488,8 +577,13 @@ export default function Register() {
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   className="w-full touch-target bg-white/70 border-sand-dark/30 focus:border-ocean"
                   placeholder="Enter your email"
-                  disabled={!canRegister()}
+                  disabled={!canRegister() || (currentUser?.email && currentUser.email === formData.email)}
                 />
+                {currentUser?.email && currentUser.email === formData.email && (
+                  <p className="text-xs text-muted-foreground italic">
+                    Email pre-filled from your authenticated account
+                  </p>
+                )}
               </div>
 
               <div className="space-y-3">

@@ -29,7 +29,7 @@ export default function Landing() {
   };
 
   const handlePlayerClick = () => {
-    navigate('/register');
+    navigate('/player-access');
   };
 
   return (

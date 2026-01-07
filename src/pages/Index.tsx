@@ -79,6 +79,27 @@ export default function KingQueenOfTheBeach() {
     loadTournamentSettings();
   }, []);
 
+  // Update gender based on URL if it changes
+  useEffect(() => {
+    const pathParts = window.location.pathname.split('/');
+    const urlGender = pathParts[pathParts.length - 1];
+    
+    if (['male', 'female'].includes(urlGender)) {
+      const selectedGender = urlGender as Gender;
+      setGender(selectedGender);
+      
+      // For regular users, only allow access to their registered division
+      if (!userIsAdmin && userGender && userGender !== selectedGender) {
+        toast({
+          title: "Access Restricted",
+          description: `You can only access the ${userGender} division that you registered for.`,
+          variant: "destructive",
+        });
+        navigate(`/tournament/${userGender}`);
+      }
+    }
+  }, [userIsAdmin, userGender]);
+
   const loadTournamentSettings = async () => {
     try {
       const { data, error } = await supabase

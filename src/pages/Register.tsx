@@ -701,16 +701,7 @@ export default function Register() {
               </div>
             </form>
 
-            <Alert className="mt-6 border-sunset/30 bg-sunset/10">
-              <Info className="h-4 w-4 text-sunset" />
-              <AlertDescription className="text-sunset-dark">
-                <p className="font-medium mb-1">Admin Access</p>
-                <p className="text-sm">
-                  After registering, you can use the same email and password to log in as an admin.
-                  Any registered user can access the admin panel in this demo.
-                </p>
-              </AlertDescription>
-            </Alert>
+
           </CardContent>
         </Card>
 

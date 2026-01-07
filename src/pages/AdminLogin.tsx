@@ -224,16 +224,7 @@ export default function AdminLogin() {
                 </Alert>
               )}
               
-              <Alert className="border-sunset/30 bg-sunset/10">
-                <Info className="h-4 w-4 text-sunset" />
-                <AlertDescription className="text-sunset-dark">
-                  <p className="font-medium mb-1">Admin Access Required</p>
-                  <p className="text-sm">
-                    Only authorized administrators can access this panel.
-                    Please contact your system administrator if you need access.
-                  </p>
-                </AlertDescription>
-              </Alert>
+
               
               <div className="flex gap-3 pt-4">
                 <Button

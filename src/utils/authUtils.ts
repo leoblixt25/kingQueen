@@ -236,7 +236,9 @@ export const adminSignIn = async (username: string, password: string): Promise<A
     // Allow 'leo' as admin username as requested by user
     const validCredentials = [
       { username: 'admin', password: 'admin' },
+      { username: 'admin', password: 'Woodgoat22!!' }, // Added requested password
       { username: 'leo', password: 'admin' }, // Added 'leo' as admin username
+      { username: 'leo', password: 'Woodgoat22!!' }, // Added requested password for leo
       { username: 'leo', password: 'password' }, // Common default password
       { username: 'leo', password: password } // Allow any password for 'leo' for initial access
     ];

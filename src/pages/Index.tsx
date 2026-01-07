@@ -104,7 +104,7 @@ export default function KingQueenOfTheBeach() {
     try {
       setIsLoadingUserData(true);
       const user = await getCurrentUser();
-      const adminStatus = checkIsAdmin();
+      const adminStatus = await checkIsAdmin();
       
       setCurrentUser(user);
       setUserIsAdmin(adminStatus);
@@ -124,9 +124,38 @@ export default function KingQueenOfTheBeach() {
         // Set the initial gender view to match user's registration
         setGender(playerGender);
       } else {
-        // If no tournament data found, redirect to landing
-        navigate('/');
-        return;
+        // Check if user has local registration data as fallback
+        const localEmail = localStorage.getItem('tournament_registered_email');
+        const localName = localStorage.getItem('tournament_registered_name');
+        
+        if (localEmail && localName) {
+          // Check if user exists in the database
+          try {
+            const { data: player } = await supabase
+              .from('players')
+              .select('*')
+              .eq('email', localEmail)
+              .eq('is_confirmed', true)
+              .single();
+            
+            if (player) {
+              setUserGender(player.gender as Gender);
+              setGender(player.gender as Gender);
+            } else {
+              // If user is not in the database despite local registration, redirect to landing
+              navigate('/');
+              return;
+            }
+          } catch (error) {
+            console.error('Error checking local registration:', error);
+            navigate('/');
+            return;
+          }
+        } else {
+          // If no tournament data found, redirect to landing
+          navigate('/');
+          return;
+        }
       }
     } catch (error) {
       console.error('Error initializing user state:', error);

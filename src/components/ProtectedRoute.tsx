@@ -58,8 +58,27 @@ export default function ProtectedRoute({ children, adminOnly = false }: Protecte
         const registeredName = localStorage.getItem('tournament_registered_name');
         
         if (registeredEmail && registeredName) {
-          setIsAuthenticated(true);
-          setIsTournamentRegistered(true);
+          // If we have local registration data, check if the user is in the database
+          try {
+            const { data: player } = await supabase
+              .from('players')
+              .select('*')
+              .eq('email', registeredEmail)
+              .eq('is_confirmed', true)
+              .single();
+            
+            if (player) {
+              setIsAuthenticated(true);
+              setIsTournamentRegistered(true);
+            } else {
+              setIsAuthenticated(false);
+              setIsTournamentRegistered(false);
+            }
+          } catch (err) {
+            console.error('Error checking local registration in DB:', err);
+            setIsAuthenticated(false);
+            setIsTournamentRegistered(false);
+          }
         } else {
           setIsAuthenticated(false);
           setIsTournamentRegistered(false);

@@ -230,8 +230,8 @@ export default function Register() {
         description: `You're registered for King & Queen of the Beach as ${formData.gender === 'male' ? 'Male' : 'Female'} Player ${result.position}! A confirmation email has been sent.`,
       });
 
-      // Redirect to main app
-      navigate('/');
+      // Redirect to tournament page
+      navigate('/tournament');
       
     } catch (error: any) {
       console.error('Registration error:', error);

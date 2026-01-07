@@ -46,7 +46,7 @@ export default function AdminLogin() {
       if (!isAdminUser) {
         // Sign out the user since they're not an admin
         await supabase.auth.signOut();
-        throw new Error("Access denied. Admin privileges required.");
+        throw new Error("Access denied. Please check your credentials.");
       }
 
       toast({
@@ -57,11 +57,12 @@ export default function AdminLogin() {
       navigate('/admin/control');
     } catch (error: any) {
       console.error("Login error:", error);
-      const errorMessage = error.message || "Invalid credentials or insufficient privileges";
-      setError(errorMessage);
+      // Use a generic error message to avoid exposing sensitive information
+      const genericErrorMessage = "Invalid login credentials. Please check your email and password.";
+      setError(genericErrorMessage);
       toast({
-        title: "Error",
-        description: errorMessage,
+        title: "Login Failed",
+        description: genericErrorMessage,
         variant: "destructive",
       });
     } finally {
@@ -137,9 +138,8 @@ export default function AdminLogin() {
                 <AlertDescription className="text-sunset-dark">
                   <p className="font-medium mb-1">Admin Access Required</p>
                   <p className="text-sm">
-                    Only users with admin privileges can access this panel.
-                    Your user ID must be d2ddca83-929d-47cb-bf76-a0d364429b0a
-                    or email must be leo.blixt77@gmail.com
+                    Only authorized administrators can access this panel.
+                    Please contact your system administrator if you need access.
                   </p>
                 </AlertDescription>
               </Alert>

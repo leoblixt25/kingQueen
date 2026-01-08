@@ -23,6 +23,7 @@ export default function AdminControl() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [existingSettingsId, setExistingSettingsId] = useState<string | null>(null);
+  const [playerCounts, setPlayerCounts] = useState<{ maleCount: number; femaleCount: number } | null>(null);
 
   useEffect(() => {
     loadTournamentSettings();
@@ -61,6 +62,24 @@ export default function AdminControl() {
       });
     } finally {
       setIsLoading(false);
+      loadPlayerCounts();
+    }
+  };
+
+  const loadPlayerCounts = async () => {
+    try {
+      const { data: players } = await supabase
+        .from('players')
+        .select('gender, is_confirmed')
+        .eq('is_confirmed', true);
+      
+      if (players) {
+        const maleCount = players.filter(p => p.gender === 'male').length;
+        const femaleCount = players.filter(p => p.gender === 'female').length;
+        setPlayerCounts({ maleCount, femaleCount });
+      }
+    } catch (error) {
+      console.error('Error loading player counts:', error);
     }
   };
 
@@ -148,14 +167,51 @@ export default function AdminControl() {
           <h1 className="text-3xl font-bold text-transparent bg-beach-gradient bg-clip-text mb-2">
             Admin Control Panel
           </h1>
-          <p className="text-foreground/70">Configure and manage the tournament</p>
         </header>
+
+        <Card className="bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-palm">
+              <Users className="w-5 h-5" />
+              Current Configuration
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-sunset/10 p-4 rounded-lg border border-sunset/20">
+                <p className="text-sm text-foreground/60">Tournament Date</p>
+                <p className="font-semibold">{new Date(tournamentDate).toLocaleDateString()}</p>
+              </div>
+              <div className="bg-ocean/10 p-4 rounded-lg border border-ocean/20">
+                <p className="text-sm text-foreground/60">Max Players per Gender</p>
+                <p className="font-semibold">{maxPlayers} Players</p>
+              </div>
+              <div className="bg-palm/10 p-4 rounded-lg border border-palm/20">
+                <p className="text-sm text-foreground/60">Registration Cutoff</p>
+                <p className="font-semibold">{registrationCutoff} Days</p>
+              </div>
+              <div className="bg-beach-gradient p-4 rounded-lg border border-primary/20 text-white">
+                <p className="text-sm text-white/80">Registered Players</p>
+                <p className="font-semibold">
+                  {playerCounts ? (
+                    <>
+                      <span className="block">Male: {playerCounts.maleCount}/{maxPlayers}</span>
+                      <span className="block">Female: {playerCounts.femaleCount}/{maxPlayers}</span>
+                    </>
+                  ) : (
+                    <span>Loading...</span>
+                  )}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         <Card className="bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-ocean">
               <Crown className="w-5 h-5" />
-              Tournament Configuration
+              Configure and manage the tournament
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -238,30 +294,7 @@ export default function AdminControl() {
           </Button>
         </div>
 
-        <Card className="bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-palm">
-              <Users className="w-5 h-5" />
-              Current Configuration
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-sunset/10 p-4 rounded-lg border border-sunset/20">
-                <p className="text-sm text-foreground/60">Tournament Date</p>
-                <p className="font-semibold">{new Date(tournamentDate).toLocaleDateString()}</p>
-              </div>
-              <div className="bg-ocean/10 p-4 rounded-lg border border-ocean/20">
-                <p className="text-sm text-foreground/60">Max Players per Gender</p>
-                <p className="font-semibold">{maxPlayers} Players</p>
-              </div>
-              <div className="bg-palm/10 p-4 rounded-lg border border-palm/20">
-                <p className="text-sm text-foreground/60">Registration Cutoff</p>
-                <p className="font-semibold">{registrationCutoff} Days</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+
 
         <div className="flex justify-center pt-4">
           <Button

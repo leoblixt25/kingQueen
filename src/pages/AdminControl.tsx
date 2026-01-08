@@ -190,8 +190,8 @@ export default function AdminControl() {
                 <p className="text-sm text-foreground/60">Registration Cutoff</p>
                 <p className="font-semibold">{registrationCutoff} Days</p>
               </div>
-              <div className="bg-beach-gradient p-4 rounded-lg border border-primary/20 text-white">
-                <p className="text-sm text-white/80">Registered Players</p>
+              <div className="bg-sand/10 p-4 rounded-lg border border-sand/20">
+                <p className="text-sm text-foreground/60">Registered Players</p>
                 <p className="font-semibold">
                   {playerCounts ? (
                     <>

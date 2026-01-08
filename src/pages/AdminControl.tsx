@@ -24,6 +24,7 @@ export default function AdminControl() {
   const [isSaving, setIsSaving] = useState(false);
   const [existingSettingsId, setExistingSettingsId] = useState<string | null>(null);
   const [playerCounts, setPlayerCounts] = useState<{ maleCount: number; femaleCount: number } | null>(null);
+  const [showTournamentConfig, setShowTournamentConfig] = useState(false);
 
   useEffect(() => {
     loadTournamentSettings();
@@ -205,6 +206,7 @@ export default function AdminControl() {
           </CardContent>
         </Card>
 
+        {showTournamentConfig && (
         <Card className="bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-ocean">
@@ -274,8 +276,16 @@ export default function AdminControl() {
             </div>
           </CardContent>
         </Card>
+        )}
 
         <div className="flex flex-col sm:flex-row gap-4">
+          <Button
+            onClick={() => setShowTournamentConfig(!showTournamentConfig)}
+            className="flex-1 bg-sunset hover:bg-sunset-dark text-white font-semibold py-3 transition-all duration-300 flex items-center justify-center gap-2"
+          >
+            <Crown className="w-4 h-4" />
+            {showTournamentConfig ? 'Hide Configuration' : 'Configure Tournament'}
+          </Button>
           <Button
             onClick={() => navigate('/tournament')}
             className="flex-1 bg-ocean hover:bg-ocean-dark text-white font-semibold py-3 transition-all duration-300 flex items-center justify-center gap-2"

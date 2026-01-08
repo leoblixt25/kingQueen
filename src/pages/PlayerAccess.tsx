@@ -79,22 +79,14 @@ export default function PlayerAccess() {
           King & Queen of the Beach
         </h1>
         
-        <Alert className="mb-8 border-sunset/30 bg-sunset/10">
-          <Info className="h-4 w-4 text-sunset" />
-          <AlertDescription className="text-sunset-dark">
-            <p className="font-medium">Player Access</p>
-            <p className="text-sm mt-1">
-              Choose how you'd like to access the tournament.
-            </p>
-          </AlertDescription>
-        </Alert>
+
         
         <div className="space-y-6">
           <Card className="bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach">
             <CardHeader>
               <CardTitle className="text-center text-ocean font-bold flex items-center justify-center gap-2">
                 <Users className="w-5 h-5" />
-                Player Access
+                {/* Player Access */}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">

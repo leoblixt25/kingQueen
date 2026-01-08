@@ -40,17 +40,7 @@ export default function Landing() {
           King & Queen of the Beach
         </h1>
         
-        <Alert className="mb-8 border-sunset/30 bg-sunset/10">
-          <Info className="h-4 w-4 text-sunset" />
-          <AlertDescription className="text-sunset-dark">
-            <p className="font-medium">Welcome to the Tournament Tracker!</p>
-            <p className="text-sm mt-1">
-              {isAdminRegistered 
-                ? "You're already registered. Choose your access level below." 
-                : "Register as a player or log in as admin to get started."}
-            </p>
-          </AlertDescription>
-        </Alert>
+
         
         <div className="space-y-6">
           <Button

@@ -153,7 +153,7 @@ The losing team will be named Prince and Princess of the Beach. 👑`;
                   const remainingText = parts.slice(emoji ? 2 : 1).join(' ');
                   
                   return (
-                    <p key={index} className="font-bold my-2 text-base text-primary">
+                    <p key={index} className="font-bold my-2 text-base text-ocean">
                       {title} {emoji} {remainingText && <span className="font-normal">{remainingText}</span>}
                     </p>
                   );

@@ -124,7 +124,7 @@ The losing team will be named Prince and Princess of the Beach. 👑`;
         <Dialog open={showInfoModal} onOpenChange={setShowInfoModal}>
           <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Tournament Rules</DialogTitle>
+              <DialogTitle>About Tournament</DialogTitle>
             </DialogHeader>
             <div className="text-sm leading-relaxed max-h-[60vh] overflow-y-auto pr-2">
               {tournamentInfo.split('\n').map((line, index) => {

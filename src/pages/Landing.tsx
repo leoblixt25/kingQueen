@@ -169,8 +169,8 @@ The losing team will be named Prince and Princess of the Beach. 👑`;
           </DialogContent>
         </Dialog>
         
-        <div className="mt-8 text-xs text-foreground/50 text-center">
-          <p>Designed and created by Leo Blixt with a love for beach volleyball</p>
+        <div className="mt-8 text-xs text-foreground/60 text-center">
+          <p>Designed and created by <span className="font-bold text-foreground/80">Leo Blixt</span> with a love for beach volleyball</p>
         </div>
       </div>
     </div>

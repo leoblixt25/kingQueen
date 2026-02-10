@@ -612,7 +612,7 @@ export default function Register() {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="w-full touch-target bg-white/70 border-sand-dark/30 focus:border-ocean"
-                  placeholder="Enter your full name"
+                  placeholder="Enter your name"
                   disabled={!canRegister()}
                 />
               </div>

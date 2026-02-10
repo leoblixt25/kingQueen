@@ -169,13 +169,8 @@ The losing team will be named Prince and Princess of the Beach. 👑`;
           </DialogContent>
         </Dialog>
         
-        <div className="mt-8 text-sm text-foreground/60">
-          <p>🌊 Beach Volleyball Tournament Tracker 🏖️</p>
-          <p className="mt-2 text-xs">
-            {isAdminRegistered 
-              ? "As an authenticated user, you can access both admin and player features." 
-              : "First-time users should register as a player."}
-          </p>
+        <div className="mt-8 text-xs text-foreground/50 text-center">
+          <p>Designed and created by Leo Blixt with a love for beach volleyball</p>
         </div>
       </div>
     </div>

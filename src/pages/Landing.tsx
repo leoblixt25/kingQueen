@@ -43,9 +43,7 @@ export default function Landing() {
     setShowInfoModal(true);
   };
 
-  const tournamentInfo = `**King & Queen Tournament Info**
-
-This tournament is all about good energy, fair play, and enjoying beach volleyball together. Keep it competitive but relaxed, no stress, just great games and positive vibes. 🏖️🏐
+  const tournamentInfo = `This tournament is all about good energy, fair play, and enjoying beach volleyball together. Keep it competitive but relaxed, no stress, just great games and positive vibes. 🏖️🏐
 
 Beach Volleyball Rules 🏐
 Standard beach volleyball rules apply. No bad finger setting, no open-hand receive or attack, and no double touches.
@@ -143,16 +141,6 @@ The losing team will be named Prince and Princess of the Beach. 👑`;
                   'Tiebreaker Rule',
                   'Final Match & Titles'
                 ];
-                
-                // Check if it's the main title
-                if (line.startsWith('**') && line.endsWith('**')) {
-                  const content = line.slice(2, -2);
-                  return (
-                    <p key={index} className="font-bold text-center my-4 text-lg text-primary">
-                      {content}
-                    </p>
-                  );
-                }
                 
                 // Check if the line contains a title
                 const isTitle = titles.some(title => line.startsWith(title));

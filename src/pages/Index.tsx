@@ -15,7 +15,6 @@ import { toast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { supabase } from "@/integrations/supabase/client";
 import { getCurrentUser, isAdmin as checkIsAdmin, adminSignOut, signOut, getCurrentUserTournamentData } from "@/utils/authUtils";
-import { updateFinalMatch } from "@/utils/finalMatchUtils";
 
 interface TournamentSettings {
   id?: string;
@@ -306,12 +305,8 @@ export default function KingQueenOfTheBeach() {
   const handleFinalMatchSubmit = async () => {
     try {
       // Use the updated final match logic based on tournament type
-      await updateFinalMatch(
-        finalMatchScores, 
-        malePlayers, 
-        femalePlayers, 
-        'mixed' // Default to mixed for now
-      );
+      await updateFinalMatchData(finalMatchScores);
+      
       toast({
         title: "Final Match Submitted",
         description: "Championship match results saved successfully",
@@ -333,12 +328,7 @@ export default function KingQueenOfTheBeach() {
   const handleFinalMatchEditSubmit = async () => {
     setIsEditingFinalMatch(false);
     try {
-      await updateFinalMatch(
-        finalMatchScores, 
-        malePlayers, 
-      femalePlayers, 
-        'mixed' // Default to mixed for now
-      );
+      await updateFinalMatchData(finalMatchScores);
       toast({
         title: "Final Match Updated",
         description: "Championship match results updated successfully",

@@ -55,7 +55,7 @@ Match Format ⚔️
 Each player will play 7 matches during the tournament. All matches are played to 21 points. If the score reaches 20–20, the game continues until a team wins by 2 points.
 
 Separate Play 👨‍👩‍👧
-Male and female players compete on separate nets. There are two nets for males and two for females, each set to the correct competition height.
+Male and female players compete on separate nets. There are nets for males and nets for females, each set to the correct competition height.
 
 Different Partners 🤼
 Each match is played with a different partner. Players collect points individually, so aim to perform well in every match.

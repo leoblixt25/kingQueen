@@ -605,7 +605,7 @@ export default function Register() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="name" className="text-foreground font-medium">Full Name</Label>
+                <Label htmlFor="name" className="text-foreground font-medium">Name</Label>
                 <Input
                   id="name"
                   type="text"

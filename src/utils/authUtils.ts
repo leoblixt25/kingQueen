@@ -96,39 +96,28 @@ export const adminSignInWithEmail = async (email: string, password: string): Pro
 };
 
 /**
- * Sign in with Google OAuth
+ * Sign in with Google OAuth - Pure Popup Mode
  */
-export const signInWithGoogle = async (customRedirectTo?: string): Promise<AuthResult> => {
+export const signInWithGoogle = async (): Promise<AuthResult> => {
   try {
-    // First check if we're already in a redirect flow
-    const result = await getRedirectResult(auth);
-    
-    if (result) {
-      // We completed a redirect
-      return {
-        success: true,
-        user: result.user
-      };
-    }
-    
-    // If no redirect result, start popup sign in
+    // Use popup only - no redirects
     const userCredential = await signInWithPopup(auth, googleProvider);
     const user = userCredential.user;
+
+    console.log('✅ Google Sign-In Success:', user.email);
 
     return {
       success: true,
       user: {
         ...user,
         email: user.email,
-        user_metadata: {
-          full_name: user.displayName,
-          picture: user.photoURL
-        }
+        displayName: user.displayName,
+        photoURL: user.photoURL
       }
     };
 
   } catch (error: any) {
-    console.error('Google sign in error:', error);
+    console.error('❌ Google Sign-In Error:', error.code, error.message);
     
     // Handle specific error cases
     if (error.code === 'auth/popup-closed-by-user') {
@@ -139,18 +128,23 @@ export const signInWithGoogle = async (customRedirectTo?: string): Promise<AuthR
     } else if (error.code === 'auth/popup-blocked') {
       return {
         success: false,
-        error: 'Popup was blocked. Please enable popups and try again.'
+        error: 'Popup was blocked by browser. Please enable popups and try again.'
       };
     } else if (error.code === 'auth/unauthorized-domain') {
       return {
         success: false,
-        error: 'This domain is not authorized for Google sign-in. Please add it to Firebase Console.'
+        error: 'This domain is not authorized for Google sign-in. Please contact support.'
+      };
+    } else if (error.code === 'auth/operation-not-allowed') {
+      return {
+        success: false,
+        error: 'Google Sign-In is not enabled. Please contact support.'
       };
     }
     
     return {
       success: false,
-      error: error.message || 'An unexpected error occurred'
+      error: error.message || 'Failed to sign in with Google'
     };
   }
 };

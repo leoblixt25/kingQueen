@@ -67,14 +67,30 @@ export default function AdminLogin() {
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     try {
-      const result = await signInWithGoogle(`${window.location.origin}/admin/login?auth=google`);
+      const result = await signInWithGoogle();
       
       if (result.success) {
+        // Check if user has admin privileges
+        const isAdminUser = await isAdmin();
+        
+        if (!isAdminUser) {
+          // Sign out the unauthorized user
+          await signOut(auth);
+          
+          toast({
+            title: "Access Denied",
+            description: "You don't have admin privileges.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
         toast({
-          title: "Redirecting to Google...",
-          description: "Please complete the authentication process.",
+          title: "Success",
+          description: "Logged in as administrator",
         });
-        // The redirect will happen automatically
+        
+        navigate('/admin/control');
       } else {
         // Handle specific Google provider error
         if (result.error?.includes('provider is not enabled') || result.error?.includes('Unsupported provider')) {
@@ -154,6 +170,20 @@ export default function AdminLogin() {
   useEffect(() => {
     checkGoogleAuthCallback();
   }, []);
+
+  useEffect(() => {
+    // Check if user is already logged in as admin
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        const isAdminUser = await isAdmin();
+        if (isAdminUser) {
+          navigate('/admin/control');
+        }
+      }
+    });
+    
+    return () => unsubscribe();
+  }, [navigate]);
 
   return (
     <div className="min-h-screen bg-sand-gradient px-4 py-6 flex items-center justify-center">

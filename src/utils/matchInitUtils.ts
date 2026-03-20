@@ -1,4 +1,5 @@
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/config/firebase';
+import { collection, getDocs, query, where, addDoc, doc, getDoc } from 'firebase/firestore';
 import { STATIC_MATCHUPS, FEMALE_PLAYERS, MALE_PLAYERS } from './staticMatchups';
 
 /**
@@ -9,32 +10,26 @@ export const initializeMatches = async () => {
   
   try {
     // Check if matches already exist
-    const { data: existingMatches } = await supabase
-      .from('matches')
-      .select('id');
+    const matchesRef = collection(db, 'matches');
+    const snapshot = await getDocs(matchesRef);
 
-    if (existingMatches && existingMatches.length > 0) {
+    if (!snapshot.empty) {
       console.log('Matches already exist, skipping initialization');
       return;
     }
 
     // Get players and sort them according to static order
-    const { data: players, error: playersError } = await supabase
-      .from('players')
-      .select('*');
-
-    if (playersError || !players) {
-      console.error('Error fetching players:', playersError);
-      throw playersError;
-    }
+    const playersRef = collection(db, 'players');
+    const playersSnapshot = await getDocs(playersRef);
+    const players = playersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
     // Sort players according to the static order defined in staticMatchups.ts
     const femalePlayers = FEMALE_PLAYERS.map(name => 
-      players.find(p => p.gender === 'female' && p.name === name)
+      players.find((p: any) => p.gender === 'female' && p.name === name)
     ).filter(Boolean);
     
     const malePlayers = MALE_PLAYERS.map(name =>
-      players.find(p => p.gender === 'male' && p.name === name)
+      players.find((p: any) => p.gender === 'male' && p.name === name)
     ).filter(Boolean);
 
     if (femalePlayers.length !== 8 || malePlayers.length !== 8) {
@@ -74,14 +69,10 @@ export const initializeMatches = async () => {
     });
 
     // Insert all matches
-    const { error: matchesError } = await supabase
-      .from('matches')
-      .insert([...femaleMatches, ...maleMatches]);
-
-    if (matchesError) {
-      console.error('Error inserting matches:', matchesError);
-      throw matchesError;
-    }
+    await Promise.all([
+      ...femaleMatches.map(match => addDoc(matchesRef, match)),
+      ...maleMatches.map(match => addDoc(matchesRef, match))
+    ]);
 
     console.log('Matches initialized successfully');
   } catch (error) {

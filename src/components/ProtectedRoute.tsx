@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { getCurrentUser, isAdmin as checkIsAdmin, checkTournamentRegistration } from "@/utils/authUtils";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/config/firebase";
+import { collection, getDocs, query, where } from "firebase/firestore";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -37,14 +38,12 @@ export default function ProtectedRoute({ children, adminOnly = false }: Protecte
         setIsAuthenticated(true);
         
         // Check if user is registered in the tournament database
-        const { data: player } = await supabase
-          .from('players')
-          .select('*')
-          .eq('email', user.email.toLowerCase())
-          .eq('is_confirmed', true)
-          .single();
+        const playersRef = collection(db, 'players');
+        const q = query(playersRef, where('email', '==', user.email.toLowerCase()), where('is_confirmed', '==', true));
+        const snapshot = await getDocs(q);
         
-        if (player) {
+        if (!snapshot.empty) {
+          const player = snapshot.docs[0].data() as any;
           setIsTournamentRegistered(true);
           // Store registration data locally for consistency
           localStorage.setItem('tournament_registered_email', user.email.toLowerCase());
@@ -60,14 +59,12 @@ export default function ProtectedRoute({ children, adminOnly = false }: Protecte
         if (registeredEmail && registeredName) {
           // If we have local registration data, check if the user is in the database
           try {
-            const { data: player } = await supabase
-              .from('players')
-              .select('*')
-              .eq('email', registeredEmail)
-              .eq('is_confirmed', true)
-              .single();
+            const playersRef = collection(db, 'players');
+            const q = query(playersRef, where('email', '==', registeredEmail), where('is_confirmed', '==', true));
+            const snapshot = await getDocs(q);
             
-            if (player) {
+            if (!snapshot.empty) {
+              const player = snapshot.docs[0].data() as any;
               setIsAuthenticated(true);
               setIsTournamentRegistered(true);
             } else {

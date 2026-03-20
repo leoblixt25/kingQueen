@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Users, LogIn, UserPlus, Info } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { auth, db } from "@/config/firebase";
+import { collection, getDocs, query, where } from "firebase/firestore";
 
 export default function PlayerAccess() {
   const navigate = useNavigate();
@@ -18,19 +19,17 @@ export default function PlayerAccess() {
 
   const checkAuthStatus = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = auth.currentUser;
       setCurrentUser(user);
       
       if (user) {
         // Check if user is already registered for the tournament
-        const { data: player, error } = await supabase
-          .from('players')
-          .select('*')
-          .eq('email', user.email.toLowerCase())
-          .eq('is_confirmed', true)
-          .single();
+        const playersRef = collection(db, 'players');
+        const q = query(playersRef, where('email', '==', user.email?.toLowerCase() || ''), where('is_confirmed', '==', true));
+        const snapshot = await getDocs(q);
 
-        if (player) {
+        if (!snapshot.empty) {
+          const player = snapshot.docs[0].data() as any;
           // Player is already registered, redirect to their division
           toast({
             title: "Welcome Back!",

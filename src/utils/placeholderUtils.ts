@@ -1,4 +1,5 @@
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/config/firebase';
+import { collection, getDocs, query, where, orderBy, limit, doc, deleteDoc, addDoc, updateDoc, writeBatch } from 'firebase/firestore';
 
 /**
  * Reset all players to placeholder names and unconfirmed status
@@ -8,10 +9,8 @@ export const resetPlayersToPlaceholders = async () => {
   console.log('Resetting players to placeholder names...');
   
   try {
-    // First, ensure we have 8 placeholder players for each gender
-    const placeholderPlayers = [];
-    
     // Create female placeholder players
+    const placeholderPlayers = [];
     for (let i = 1; i <= 8; i++) {
       placeholderPlayers.push({
         name: `Female Player ${i}`,
@@ -41,26 +40,18 @@ export const resetPlayersToPlaceholders = async () => {
       });
     }
 
-    // Delete all existing players first
-    const { error: deleteError } = await supabase
-      .from('players')
-      .delete()
-      .neq('id', '00000000-0000-0000-0000-000000000000');
-
-    if (deleteError) {
-      console.error('Error deleting existing players:', deleteError);
-      throw deleteError;
-    }
+    // Delete all existing players using batch operations
+    const playersRef = collection(db, 'players');
+    const snapshot = await getDocs(playersRef);
+    
+    const batch = writeBatch(db);
+    snapshot.docs.forEach((docSnap) => {
+      batch.delete(docSnap.ref);
+    });
+    await batch.commit();
 
     // Insert new placeholder players
-    const { error: insertError } = await supabase
-      .from('players')
-      .insert(placeholderPlayers);
-
-    if (insertError) {
-      console.error('Error inserting placeholder players:', insertError);
-      throw insertError;
-    }
+    await Promise.all(placeholderPlayers.map(player => addDoc(playersRef, player)));
 
     console.log('✅ Successfully reset players to placeholders');
     return true;
@@ -78,22 +69,26 @@ export const getNextAvailablePlaceholder = async (gender: 'male' | 'female') => 
   try {
     const placeholderPrefix = gender === 'male' ? 'Male Player' : 'Female Player';
     
-    const { data: availableSlot, error } = await supabase
-      .from('players')
-      .select('id, name, position')
-      .eq('gender', gender)
-      .ilike('name', `${placeholderPrefix}%`)
-      .eq('is_confirmed', false)
-      .order('position', { ascending: true })
-      .limit(1)
-      .single();
+    const playersRef = collection(db, 'players');
+    const q = query(
+      playersRef,
+      where('gender', '==', gender),
+      where('is_confirmed', '==', false)
+    );
+    
+    const snapshot = await getDocs(q);
+    
+    // Filter for placeholder names client-side since Firestore doesn't support ilike
+    const availableSlots = snapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter((player: any) => player.name.startsWith(placeholderPrefix))
+      .sort((a: any, b: any) => a.position - b.position);
 
-    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-      console.error('Error finding available placeholder:', error);
-      throw error;
+    if (availableSlots.length === 0) {
+      return null;
     }
 
-    return availableSlot;
+    return availableSlots[0];
   } catch (error) {
     console.error('Error in getNextAvailablePlaceholder:', error);
     throw error;
@@ -110,13 +105,11 @@ export const registerPlayerToSlot = async (
 ) => {
   try {
     // Check if email already exists
-    const { data: existingPlayer } = await supabase
-      .from('players')
-      .select('email')
-      .eq('email', email.toLowerCase())
-      .single();
+    const playersRef = collection(db, 'players');
+    const q = query(playersRef, where('email', '==', email.toLowerCase()));
+    const snapshot = await getDocs(q);
 
-    if (existingPlayer) {
+    if (!snapshot.empty) {
       throw new Error('EMAIL_ALREADY_EXISTS');
     }
 
@@ -128,25 +121,18 @@ export const registerPlayerToSlot = async (
     }
 
     // Update the placeholder with real player info
-    const { error } = await supabase
-      .from('players')
-      .update({
-        name: name.trim(),
-        email: email.trim().toLowerCase(),
-        is_confirmed: true,
-        registered_at: new Date().toISOString()
-      })
-      .eq('id', placeholder.id);
+    const playerRef = doc(db, 'players', placeholder.id);
+    await updateDoc(playerRef, {
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      is_confirmed: true,
+      registered_at: new Date().toISOString()
+    });
 
-    if (error) {
-      console.error('Error updating placeholder:', error);
-      throw error;
-    }
-
-    console.log(`✅ Successfully registered ${name} to position ${placeholder.position}`);
+    console.log(`✅ Successfully registered ${name} to position ${(placeholder as any).position}`);
     return {
       success: true,
-      position: placeholder.position,
+      position: (placeholder as any).position,
       playerId: placeholder.id
     };
 
@@ -162,39 +148,36 @@ export const registerPlayerToSlot = async (
 export const unregisterPlayer = async (email: string) => {
   try {
     // Find the confirmed player
-    const { data: player, error: findError } = await supabase
-      .from('players')
-      .select('id, name, gender, position')
-      .eq('email', email.toLowerCase())
-      .eq('is_confirmed', true)
-      .single();
+    const playersRef = collection(db, 'players');
+    const q = query(
+      playersRef,
+      where('email', '==', email.toLowerCase()),
+      where('is_confirmed', '==', true)
+    );
+    const snapshot = await getDocs(q);
 
-    if (findError || !player) {
+    if (snapshot.empty) {
       throw new Error('PLAYER_NOT_FOUND');
     }
+
+    const playerDoc = snapshot.docs[0];
+    const player = { id: playerDoc.id, ...playerDoc.data() } as any;
 
     // Convert back to placeholder
     const placeholderName = player.gender === 'male' 
       ? `Male Player ${player.position}` 
       : `Female Player ${player.position}`;
 
-    const { error } = await supabase
-      .from('players')
-      .update({
-        name: placeholderName,
-        email: null,
-        is_confirmed: false,
-        registered_at: null,
-        points: 0,
-        total_scores: 0,
-        matches_played: 0
-      })
-      .eq('id', player.id);
-
-    if (error) {
-      console.error('Error converting player back to placeholder:', error);
-      throw error;
-    }
+    const playerRef = doc(db, 'players', player.id);
+    await updateDoc(playerRef, {
+      name: placeholderName,
+      email: null,
+      is_confirmed: false,
+      registered_at: null,
+      points: 0,
+      total_scores: 0,
+      matches_played: 0
+    });
 
     console.log(`✅ Successfully unregistered ${player.name} from position ${player.position}`);
     return true;

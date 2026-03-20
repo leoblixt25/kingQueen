@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Crown, Users, Info } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { supabase } from "@/integrations/supabase/client";
+import { auth } from "@/config/firebase";
 import {
   Dialog,
   DialogContent,
@@ -22,7 +22,7 @@ export default function Landing() {
 
   const checkAdminStatus = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = auth.currentUser;
       // In a real app, you would check if the user has admin role
       // For now, we'll just check if user is authenticated
       setIsAdminRegistered(!!user);

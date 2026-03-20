@@ -15,7 +15,7 @@ import {
   Info
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { auth } from "@/config/firebase";
 import { signInWithEmail, signInWithGoogle, isAdmin, getCurrentUserTournamentData } from "@/utils/authUtils";
 
 export default function SignIn() {
@@ -37,7 +37,7 @@ export default function SignIn() {
   const handleGoogleAuthCallback = async () => {
     try {
       // Get current user after Google auth
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = auth.currentUser;
       
       if (user) {
         // Check if user is registered for the tournament

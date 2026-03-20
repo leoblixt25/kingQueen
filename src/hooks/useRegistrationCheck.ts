@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/config/firebase';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 
 interface RegistrationStatus {
   isRegistered: boolean;
@@ -22,20 +23,10 @@ export const useRegistrationCheck = (): RegistrationStatus => {
   const checkRegistrationStatus = async () => {
     try {
       // For now, we'll check if there are any confirmed players
-      // In a real app, you'd check against the current user's session
-      const { data: confirmedPlayers, error } = await supabase
-        .from('players')
-        .select('*')
-        .eq('is_confirmed', true);
-
-      if (error) {
-        console.error('Error checking registration:', error);
-        setIsLoading(false);
-        return;
-      }
-
-      // For demo purposes, if there are confirmed players, consider the user registered
-      // In production, you'd check against the authenticated user's email
+      const playersRef = collection(db, 'players');
+      const q = query(playersRef, where('is_confirmed', '==', true));
+      const snapshot = await getDocs(q);
+      const confirmedPlayers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       const hasConfirmedPlayers = confirmedPlayers && confirmedPlayers.length > 0;
       
       setIsRegistered(hasConfirmedPlayers);

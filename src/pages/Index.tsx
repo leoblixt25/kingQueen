@@ -13,7 +13,8 @@ import { AdminPanel } from "@/components/AdminPanel";
 import { PlayerUnregistration } from "@/components/PlayerUnregistration";
 import { toast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
-import { supabase } from "@/integrations/supabase/client";
+import { auth, db } from "@/config/firebase";
+import { collection, getDocs, query, where, writeBatch } from "firebase/firestore";
 import { getCurrentUser, isAdmin as checkIsAdmin, adminSignOut, signOut, getCurrentUserTournamentData } from "@/utils/authUtils";
 
 interface TournamentSettings {
@@ -101,19 +102,12 @@ export default function KingQueenOfTheBeach() {
 
   const loadTournamentSettings = async () => {
     try {
-      const { data, error } = await supabase
-        .from('settings')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        throw error;
-      }
-
-      if (data) {
-        setTournamentSettings(data);
+      const settingsRef = collection(db, 'tournamentSettings');
+      const snapshot = await getDocs(settingsRef);
+      
+      if (!snapshot.empty) {
+        const firstDoc = snapshot.docs[0];
+        setTournamentSettings(firstDoc.data() as any);
       }
     } catch (error) {
       console.error('Error loading tournament settings:', error);
@@ -151,14 +145,12 @@ export default function KingQueenOfTheBeach() {
         if (localEmail && localName) {
           // Check if user exists in the database
           try {
-            const { data: player } = await supabase
-              .from('players')
-              .select('*')
-              .eq('email', localEmail)
-              .eq('is_confirmed', true)
-              .single();
+            const playersRef = collection(db, 'players');
+            const q = query(playersRef, where('email', '==', localEmail), where('is_confirmed', '==', true));
+            const snapshot = await getDocs(q);
             
-            if (player) {
+            if (!snapshot.empty) {
+              const player = snapshot.docs[0].data() as any;
               setUserGender(player.gender as Gender);
               setGender(player.gender as Gender);
             } else {
@@ -349,12 +341,14 @@ export default function KingQueenOfTheBeach() {
     }
     
     try {
-      const { error } = await supabase
-        .from('final_matches')
-        .delete()
-        .eq('is_completed', true);
+      const finalMatchesRef = collection(db, 'finalMatches');
+      const snapshot = await getDocs(finalMatchesRef);
       
-      if (error) throw error;
+      const batch = writeBatch(db);
+      snapshot.docs.forEach(docSnap => {
+        batch.delete(docSnap.ref);
+      });
+      await batch.commit();
       
       const resetScores: FinalMatchScores = { 
         team1: [null, null, null], 

@@ -5,10 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, LogIn, Info, Eye, EyeOff } from "lucide-react";
-import { isAdmin, signInWithGoogle } from "@/utils/authUtils";
+import { isAdmin, signInWithGoogle, adminSignInWithEmail } from "@/utils/authUtils";
+import { auth } from "@/config/firebase";
+import { signOut } from "firebase/auth";
 
 export default function AdminLogin() {
   const navigate = useNavigate();
@@ -26,16 +27,8 @@ export default function AdminLogin() {
     try {
       console.log("Attempting login with email:", email);
       
-      // Sign in with Supabase Auth
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        console.error("Supabase login error:", error);
-        throw error;
-      }
+      // Sign in with Firebase Auth
+      await adminSignInWithEmail(email, password);
 
       console.log("Login successful, checking admin status...");
       
@@ -44,8 +37,6 @@ export default function AdminLogin() {
       console.log("Admin check result:", isAdminUser);
       
       if (!isAdminUser) {
-        // Sign out the user since they're not an admin
-        await supabase.auth.signOut();
         throw new Error("Access denied. Please check your credentials.");
       }
 
@@ -57,7 +48,6 @@ export default function AdminLogin() {
       navigate('/admin/control');
     } catch (error: any) {
       console.error("Login error:", error);
-      // Use a generic error message to avoid exposing sensitive information
       const genericErrorMessage = "Invalid login credentials. Please check your email and password.";
       setError(genericErrorMessage);
       toast({
@@ -120,7 +110,7 @@ export default function AdminLogin() {
         setIsLoading(true);
         
         // Get the current user
-        const { data: { user } } = await supabase.auth.getUser();
+        const user = auth.currentUser;
         
         if (user) {
           // Check if user has admin privileges
@@ -128,7 +118,7 @@ export default function AdminLogin() {
           
           if (!isAdminUser) {
             // Sign out the unauthorized user
-            await supabase.auth.signOut();
+            await signOut();
             
             setError("Access denied.");
             toast({

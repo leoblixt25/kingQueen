@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/config/firebase";
+import { collection, getDocs, query, where, doc, setDoc, writeBatch, orderBy, limit } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 import { Calendar, Users, Trash2, Settings, Crown, Mail } from "lucide-react";
 import { resetPlayersToPlaceholders } from "@/utils/placeholderUtils";
@@ -43,32 +44,20 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
   const loadAdminData = async () => {
     try {
       // Load confirmed players
-      const { data: players, error: playersError } = await supabase
-        .from('players')
-        .select('id, name, email, gender, registered_at')
-        .eq('is_confirmed', true)
-        .order('registered_at', { ascending: true });
+      const playersRef = collection(db, 'players');
+      const q = query(playersRef, where('is_confirmed', '==', true));
+      const snapshot = await getDocs(q);
+      const players = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ConfirmedPlayer));
 
-      if (playersError) {
-        console.error('Error loading players:', playersError);
-      } else {
-        setConfirmedPlayers(players || []);
-      }
+      setConfirmedPlayers(players || []);
 
       // Load tournament settings
-      const { data: settingsData, error: settingsError } = await supabase
-        .from('settings')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
+      const settingsRef = collection(db, 'tournamentSettings');
+      const settingsSnap = await getDocs(settingsRef);
+      const settingsData = settingsSnap.empty ? null : settingsSnap.docs[0].data();
 
-      if (settingsError) {
-        console.error('Error loading settings:', settingsError);
-      } else {
-        setSettings(settingsData);
-        setTournamentDate(settingsData?.tournament_date || '');
-      }
+      setSettings(settingsData as any);
+      setTournamentDate(settingsData?.tournament_date || '');
     } catch (error) {
       console.error('Error loading admin data:', error);
     } finally {
@@ -90,23 +79,16 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
     try {
       if (settings) {
         // Update existing settings
-        const { error } = await supabase
-          .from('settings')
-          .update({ tournament_date: tournamentDate })
-          .eq('id', settings.id);
-
-        if (error) throw error;
+        const settingsRef = doc(db, 'tournamentSettings', settings.id);
+        await setDoc(settingsRef, { tournament_date: tournamentDate }, { merge: true });
       } else {
         // Create new settings
-        const { error } = await supabase
-          .from('settings')
-          .insert({
-            tournament_date: tournamentDate,
-            max_players_per_gender: 8,
-            registration_cutoff_days: 3
-          });
-
-        if (error) throw error;
+        const settingsRef = doc(collection(db, 'tournamentSettings'));
+        await setDoc(settingsRef, {
+          tournament_date: tournamentDate,
+          max_players_per_gender: 8,
+          registration_cutoff_days: 3
+        });
       }
 
       toast({
@@ -133,12 +115,10 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
     }
 
     try {
-      const { error } = await supabase
-        .from('players')
-        .delete()
-        .eq('id', playerId);
-
-      if (error) throw error;
+      const playerRef = doc(db, 'players', playerId);
+      const batch = writeBatch(db);
+      batch.delete(playerRef);
+      await batch.commit();
 
       toast({
         title: "Player Removed",

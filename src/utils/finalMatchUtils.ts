@@ -1,5 +1,6 @@
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/config/firebase';
 import { FinalMatchScores, Player } from '@/types';
+import { collection, getDocs, query, where, doc, setDoc, getDoc } from 'firebase/firestore';
 
 export const updateFinalMatch = async (scores: FinalMatchScores, malePlayers: Player[], femalePlayers: Player[], tournamentType: string) => {
   const team1Wins = scores.team1.filter((score, index) => 
@@ -15,10 +16,12 @@ export const updateFinalMatch = async (scores: FinalMatchScores, malePlayers: Pl
   const team2TotalScore = scores.team2.reduce((sum, score) => sum + (score || 0), 0);
 
   // Get player IDs by looking them up in the database
-  const { data: allPlayers } = await supabase.from('players').select('id, name, gender');
+  const playersRef = collection(db, 'players');
+  const snapshot = await getDocs(playersRef);
+  const allPlayers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   
   const getPlayerId = (name: string, gender: string) => {
-    return allPlayers?.find(p => p.name === name && p.gender === gender)?.id || null;
+    return allPlayers.find((p: any) => p.name === name && p.gender === gender)?.id || null;
   };
 
   let winnerTeam = null;
@@ -73,32 +76,26 @@ export const updateFinalMatch = async (scores: FinalMatchScores, malePlayers: Pl
     }
   }
 
-  const { error } = await supabase
-    .from('final_matches')
-    .upsert({
-      team1_score: team1TotalScore,
-      team2_score: team2TotalScore,
-      team1_set1: scores.team1[0],
-      team1_set2: scores.team1[1], 
-      team1_set3: scores.team1[2],
-      team2_set1: scores.team2[0],
-      team2_set2: scores.team2[1],
-      team2_set3: scores.team2[2],
-      is_completed: true,
-      winner_team: winnerTeam,
-      male_king_id: maleKingId,
-      female_queen_id: femaleQueenId,
-      male_prince_id: malePrinceId,
-      female_princess_id: femalePrincessId,
-      completed_at: new Date().toISOString()
-    });
+  const finalMatchRef = doc(db, 'finalMatches', 'current');
+  await setDoc(finalMatchRef, {
+    team1_score: team1TotalScore,
+    team2_score: team2TotalScore,
+    team1_set1: scores.team1[0],
+    team1_set2: scores.team1[1], 
+    team1_set3: scores.team1[2],
+    team2_set1: scores.team2[0],
+    team2_set2: scores.team2[1],
+    team2_set3: scores.team2[2],
+    is_completed: true,
+    winner_team: winnerTeam,
+    male_king_id: maleKingId,
+    female_queen_id: femaleQueenId,
+    male_prince_id: malePrinceId,
+    female_princess_id: femalePrincessId,
+    completed_at: new Date().toISOString()
+  }, { merge: true });
 
-  if (error) {
-    console.error('Error updating final match:', error);
-    throw error;
-  } else {
-    console.log('✅ Final match saved successfully with individual set scores');
-  }
+  console.log('✅ Final match saved successfully with individual set scores');
 };
 
 // Function to automatically create final match bracket based on rankings

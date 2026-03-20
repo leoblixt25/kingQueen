@@ -1,4 +1,5 @@
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/config/firebase';
+import { collection, getDocs, writeBatch, doc, query } from 'firebase/firestore';
 import { initializePlayers } from './playerInitUtils';
 import { initializeMatches } from './matchInitUtils';
 
@@ -9,40 +10,30 @@ export const resetScoresOnly = async () => {
   console.log('Resetting scores only...');
   
   try {
-    // Execute all resets in parallel for better performance
-    const [playersResult, matchesResult, finalResult] = await Promise.allSettled([
-      // Reset all player points and total scores
-      supabase
-        .from('players')
-        .update({ points: 0, total_scores: 0 })
-        .neq('id', '00000000-0000-0000-0000-000000000000'),
-      
-      // Reset all match scores
-      supabase
-        .from('matches')
-        .update({ score1: 0, score2: 0, is_completed: false })
-        .neq('id', '00000000-0000-0000-0000-000000000000'),
-      
-      // Reset final match
-      supabase
-        .from('final_matches')
-        .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000')
-    ]);
-
-    // Check for errors
-    if (playersResult.status === 'rejected') {
-      console.error('Error resetting player scores:', playersResult.reason);
-      throw playersResult.reason;
-    }
-    if (matchesResult.status === 'rejected') {
-      console.error('Error resetting match scores:', matchesResult.reason);
-      throw matchesResult.reason;
-    }
-    if (finalResult.status === 'rejected') {
-      console.error('Error resetting final match:', finalResult.reason);
-      throw finalResult.reason;
-    }
+    const batch = writeBatch(db);
+    
+    // Reset all player points and total scores
+    const playersRef = collection(db, 'players');
+    const playersSnap = await getDocs(playersRef);
+    playersSnap.docs.forEach(playerDoc => {
+      batch.update(playerDoc.ref, { points: 0, total_scores: 0 });
+    });
+    
+    // Reset all match scores
+    const matchesRef = collection(db, 'matches');
+    const matchesSnap = await getDocs(matchesRef);
+    matchesSnap.docs.forEach(matchDoc => {
+      batch.update(matchDoc.ref, { score1: 0, score2: 0, is_completed: false });
+    });
+    
+    // Delete final match
+    const finalMatchesRef = collection(db, 'finalMatches');
+    const finalMatchesSnap = await getDocs(finalMatchesRef);
+    finalMatchesSnap.docs.forEach(doc => {
+      batch.delete(doc.ref);
+    });
+    
+    await batch.commit();
 
     console.log('Scores reset successfully');
   } catch (error) {
@@ -58,17 +49,25 @@ export const fullTournamentReset = async () => {
   console.log('Performing full tournament reset...');
   
   try {
-    // Delete in correct order (foreign key constraints) - execute in parallel where possible
-    await Promise.all([
-      supabase.from('final_matches').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-      supabase.from('matches').delete().neq('id', '00000000-0000-0000-0000-000000000000')
-    ]);
+    // Delete everything using batch operations
+    const batch = writeBatch(db);
     
-    // Delete players after matches are deleted (foreign key constraint)
-    await supabase.from('players').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    // Delete final matches
+    const finalMatchesRef = collection(db, 'finalMatches');
+    const finalMatchesSnap = await getDocs(finalMatchesRef);
+    finalMatchesSnap.docs.forEach(doc => batch.delete(doc.ref));
     
-    // Minimal wait for database consistency
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // Delete matches
+    const matchesRef = collection(db, 'matches');
+    const matchesSnap = await getDocs(matchesRef);
+    matchesSnap.docs.forEach(doc => batch.delete(doc.ref));
+    
+    // Delete players
+    const playersRef = collection(db, 'players');
+    const playersSnap = await getDocs(playersRef);
+    playersSnap.docs.forEach(doc => batch.delete(doc.ref));
+    
+    await batch.commit();
     
     // Reinitialize players first
     await initializePlayers();

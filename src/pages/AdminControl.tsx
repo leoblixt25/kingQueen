@@ -5,7 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/config/firebase";
+import { collection, getDocs, query, orderBy, limit, doc, setDoc, where } from "firebase/firestore";
+import { signOut } from "@/utils/authUtils";
 import { LogOut, Save, Crown, Users } from "lucide-react";
 
 interface TournamentSettings {
@@ -32,18 +34,11 @@ export default function AdminControl() {
 
   const loadTournamentSettings = async () => {
     try {
-      const { data, error } = await supabase
-        .from('settings')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        throw error;
-      }
-
-      if (data) {
+      const settingsRef = collection(db, 'tournamentSettings');
+      const snapshot = await getDocs(query(settingsRef, orderBy('created_at', 'desc'), limit(1)));
+      
+      if (!snapshot.empty) {
+        const data = snapshot.docs[0].data() as TournamentSettings & { id: string };
         setTournamentDate(data.tournament_date);
         setMaxPlayers(data.max_players_per_gender || 8);
         setRegistrationCutoff(data.registration_cutoff_days || 3);
@@ -69,14 +64,13 @@ export default function AdminControl() {
 
   const loadPlayerCounts = async () => {
     try {
-      const { data: players } = await supabase
-        .from('players')
-        .select('gender, is_confirmed')
-        .eq('is_confirmed', true);
+      const playersRef = collection(db, 'players');
+      const snapshot = await getDocs(query(playersRef, where('is_confirmed', '==', true)));
+      const players = snapshot.docs.map(doc => doc.data() as any);
       
       if (players) {
-        const maleCount = players.filter(p => p.gender === 'male').length;
-        const femaleCount = players.filter(p => p.gender === 'female').length;
+        const maleCount = players.filter((p: any) => p.gender === 'male').length;
+        const femaleCount = players.filter((p: any) => p.gender === 'female').length;
         setPlayerCounts({ maleCount, femaleCount });
       }
     } catch (error) {
@@ -94,23 +88,16 @@ export default function AdminControl() {
         updated_at: new Date().toISOString(),
       };
 
-      let error;
+      let result;
       if (existingSettingsId) {
         // Update existing settings
-        const result = await supabase
-          .from('settings')
-          .update(settingsData)
-          .eq('id', existingSettingsId);
-        error = result.error;
+        const settingsRef = doc(db, 'tournamentSettings', existingSettingsId);
+        result = await setDoc(settingsRef, settingsData, { merge: true });
       } else {
         // Insert new settings
-        const result = await supabase
-          .from('settings')
-          .insert(settingsData);
-        error = result.error;
+        const settingsRef = doc(collection(db, 'tournamentSettings'));
+        result = await setDoc(settingsRef, settingsData);
       }
-
-      if (error) throw error;
 
       toast({
         title: "Success",
@@ -130,7 +117,7 @@ export default function AdminControl() {
 
   const handleLogout = async () => {
     try {
-      await supabase.auth.signOut();
+      await signOut();
       toast({
         title: "Logged Out",
         description: "You have been successfully logged out",

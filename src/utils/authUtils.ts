@@ -1,4 +1,6 @@
-import { supabase } from '@/integrations/supabase/client';
+import { auth, db, googleProvider } from '@/config/firebase';
+import { signInWithPopup, signOut as firebaseSignOut, createUserWithEmailAndPassword, updateProfile, signInWithEmailAndPassword } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { registerPlayerToSlot } from './placeholderUtils';
 
 export interface AuthResult {
@@ -19,55 +21,35 @@ export const signUpWithEmail = async (
 ): Promise<AuthResult> => {
   try {
     // First, check if we can register for the tournament
-    const { data: existingPlayer } = await supabase
-      .from('players')
-      .select('email')
-      .eq('email', email.toLowerCase())
-      .single();
+    const playerRef = doc(db, 'players', email.toLowerCase());
+    const playerSnap = await getDoc(playerRef);
 
-    if (existingPlayer) {
+    if (playerSnap.exists()) {
       return {
         success: false,
         error: 'This email is already registered for the tournament'
       };
     }
 
-    // Sign up with Supabase Auth
-    const { data, error } = await supabase.auth.signUp({
-      email: email.toLowerCase(),
-      password,
-      options: {
-        data: {
-          full_name: name,
-          tournament_gender: gender,
-          tournament_role: 'player'
-        }
-      }
+    // Sign up with Firebase Auth
+    const userCredential = await createUserWithEmailAndPassword(auth, email.toLowerCase(), password);
+    const user = userCredential.user;
+
+    // Update user profile with name
+    await updateProfile(user, {
+      displayName: name
     });
 
-    if (error) {
-      return {
-        success: false,
-        error: error.message
-      };
-    }
-
-    if (data.user && !data.user.email_confirmed_at) {
-      return {
-        success: true,
-        user: data.user,
-        needsConfirmation: true
-      };
-    }
-
-    // If email is already confirmed, register for tournament
-    if (data.user?.email_confirmed_at) {
-      await registerPlayerToSlot(name, email, gender);
-    }
+    // Register for tournament
+    await registerPlayerToSlot(name, email, gender);
 
     return {
       success: true,
-      user: data.user
+      user: {
+        ...user,
+        email: user.email,
+        user_metadata: { full_name: name }
+      }
     };
 
   } catch (error: any) {
@@ -83,21 +65,19 @@ export const signUpWithEmail = async (
  */
 export const signInWithEmail = async (email: string, password: string): Promise<AuthResult> => {
   try {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: email.toLowerCase(),
-      password
-    });
-
-    if (error) {
-      return {
-        success: false,
-        error: error.message
-      };
-    }
+    const userCredential = await signInWithEmailAndPassword(auth, email.toLowerCase(), password);
+    const user = userCredential.user;
 
     return {
       success: true,
-      user: data.user
+      user: {
+        ...user,
+        email: user.email,
+        user_metadata: user.providerData[0] ? { 
+          full_name: user.displayName,
+          picture: user.photoURL 
+        } : {}
+      }
     };
 
   } catch (error: any) {
@@ -109,27 +89,30 @@ export const signInWithEmail = async (email: string, password: string): Promise<
 };
 
 /**
+ * Admin sign in with email and password (alias for signInWithEmail)
+ */
+export const adminSignInWithEmail = async (email: string, password: string): Promise<AuthResult> => {
+  return signInWithEmail(email, password);
+};
+
+/**
  * Sign in with Google OAuth
  */
 export const signInWithGoogle = async (customRedirectTo?: string): Promise<AuthResult> => {
   try {
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: customRedirectTo || `${window.location.origin}/?auth=callback`
-      }
-    });
-
-    if (error) {
-      return {
-        success: false,
-        error: error.message
-      };
-    }
+    const result = await signInWithPopup(auth, googleProvider);
+    const user = result.user;
 
     return {
       success: true,
-      user: data
+      user: {
+        ...user,
+        email: user.email,
+        user_metadata: {
+          full_name: user.displayName,
+          picture: user.photoURL
+        }
+      }
     };
 
   } catch (error: any) {
@@ -144,15 +127,14 @@ export const signInWithGoogle = async (customRedirectTo?: string): Promise<AuthR
  * Sign out current user
  */
 export const signOut = async (): Promise<void> => {
-  await supabase.auth.signOut();
+  await firebaseSignOut(auth);
 };
 
 /**
  * Get current authenticated user
  */
 export const getCurrentUser = async () => {
-  const { data: { user } } = await supabase.auth.getUser();
-  return user;
+  return auth.currentUser;
 };
 
 /**
@@ -160,19 +142,22 @@ export const getCurrentUser = async () => {
  */
 export const getCurrentUserTournamentData = async () => {
   try {
-    const user = await getCurrentUser();
+    const user = auth.currentUser;
     if (!user?.email) {
       return null;
     }
 
-    const { data: player } = await supabase
-      .from('players')
-      .select('*')
-      .eq('email', user.email.toLowerCase())
-      .eq('is_confirmed', true)
-      .single();
+    const playerRef = doc(db, 'players', user.email.toLowerCase());
+    const playerSnap = await getDoc(playerRef);
 
-    return player;
+    if (playerSnap.exists()) {
+      return { 
+        id: playerSnap.id, 
+        ...playerSnap.data() as any 
+      };
+    }
+
+    return null;
   } catch (error) {
     console.error('Error getting user tournament data:', error);
     return null;
@@ -183,14 +168,17 @@ export const getCurrentUserTournamentData = async () => {
  * Check if user is registered for tournament
  */
 export const checkTournamentRegistration = async (email: string) => {
-  const { data: player } = await supabase
-    .from('players')
-    .select('*')
-    .eq('email', email.toLowerCase())
-    .eq('is_confirmed', true)
-    .single();
+  const playerRef = doc(db, 'players', email.toLowerCase());
+  const playerSnap = await getDoc(playerRef);
 
-  return player;
+  if (playerSnap.exists()) {
+    return { 
+      id: playerSnap.id, 
+      ...playerSnap.data() as any 
+    };
+  }
+
+  return null;
 };
 
 /**
@@ -213,7 +201,8 @@ export const isAdmin = async (): Promise<boolean> => {
     }
 
     // Check if user metadata contains admin role
-    if (user.user_metadata?.role === 'admin' || user.user_metadata?.is_admin === true) {
+    const userMetadata = (user as any).user_metadata || {};
+    if (userMetadata.role === 'admin' || userMetadata.is_admin === true) {
       console.log("User has admin role in metadata");
       return true;
     }

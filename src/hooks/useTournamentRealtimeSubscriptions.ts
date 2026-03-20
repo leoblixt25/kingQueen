@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { onSnapshot, collection } from 'firebase/firestore';
+import { db } from '@/config/firebase';
 
 interface UseRealtimeSubscriptionsProps {
   loadPlayersData: () => Promise<void>;
@@ -15,47 +16,27 @@ export const useTournamentRealtimeSubscriptions = ({
   useEffect(() => {
     console.log('🔔 Setting up real-time subscriptions...');
 
-    const playersChannel = supabase
-      .channel('players-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, (payload) => {
-        console.log('🔁 Players table changed - reloading data', payload);
-        loadPlayersData();
-      })
-      .subscribe();
+    // Set up Firestore realtime listeners for each collection
+    const playersUnsubscribe = onSnapshot(collection(db, 'players'), () => {
+      console.log('🔁 Players collection changed - reloading data');
+      loadPlayersData();
+    });
 
-    const matchesChannel = supabase
-      .channel('matches-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, (payload) => {
-        console.log('🔁 Matches table changed - reloading data', payload);
-        loadMatchesData();
-      })
-      .subscribe();
+    const matchesUnsubscribe = onSnapshot(collection(db, 'matches'), () => {
+      console.log('🔁 Matches collection changed - reloading data');
+      loadMatchesData();
+    });
 
-    const finalMatchChannel = supabase
-      .channel('final-match-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'final_matches' }, (payload) => {
-        console.log('🔁 Final match table changed - reloading data', payload);
-        loadFinalMatchData();
-      })
-      .subscribe();
-
-    const refreshChannel = supabase
-      .channel('app-refresh')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'app_refresh' }, (payload) => {
-        console.log('⚙️ App refresh triggered - updating data without page reload:', payload);
-        // Instead of full page reload, just refresh the data
-        loadPlayersData();
-        loadMatchesData();
-        loadFinalMatchData();
-      })
-      .subscribe();
+    const finalMatchUnsubscribe = onSnapshot(collection(db, 'finalMatches'), () => {
+      console.log('🔁 Final match collection changed - reloading data');
+      loadFinalMatchData();
+    });
 
     return () => {
       console.log('🧹 Cleaning up real-time subscriptions...');
-      supabase.removeChannel(playersChannel);
-      supabase.removeChannel(matchesChannel);
-      supabase.removeChannel(finalMatchChannel);
-      supabase.removeChannel(refreshChannel);
+      playersUnsubscribe();
+      matchesUnsubscribe();
+      finalMatchUnsubscribe();
     };
   }, [loadPlayersData, loadMatchesData, loadFinalMatchData]);
 };

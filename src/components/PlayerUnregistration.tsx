@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { AlertTriangle, Mail, UserX } from "lucide-react";
 import { unregisterPlayer } from "@/utils/placeholderUtils";
@@ -31,34 +30,6 @@ export function PlayerUnregistration({ onClose, onSuccess }: PlayerUnregistratio
     setIsUnregistering(true);
 
     try {
-      // Check if player can unregister
-      const { data: canUnregister, error: checkError } = await (supabase as any)
-        .rpc('can_unregister', { player_email: email.toLowerCase() });
-
-      if (checkError) {
-        console.error('Error checking unregistration eligibility:', checkError);
-        toast({
-          title: "Error",
-          description: "Failed to check registration status",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (!canUnregister) {
-        toast({
-          title: "Cannot Unregister",
-          description: "Registration cannot be cancelled at this time. Either you're not registered or it's too close to the tournament date.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Confirm unregistration
-      if (!window.confirm(`Are you sure you want to cancel your registration for the tournament?`)) {
-        return;
-      }
-
       // Use the new unregistration system
       await unregisterPlayer(email);
 

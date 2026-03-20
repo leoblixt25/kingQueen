@@ -1,5 +1,6 @@
 
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/config/firebase';
+import { collection, getDocs, addDoc, query, where, doc, updateDoc } from 'firebase/firestore';
 
 // Define match combinations (exactly 14 matches)
 export const MATCH_COMBINATIONS = [
@@ -13,16 +14,19 @@ export const initializeMatches = async () => {
   console.log('Initializing matches...');
   
   // Get players to create matches
-  const { data: players, error } = await supabase.from('players').select('*');
-  if (error || !players) {
-    console.error('Error fetching players for match initialization:', error);
+  const playersRef = collection(db, 'players');
+  const snapshot = await getDocs(playersRef);
+  const players = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  
+  if (!players || players.length === 0) {
+    console.error('Error fetching players for match initialization');
     return;
   }
 
   console.log('Players for match initialization:', players);
 
-  const femalePlayers = players.filter(p => p.gender === 'female');
-  const malePlayers = players.filter(p => p.gender === 'male');
+  const femalePlayers = players.filter((p: any) => p.gender === 'female');
+  const malePlayers = players.filter((p: any) => p.gender === 'male');
 
   console.log('Female players for matches:', femalePlayers.length);
   console.log('Male players for matches:', malePlayers.length);
@@ -33,11 +37,10 @@ export const initializeMatches = async () => {
   }
 
   // Check if matches already exist to prevent duplicates
-  const { data: existingMatches } = await supabase
-    .from('matches')
-    .select('id');
+  const matchesRef = collection(db, 'matches');
+  const matchesSnap = await getDocs(matchesRef);
 
-  if (existingMatches && existingMatches.length > 0) {
+  if (!matchesSnap.empty) {
     console.log('Matches already exist, skipping initialization');
     return;
   }
@@ -59,14 +62,8 @@ export const initializeMatches = async () => {
       };
     });
 
-    const { error: femaleMatchError } = await supabase
-      .from('matches')
-      .insert(femaleMatches);
-
-    if (femaleMatchError) {
-      console.error('Error inserting female matches:', femaleMatchError);
-      return;
-    }
+    // Insert female matches in parallel
+    await Promise.all(femaleMatches.map(match => addDoc(matchesRef, match)));
 
     // Create male matches
     const maleMatches = MATCH_COMBINATIONS.map((combination, index) => {
@@ -84,14 +81,8 @@ export const initializeMatches = async () => {
       };
     });
 
-    const { error: maleMatchError } = await supabase
-      .from('matches')
-      .insert(maleMatches);
-
-    if (maleMatchError) {
-      console.error('Error inserting male matches:', maleMatchError);
-      return;
-    }
+    // Insert male matches in parallel
+    await Promise.all(maleMatches.map(match => addDoc(matchesRef, match)));
 
     console.log('Matches initialized successfully - 14 female and 14 male matches');
     
@@ -105,16 +96,10 @@ export const updateMatchScore = async (matchIndex: number, score1: number, score
   
   try {
     // First, get the match to update
-    const { data: matches, error: fetchError } = await supabase
-      .from('matches')
-      .select('id')
-      .eq('gender', gender)
-      .order('match_number');
-
-    if (fetchError) {
-      console.error('Error fetching matches:', fetchError);
-      return null;
-    }
+    const matchesRef = collection(db, 'matches');
+    const q = query(matchesRef, where('gender', '==', gender));
+    const snapshot = await getDocs(q);
+    const matches = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
     if (!matches || matchIndex >= matches.length) {
       console.error('Invalid match index:', matchIndex, 'Total matches:', matches?.length);
@@ -125,23 +110,14 @@ export const updateMatchScore = async (matchIndex: number, score1: number, score
     console.log('Updating match with ID:', matchId);
 
     // Update the match - only set is_submitted to true if not editing or if it's a new submission
-    const { data: updatedMatch, error: updateError } = await supabase
-      .from('matches')
-      .update({
-        score1,
-        score2,
-        is_completed: true  // Always set to completed when updating scores
-      })
-      .eq('id', matchId)
-      .select()
-      .single();
+    const matchRef = doc(db, 'matches', matchId);
+    await updateDoc(matchRef, {
+      score1,
+      score2,
+      is_completed: true  // Always set completed when updating scores
+    });
 
-    if (updateError) {
-      console.error('Error updating match:', updateError);
-      return null;
-    }
-
-    console.log('Match updated successfully:', updatedMatch);
+    console.log('Match updated successfully');
     return matchId;
   } catch (error) {
     console.error('Unexpected error in updateMatchScore:', error);

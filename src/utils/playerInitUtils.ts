@@ -1,4 +1,5 @@
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/config/firebase';
+import { collection, getDocs, addDoc, query, where, doc, updateDoc } from 'firebase/firestore';
 import { FEMALE_PLAYERS, MALE_PLAYERS } from './staticMatchups';
 
 /**
@@ -9,11 +10,10 @@ export const initializePlayers = async () => {
   
   try {
     // Check if players already exist
-    const { data: existingPlayers } = await supabase
-      .from('players')
-      .select('id');
+    const playersRef = collection(db, 'players');
+    const snapshot = await getDocs(playersRef);
 
-    if (existingPlayers && existingPlayers.length > 0) {
+    if (!snapshot.empty) {
       console.log('Players already exist, skipping initialization');
       return;
     }
@@ -28,14 +28,7 @@ export const initializePlayers = async () => {
       is_confirmed: false
     }));
 
-    const { error: femaleError } = await supabase
-      .from('players')
-      .insert(femaleInserts);
-
-    if (femaleError) {
-      console.error('Error inserting female players:', femaleError);
-      throw femaleError;
-    }
+    await Promise.all(femaleInserts.map(player => addDoc(playersRef, player)));
 
     // Insert male players as placeholders
     const maleInserts = MALE_PLAYERS.map((name, index) => ({
@@ -47,14 +40,7 @@ export const initializePlayers = async () => {
       is_confirmed: false
     }));
 
-    const { error: maleError } = await supabase
-      .from('players')
-      .insert(maleInserts);
-
-    if (maleError) {
-      console.error('Error inserting male players:', maleError);
-      throw maleError;
-    }
+    await Promise.all(maleInserts.map(player => addDoc(playersRef, player)));
 
     console.log('Players initialized successfully');
   } catch (error) {
@@ -70,16 +56,17 @@ export const replacePlayerName = async (oldName: string, newName: string, gender
   console.log(`Replacing player: ${oldName} -> ${newName} (${gender})`);
   
   try {
-    const { error } = await supabase
-      .from('players')
-      .update({ name: newName })
-      .eq('name', oldName)
-      .eq('gender', gender);
+    const playersRef = collection(db, 'players');
+    const q = query(playersRef, where('name', '==', oldName), where('gender', '==', gender));
+    const snapshot = await getDocs(q);
 
-    if (error) {
-      console.error('Error replacing player name:', error);
-      throw error;
+    if (snapshot.empty) {
+      console.error('Player not found:', oldName, gender);
+      throw new Error('Player not found');
     }
+
+    const playerDoc = snapshot.docs[0];
+    await updateDoc(doc(db, 'players', playerDoc.id), { name: newName });
 
     console.log('Player name replaced successfully');
   } catch (error) {

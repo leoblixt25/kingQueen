@@ -6,13 +6,30 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { auth, db } from "@/config/firebase";
+import { doc, getDoc, getDocs, collection, query, where } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { Crown, Users, Calendar, AlertCircle, CheckCircle, LogIn, UserPlus, Mail, Info } from "lucide-react";
 import { registerPlayerToSlot } from "@/utils/placeholderUtils";
 import { AuthModal } from "@/components/AuthModal";
-import { getCurrentUser, isAdmin, adminSignOut } from "@/utils/authUtils";
+import { getCurrentUser, isAdmin, adminSignOut, signInWithGoogle } from "@/utils/authUtils";
+
+// Helper function for Google sign-in
+const handleGoogleSignUp = async () => {
+  try {
+    const result = await signInWithGoogle(`${window.location.origin}/register?auth=google`);
+    if (result.error) {
+      toast({
+        title: "Authentication Error",
+        description: result.error,
+        variant: "destructive",
+      });
+    }
+  } catch (error) {
+    console.error('Google sign up error:', error);
+  }
+};
 
 interface AvailableSpots {
   gender: string;
@@ -44,7 +61,7 @@ export default function Register() {
 
   const checkGoogleAuthSession = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = auth.currentUser;
       
       if (user && user.email) {
         // User is already authenticated via Google or other method
@@ -79,18 +96,15 @@ export default function Register() {
   const checkRegistrationStatus = async () => {
     try {
       // Check if user is already authenticated
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = auth.currentUser;
       
       if (user) {
         // Check if user is registered in the tournament
-        const { data: player, error } = await supabase
-          .from('players')
-          .select('*')
-          .eq('email', user.email.toLowerCase())
-          .eq('is_confirmed', true)
-          .single();
-          
-        if (player) {
+        const playerRef = doc(db, 'players', user.email.toLowerCase());
+        const playerSnap = await getDoc(playerRef);
+        
+        if (playerSnap.exists()) {
+          const player = { id: playerSnap.id, ...playerSnap.data() } as any;
           // Player is already registered, redirect to tournament
           setCurrentUser(user);
           
@@ -117,14 +131,11 @@ export default function Register() {
       
       if (registeredEmail && registeredName) {
         // Check if user exists in the database
-        const { data: player } = await supabase
-          .from('players')
-          .select('*')
-          .eq('email', registeredEmail)
-          .eq('is_confirmed', true)
-          .single();
-          
-        if (player) {
+        const playerRef = doc(db, 'players', registeredEmail.toLowerCase());
+        const playerSnap = await getDoc(playerRef);
+        
+        if (playerSnap.exists()) {
+          const player = { id: playerSnap.id, ...playerSnap.data() } as any;
           // Player is already registered, redirect to tournament
           toast({
             title: "Welcome Back!",
@@ -152,7 +163,7 @@ export default function Register() {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('auth') === 'callback' || urlParams.get('auth') === 'google') {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const user = auth.currentUser;
         if (user) {
           setCurrentUser(user);
           // Pre-fill the email field if it's empty
@@ -164,14 +175,11 @@ export default function Register() {
           }
           
           // Check if user is registered for the tournament
-          const { data: player } = await supabase
-            .from('players')
-            .select('*')
-            .eq('email', user.email.toLowerCase())
-            .eq('is_confirmed', true)
-            .single();
-            
-          if (player) {
+          const playerRef = doc(db, 'players', user.email.toLowerCase());
+          const playerSnap = await getDoc(playerRef);
+          
+          if (playerSnap.exists()) {
+            const player = { id: playerSnap.id, ...playerSnap.data() } as any;
             // Player is already registered, redirect to their division
             toast({
               title: "Welcome Back!",
@@ -179,7 +187,7 @@ export default function Register() {
             });
             
             setTimeout(() => {
-              navigate(`/tournament/${player.gender}`);
+              navigate(`/tournament/${(player as any).gender}`);
             }, 1000);
           } else {
             // Player is not registered, show a message and allow registration
@@ -233,14 +241,11 @@ export default function Register() {
   const checkTournamentRegistrationAndRedirect = async (user: any) => {
     try {
       // Check if user is registered in the tournament
-      const { data: player } = await supabase
-        .from('players')
-        .select('*')
-        .eq('email', user.email.toLowerCase())
-        .eq('is_confirmed', true)
-        .single();
-        
-      if (player) {
+      const playerRef = doc(db, 'players', user.email.toLowerCase());
+      const playerSnap = await getDoc(playerRef);
+      
+      if (playerSnap.exists()) {
+        const player = { id: playerSnap.id, ...playerSnap.data() } as any;
         // Player is already registered, redirect to their division
         toast({
           title: "Welcome Back!",
@@ -286,24 +291,21 @@ export default function Register() {
 
   const loadRegistrationData = async () => {
     try {
-      // Load tournament settings
-      const { data: settingsData, error: settingsError } = await supabase
-        .from('settings')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (settingsError) {
-        console.error('Error loading settings:', settingsError);
+      // Load tournament settings from Firestore
+      const settingsRef = collection(db, 'tournamentSettings');
+      const settingsSnap = await getDocs(query(settingsRef)); // orderBy not available, just get all
+      
+      if (!settingsSnap.empty) {
+        // Get first document (assuming only one settings doc)
+        const firstDoc = settingsSnap.docs[0];
+        setSettings(firstDoc.data() as any);
+      } else {
         // Default settings if none found
         setSettings({
           tournament_date: new Date().toISOString(),
           max_players_per_gender: 8,
           registration_cutoff_days: 3
         });
-      } else {
-        setSettings(settingsData);
       }
 
       // Load available spots based on settings
@@ -324,22 +326,15 @@ export default function Register() {
 
   const loadAvailableSpots = async (maxPlayersPerGender: number) => {
     try {
-      // Query the database for actual registered players
-      const { count: maleCount, error: maleError } = await supabase
-        .from('players')
-        .select('*', { count: 'exact', head: true })
-        .eq('gender', 'male')
-        .eq('is_confirmed', true);
+      // Query Firestore for registered players
+      const maleQuery = query(collection(db, 'players'), where('gender', '==', 'male'), where('is_confirmed', '==', true));
+      const maleSnap = await getDocs(maleQuery);
+      
+      const femaleQuery = query(collection(db, 'players'), where('gender', '==', 'female'), where('is_confirmed', '==', true));
+      const femaleSnap = await getDocs(femaleQuery);
 
-      const { count: femaleCount, error: femaleError } = await supabase
-        .from('players')
-        .select('*', { count: 'exact', head: true })
-        .eq('gender', 'female')
-        .eq('is_confirmed', true);
-
-      // Calculate available spots based on registered players
-      const maleRegisteredCount = maleCount || 0;
-      const femaleRegisteredCount = femaleCount || 0;
+      const maleRegisteredCount = maleSnap.size;
+      const femaleRegisteredCount = femaleSnap.size;
       
       const spots = [
         { 
@@ -724,30 +719,16 @@ export default function Register() {
                 Sign up with Google for secure account access and automatic email confirmation.
               </p>
               <Button
-                onClick={() => {
-                  // Call the same Google authentication as in SignIn page
-                  supabase.auth.signInWithOAuth({
-                    provider: 'google',
-                    options: {
-                      redirectTo: `${window.location.origin}/register?auth=google`
-                    }
-                  }).then((res) => {
-                    if (res.error) {
-                      toast({
-                        title: "Authentication Error",
-                        description: res.error.message,
-                        variant: "destructive",
-                      });
-                    }
-                  });
-                }}
-                className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold py-3"
+                onClick={handleGoogleSignUp}
+                type="button"
+                variant="outline"
+                className="w-full touch-target font-semibold py-3 transition-all duration-300 bg-white/70 hover:bg-red-50 hover:text-red-700 border-red-200 text-red-600"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" className="mr-2">
-                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24">
+                  <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                  <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                  <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                  <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                 </svg>
                 Continue with Google
               </Button>

@@ -4,8 +4,9 @@ import { Match } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Check } from "lucide-react";
-// Database trigger handles player stats automatically
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/config/firebase";
+import { doc, updateDoc } from "firebase/firestore";
+import { updatePlayerPointsFromMatch } from "@/utils/playerUtils";
 
 interface MatchCardProps {
   match: Match;
@@ -27,22 +28,15 @@ export function MatchCard({ match, isAdmin, onScoreSubmit }: MatchCardProps) {
     setIsSaving(true);
 
     try {
-      const { error } = await supabase
-        .from("matches")
-        .update({
-          score1,
-          score2,
-          is_completed: true,
-        })
-        .eq("id", match.id);
+      const matchRef = doc(db, 'matches', match.id);
+      await updateDoc(matchRef, {
+        score1,
+        score2,
+        is_completed: true,
+      });
 
-      if (error) {
-        console.error("Error updating match score:", error);
-        alert("Failed to update match score.");
-        return;
-      }
-
-      // Database trigger handles player stats calculation automatically
+      // Update player points using transaction
+      await updatePlayerPointsFromMatch(match.id, score1, score2);
       if (onScoreSubmit) onScoreSubmit();
 
       alert("Match score and player rankings updated.");

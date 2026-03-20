@@ -1,5 +1,6 @@
 
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/config/firebase';
+import { collection, doc, getDoc, getDocs, updateDoc, query, where, runTransaction, addDoc } from 'firebase/firestore';
 
 export const DEFAULT_FEMALE_PLAYERS = [
   "Player 1", "Player 2", "Player 3", "Player 4", "Player 5", "Player 6", "Player 7", "Player 8"
@@ -14,11 +15,10 @@ export const initializeDefaultPlayers = async () => {
   
   try {
     // Check if players already exist to prevent duplicates
-    const { data: existingPlayers } = await supabase
-      .from('players')
-      .select('name, gender');
+    const playersRef = collection(db, 'players');
+    const snapshot = await getDocs(playersRef);
 
-    if (existingPlayers && existingPlayers.length > 0) {
+    if (!snapshot.empty) {
       console.log('Players already exist, skipping initialization');
       return;
     }
@@ -32,14 +32,7 @@ export const initializeDefaultPlayers = async () => {
       position: index + 1
     }));
 
-    const { error: femaleError } = await supabase
-      .from('players')
-      .insert(femaleInserts);
-
-    if (femaleError) {
-      console.error('Error inserting female players:', femaleError);
-      return;
-    }
+    await Promise.all(femaleInserts.map(player => addDoc(playersRef, player)));
 
     // Insert male players
     const maleInserts = DEFAULT_MALE_PLAYERS.map((name, index) => ({
@@ -47,17 +40,10 @@ export const initializeDefaultPlayers = async () => {
       gender: 'male',
       points: 0,
       total_scores: 0,
-      position: index + 9  // Continue numbering after female players
+      position: index + 9
     }));
 
-    const { error: maleError } = await supabase
-      .from('players')
-      .insert(maleInserts);
-
-    if (maleError) {
-      console.error('Error inserting male players:', maleError);
-      return;
-    }
+    await Promise.all(maleInserts.map(player => addDoc(playersRef, player)));
 
     console.log('Default players inserted successfully');
     
@@ -70,148 +56,114 @@ export const updatePlayerPointsFromMatch = async (matchId: string, score1: numbe
   console.log(`Updating player points for match ${matchId}: score1=${score1}, score2=${score2}, isEdit=${isEdit}`);
   
   try {
-    // Get match details including previous scores if editing
-    const { data: match, error: matchError } = await supabase
-      .from('matches')
-      .select('player1_id, player2_id, player3_id, player4_id, score1, score2, is_completed')
-      .eq('id', matchId)
-      .single();
-
-    if (matchError) {
-      console.error('Error fetching match for points update:', matchError);
-      return;
-    }
-
-    if (!match) {
-      console.error('Match not found for points update:', matchId);
-      return;
-    }
-
-    console.log('Match details for points update:', match);
-
-    const winnerPoints = 2;
-    const loserPoints = 1;
-
-    // Get current player data
-    const { data: players, error: playersError } = await supabase
-      .from('players')
-      .select('id, points, total_scores')
-      .in('id', [match.player1_id, match.player2_id, match.player3_id, match.player4_id]);
-
-    if (playersError) {
-      console.error('Error fetching players for points update:', playersError);
-      return;
-    }
-
-    if (!players || players.length !== 4) {
-      console.error('Could not fetch all 4 players for points update');
-      return;
-    }
-
-    console.log('Current player data:', players);
-
-    // Create a map for easier lookup
-    const playerMap = players.reduce((acc, player) => {
-      acc[player.id] = player;
-      return acc;
-    }, {} as Record<string, any>);
-
-    let player1NewPoints = playerMap[match.player1_id].points;
-    let player2NewPoints = playerMap[match.player2_id].points;
-    let player3NewPoints = playerMap[match.player3_id].points;
-    let player4NewPoints = playerMap[match.player4_id].points;
-    let player1NewScores = playerMap[match.player1_id].total_scores;
-    let player2NewScores = playerMap[match.player2_id].total_scores;
-    let player3NewScores = playerMap[match.player3_id].total_scores;
-    let player4NewScores = playerMap[match.player4_id].total_scores;
-
-    // If editing, first subtract the previous points and scores
-    if (isEdit && match.is_completed) {
-      console.log('Editing match - removing previous points and scores');
+    const matchRef = doc(db, 'matches', matchId);
+    
+    await runTransaction(db, async (transaction) => {
+      // Get match details
+      const matchSnap = await transaction.get(matchRef);
       
-      if (match.score1 > match.score2) {
-        // Previous team 1 win - subtract those points
-        player1NewPoints -= winnerPoints;
-        player2NewPoints -= winnerPoints;
-        player3NewPoints -= loserPoints;
-        player4NewPoints -= loserPoints;
-        player1NewScores -= match.score1;
-        player2NewScores -= match.score1;
-        player3NewScores -= match.score2;
-        player4NewScores -= match.score2;
-      } else {
-        // Previous team 2 win - subtract those points
-        player1NewPoints -= loserPoints;
-        player2NewPoints -= loserPoints;
-        player3NewPoints -= winnerPoints;
-        player4NewPoints -= winnerPoints;
-        player1NewScores -= match.score1;
-        player2NewScores -= match.score1;
-        player3NewScores -= match.score2;
-        player4NewScores -= match.score2;
+      if (!matchSnap.exists()) {
+        throw new Error('Match not found');
       }
-    }
-
-    // Now add the new points and scores
-    if (score1 > score2) {
-      // Team 1 wins (player1 & player2)
-      console.log('Team 1 wins');
-      player1NewPoints += winnerPoints;
-      player2NewPoints += winnerPoints;
-      player3NewPoints += loserPoints;
-      player4NewPoints += loserPoints;
-      player1NewScores += score1;
-      player2NewScores += score1;
-      player3NewScores += score2;
-      player4NewScores += score2;
-    } else {
-      // Team 2 wins (player3 & player4)
-      console.log('Team 2 wins');
-      player1NewPoints += loserPoints;
-      player2NewPoints += loserPoints;
-      player3NewPoints += winnerPoints;
-      player4NewPoints += winnerPoints;
-      player1NewScores += score1;
-      player2NewScores += score1;
-      player3NewScores += score2;
-      player4NewScores += score2;
-    }
-
-    // Update all players with final values
-    await Promise.all([
-      supabase
-        .from('players')
-        .update({ 
-          points: player1NewPoints,
-          total_scores: player1NewScores
-        })
-        .eq('id', match.player1_id),
       
-      supabase
-        .from('players')
-        .update({ 
-          points: player2NewPoints,
-          total_scores: player2NewScores
-        })
-        .eq('id', match.player2_id),
+      const match = matchSnap.data();
+      const playerIds = [match.player1_id, match.player2_id, match.player3_id, match.player4_id];
       
-      supabase
-        .from('players')
-        .update({ 
-          points: player3NewPoints,
-          total_scores: player3NewScores
-        })
-        .eq('id', match.player3_id),
+      // Get all player refs and documents
+      const playerRefs = playerIds.map(id => doc(db, 'players', id));
+      const playerSnaps = await Promise.all(playerRefs.map(ref => transaction.get(ref)));
+      const players = playerSnaps.map(snap => ({ id: snap.id, ...snap.data() }));
       
-      supabase
-        .from('players')
-        .update({ 
-          points: player4NewPoints,
-          total_scores: player4NewScores
-        })
-        .eq('id', match.player4_id)
-    ]);
-
+      if (players.length !== 4) {
+        throw new Error('Could not fetch all 4 players');
+      }
+      
+      // Create map for easy lookup
+      const playerMap = players.reduce((acc, player) => {
+        acc[player.id as string] = player;
+        return acc;
+      }, {} as Record<string, any>);
+      
+      // Initialize new values
+      let player1NewPoints = playerMap[match.player1_id].points || 0;
+      let player2NewPoints = playerMap[match.player2_id].points || 0;
+      let player3NewPoints = playerMap[match.player3_id].points || 0;
+      let player4NewPoints = playerMap[match.player4_id].points || 0;
+      let player1NewScores = playerMap[match.player1_id].total_scores || 0;
+      let player2NewScores = playerMap[match.player2_id].total_scores || 0;
+      let player3NewScores = playerMap[match.player3_id].total_scores || 0;
+      let player4NewScores = playerMap[match.player4_id].total_scores || 0;
+      
+      const winnerPoints = 2;
+      const loserPoints = 1;
+      
+      // If editing, subtract previous points and scores
+      if (isEdit && match.is_completed) {
+        console.log('Editing match - removing previous points and scores');
+        
+        if (match.score1 > match.score2) {
+          player1NewPoints -= winnerPoints;
+          player2NewPoints -= winnerPoints;
+          player3NewPoints -= loserPoints;
+          player4NewPoints -= loserPoints;
+          player1NewScores -= match.score1;
+          player2NewScores -= match.score1;
+          player3NewScores -= match.score2;
+          player4NewScores -= match.score2;
+        } else {
+          player1NewPoints -= loserPoints;
+          player2NewPoints -= loserPoints;
+          player3NewPoints -= winnerPoints;
+          player4NewPoints -= winnerPoints;
+          player1NewScores -= match.score1;
+          player2NewScores -= match.score1;
+          player3NewScores -= match.score2;
+          player4NewScores -= match.score2;
+        }
+      }
+      
+      // Add new points and scores
+      if (score1 > score2) {
+        console.log('Team 1 wins');
+        player1NewPoints += winnerPoints;
+        player2NewPoints += winnerPoints;
+        player3NewPoints += loserPoints;
+        player4NewPoints += loserPoints;
+        player1NewScores += score1;
+        player2NewScores += score1;
+        player3NewScores += score2;
+        player4NewScores += score2;
+      } else {
+        console.log('Team 2 wins');
+        player1NewPoints += loserPoints;
+        player2NewPoints += loserPoints;
+        player3NewPoints += winnerPoints;
+        player4NewPoints += winnerPoints;
+        player1NewScores += score1;
+        player2NewScores += score1;
+        player3NewScores += score2;
+        player4NewScores += score2;
+      }
+      
+      // Update all players in transaction
+      transaction.update(playerRefs[0], { 
+        points: player1NewPoints,
+        total_scores: player1NewScores
+      });
+      transaction.update(playerRefs[1], { 
+        points: player2NewPoints,
+        total_scores: player2NewScores
+      });
+      transaction.update(playerRefs[2], { 
+        points: player3NewPoints,
+        total_scores: player3NewScores
+      });
+      transaction.update(playerRefs[3], { 
+        points: player4NewPoints,
+        total_scores: player4NewScores
+      });
+    });
+    
     console.log('Player points updated successfully');
   } catch (error) {
     console.error('Unexpected error in updatePlayerPointsFromMatch:', error);

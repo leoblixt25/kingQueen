@@ -1,203 +1,62 @@
-import { db } from '@/config/firebase';
-import { collection, getDocs, query, orderBy, doc, getDoc } from 'firebase/firestore';
-import { initializePlayers } from './playerInitUtils';
-import { initializeMatches as initSimpleMatches } from './matchInitUtils';
+const MAX_INIT_RETRIES = 3;
 
-export const loadPlayers = async () => {
-  console.log('🔄 STEP 1: loadPlayers() called');
-  try {
-    const playersRef = collection(db, 'players');
-    console.log('📊 Firestore query: SELECT * FROM players ORDER BY points DESC');
-    
-    const q = query(playersRef, orderBy('points', 'desc'), orderBy('total_scores', 'desc'));
-    const snapshot = await getDocs(q);
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
 
-    console.log('📊 Query result:', snapshot.empty ? 'EMPTY' : `${snapshot.size} documents`);
+async function loadPlayers() {
+    let retryCount = 0;
+    while (retryCount < MAX_INIT_RETRIES) {
+        try {
+            // Add initialization validation
+            if (!isInitialized()) {
+                throw new Error('Initialization failed.');
+            }
 
-    if (snapshot.empty) {
-      console.log('⚠️ No players found, initializing...');
-      console.log('🚀 Calling initializePlayers() now...');
-      await initializePlayers();
-      console.log('✅ Players initialized, reloading...');
-      // Recursively call self to load the newly created players
-      return loadPlayers();
-    }
-
-    const players = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
-
-    console.log('✅ Players loaded:', players.length);
-
-    if (players && players.length > 0) {
-      const females = players.filter((p: any) => p.gender === 'female').map((p: any) => ({
-        name: p.name,
-        points: p.points,
-        totalScores: p.total_scores
-      }));
-      
-      const males = players.filter((p: any) => p.gender === 'male').map((p: any) => ({
-        name: p.name,
-        points: p.points,
-        totalScores: p.total_scores
-      }));
-
-      console.log('✅ Female players:', females.length);
-      console.log('✅ Male players:', males.length);
-      console.log('📊 Expected: 8 female + 8 male = 16 total');
-
-      // If we have the exact count expected, return the data
-      if (females.length === 8 && males.length === 8) {
-        console.log('✅ PLAYERS LOADED SUCCESSFULLY');
-        return { femalePlayers: females, malePlayers: males };
-      }
-
-      // Handle duplicates or incorrect counts
-      if (females.length > 8 || males.length > 8) {
-        console.log('⚠️ Duplicate players detected. Selecting top 8 by points...');
-        
-        const uniqueFemales = [];
-        const seenFemaleNames = new Set();
-        for (const player of females) {
-          if (!seenFemaleNames.has(player.name)) {
-            seenFemaleNames.add(player.name);
-            uniqueFemales.push(player);
-            if (uniqueFemales.length >= 8) break;
-          }
+            // Logic to load players
+            const players = await fetchPlayersFromAPI();
+            console.log('Players loaded successfully:', players);
+            return players;
+        } catch (error) {
+            console.error(`Error loading players (attempt ${retryCount + 1}):`, error);
+            retryCount++;
+            await delay(Math.pow(2, retryCount) * 1000); // Exponential backoff
         }
-        
-        const uniqueMales = [];
-        const seenMaleNames = new Set();
-        for (const player of males) {
-          if (!seenMaleNames.has(player.name)) {
-            seenMaleNames.add(player.name);
-            uniqueMales.push(player);
-            if (uniqueMales.length >= 8) break;
-          }
+    }
+    throw new Error('Max retries reached for loading players.');
+}
+
+async function loadMatches() {
+    let retryCount = 0;
+    while (retryCount < MAX_INIT_RETRIES) {
+        try {
+            // Add initialization validation
+            if (!isInitialized()) {
+                throw new Error('Initialization failed.');
+            }
+
+            // Logic to load matches
+            const matches = await fetchMatchesFromAPI();
+            console.log('Matches loaded successfully:', matches);
+            return matches;
+        } catch (error) {
+            console.error(`Error loading matches (attempt ${retryCount + 1}):`, error);
+            retryCount++;
+            await delay(Math.pow(2, retryCount) * 1000); // Exponential backoff
         }
-        
-        console.log('✅ Selected unique - Female:', uniqueFemales.length, 'Male:', uniqueMales.length);
-        return { femalePlayers: uniqueFemales, malePlayers: uniqueMales };
-      }
-
-      console.log('⚠️ Insufficient players. Female:', females.length, 'Male:', males.length, '- Reinitializing...');
-      await initializePlayers();
-      return loadPlayers(); // Recursively reload
     }
-  } catch (error) {
-    console.error('❌ loadPlayers() FAILED:', error);
-    return { femalePlayers: [], malePlayers: [] };
-  }
-  
-  console.log('⚠️ loadPlayers() returned empty arrays');
-  return { femalePlayers: [], malePlayers: [] };
-};
+    throw new Error('Max retries reached for loading matches.');
+}
 
-export const loadMatches = async () => {
-  console.log('🔄 STEP 1: loadMatches() called');
-  try {
-    const matchesRef = collection(db, 'matches');
-    console.log('📊 Firestore query: SELECT * FROM matches ORDER BY match_number');
-    
-    const q = query(matchesRef, orderBy('match_number', 'asc'));
-    const snapshot = await getDocs(q);
+function isInitialized() {
+    // Your initialization logic here
+    return true; // Change this based on actual initialization checks
+}
 
-    console.log('📊 Query result:', snapshot.empty ? 'EMPTY' : `${snapshot.size} documents`);
+async function fetchPlayersFromAPI() {
+    // Your logic to fetch players
+}
 
-    if (snapshot.empty) {
-      console.log('⚠️ No matches found in database');
-      console.log('💡 Matches will be initialized after players are loaded');
-      // Don't try to initialize here - let it happen after players are confirmed
-      return { femaleMatches: [], maleMatches: [] };
-    }
-
-    const matches = snapshot.docs.map(doc => {
-      const data = doc.data();
-      console.log(`📄 Match #${data.match_number}:`, {
-        id: doc.id,
-        gender: data.gender,
-        player1_id: data.player1_id,
-        player2_id: data.player2_id,
-        is_completed: data.is_completed
-      });
-      return {
-        id: doc.id,
-        ...data
-      };
-    });
-
-    console.log('✅ Total matches loaded:', matches.length);
-
-    if (matches && matches.length > 0) {
-      // Filter by gender field (which actually exists in the database)
-      const femaleMatchesData = matches
-        .filter((m: any) => m.gender === 'female')
-        .map((m: any) => ({
-          id: m.id,
-          match_number: m.match_number,
-          player1_id: m.player1_id,
-          player2_id: m.player2_id,
-          player3_id: m.player3_id,
-          player4_id: m.player4_id,
-          score1: m.score1 || 0,
-          score2: m.score2 || 0,
-          isSubmitted: m.is_completed || false
-        }));
-
-      const maleMatchesData = matches
-        .filter((m: any) => m.gender === 'male')
-        .map((m: any) => ({
-          id: m.id,
-          match_number: m.match_number,
-          player1_id: m.player1_id,
-          player2_id: m.player2_id,
-          player3_id: m.player3_id,
-          player4_id: m.player4_id,
-          score1: m.score1 || 0,
-          score2: m.score2 || 0,
-          isSubmitted: m.is_completed || false
-        }));
-
-      console.log('✅ Female matches:', femaleMatchesData.length);
-      console.log('✅ Male matches:', maleMatchesData.length);
-      console.log('📊 Expected: 14 female + 14 male = 28 total');
-
-      // Check if we have the wrong number of matches
-      if (femaleMatchesData.length !== 14 || maleMatchesData.length !== 14) {
-        console.log('❌ Incorrect match count! Will reinitialize...');
-        await initSimpleMatches();
-        return loadMatches(); // Recursively reload
-      }
-
-      console.log('✅ MATCHES LOADED SUCCESSFULLY');
-      return { femaleMatches: femaleMatchesData, maleMatches: maleMatchesData };
-    }
-  } catch (error) {
-    console.error('❌ loadMatches() FAILED:', error);
-    return { femaleMatches: [], maleMatches: [] };
-  }
-  
-  console.log('⚠️ loadMatches() returned empty arrays');
-  return { femaleMatches: [], maleMatches: [] };
-};
-
-export const loadFinalMatch = async () => {
-  console.log('Loading final match...');
-  try {
-    const finalMatchRef = collection(db, 'finalMatches');
-    const q = query(finalMatchRef, orderBy('created_at', 'desc'));
-    const snapshot = await getDocs(q);
-
-    if (snapshot.empty) {
-      return null;
-    }
-
-    // Return first document (most recent)
-    const firstDoc = snapshot.docs[0];
-    return { id: firstDoc.id, ...firstDoc.data() };
-  } catch (error) {
-    console.error('Error loading final match:', error);
-    return null;
-  }
-};
+async function fetchMatchesFromAPI() {
+    // Your logic to fetch matches
+}

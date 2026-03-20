@@ -67,28 +67,40 @@ export const resetPlayersToPlaceholders = async () => {
  */
 export const getNextAvailablePlaceholder = async (gender: 'male' | 'female') => {
   try {
-    const placeholderPrefix = gender === 'male' ? 'Male Player' : 'Female Player';
+    console.log(`🔍 Looking for available ${gender} slots...`);
     
     const playersRef = collection(db, 'players');
+    
+    // First, get all players of this gender
     const q = query(
       playersRef,
-      where('gender', '==', gender),
-      where('is_confirmed', '==', false)
+      where('gender', '==', gender)
     );
     
     const snapshot = await getDocs(q);
     
-    // Filter for placeholder names client-side since Firestore doesn't support ilike
+    // Filter for unconfirmed placeholders client-side
+    const placeholderPrefix = gender === 'male' ? 'Male Player' : 'Female Player';
     const availableSlots = snapshot.docs
       .map(doc => ({ id: doc.id, ...doc.data() }))
-      .filter((player: any) => player.name.startsWith(placeholderPrefix))
+      .filter((player: any) => {
+        // Check if it's a placeholder name and is unconfirmed
+        const isPlaceholder = player.name.startsWith(placeholderPrefix);
+        const isUnconfirmed = !player.is_confirmed || player.is_confirmed === false;
+        return isPlaceholder && isUnconfirmed;
+      })
       .sort((a: any, b: any) => a.position - b.position);
 
+    console.log(`📊 Found ${availableSlots.length} available ${gender} slots`);
+
     if (availableSlots.length === 0) {
+      console.log(`❌ No available ${gender} slots`);
       return null;
     }
 
-    return availableSlots[0];
+    const firstSlot = availableSlots[0];
+    console.log(`✅ Available slot found: Position ${firstSlot.position}`);
+    return firstSlot;
   } catch (error) {
     console.error('Error in getNextAvailablePlaceholder:', error);
     throw error;

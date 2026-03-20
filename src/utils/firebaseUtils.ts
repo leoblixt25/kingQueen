@@ -108,34 +108,33 @@ export const loadMatches = async () => {
     console.log('Matches loaded:', matches.length);
 
     if (matches && matches.length > 0) {
-      // Load player details for each match
-      const matchesWithPlayers = await Promise.all(matches.map(async (m: any) => {
-        const [player1Snap, player2Snap, player3Snap, player4Snap] = await Promise.all([
-          getDoc(doc(db, 'players', m.player1_id)),
-          getDoc(doc(db, 'players', m.player2_id)),
-          getDoc(doc(db, 'players', m.player3_id)),
-          getDoc(doc(db, 'players', m.player4_id))
-        ]);
-
-        return {
+      // Separate by gender first based on match_number convention
+      // Female matches: 1-14, Male matches: 15-28
+      const femaleMatchesData = matches
+        .filter((m: any) => m.match_number >= 1 && m.match_number <= 14)
+        .map((m: any) => ({
           id: m.id,
-          player1: { name: player1Snap.exists() ? player1Snap.data().name : '', points: 0, totalScores: 0 },
-          player2: { name: player2Snap.exists() ? player2Snap.data().name : '', points: 0, totalScores: 0 },
-          player3: { name: player3Snap.exists() ? player3Snap.data().name : '', points: 0, totalScores: 0 },
-          player4: { name: player4Snap.exists() ? player4Snap.data().name : '', points: 0, totalScores: 0 },
+          player1: { name: m.player1_name || 'TBD', points: 0, totalScores: 0 },
+          player2: { name: m.player2_name || 'TBD', points: 0, totalScores: 0 },
+          player3: { name: m.player3_name || 'TBD', points: 0, totalScores: 0 },
+          player4: { name: m.player4_name || 'TBD', points: 0, totalScores: 0 },
           score1: m.score1 || 0,
           score2: m.score2 || 0,
           isSubmitted: m.is_completed || false
-        };
-      }));
+        }));
 
-      const femaleMatchesData = matchesWithPlayers
-        .filter((m: any) => m.player1.name.includes('Female') || m.player2.name.includes('Female'))
-        .map((m: any) => m);
-
-      const maleMatchesData = matchesWithPlayers
-        .filter((m: any) => m.player1.name.includes('Male') || m.player2.name.includes('Male'))
-        .map((m: any) => m);
+      const maleMatchesData = matches
+        .filter((m: any) => m.match_number >= 15 && m.match_number <= 28)
+        .map((m: any) => ({
+          id: m.id,
+          player1: { name: m.player1_name || 'TBD', points: 0, totalScores: 0 },
+          player2: { name: m.player2_name || 'TBD', points: 0, totalScores: 0 },
+          player3: { name: m.player3_name || 'TBD', points: 0, totalScores: 0 },
+          player4: { name: m.player4_name || 'TBD', points: 0, totalScores: 0 },
+          score1: m.score1 || 0,
+          score2: m.score2 || 0,
+          isSubmitted: m.is_completed || false
+        }));
 
       console.log('Female matches count:', femaleMatchesData.length);
       console.log('Male matches count:', maleMatchesData.length);

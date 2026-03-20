@@ -67,42 +67,59 @@ export const resetPlayersToPlaceholders = async () => {
  */
 export const getNextAvailablePlaceholder = async (gender: 'male' | 'female') => {
   try {
-    console.log(`🔍 Looking for available ${gender} slots...`);
+    console.log(`🔍 STEP 1: getNextAvailablePlaceholder('${gender}') called`);
     
     const playersRef = collection(db, 'players');
     
-    // First, get all players of this gender
+    // Get ALL players of this gender first
     const q = query(
       playersRef,
       where('gender', '==', gender)
     );
     
+    console.log('📊 Firestore query: SELECT * FROM players WHERE gender ==', gender);
     const snapshot = await getDocs(q);
+    
+    console.log('📊 Total players in database for', gender + ':', snapshot.size);
+    
+    // Log all players to see what's in the database
+    const allPlayers = snapshot.docs.map(doc => ({
+      id: doc.id,
+      name: doc.data().name,
+      is_confirmed: doc.data().is_confirmed,
+      position: doc.data().position,
+      email: doc.data().email
+    }));
+    
+    console.log('📋 All', gender, 'players:', JSON.stringify(allPlayers, null, 2));
     
     // Filter for unconfirmed placeholders client-side
     const placeholderPrefix = gender === 'male' ? 'Male Player' : 'Female Player';
     const availableSlots = snapshot.docs
       .map(doc => ({ id: doc.id, ...doc.data() }))
       .filter((player: any) => {
-        // Check if it's a placeholder name and is unconfirmed
         const isPlaceholder = player.name.startsWith(placeholderPrefix);
         const isUnconfirmed = !player.is_confirmed || player.is_confirmed === false;
+        if (isPlaceholder && isUnconfirmed) {
+          console.log('✅ Found available slot:', player.name, 'at position', player.position);
+        }
         return isPlaceholder && isUnconfirmed;
       })
       .sort((a: any, b: any) => a.position - b.position);
 
-    console.log(`📊 Found ${availableSlots.length} available ${gender} slots`);
+    console.log(`📊 Available slots count:`, availableSlots.length);
 
     if (availableSlots.length === 0) {
-      console.log(`❌ No available ${gender} slots`);
+      console.log(`❌ NO SLOTS AVAILABLE for ${gender}`);
+      console.log('💡 This means all 8 positions are confirmed/registered');
       return null;
     }
 
     const firstSlot = availableSlots[0];
-    console.log(`✅ Available slot found: Position ${firstSlot.position}`);
+    console.log(`✅ SLOT FOUND: Position ${firstSlot.position}, ID: ${firstSlot.id}`);
     return firstSlot;
   } catch (error) {
-    console.error('Error in getNextAvailablePlaceholder:', error);
+    console.error('❌ getNextAvailablePlaceholder() FAILED:', error);
     throw error;
   }
 };

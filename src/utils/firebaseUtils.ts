@@ -4,14 +4,18 @@ import { initializePlayers } from './playerInitUtils';
 import { initializeMatches as initSimpleMatches } from './matchInitUtils';
 
 export const loadPlayers = async () => {
-  console.log('Loading players...');
+  console.log('🔄 STEP 1: loadPlayers() called');
   try {
     const playersRef = collection(db, 'players');
+    console.log('📊 Firestore query: SELECT * FROM players ORDER BY points DESC');
+    
     const q = query(playersRef, orderBy('points', 'desc'), orderBy('total_scores', 'desc'));
     const snapshot = await getDocs(q);
 
+    console.log('📊 Query result:', snapshot.empty ? 'EMPTY' : `${snapshot.size} documents`);
+
     if (snapshot.empty) {
-      console.log('No players found, initializing players...');
+      console.log('⚠️ No players found, initializing...');
       await initializePlayers();
       return { femalePlayers: [], malePlayers: [] };
     }
@@ -21,7 +25,7 @@ export const loadPlayers = async () => {
       ...doc.data()
     }));
 
-    console.log('Players loaded:', players.length);
+    console.log('✅ Players loaded:', players.length);
 
     if (players && players.length > 0) {
       const females = players.filter((p: any) => p.gender === 'female').map((p: any) => ({
@@ -36,19 +40,20 @@ export const loadPlayers = async () => {
         totalScores: p.total_scores
       }));
 
-      console.log('Female players count:', females.length);
-      console.log('Male players count:', males.length);
+      console.log('✅ Female players:', females.length);
+      console.log('✅ Male players:', males.length);
+      console.log('📊 Expected: 8 female + 8 male = 16 total');
 
       // If we have the exact count expected, return the data
       if (females.length === 8 && males.length === 8) {
+        console.log('✅ PLAYERS LOADED SUCCESSFULLY');
         return { femalePlayers: females, malePlayers: males };
       }
 
-      // If we have duplicates, clean up and use the unique names with highest scores
+      // Handle duplicates or incorrect counts
       if (females.length > 8 || males.length > 8) {
-        console.log('Duplicate players detected. Female:', females.length, 'Male:', males.length, '. Using top 8 by points...');
+        console.log('⚠️ Duplicate players detected. Selecting top 8 by points...');
         
-        // Get unique names with highest points/scores for each gender
         const uniqueFemales = [];
         const seenFemaleNames = new Set();
         for (const player of females) {
@@ -69,90 +74,106 @@ export const loadPlayers = async () => {
           }
         }
         
-        console.log('Unique females selected:', uniqueFemales);
-        console.log('Unique males selected:', uniqueMales);
-        
+        console.log('✅ Selected unique - Female:', uniqueFemales.length, 'Male:', uniqueMales.length);
         return { femalePlayers: uniqueFemales, malePlayers: uniqueMales };
       }
 
-      // If we have less than 8, reinitialize
-      console.log('Insufficient player count detected. Female:', females.length, 'Male:', males.length, '. Reinitializing...');
+      console.log('⚠️ Insufficient players. Female:', females.length, 'Male:', males.length, '- Reinitializing...');
       await initializePlayers();
       return { femalePlayers: [], malePlayers: [] };
     }
   } catch (error) {
-    console.error('Error loading players:', error);
+    console.error('❌ loadPlayers() FAILED:', error);
     return { femalePlayers: [], malePlayers: [] };
   }
   
+  console.log('⚠️ loadPlayers() returned empty arrays');
   return { femalePlayers: [], malePlayers: [] };
 };
 
 export const loadMatches = async () => {
-  console.log('Loading matches...');
+  console.log('🔄 STEP 1: loadMatches() called');
   try {
     const matchesRef = collection(db, 'matches');
+    console.log('📊 Firestore query: SELECT * FROM matches ORDER BY match_number');
+    
     const q = query(matchesRef, orderBy('match_number', 'asc'));
     const snapshot = await getDocs(q);
 
+    console.log('📊 Query result:', snapshot.empty ? 'EMPTY' : `${snapshot.size} documents`);
+
     if (snapshot.empty) {
-      console.log('No matches found, will initialize after players are created');
+      console.log('⚠️ No matches found in database');
       return { femaleMatches: [], maleMatches: [] };
     }
 
-    const matches = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
+    const matches = snapshot.docs.map(doc => {
+      const data = doc.data();
+      console.log(`📄 Match #${data.match_number}:`, {
+        id: doc.id,
+        gender: data.gender,
+        player1_id: data.player1_id,
+        player2_id: data.player2_id,
+        is_completed: data.is_completed
+      });
+      return {
+        id: doc.id,
+        ...data
+      };
+    });
 
-    console.log('Matches loaded:', matches.length);
+    console.log('✅ Total matches loaded:', matches.length);
 
     if (matches && matches.length > 0) {
-      // Separate by gender first based on match_number convention
-      // Female matches: 1-14, Male matches: 15-28
+      // Filter by gender field (which actually exists in the database)
       const femaleMatchesData = matches
-        .filter((m: any) => m.match_number >= 1 && m.match_number <= 14)
+        .filter((m: any) => m.gender === 'female')
         .map((m: any) => ({
           id: m.id,
-          player1: { name: m.player1_name || 'TBD', points: 0, totalScores: 0 },
-          player2: { name: m.player2_name || 'TBD', points: 0, totalScores: 0 },
-          player3: { name: m.player3_name || 'TBD', points: 0, totalScores: 0 },
-          player4: { name: m.player4_name || 'TBD', points: 0, totalScores: 0 },
+          match_number: m.match_number,
+          player1_id: m.player1_id,
+          player2_id: m.player2_id,
+          player3_id: m.player3_id,
+          player4_id: m.player4_id,
           score1: m.score1 || 0,
           score2: m.score2 || 0,
           isSubmitted: m.is_completed || false
         }));
 
       const maleMatchesData = matches
-        .filter((m: any) => m.match_number >= 15 && m.match_number <= 28)
+        .filter((m: any) => m.gender === 'male')
         .map((m: any) => ({
           id: m.id,
-          player1: { name: m.player1_name || 'TBD', points: 0, totalScores: 0 },
-          player2: { name: m.player2_name || 'TBD', points: 0, totalScores: 0 },
-          player3: { name: m.player3_name || 'TBD', points: 0, totalScores: 0 },
-          player4: { name: m.player4_name || 'TBD', points: 0, totalScores: 0 },
+          match_number: m.match_number,
+          player1_id: m.player1_id,
+          player2_id: m.player2_id,
+          player3_id: m.player3_id,
+          player4_id: m.player4_id,
           score1: m.score1 || 0,
           score2: m.score2 || 0,
           isSubmitted: m.is_completed || false
         }));
 
-      console.log('Female matches count:', femaleMatchesData.length);
-      console.log('Male matches count:', maleMatchesData.length);
+      console.log('✅ Female matches:', femaleMatchesData.length);
+      console.log('✅ Male matches:', maleMatchesData.length);
+      console.log('📊 Expected: 14 female + 14 male = 28 total');
 
-      // Check if we have the wrong number of matches and need to reinitialize
+      // Check if we have the wrong number of matches
       if (femaleMatchesData.length !== 14 || maleMatchesData.length !== 14) {
-        console.log('Incorrect match count detected. Female:', femaleMatchesData.length, 'Male:', maleMatchesData.length, '. Reinitializing...');
+        console.log('❌ Incorrect match count! Will reinitialize...');
         await initSimpleMatches();
         return { femaleMatches: [], maleMatches: [] };
       }
 
+      console.log('✅ MATCHES LOADED SUCCESSFULLY');
       return { femaleMatches: femaleMatchesData, maleMatches: maleMatchesData };
     }
   } catch (error) {
-    console.error('Error loading matches:', error);
+    console.error('❌ loadMatches() FAILED:', error);
     return { femaleMatches: [], maleMatches: [] };
   }
   
+  console.log('⚠️ loadMatches() returned empty arrays');
   return { femaleMatches: [], maleMatches: [] };
 };
 

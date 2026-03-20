@@ -1,5 +1,5 @@
 import { auth, db, googleProvider } from '@/config/firebase';
-import { signInWithPopup, signOut as firebaseSignOut, createUserWithEmailAndPassword, updateProfile, signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithPopup, signInWithRedirect, getRedirectResult, signOut as firebaseSignOut, createUserWithEmailAndPassword, updateProfile, signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { registerPlayerToSlot } from './placeholderUtils';
 
@@ -100,8 +100,20 @@ export const adminSignInWithEmail = async (email: string, password: string): Pro
  */
 export const signInWithGoogle = async (customRedirectTo?: string): Promise<AuthResult> => {
   try {
-    const result = await signInWithPopup(auth, googleProvider);
-    const user = result.user;
+    // First check if we're already in a redirect flow
+    const result = await getRedirectResult(auth);
+    
+    if (result) {
+      // We completed a redirect
+      return {
+        success: true,
+        user: result.user
+      };
+    }
+    
+    // If no redirect result, start popup sign in
+    const userCredential = await signInWithPopup(auth, googleProvider);
+    const user = userCredential.user;
 
     return {
       success: true,
@@ -116,6 +128,26 @@ export const signInWithGoogle = async (customRedirectTo?: string): Promise<AuthR
     };
 
   } catch (error: any) {
+    console.error('Google sign in error:', error);
+    
+    // Handle specific error cases
+    if (error.code === 'auth/popup-closed-by-user') {
+      return {
+        success: false,
+        error: 'Sign-in cancelled. Please try again.'
+      };
+    } else if (error.code === 'auth/popup-blocked') {
+      return {
+        success: false,
+        error: 'Popup was blocked. Please enable popups and try again.'
+      };
+    } else if (error.code === 'auth/unauthorized-domain') {
+      return {
+        success: false,
+        error: 'This domain is not authorized for Google sign-in. Please add it to Firebase Console.'
+      };
+    }
+    
     return {
       success: false,
       error: error.message || 'An unexpected error occurred'

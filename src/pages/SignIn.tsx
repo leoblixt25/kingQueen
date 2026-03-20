@@ -125,15 +125,15 @@ export default function SignIn() {
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
     try {
-      // Use a specific redirect for Google auth to handle post-auth flow
-      const result = await signInWithGoogle(`${window.location.origin}/sign-in?auth=google`);
+      // Pure popup mode - no redirects
+      const result = await signInWithGoogle();
       
       if (result.success) {
         toast({
-          title: "Redirecting to Google...",
-          description: "Please complete the authentication process.",
+          title: "Welcome!",
+          description: "Successfully signed in.",
         });
-        // The redirect will happen automatically
+        navigate('/');
       } else {
         // Handle specific Google provider error
         if (result.error?.includes('provider is not enabled') || result.error?.includes('Unsupported provider')) {

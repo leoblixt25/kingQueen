@@ -9,34 +9,59 @@ export const useTournamentData = () => {
   
   // Define loaders inline
   const loadPlayersData = async () => {
-    const result = await loadPlayers() as any;
-    state.setFemalePlayers(result.femalePlayers);
-    state.setMalePlayers(result.malePlayers);
+    try {
+      console.log('🔄 Loading players...');
+      const result = await loadPlayers() as any;
+      state.setFemalePlayers(result.femalePlayers);
+      state.setMalePlayers(result.malePlayers);
+      console.log('✅ Players loaded:', result.femalePlayers.length + result.malePlayers.length, 'players');
+    } catch (error) {
+      console.error('❌ Error loading players:', error);
+      throw error;
+    }
   };
   
   const loadMatchesData = async () => {
-    const result = await loadMatches() as any;
-    state.setFemaleMatches(result.femaleMatches);
-    state.setMaleMatches(result.maleMatches);
+    try {
+      console.log('🔄 Loading matches...');
+      const result = await loadMatches() as any;
+      state.setFemaleMatches(result.femaleMatches);
+      state.setMaleMatches(result.maleMatches);
+      console.log('✅ Matches loaded:', result.femaleMatches.length + result.maleMatches.length, 'matches');
+    } catch (error) {
+      console.error('❌ Error loading matches:', error);
+      throw error;
+    }
   };
   
   const loadFinalMatchData = async () => {
-    const result = await loadFinalMatch() as any;
-    state.setFinalMatchScores(result.finalMatchScores);
-    state.setFinalMatchSubmitted(result.finalMatchSubmitted);
-    state.setFinalMatchWinner(result.finalMatchWinner);
+    try {
+      console.log('🔄 Loading final match...');
+      const result = await loadFinalMatch() as any;
+      state.setFinalMatchScores(result.finalMatchScores);
+      state.setFinalMatchSubmitted(result.finalMatchSubmitted);
+      state.setFinalMatchWinner(result.finalMatchWinner);
+      console.log('✅ Final match loaded');
+    } catch (error) {
+      console.error('❌ Error loading final match:', error);
+      throw error;
+    }
   };
   
   const loadTournamentData = async () => {
+    console.log('🚀 Starting tournament data load...');
     state.setIsLoading(true);
     try {
       await loadPlayersData();
       await loadMatchesData();
       await loadFinalMatchData();
+      console.log('✅ All tournament data loaded successfully!');
     } catch (error) {
-      console.error('Error loading tournament data:', error);
+      console.error('❌ Tournament data load failed:', error);
+      // Still set loading to false even on error to prevent infinite loading
     } finally {
       state.setIsLoading(false);
+      console.log('🏁 Loading complete');
     }
   };
 

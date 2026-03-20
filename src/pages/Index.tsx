@@ -111,6 +111,7 @@ export default function KingQueenOfTheBeach() {
       }
     } catch (error) {
       console.error('Error loading tournament settings:', error);
+      // Don't block loading on settings - continue even if settings fail
     }
   };
 

@@ -15,11 +15,16 @@ import { registerPlayerToSlot } from "@/utils/placeholderUtils";
 import { AuthModal } from "@/components/AuthModal";
 import { getCurrentUser, isAdmin, adminSignOut, signInWithGoogle } from "@/utils/authUtils";
 
-// Helper function for Google sign-in
+// Helper function for Google sign-in - Pure Popup Mode
 const handleGoogleSignUp = async () => {
   try {
-    const result = await signInWithGoogle(`${window.location.origin}/register?auth=google`);
-    if (result.error) {
+    const result = await signInWithGoogle();
+    if (result.success) {
+      toast({
+        title: "Welcome!",
+        description: "Please complete your registration below.",
+      });
+    } else if (result.error) {
       toast({
         title: "Authentication Error",
         description: result.error,

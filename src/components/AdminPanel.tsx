@@ -9,7 +9,8 @@ import { collection, getDocs, query, where, doc, setDoc, writeBatch, orderBy, li
 import { toast } from "@/hooks/use-toast";
 import { Calendar, Users, Trash2, Settings, Crown, Mail } from "lucide-react";
 import { resetPlayersToPlaceholders } from "@/utils/placeholderUtils";
-import { initializeTournamentDatabase } from "@/utils/tournamentInit";
+import { initializePlayers } from "@/utils/playerInitUtils";
+import { initializeMatches } from "@/utils/matchInitUtils";
 
 interface ConfirmedPlayer {
   id: string;
@@ -180,7 +181,9 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
 
     try {
       setIsLoading(true);
-      await initializeTournamentDatabase();
+      // Initialize Firebase database
+      await initializePlayers();
+      await initializeMatches();
       
       toast({
         title: "Database Initialized",

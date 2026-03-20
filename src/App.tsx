@@ -11,7 +11,6 @@ import PlayerAccess from "./pages/PlayerAccess";
 import AdminLogin from "./pages/AdminLogin";
 import AdminControl from "./pages/AdminControl";
 import NotFound from "./pages/NotFound";
-import { DatabaseInit } from "./components/DatabaseInit";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -43,11 +42,6 @@ const App = () => (
           <Route path="/sign-in" element={<SignIn />} />
           <Route path="/player-access" element={<PlayerAccess />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/setup" element={
-            <ProtectedRoute adminOnly={true}>
-              <DatabaseInit />
-            </ProtectedRoute>
-          } />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

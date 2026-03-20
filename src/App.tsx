@@ -13,10 +13,6 @@ import AdminControl from "./pages/AdminControl";
 import NotFound from "./pages/NotFound";
 import { DatabaseInit } from "./components/DatabaseInit";
 import ProtectedRoute from "./components/ProtectedRoute";
-import './utils/tournamentInit'; // Make tournament utilities available globally
-import './utils/diagnostic'; // Make diagnostic utilities available globally
-import './utils/emergencyFix'; // Make emergency fix available globally
-import './utils/quickMatchInit'; // Make quick match initialization available globally
 
 const queryClient = new QueryClient();
 

@@ -16,8 +16,11 @@ export const loadPlayers = async () => {
 
     if (snapshot.empty) {
       console.log('⚠️ No players found, initializing...');
+      console.log('🚀 Calling initializePlayers() now...');
       await initializePlayers();
-      return { femalePlayers: [], malePlayers: [] };
+      console.log('✅ Players initialized, reloading...');
+      // Recursively call self to load the newly created players
+      return loadPlayers();
     }
 
     const players = snapshot.docs.map(doc => ({
@@ -80,7 +83,7 @@ export const loadPlayers = async () => {
 
       console.log('⚠️ Insufficient players. Female:', females.length, 'Male:', males.length, '- Reinitializing...');
       await initializePlayers();
-      return { femalePlayers: [], malePlayers: [] };
+      return loadPlayers(); // Recursively reload
     }
   } catch (error) {
     console.error('❌ loadPlayers() FAILED:', error);
@@ -104,6 +107,8 @@ export const loadMatches = async () => {
 
     if (snapshot.empty) {
       console.log('⚠️ No matches found in database');
+      console.log('💡 Matches will be initialized after players are loaded');
+      // Don't try to initialize here - let it happen after players are confirmed
       return { femaleMatches: [], maleMatches: [] };
     }
 
@@ -162,7 +167,7 @@ export const loadMatches = async () => {
       if (femaleMatchesData.length !== 14 || maleMatchesData.length !== 14) {
         console.log('❌ Incorrect match count! Will reinitialize...');
         await initSimpleMatches();
-        return { femaleMatches: [], maleMatches: [] };
+        return loadMatches(); // Recursively reload
       }
 
       console.log('✅ MATCHES LOADED SUCCESSFULLY');

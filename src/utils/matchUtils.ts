@@ -92,7 +92,23 @@ export const initializeMatches = async () => {
 };
 
 export const updateMatchScore = async (matchIndex: number, score1: number, score2: number, gender: 'male' | 'female', isEdit: boolean = false) => {
-  console.log(`Updating match score: matchIndex=${matchIndex}, score1=${score1}, score2=${score2}, gender=${gender}, isEdit=${isEdit}`);
+  console.log(`🏐 [SCORE UPDATE] Starting... match=${matchIndex}, scores=${score1}-${score2}, gender=${gender}, isEdit=${isEdit}`);
+  
+  // VALIDATION: Ensure scores are valid numbers
+  if (score1 === null || score1 === undefined || score2 === null || score2 === undefined) {
+    console.error('❌ [SCORE UPDATE] Invalid scores - scores cannot be empty');
+    return null;
+  }
+  
+  if (isNaN(score1) || isNaN(score2)) {
+    console.error('❌ [SCORE UPDATE] Invalid scores - scores must be numbers');
+    return null;
+  }
+  
+  if (score1 < 0 || score2 < 0) {
+    console.error('❌ [SCORE UPDATE] Invalid scores - scores cannot be negative');
+    return null;
+  }
   
   try {
     // First, get the match to update
@@ -102,25 +118,35 @@ export const updateMatchScore = async (matchIndex: number, score1: number, score
     const matches = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
     if (!matches || matchIndex >= matches.length) {
-      console.error('Invalid match index:', matchIndex, 'Total matches:', matches?.length);
+      console.error('❌ [SCORE UPDATE] Invalid match index:', matchIndex, 'Total matches:', matches?.length);
       return null;
     }
 
     const matchId = matches[matchIndex].id;
-    console.log('Updating match with ID:', matchId);
+    console.log('🎯 [SCORE UPDATE] Updating match ID:', matchId);
 
-    // Update the match - only set is_submitted to true if not editing or if it's a new submission
+    // Update the match
     const matchRef = doc(db, 'matches', matchId);
     await updateDoc(matchRef, {
       score1,
       score2,
-      is_completed: true  // Always set completed when updating scores
+      is_completed: true  // Mark as completed
     });
 
-    console.log('Match updated successfully');
+    console.log('✅ [SCORE UPDATE] Match updated successfully');
+    console.log(`📊 [SCORE UPDATE] Final score: ${score1} - ${score2}`);
+    console.log(`🏆 [SCORE UPDATE] Winner: ${score1 > score2 ? 'Team 1' : score2 > score1 ? 'Team 2' : 'Draw'}`);
+    
+    // IMPORTANT: Trigger ranking calculation
+    // This updates player points based on match result
+    console.log('🔄 [SCORE UPDATE] Triggering ranking calculation...');
+    const { calculateRankingsFromMatches } = await import('./rankingUtils');
+    await calculateRankingsFromMatches();
+    console.log('✅ [SCORE UPDATE] Rankings updated!');
+    
     return matchId;
   } catch (error) {
-    console.error('Unexpected error in updateMatchScore:', error);
+    console.error('❌ [SCORE UPDATE] Unexpected error:', error);
     return null;
   }
 };

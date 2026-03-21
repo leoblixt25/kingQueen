@@ -15,9 +15,23 @@ export const initializePlayers = async () => {
 
     console.log(`📊 [INIT] Current players in database: ${snapshot.size}`);
 
-    if (!snapshot.empty) {
-      console.log('✅ [INIT] Players already exist, skipping initialization');
-      return true; // Indicate success - players exist
+    // Count by gender to enforce MAX 8 per gender
+    const femaleCount = snapshot.docs.filter(doc => doc.data().gender === 'female').length;
+    const maleCount = snapshot.docs.filter(doc => doc.data().gender === 'male').length;
+
+    console.log(`📊 [INIT] Female: ${femaleCount}, Male: ${maleCount}`);
+
+    // If we have 8+ of each gender, skip initialization
+    if (femaleCount >= 8 && maleCount >= 8) {
+      console.log('✅ [INIT] Already have 8+ players per gender, skipping initialization');
+      return true;
+    }
+
+    // If we have SOME players but not 8, don't create placeholders - real players exist
+    if (femaleCount > 0 || maleCount > 0) {
+      console.log('⚠️ [INIT] Some real players exist, NOT creating placeholders');
+      console.log('💡 [INIT] Placeholders only created when BOTH genders have 0 players');
+      return true;
     }
 
     console.log('➕ [INIT] Creating 16 new placeholder players (8 male, 8 female)...');

@@ -227,17 +227,72 @@ export default function KingQueenOfTheBeach() {
   };
 
   const handleScoreSubmit = async () => {
-    const scoreValue1 = parseInt(score1, 10) || 0;
-    const scoreValue2 = parseInt(score2, 10) || 0;
+    console.log('🏐 [SUBMIT] Score submit clicked');
+    console.log('📊 [SUBMIT] Current scores:', { score1, score2 });
+    
+    // VALIDATION: Check if scores are entered
+    if (!score1 || !score2) {
+      console.error('❌ [SUBMIT] Empty scores - showing validation error');
+      toast({
+        title: "Invalid Scores",
+        description: "Please enter both team scores before submitting.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const scoreValue1 = parseInt(score1, 10);
+    const scoreValue2 = parseInt(score2, 10);
+    
+    // VALIDATION: Ensure scores are valid numbers
+    if (isNaN(scoreValue1) || isNaN(scoreValue2)) {
+      console.error('❌ [SUBMIT] Invalid score format');
+      toast({
+        title: "Invalid Scores",
+        description: "Scores must be valid numbers.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (scoreValue1 < 0 || scoreValue2 < 0) {
+      console.error('❌ [SUBMIT] Negative scores not allowed');
+      toast({
+        title: "Invalid Scores",
+        description: "Scores cannot be negative.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    console.log('✅ [SUBMIT] Scores validated:', scoreValue1, scoreValue2);
+    
+    try {
+      console.log('🚀 [SUBMIT] Calling updateMatchScore...');
+      await updateMatchScore(currentMatchIndex, scoreValue1, scoreValue2, gender);
+      console.log('✅ [SUBMIT] Score update completed');
+      
+      // Show success message
+      toast({
+        title: "Score Submitted! 🎉",
+        description: `Final score: ${scoreValue1} - ${scoreValue2}. Rankings updated.`,
+      });
 
-    await updateMatchScore(currentMatchIndex, scoreValue1, scoreValue2, gender);
+      // Clear the score inputs - the match data will update via realtime subscriptions
+      setScore1('');
+      setScore2('');
+      console.log('🧹 [SUBMIT] Score inputs cleared');
 
-    // Clear the score inputs - the match data will update via realtime subscriptions
-    setScore1('');
-    setScore2('');
-
-    // Stay on the current match after score submission
-    // Users can manually navigate to other matches using Previous/Next buttons
+      // Stay on the current match after score submission
+      // Users can manually navigate to other matches using Previous/Next buttons
+    } catch (error) {
+      console.error('❌ [SUBMIT] Score submission failed:', error);
+      toast({
+        title: "Submission Failed",
+        description: "Failed to submit scores. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleResetScores = async () => {

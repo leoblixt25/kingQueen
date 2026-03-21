@@ -1,9 +1,11 @@
 import { db } from '@/config/firebase';
-import { collection, getDocs, query, where, addDoc, doc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, setDoc } from 'firebase/firestore';
 import { STATIC_MATCHUPS, FEMALE_PLAYERS, MALE_PLAYERS } from './staticMatchups';
 
 /**
- * Initialize matches using static matchups
+ * Initialize matches using DETERMINISTIC IDs
+ * Runs ONLY ONCE - checks if matches already exist
+ * Prevents duplicate generation on reload
  */
 export const initializeMatches = async () => {
   console.log('🚀 [MATCH INIT] Starting match initialization...');
@@ -15,10 +17,13 @@ export const initializeMatches = async () => {
 
     console.log(`📊 [MATCH INIT] Current matches in database: ${snapshot.size}`);
 
+    // If ANY matches exist, skip initialization (prevents duplicates)
     if (!snapshot.empty) {
-      console.log('✅ [MATCH INIT] Matches already exist, skipping initialization');
-      return true; // Indicate success - matches exist
+      console.log('✅ [MATCH INIT] Matches already exist - SKIPPING INITIALIZATION');
+      return true;
     }
+
+    console.log('➕ [MATCH INIT] Creating matches with deterministic IDs...');
 
     // Get players and sort them according to static order
     const playersRef = collection(db, 'players');
@@ -45,56 +50,56 @@ export const initializeMatches = async () => {
       throw new Error(errorMsg);
     }
 
-    // Create female matches (14 matches)
+    // Create female matches with DETERMINISTIC IDs: female_match_1 to female_match_14
     console.log('➕ [MATCH INIT] Creating 14 female matches...');
-    const femaleMatches = STATIC_MATCHUPS.map((matchup, index) => {
-      const [p1, p2, p3, p4] = matchup;
-      return {
+    for (let i = 0; i < STATIC_MATCHUPS.length; i++) {
+      const [p1, p2, p3, p4] = STATIC_MATCHUPS[i];
+      const matchId = `female_match_${i + 1}`;
+      const matchData = {
         player1_id: femalePlayers[p1].id,
         player2_id: femalePlayers[p2].id,
         player3_id: femalePlayers[p3].id,
         player4_id: femalePlayers[p4].id,
         gender: 'female',
-        match_number: index + 1,
+        match_number: i + 1,
         score1: 0,
         score2: 0,
-        is_completed: false
+        is_completed: false,
+        created_at: new Date().toISOString()
       };
-    });
+      
+      await setDoc(doc(matchesRef, matchId), matchData);
+      console.log(`✅ [MATCH INIT] Created ${matchId}`);
+    }
+    console.log('✅ [MATCH INIT] Created 14 female matches');
 
-    console.log('📝 [MATCH INIT] Inserting female matches...');
-    const femaleResults = await Promise.all(
-      femaleMatches.map(match => addDoc(matchesRef, match))
-    );
-    console.log(`✅ [MATCH INIT] Created ${femaleResults.length} female matches`);
-
-    // Create male matches (14 matches)
+    // Create male matches with DETERMINISTIC IDs: male_match_1 to male_match_14
     console.log('➕ [MATCH INIT] Creating 14 male matches...');
-    const maleMatches = STATIC_MATCHUPS.map((matchup, index) => {
-      const [p1, p2, p3, p4] = matchup;
-      return {
+    for (let i = 0; i < STATIC_MATCHUPS.length; i++) {
+      const [p1, p2, p3, p4] = STATIC_MATCHUPS[i];
+      const matchId = `male_match_${i + 1}`;
+      const matchData = {
         player1_id: malePlayers[p1].id,
         player2_id: malePlayers[p2].id,
         player3_id: malePlayers[p3].id,
         player4_id: malePlayers[p4].id,
         gender: 'male',
-        match_number: index + 1,
+        match_number: i + 1,
         score1: 0,
         score2: 0,
-        is_completed: false
+        is_completed: false,
+        created_at: new Date().toISOString()
       };
-    });
+      
+      await setDoc(doc(matchesRef, matchId), matchData);
+      console.log(`✅ [MATCH INIT] Created ${matchId}`);
+    }
+    console.log('✅ [MATCH INIT] Created 14 male matches');
 
-    console.log('📝 [MATCH INIT] Inserting male matches...');
-    const maleResults = await Promise.all(
-      maleMatches.map(match => addDoc(matchesRef, match))
-    );
-    console.log(`✅ [MATCH INIT] Created ${maleResults.length} male matches`);
-
-    const totalCreated = femaleResults.length + maleResults.length;
-    console.log(`🎉 [MATCH INIT] Matches initialized successfully: ${totalCreated} total (${femaleResults.length} female, ${maleResults.length} male)`);
+    console.log('🎉 [MATCH INIT] Matches initialized successfully with deterministic IDs!');
+    console.log('📊 [MATCH INIT] Total: 28 matches (14 female + 14 male)');
     
-    return true; // Indicate success
+    return true;
   } catch (error) {
     console.error('❌ [MATCH INIT] Failed to initialize matches:', error);
     throw error;

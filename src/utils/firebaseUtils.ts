@@ -190,9 +190,89 @@ export const loadMatches = async () => {
 
     if (checkSnapshot.empty) {
       console.log('⚠️ [MATCH LOAD] No matches found in database');
-      console.log('💡 [MATCH LOAD] Matches will be initialized after players are loaded');
-      // Don't try to initialize here - let it happen after players are confirmed
-      return { femaleMatches: [], maleMatches: [] };
+      console.log('🚀 [MATCH LOAD] Initializing matches now...');
+      
+      try {
+        await initSimpleMatches();
+        console.log('✅ [MATCH LOAD] Matches initialized successfully');
+      } catch (initError) {
+        console.error('❌ [MATCH LOAD] Match initialization FAILED:', initError);
+        return { femaleMatches: [], maleMatches: [] };
+      }
+      
+      console.log('🔁 [MATCH LOAD] Reloading matches after initialization...');
+      // One retry only - no infinite recursion
+      const retrySnapshot = await getDocs(simpleQuery);
+      
+      if (retrySnapshot.empty) {
+        console.error('❌ [MATCH LOAD] Still no matches after successful initialization! Database issue?');
+        return { femaleMatches: [], maleMatches: [] };
+      }
+      
+      // Process the retry snapshot below - continue to STEP 2
+      console.log('📊 [MATCH LOAD] Retry successful, proceeding with orderBy query...');
+      const orderedQuery = query(matchesRef, orderBy('match_number', 'asc'));
+      const snapshot = await getDocs(orderedQuery);
+      
+      const matches = snapshot.docs.map(doc => {
+        const data = doc.data();
+        console.log(`📄 [MATCH LOAD] Match #${data.match_number}:`, {
+          id: doc.id,
+          gender: data.gender,
+          player1_id: data.player1_id,
+          player2_id: data.player2_id,
+          is_completed: data.is_completed
+        });
+        return {
+          id: doc.id,
+          ...data
+        };
+      });
+      
+      console.log('✅ [MATCH LOAD] Total matches loaded:', matches.length);
+      
+      // Continue processing matches below...
+      if (matches && matches.length > 0) {
+        const femaleMatchesData = matches
+          .filter((m: any) => m.gender === 'female')
+          .map((m: any) => ({
+            id: m.id,
+            match_number: m.match_number,
+            player1_id: m.player1_id,
+            player2_id: m.player2_id,
+            player3_id: m.player3_id,
+            player4_id: m.player4_id,
+            score1: m.score1 || 0,
+            score2: m.score2 || 0,
+            isSubmitted: m.is_completed || false
+          }));
+
+        const maleMatchesData = matches
+          .filter((m: any) => m.gender === 'male')
+          .map((m: any) => ({
+            id: m.id,
+            match_number: m.match_number,
+            player1_id: m.player1_id,
+            player2_id: m.player2_id,
+            player3_id: m.player3_id,
+            player4_id: m.player4_id,
+            score1: m.score1 || 0,
+            score2: m.score2 || 0,
+            isSubmitted: m.is_completed || false
+          }));
+
+        console.log('✅ [MATCH LOAD] Female matches:', femaleMatchesData.length);
+        console.log('✅ [MATCH LOAD] Male matches:', maleMatchesData.length);
+        console.log('📊 [MATCH LOAD] Expected: 14 female + 14 male = 28 total');
+
+        if (femaleMatchesData.length !== 14 || maleMatchesData.length !== 14) {
+          console.log('⚠️ [MATCH LOAD] Incorrect match count! Female:', femaleMatchesData.length, 'Male:', maleMatchesData.length);
+          console.log('💡 [MATCH LOAD] Admin can reinitialize matches from Admin Panel if needed');
+        }
+
+        console.log('✅ [MATCH LOAD] MATCHES LOADED SUCCESSFULLY');
+        return { femaleMatches: femaleMatchesData, maleMatches: maleMatchesData };
+      }
     }
 
     // STEP 2: Collection has data - now use orderBy for proper sorting
@@ -271,21 +351,34 @@ export const loadMatches = async () => {
 };
 
 export const loadFinalMatch = async () => {
-  console.log('Loading final match...');
+  console.log('🔄 [FINAL MATCH] Loading final match...');
   try {
     const finalMatchRef = collection(db, 'finalMatches');
-    const q = query(finalMatchRef, orderBy('created_at', 'desc'));
-    const snapshot = await getDocs(q);
+    
+    // STEP 1: Check if collection is empty using simple query (no orderBy)
+    console.log('📊 [FINAL MATCH] Checking if finalMatches collection exists...');
+    const simpleQuery = query(finalMatchRef);
+    const checkSnapshot = await getDocs(simpleQuery);
+    
+    console.log('📊 [FINAL MATCH] Collection check:', checkSnapshot.empty ? 'EMPTY' : `${checkSnapshot.size} documents`);
 
-    if (snapshot.empty) {
+    if (checkSnapshot.empty) {
+      console.log('ℹ️ [FINAL MATCH] No final match yet - this is normal before semifinals complete');
       return null;
     }
 
+    // STEP 2: Collection has data - now use orderBy for proper sorting
+    console.log('📊 [FINAL MATCH] Final matches exist, loading with orderBy query...');
+    const orderedQuery = query(finalMatchRef, orderBy('created_at', 'desc'));
+    const snapshot = await getDocs(orderedQuery);
+
     // Return first document (most recent)
     const firstDoc = snapshot.docs[0];
-    return { id: firstDoc.id, ...firstDoc.data() };
+    const result = { id: firstDoc.id, ...firstDoc.data() };
+    console.log('✅ [FINAL MATCH] Loaded successfully');
+    return result;
   } catch (error) {
-    console.error('Error loading final match:', error);
+    console.error('❌ [FINAL MATCH] Error loading final match:', error);
     return null;
   }
 };

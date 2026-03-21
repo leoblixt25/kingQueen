@@ -15,68 +15,41 @@ export const useTournamentData = () => {
     console.log('🔄 [LOAD PLAYERS] Starting to fetch players...');
     try {
       const result = await loadPlayers() as any;
-      console.log('📊 [LOAD PLAYERS] Raw result:', result);
-      // Use functional updates to avoid dependency issues
-      state.setFemalePlayers(prev => {
-        console.log('👥 Setting female players:', result.femalePlayers.length);
-        return result.femalePlayers;
-      });
-      state.setMalePlayers(prev => {
-        console.log('👥 Setting male players:', result.malePlayers.length);
-        return result.malePlayers;
-      });
+      state.setFemalePlayers(result.femalePlayers);
+      state.setMalePlayers(result.malePlayers);
       console.log('✅ [LOAD PLAYERS] Success:', result.femalePlayers.length + result.malePlayers.length, 'players');
     } catch (error) {
       console.error('❌ [LOAD PLAYERS] Failed:', error);
       throw error;
     }
-  }, []); // Empty deps - using functional updates
+  }, []);
   
   const loadMatchesData = useCallback(async () => {
     console.log('🔄 [LOAD MATCHES] Starting to fetch matches...');
     try {
       const result = await loadMatches() as any;
-      console.log('📊 [LOAD MATCHES] Raw result:', result);
-      // Use functional updates to avoid dependency issues
-      state.setFemaleMatches(prev => {
-        console.log('🏐 Setting female matches:', result.femaleMatches.length);
-        return result.femaleMatches;
-      });
-      state.setMaleMatches(prev => {
-        console.log('🏐 Setting male matches:', result.maleMatches.length);
-        return result.maleMatches;
-      });
+      state.setFemaleMatches(result.femaleMatches);
+      state.setMaleMatches(result.maleMatches);
       console.log('✅ [LOAD MATCHES] Success:', result.femaleMatches.length + result.maleMatches.length, 'matches');
     } catch (error) {
       console.error('❌ [LOAD MATCHES] Failed:', error);
       throw error;
     }
-  }, []); // Empty deps - using functional updates
+  }, []);
   
   const loadFinalMatchData = useCallback(async () => {
     console.log('🔄 [LOAD FINAL] Starting to fetch final match...');
     try {
       const result = await loadFinalMatch() as any;
-      console.log('📊 [LOAD FINAL] Raw result:', result);
-      // Use functional updates to avoid dependency issues
-      state.setFinalMatchScores(prev => {
-        console.log('🏆 Setting final match scores');
-        return result.finalMatchScores;
-      });
-      state.setFinalMatchSubmitted(prev => {
-        console.log('🏆 Setting final match submitted:', result.finalMatchSubmitted);
-        return result.finalMatchSubmitted;
-      });
-      state.setFinalMatchWinner(prev => {
-        console.log('🏆 Setting final match winner:', result.finalMatchWinner);
-        return result.finalMatchWinner;
-      });
+      state.setFinalMatchScores(result.finalMatchScores);
+      state.setFinalMatchSubmitted(result.finalMatchSubmitted);
+      state.setFinalMatchWinner(result.finalMatchWinner);
       console.log('✅ [LOAD FINAL] Success');
     } catch (error) {
       console.error('❌ [LOAD FINAL] Failed:', error);
       throw error;
     }
-  }, []); // Empty deps - using functional updates
+  }, []);
   
   const loadTournamentData = useCallback(async () => {
     console.log('🚀 [TOURNAMENT LOAD] Starting tournament data load...');

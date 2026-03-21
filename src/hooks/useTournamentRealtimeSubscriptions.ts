@@ -14,26 +14,26 @@ export const useTournamentRealtimeSubscriptions = ({
   loadFinalMatchData,
 }: UseRealtimeSubscriptionsProps) => {
   useEffect(() => {
-    console.log('🔔 Setting up real-time subscriptions...');
+    console.log('🔔 [REALTIME] Setting up real-time subscriptions...');
 
     // Set up Firestore realtime listeners for each collection
-    const playersUnsubscribe = onSnapshot(collection(db, 'players'), () => {
-      console.log('🔁 Players collection changed - reloading data');
-      loadPlayersData();
+    const playersUnsubscribe = onSnapshot(collection(db, 'players'), (snapshot) => {
+      console.log('🔁 [REALTIME] Players collection changed -', snapshot.docs.length, 'documents');
+      loadPlayersData().catch(err => console.error('[REALTIME] Error reloading players:', err));
     });
 
-    const matchesUnsubscribe = onSnapshot(collection(db, 'matches'), () => {
-      console.log('🔁 Matches collection changed - reloading data');
-      loadMatchesData();
+    const matchesUnsubscribe = onSnapshot(collection(db, 'matches'), (snapshot) => {
+      console.log('🔁 [REALTIME] Matches collection changed -', snapshot.docs.length, 'documents');
+      loadMatchesData().catch(err => console.error('[REALTIME] Error reloading matches:', err));
     });
 
-    const finalMatchUnsubscribe = onSnapshot(collection(db, 'finalMatches'), () => {
-      console.log('🔁 Final match collection changed - reloading data');
-      loadFinalMatchData();
+    const finalMatchUnsubscribe = onSnapshot(collection(db, 'finalMatches'), (snapshot) => {
+      console.log('🔁 [REALTIME] Final match collection changed -', snapshot.docs.length, 'documents');
+      loadFinalMatchData().catch(err => console.error('[REALTIME] Error reloading final match:', err));
     });
 
     return () => {
-      console.log('🧹 Cleaning up real-time subscriptions...');
+      console.log('🧹 [REALTIME] Cleaning up real-time subscriptions...');
       playersUnsubscribe();
       matchesUnsubscribe();
       finalMatchUnsubscribe();

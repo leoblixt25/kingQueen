@@ -6,17 +6,21 @@ import { FEMALE_PLAYERS, MALE_PLAYERS } from './staticMatchups';
  * Initialize players using static names
  */
 export const initializePlayers = async () => {
-  console.log('Initializing players with static names...');
+  console.log('🚀 [INIT] Starting player initialization...');
   
   try {
     // Check if players already exist
     const playersRef = collection(db, 'players');
     const snapshot = await getDocs(playersRef);
 
+    console.log(`📊 [INIT] Current players in database: ${snapshot.size}`);
+
     if (!snapshot.empty) {
-      console.log('Players already exist, skipping initialization');
-      return;
+      console.log('✅ [INIT] Players already exist, skipping initialization');
+      return true; // Indicate success - players exist
     }
+
+    console.log('➕ [INIT] Creating 16 new placeholder players (8 male, 8 female)...');
 
     // Insert female players as placeholders
     const femaleInserts = FEMALE_PLAYERS.map((name, index) => ({
@@ -28,7 +32,11 @@ export const initializePlayers = async () => {
       is_confirmed: false
     }));
 
-    await Promise.all(femaleInserts.map(player => addDoc(playersRef, player)));
+    console.log('📝 [INIT] Inserting female players...');
+    const femaleResults = await Promise.all(
+      femaleInserts.map(player => addDoc(playersRef, player))
+    );
+    console.log(`✅ [INIT] Created ${femaleResults.length} female players`);
 
     // Insert male players as placeholders
     const maleInserts = MALE_PLAYERS.map((name, index) => ({
@@ -40,12 +48,19 @@ export const initializePlayers = async () => {
       is_confirmed: false
     }));
 
-    await Promise.all(maleInserts.map(player => addDoc(playersRef, player)));
+    console.log('📝 [INIT] Inserting male players...');
+    const maleResults = await Promise.all(
+      maleInserts.map(player => addDoc(playersRef, player))
+    );
+    console.log(`✅ [INIT] Created ${maleResults.length} male players`);
 
-    console.log('Players initialized successfully');
+    const totalCreated = femaleResults.length + maleResults.length;
+    console.log(`🎉 [INIT] Players initialized successfully: ${totalCreated} total (${femaleResults.length} female, ${maleResults.length} male)`);
+    
+    return true; // Indicate success
   } catch (error) {
-    console.error('Error in initializePlayers:', error);
-    throw error;
+    console.error('❌ [INIT] Failed to initialize players:', error);
+    throw error; // Re-throw to let caller handle
   }
 };
 

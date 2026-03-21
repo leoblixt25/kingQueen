@@ -6,22 +6,26 @@ import { STATIC_MATCHUPS, FEMALE_PLAYERS, MALE_PLAYERS } from './staticMatchups'
  * Initialize matches using static matchups
  */
 export const initializeMatches = async () => {
-  console.log('Initializing matches with static matchups...');
+  console.log('🚀 [MATCH INIT] Starting match initialization...');
   
   try {
     // Check if matches already exist
     const matchesRef = collection(db, 'matches');
     const snapshot = await getDocs(matchesRef);
 
+    console.log(`📊 [MATCH INIT] Current matches in database: ${snapshot.size}`);
+
     if (!snapshot.empty) {
-      console.log('Matches already exist, skipping initialization');
-      return;
+      console.log('✅ [MATCH INIT] Matches already exist, skipping initialization');
+      return true; // Indicate success - matches exist
     }
 
     // Get players and sort them according to static order
     const playersRef = collection(db, 'players');
     const playersSnapshot = await getDocs(playersRef);
     const players = playersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+    console.log(`📊 [MATCH INIT] Found ${players.length} total players`);
 
     // Sort players according to the static order defined in staticMatchups.ts
     const femalePlayers = FEMALE_PLAYERS.map(name => 
@@ -32,11 +36,17 @@ export const initializeMatches = async () => {
       players.find((p: any) => p.gender === 'male' && p.name === name)
     ).filter(Boolean);
 
+    console.log(`📊 [MATCH INIT] Female players matched: ${femalePlayers.length}`);
+    console.log(`📊 [MATCH INIT] Male players matched: ${malePlayers.length}`);
+
     if (femalePlayers.length !== 8 || malePlayers.length !== 8) {
-      throw new Error(`Expected 8 players of each gender, got ${femalePlayers.length} female and ${malePlayers.length} male`);
+      const errorMsg = `Expected 8 players of each gender, got ${femalePlayers.length} female and ${malePlayers.length} male`;
+      console.error('❌ [MATCH INIT] ' + errorMsg);
+      throw new Error(errorMsg);
     }
 
-    // Create female matches
+    // Create female matches (14 matches)
+    console.log('➕ [MATCH INIT] Creating 14 female matches...');
     const femaleMatches = STATIC_MATCHUPS.map((matchup, index) => {
       const [p1, p2, p3, p4] = matchup;
       return {
@@ -52,7 +62,14 @@ export const initializeMatches = async () => {
       };
     });
 
-    // Create male matches
+    console.log('📝 [MATCH INIT] Inserting female matches...');
+    const femaleResults = await Promise.all(
+      femaleMatches.map(match => addDoc(matchesRef, match))
+    );
+    console.log(`✅ [MATCH INIT] Created ${femaleResults.length} female matches`);
+
+    // Create male matches (14 matches)
+    console.log('➕ [MATCH INIT] Creating 14 male matches...');
     const maleMatches = STATIC_MATCHUPS.map((matchup, index) => {
       const [p1, p2, p3, p4] = matchup;
       return {
@@ -68,15 +85,18 @@ export const initializeMatches = async () => {
       };
     });
 
-    // Insert all matches
-    await Promise.all([
-      ...femaleMatches.map(match => addDoc(matchesRef, match)),
-      ...maleMatches.map(match => addDoc(matchesRef, match))
-    ]);
+    console.log('📝 [MATCH INIT] Inserting male matches...');
+    const maleResults = await Promise.all(
+      maleMatches.map(match => addDoc(matchesRef, match))
+    );
+    console.log(`✅ [MATCH INIT] Created ${maleResults.length} male matches`);
 
-    console.log('Matches initialized successfully');
+    const totalCreated = femaleResults.length + maleResults.length;
+    console.log(`🎉 [MATCH INIT] Matches initialized successfully: ${totalCreated} total (${femaleResults.length} female, ${maleResults.length} male)`);
+    
+    return true; // Indicate success
   } catch (error) {
-    console.error('Error in initializeMatches:', error);
+    console.error('❌ [MATCH INIT] Failed to initialize matches:', error);
     throw error;
   }
 };

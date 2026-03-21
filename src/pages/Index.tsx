@@ -62,8 +62,21 @@ export default function KingQueenOfTheBeach() {
     resetAllData,
     retryMatchInitialization,
     setFinalMatchScores,
-    loadTournamentData
+    loadTournamentData,
+    loadPlayersData,
+    loadMatchesData,
+    loadFinalMatchData
   } = useTournamentData();
+
+  // Debug logging - log state changes
+  console.log('📊 [INDEX RENDER] State:', {
+    isLoading,
+    femalePlayers: femalePlayers.length,
+    malePlayers: malePlayers.length,
+    femaleMatches: femaleMatches.length,
+    maleMatches: maleMatches.length,
+    gender,
+  });
 
   // Use the individual loaders from the hook (already wrapped in useCallback)
   useTournamentRealtimeSubscriptions({

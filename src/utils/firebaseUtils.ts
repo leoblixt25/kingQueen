@@ -47,12 +47,14 @@ export const loadPlayers = async () => {
       // Continue to processing
       if (players && players.length > 0) {
         const females = players.filter((p: any) => p.gender === 'female').map((p: any) => ({
+          id: p.id, // Preserve Firestore document ID
           name: p.name,
           points: p.points,
           totalScores: p.total_scores
         }));
         
         const males = players.filter((p: any) => p.gender === 'male').map((p: any) => ({
+          id: p.id, // Preserve Firestore document ID
           name: p.name,
           points: p.points,
           totalScores: p.total_scores
@@ -113,12 +115,14 @@ export const loadPlayers = async () => {
 
     if (players && players.length > 0) {
       const females = players.filter((p: any) => p.gender === 'female').map((p: any) => ({
+        id: p.id, // Preserve Firestore document ID
         name: p.name,
         points: p.points,
         totalScores: p.total_scores
       }));
       
       const males = players.filter((p: any) => p.gender === 'male').map((p: any) => ({
+        id: p.id, // Preserve Firestore document ID
         name: p.name,
         points: p.points,
         totalScores: p.total_scores
@@ -175,8 +179,9 @@ export const loadPlayers = async () => {
   return { femalePlayers: [], malePlayers: [] };
 };
 
-export const loadMatches = async () => {
+export const loadMatches = async (femalePlayers?: any[], malePlayers?: any[]) => {
   console.log('🔄 [MATCH LOAD] loadMatches() called');
+  console.log('📊 [MATCH LOAD] Available players - Female:', femalePlayers?.length || 0, 'Male:', malePlayers?.length || 0);
   
   try {
     const matchesRef = collection(db, 'matches');

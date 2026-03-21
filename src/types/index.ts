@@ -1,6 +1,7 @@
 export type Gender = "male" | "female";
 
 export type Player = {
+  id?: string; // Firestore document ID
   name: string;
   points: number;
   totalScores: number;

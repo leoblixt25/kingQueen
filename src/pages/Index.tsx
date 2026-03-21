@@ -16,6 +16,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { auth, db } from "@/config/firebase";
 import { collection, getDocs, query, where, writeBatch } from "firebase/firestore";
 import { getCurrentUser, isAdmin as checkIsAdmin, adminSignOut, signOut, getCurrentUserTournamentData } from "@/utils/authUtils";
+import { buildPlayersMap, resolveMatchPlayers } from "@/utils/matchPlayerResolver";
 
 interface TournamentSettings {
   id?: string;
@@ -71,7 +72,12 @@ export default function KingQueenOfTheBeach() {
   });
 
   const players = gender === 'female' ? femalePlayers : malePlayers
-  const matches = gender === 'female' ? femaleMatches : maleMatches
+  
+  // Build players map and resolve match player IDs to actual player data
+  const playersMap = buildPlayersMap(femalePlayers, malePlayers);
+  const resolvedFemaleMatches = resolveMatchPlayers(femaleMatches, playersMap);
+  const resolvedMaleMatches = resolveMatchPlayers(maleMatches, playersMap);
+  const matches = gender === 'female' ? resolvedFemaleMatches : resolvedMaleMatches
 
   // Initialize user state on mount
   useEffect(() => {

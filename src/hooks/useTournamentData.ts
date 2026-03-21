@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useTournamentState } from './useTournamentState';
 import { useTournamentRealtimeSubscriptions } from './useTournamentRealtimeSubscriptions';
 import { useTournamentActions } from './useTournamentActions';
@@ -10,8 +10,8 @@ const LOADING_TIMEOUT = 5000;
 export const useTournamentData = () => {
   const state = useTournamentState();
   
-  // Define loaders inline
-  const loadPlayersData = async () => {
+  // Define loaders inline - wrapped in useCallback to prevent recreation
+  const loadPlayersData = useCallback(async () => {
     console.log('🔄 [LOAD PLAYERS] Starting to fetch players...');
     try {
       const result = await loadPlayers() as any;
@@ -22,9 +22,9 @@ export const useTournamentData = () => {
       console.error('❌ [LOAD PLAYERS] Failed:', error);
       throw error;
     }
-  };
+  }, [state.setFemalePlayers, state.setMalePlayers]);
   
-  const loadMatchesData = async () => {
+  const loadMatchesData = useCallback(async () => {
     console.log('🔄 [LOAD MATCHES] Starting to fetch matches...');
     try {
       const result = await loadMatches() as any;
@@ -35,9 +35,9 @@ export const useTournamentData = () => {
       console.error('❌ [LOAD MATCHES] Failed:', error);
       throw error;
     }
-  };
+  }, [state.setFemaleMatches, state.setMaleMatches]);
   
-  const loadFinalMatchData = async () => {
+  const loadFinalMatchData = useCallback(async () => {
     console.log('🔄 [LOAD FINAL] Starting to fetch final match...');
     try {
       const result = await loadFinalMatch() as any;
@@ -49,9 +49,9 @@ export const useTournamentData = () => {
       console.error('❌ [LOAD FINAL] Failed:', error);
       throw error;
     }
-  };
+  }, [state.setFinalMatchScores, state.setFinalMatchSubmitted, state.setFinalMatchWinner]);
   
-  const loadTournamentData = async () => {
+  const loadTournamentData = useCallback(async () => {
     console.log('🚀 [TOURNAMENT LOAD] Starting tournament data load...');
     state.setIsLoading(true);
     
@@ -113,7 +113,7 @@ export const useTournamentData = () => {
       state.setIsLoading(false);
       console.log('🏁 [TOURNAMENT LOAD] Loading state cleared - App ready');
     }
-  };
+  }, [loadPlayersData, loadMatchesData, loadFinalMatchData, state.setIsLoading]);
 
   const actions = useTournamentActions({
     loadPlayersData,

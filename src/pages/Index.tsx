@@ -65,10 +65,11 @@ export default function KingQueenOfTheBeach() {
     loadTournamentData
   } = useTournamentData();
 
+  // Use the individual loaders from the hook (already wrapped in useCallback)
   useTournamentRealtimeSubscriptions({
-    loadPlayersData: loadTournamentData,
-    loadMatchesData: loadTournamentData,
-    loadFinalMatchData: loadTournamentData,
+    loadPlayersData,
+    loadMatchesData,
+    loadFinalMatchData,
   });
 
   const players = gender === 'female' ? femalePlayers : malePlayers

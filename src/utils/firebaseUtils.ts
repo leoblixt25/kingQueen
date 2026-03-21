@@ -1,7 +1,7 @@
 import { db } from '@/config/firebase';
 import { collection, getDocs, query, orderBy, doc, getDoc } from 'firebase/firestore';
-import { initializePlayers } from './playerInitUtils';
-import { initializeMatches as initSimpleMatches } from './matchInitUtils';
+import { initializePlayersSafe } from './firebaseMigration';
+import { initializeMatchesSafe } from './firebaseMigration';
 
 export const loadPlayers = async () => {
   console.log('🔄 [LOAD] loadPlayers() called');
@@ -21,7 +21,7 @@ export const loadPlayers = async () => {
       console.log('🚀 [LOAD] Calling initializePlayers() now...');
       
       try {
-        await initializePlayers();
+        await initializePlayersSafe();
         console.log('✅ [LOAD] Players initialized successfully');
       } catch (initError) {
         console.error('❌ [LOAD] Player initialization FAILED:', initError);
@@ -198,7 +198,7 @@ export const loadMatches = async (femalePlayers?: any[], malePlayers?: any[]) =>
       console.log('🚀 [MATCH LOAD] Initializing matches now...');
       
       try {
-        await initSimpleMatches();
+        await initializeMatchesSafe();
         console.log('✅ [MATCH LOAD] Matches initialized successfully');
       } catch (initError) {
         console.error('❌ [MATCH LOAD] Match initialization FAILED:', initError);

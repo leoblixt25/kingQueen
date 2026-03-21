@@ -8,14 +8,15 @@ export const loadPlayers = async () => {
   
   try {
     const playersRef = collection(db, 'players');
-    console.log('📊 [LOAD] Firestore query: SELECT * FROM players ORDER BY points DESC');
     
-    const q = query(playersRef, orderBy('points', 'desc'), orderBy('total_scores', 'desc'));
-    const snapshot = await getDocs(q);
+    // STEP 1: Check if collection is empty using simple query (no orderBy)
+    console.log('📊 [LOAD] Checking if players collection exists...');
+    const simpleQuery = query(playersRef);
+    const checkSnapshot = await getDocs(simpleQuery);
+    
+    console.log('📊 [LOAD] Collection check:', checkSnapshot.empty ? 'EMPTY' : `${checkSnapshot.size} documents`);
 
-    console.log('📊 [LOAD] Query result:', snapshot.empty ? 'EMPTY' : `${snapshot.size} documents`);
-
-    if (snapshot.empty) {
+    if (checkSnapshot.empty) {
       console.log('⚠️ [LOAD] No players found, initializing...');
       console.log('🚀 [LOAD] Calling initializePlayers() now...');
       
@@ -30,7 +31,7 @@ export const loadPlayers = async () => {
       
       console.log('🔁 [LOAD] Reloading players after initialization...');
       // One retry only - no infinite recursion
-      const retrySnapshot = await getDocs(q);
+      const retrySnapshot = await getDocs(simpleQuery);
       
       if (retrySnapshot.empty) {
         console.error('❌ [LOAD] Still no players after successful initialization! Database issue?');
@@ -99,7 +100,10 @@ export const loadPlayers = async () => {
       return { femalePlayers: [], malePlayers: [] };
     }
 
-    // Process non-empty snapshot
+    // STEP 2: Collection has data - now use orderBy for proper sorting
+    console.log('📊 [LOAD] Players exist, loading with orderBy query...');
+    const orderedQuery = query(playersRef, orderBy('points', 'desc'), orderBy('total_scores', 'desc'));
+    const snapshot = await getDocs(orderedQuery);
     const players = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
@@ -176,19 +180,25 @@ export const loadMatches = async () => {
   
   try {
     const matchesRef = collection(db, 'matches');
-    console.log('📊 [MATCH LOAD] Firestore query: SELECT * FROM matches ORDER BY match_number');
     
-    const q = query(matchesRef, orderBy('match_number', 'asc'));
-    const snapshot = await getDocs(q);
+    // STEP 1: Check if collection is empty using simple query (no orderBy)
+    console.log('📊 [MATCH LOAD] Checking if matches collection exists...');
+    const simpleQuery = query(matchesRef);
+    const checkSnapshot = await getDocs(simpleQuery);
 
-    console.log('📊 [MATCH LOAD] Query result:', snapshot.empty ? 'EMPTY' : `${snapshot.size} documents`);
+    console.log('📊 [MATCH LOAD] Collection check:', checkSnapshot.empty ? 'EMPTY' : `${checkSnapshot.size} documents`);
 
-    if (snapshot.empty) {
+    if (checkSnapshot.empty) {
       console.log('⚠️ [MATCH LOAD] No matches found in database');
       console.log('💡 [MATCH LOAD] Matches will be initialized after players are loaded');
       // Don't try to initialize here - let it happen after players are confirmed
       return { femaleMatches: [], maleMatches: [] };
     }
+
+    // STEP 2: Collection has data - now use orderBy for proper sorting
+    console.log('📊 [MATCH LOAD] Matches exist, loading with orderBy query...');
+    const orderedQuery = query(matchesRef, orderBy('match_number', 'asc'));
+    const snapshot = await getDocs(orderedQuery);
 
     const matches = snapshot.docs.map(doc => {
       const data = doc.data();

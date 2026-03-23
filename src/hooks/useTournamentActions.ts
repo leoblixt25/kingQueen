@@ -56,8 +56,9 @@ export const useTournamentActions = ({
       console.log('🏆 Tournament type determined:', tournamentType);
       await updateFinalMatchUtil(scores, malePlayers, femalePlayers, tournamentType);
       console.log('🏆 Final match updated successfully');
-      // Reload tournament data to get the updated final match state
-      await loadTournamentData();
+      // DON'T reload immediately - let real-time subscriptions handle it
+      // This prevents race conditions where we load before data is saved
+      console.log('🏆 Waiting for real-time update...');
     } catch (error) {
       console.error('🏆 Error updating final match:', error);
       throw error;

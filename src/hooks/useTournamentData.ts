@@ -51,18 +51,31 @@ export const useTournamentData = () => {
         console.log('📊 [LOAD FINAL] Raw final match data:', result);
         
         // Extract set scores from Firestore fields
+        const team1Set1 = result.team1_set1;
+        const team1Set2 = result.team1_set2;
+        const team1Set3 = result.team1_set3;
+        const team2Set1 = result.team2_set1;
+        const team2Set2 = result.team2_set2;
+        const team2Set3 = result.team2_set3;
+        
+        console.log('📊 [LOAD FINAL] Raw sets - T1:', team1Set1, team1Set2, team1Set3);
+        console.log('📊 [LOAD FINAL] Raw sets - T2:', team2Set1, team2Set2, team2Set3);
+        
         finalMatchScores = {
           team1: [
-            result.team1_set1 ?? null,
-            result.team1_set2 ?? null,
-            result.team1_set3 ?? null
+            team1Set1 !== undefined ? (team1Set1 === null ? null : team1Set1) : null,
+            team1Set2 !== undefined ? (team1Set2 === null ? null : team1Set2) : null,
+            team1Set3 !== undefined ? (team1Set3 === null ? null : team1Set3) : null
           ],
           team2: [
-            result.team2_set1 ?? null,
-            result.team2_set2 ?? null,
-            result.team2_set3 ?? null
+            team2Set1 !== undefined ? (team2Set1 === null ? null : team2Set1) : null,
+            team2Set2 !== undefined ? (team2Set2 === null ? null : team2Set2) : null,
+            team2Set3 !== undefined ? (team2Set3 === null ? null : team2Set3) : null
           ]
         };
+        
+        console.log('📊 [LOAD FINAL] Processed team1 scores:', finalMatchScores.team1);
+        console.log('📊 [LOAD FINAL] Processed team2 scores:', finalMatchScores.team2);
         
         finalMatchSubmitted = result.is_completed || false;
         

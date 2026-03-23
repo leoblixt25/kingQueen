@@ -9,6 +9,7 @@ interface UseTournamentActionsProps {
   loadTournamentData: () => Promise<void>;
   malePlayers: Player[];
   femalePlayers: Player[];
+  setFinalMatchSubmitted?: (submitted: boolean) => void;
 }
 
 export const useTournamentActions = ({
@@ -17,6 +18,7 @@ export const useTournamentActions = ({
   loadTournamentData,
   malePlayers,
   femalePlayers,
+  setFinalMatchSubmitted,
 }: UseTournamentActionsProps) => {
   const updateMatchScore = async (matchIndex: number, score1: number, score2: number, gender: 'male' | 'female', isEdit: boolean = false) => {
     console.log(`🏐 UPDATE MATCH SCORE CALLED: match=${matchIndex}, scores=${score1}-${score2}, gender=${gender}, isEdit=${isEdit}`);
@@ -56,8 +58,14 @@ export const useTournamentActions = ({
       console.log('🏆 Tournament type determined:', tournamentType);
       await updateFinalMatchUtil(scores, malePlayers, femalePlayers, tournamentType);
       console.log('🏆 Final match updated successfully');
-      // DON'T reload immediately - let real-time subscriptions handle it
-      // This prevents race conditions where we load before data is saved
+      
+      // Set submitted state immediately to lock the UI
+      if (setFinalMatchSubmitted) {
+        setFinalMatchSubmitted(true);
+        console.log('🏆 Submitted state set to true');
+      }
+      
+      // Let real-time subscriptions handle data refresh naturally
       console.log('🏆 Waiting for real-time update...');
     } catch (error) {
       console.error('🏆 Error updating final match:', error);

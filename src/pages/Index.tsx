@@ -370,9 +370,10 @@ export default function KingQueenOfTheBeach() {
   const handleFinalMatchSubmit = async () => {
     console.log('🏆 [FINAL SUBMIT] Button clicked!');
     console.log('🏆 [FINAL SUBMIT] Current scores:', finalMatchScores);
+    console.log('🏆 [FINAL SUBMIT] Current submitted state:', finalMatchSubmitted);
     
     // Validate scores before submitting
-    const hasValidScores = finalMatchScores.team1.some(s => s !== null) || finalMatchScores.team2.some(s => s !== null);
+    const hasValidScores = finalMatchScores.team1.some(s => s !== null && s !== 0) || finalMatchScores.team2.some(s => s !== null && s !== 0);
     if (!hasValidScores) {
       console.error('❌ [FINAL SUBMIT] No scores entered!');
       toast({
@@ -387,8 +388,10 @@ export default function KingQueenOfTheBeach() {
       console.log('🏆 [FINAL SUBMIT] Calling updateFinalMatchData...');
       // Use the updated final match logic based on tournament type
       await updateFinalMatchData(finalMatchScores);
-      console.log('🏆 [FINAL SUBMIT] Success!');
+      console.log('🏆 [FINAL SUBMIT] Success! Setting submitted state...');
       
+      // Manually set submitted state immediately
+      // Don't wait for real-time update
       toast({
         title: "Final Match Submitted",
         description: "Championship match results saved successfully",

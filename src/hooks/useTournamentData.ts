@@ -170,6 +170,7 @@ export const useTournamentData = () => {
     loadTournamentData,
     malePlayers: state.malePlayers,
     femalePlayers: state.femalePlayers,
+    setFinalMatchSubmitted: state.setFinalMatchSubmitted,
   });
 
   // Initialize data on mount - runs ONCE

@@ -82,6 +82,16 @@ export const loadPlayers = async () => {
         
         console.log('📊 [LOAD] Top ranked Female:', females[0]?.name, '-', females[0]?.points, 'points,', females[0]?.totalScores, 'total scores');
         console.log('📊 [LOAD] Top ranked Male:', males[0]?.name, '-', males[0]?.points, 'points,', males[0]?.totalScores, 'total scores');
+        
+        // DEBUG: Log full sorted arrays to verify
+        console.log('🔍 [LOAD] FEMALE RANKINGS (sorted by points DESC, then totalScores DESC):');
+        females.forEach((p: any, i: number) => {
+          console.log(`  #${i+1} ${p.name}: ${p.points} pts, ${p.totalScores} total`);
+        });
+        console.log('🔍 [LOAD] MALE RANKINGS (sorted by points DESC, then totalScores DESC):');
+        males.forEach((p: any, i: number) => {
+          console.log(`  #${i+1} ${p.name}: ${p.points} pts, ${p.totalScores} total`);
+        });
 
         if (females.length === 8 && males.length === 8) {
           console.log('✅ [LOAD] PLAYERS LOADED SUCCESSFULLY');

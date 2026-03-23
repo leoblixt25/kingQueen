@@ -23,16 +23,17 @@ export const initializePlayersSafe = async () => {
     
     console.log(`📊 [MIGRATION] Current - Female: ${femaleCount}, Male: ${maleCount}`);
     
-    // ✅ IF WE HAVE 8+ OF EACH GENDER → USE EXISTING DATA
-    if (femaleCount >= 8 && maleCount >= 8) {
-      console.log('✅ [MIGRATION] Already have 8+ players per gender - using existing data');
+    // ✅ STRICT LIMIT: MUST BE EXACTLY 8 OF EACH GENDER
+    if (femaleCount === 8 && maleCount === 8) {
+      console.log('✅ [MIGRATION] Already have EXACTLY 8 players per gender - using existing data');
       console.log('💡 [MIGRATION] No changes needed - app will work with current players');
       return true;
     }
     
-    // ⚠️ IF WE HAVE SOME BUT NOT 8 → CLEAR AND RECREATE
-    if (femaleCount > 0 || maleCount > 0) {
-      console.log('⚠️ [MIGRATION] Incomplete data - clearing and recreating...');
+    // ❌ IF MORE OR LESS THAN 8 → CLEAR AND RECREATE
+    if (femaleCount !== 8 || maleCount !== 8) {
+      console.log(`⚠️ [MIGRATION] Incorrect player count! Expected 8F+8M, got ${femaleCount}F+${maleCount}M`);
+      console.log('🗑️ [MIGRATION] Clearing all and recreating with exactly 8 per gender...');
       await deleteAllPlayers();
     }
     

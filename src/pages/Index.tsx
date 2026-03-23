@@ -77,14 +77,27 @@ export default function KingQueenOfTheBeach() {
 
   const players = gender === 'female' ? femalePlayers : malePlayers
   
+  // CRITICAL FIX: Ensure players are ALWAYS sorted before display
+  // This is a safeguard in case state updates cause reordering
+  const sortedPlayers = [...players].sort((a, b) => {
+    if (b.points !== a.points) return b.points - a.points;
+    return b.totalScores - a.totalScores;
+  });
+  
   // DEBUG: Log ranking order to verify sorting
   console.log('📊 [RANKING DEBUG] Current players array order:', players.map((p, i) => `#${i+1} ${p.name} - ${p.points}pts, ${p.totalScores} total`));
+  console.log('📊 [RANKING DEBUG] Sorted players array order:', sortedPlayers.map((p, i) => `#${i+1} ${p.name} - ${p.points}pts, ${p.totalScores} total`));
   if (players.length > 0) {
     const maxPointsPlayer = players.reduce((max, p) => p.points > max.points ? p : max, players[0]);
+    const sortedMaxPointsPlayer = sortedPlayers.reduce((max, p) => p.points > max.points ? p : max, sortedPlayers[0]);
     console.log('🎯 [RANKING DEBUG] Player with MOST points:', maxPointsPlayer.name, '-', maxPointsPlayer.points, 'points');
-    console.log('🎯 [RANKING DEBUG] First player in display:', players[0].name, '-', players[0].points, 'points');
+    console.log('🎯 [RANKING DEBUG] First player in ORIGINAL array:', players[0].name, '-', players[0].points, 'points');
+    console.log('🎯 [RANKING DEBUG] First player in SORTED array:', sortedPlayers[0].name, '-', sortedPlayers[0].points, 'points');
+    if (sortedPlayers[0].id !== maxPointsPlayer.id) {
+      console.error('❌ [RANKING BUG] Even after resorting, top player is NOT first! Data issue!');
+    }
     if (players[0].id !== maxPointsPlayer.id) {
-      console.error('❌ [RANKING BUG] Top player is NOT first in array! Check sorting logic!');
+      console.error('❌ [RANKING BUG] Top player is NOT first in original array! Using sorted array.');
     } else {
       console.log('✅ [RANKING DEBUG] Correct: Top player is first in array');
     }
@@ -1099,7 +1112,7 @@ export default function KingQueenOfTheBeach() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {players.map((player, index) => (
+                      {sortedPlayers.map((player, index) => (
                         <div key={`${player.name}-${index}`} className={`flex items-center justify-between p-4 rounded-xl shadow-sand transition-all duration-300 ${
                           index === 0 ? 'bg-sunset-gradient text-white' : 
                           index === 1 ? 'bg-ocean/20 border-2 border-ocean/30' : 

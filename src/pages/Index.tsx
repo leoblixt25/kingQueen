@@ -500,47 +500,15 @@ export default function KingQueenOfTheBeach() {
     );
   }
 
-  // Error state - if we have no matches after loading completes
-  // Only show error if we've tried loading and it actually failed (not just still loading)
-  const hasLoadedBefore = femaleMatches.length > 0 || maleMatches.length > 0 || !isLoading;
-  
-  if ((!matches || matches.length === 0) && hasLoadedBefore) {
-    console.log('⚠️ [ERROR PAGE] No matches found after loading. Showing error page.');
-    return (
-      <div className="min-h-screen bg-sand-gradient px-4 py-6 flex items-center justify-center">
-        <div className="text-center space-y-4 animate-fade-in">
-          <div className="text-6xl mb-4">⚠️</div>
-          <h2 className="text-2xl font-bold mb-3 bg-coral-gradient bg-clip-text text-transparent">
-            Failed to Load Matches
-          </h2>
-          <p className="text-foreground/70 font-medium mb-6">
-            Unable to load tournament data. Please try again.
-          </p>
-          <div className="space-y-3 max-w-sm mx-auto">
-            <Button 
-              onClick={loadTournamentData} 
-              className="w-full touch-target bg-ocean hover:bg-ocean-dark text-white font-semibold py-3 transition-all duration-300"
-            >
-              🔄 Retry Loading Data
-            </Button>
-            {isAdmin && (
-              <Button 
-                onClick={handleResetScores} 
-                variant="destructive"
-                className="w-full touch-target bg-coral hover:bg-coral-dark text-white transition-all duration-300"
-              >
-                Reset Tournament Data
-              </Button>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
-  
-  // If still loading or data hasn't populated yet, show loading state
+  // Always show loading state while waiting for data
+  // This ensures users never see an error page - data will load automatically
   if (!matches || matches.length === 0) {
-    console.log('⏳ [LOADING] Still waiting for matches to load...', { femaleMatches: femaleMatches.length, maleMatches: maleMatches.length });
+    console.log('⏳ [LOADING] Waiting for matches to load...', { 
+      femaleMatches: femaleMatches?.length || 0, 
+      maleMatches: maleMatches?.length || 0,
+      isLoading,
+      isLoadingUserData 
+    });
     return (
       <div className="min-h-screen bg-sand-gradient px-4 py-6 flex items-center justify-center">
         <div className="text-center animate-fade-in space-y-4">

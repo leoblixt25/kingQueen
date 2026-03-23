@@ -501,7 +501,11 @@ export default function KingQueenOfTheBeach() {
   }
 
   // Error state - if we have no matches after loading completes
-  if (!matches || matches.length === 0) {
+  // Only show error if we've tried loading and it actually failed (not just still loading)
+  const hasLoadedBefore = femaleMatches.length > 0 || maleMatches.length > 0 || !isLoading;
+  
+  if ((!matches || matches.length === 0) && hasLoadedBefore) {
+    console.log('⚠️ [ERROR PAGE] No matches found after loading. Showing error page.');
     return (
       <div className="min-h-screen bg-sand-gradient px-4 py-6 flex items-center justify-center">
         <div className="text-center space-y-4 animate-fade-in">
@@ -528,6 +532,30 @@ export default function KingQueenOfTheBeach() {
                 Reset Tournament Data
               </Button>
             )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  // If still loading or data hasn't populated yet, show loading state
+  if (!matches || matches.length === 0) {
+    console.log('⏳ [LOADING] Still waiting for matches to load...', { femaleMatches: femaleMatches.length, maleMatches: maleMatches.length });
+    return (
+      <div className="min-h-screen bg-sand-gradient px-4 py-6 flex items-center justify-center">
+        <div className="text-center animate-fade-in space-y-4">
+          <div className="text-6xl mb-4 animate-bounce-gentle">🏐</div>
+          <h2 className="text-2xl font-bold mb-3 bg-ocean-gradient bg-clip-text text-transparent">
+            Initializing Tournament...
+          </h2>
+          <p className="text-foreground/70 font-medium">Setting up matches and players</p>
+          <div className="space-y-3 mt-6">
+            <div className="flex items-center justify-center gap-2 text-sm text-foreground/60">
+              <div className="w-2 h-2 bg-ocean rounded-full animate-pulse"></div>
+              <div className="w-2 h-2 bg-ocean rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+              <div className="w-2 h-2 bg-ocean rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+            </div>
+            <p className="text-xs text-foreground/50">Please wait while we initialize your tournament...</p>
           </div>
         </div>
       </div>

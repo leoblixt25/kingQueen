@@ -7,8 +7,8 @@ import { Player, Match } from '@/types';
  * Updates player points based on match results
  * 
  * Scoring system:
- * - Win = 1 point
- * - Loss = 0 points
+ * - Win = 2 points
+ * - Loss = 1 point (participation)
  * 
  * Called automatically by Firestore trigger when match is completed
  */
@@ -41,19 +41,19 @@ export const calculateRankingsFromMatches = async () => {
       const team1Won = match.score1 > match.score2;
       
       if (team1Won) {
-        // Team 1 won - add wins for player1 and player2
-        addToPlayerStats(playerWins, match.player1_id, 1, match.score1);
-        addToPlayerStats(playerWins, match.player2_id, 1, match.score1);
-        // Team 2 lost - add 0 wins for player3 and player4
-        addToPlayerStats(playerWins, match.player3_id, 0, match.score2);
-        addToPlayerStats(playerWins, match.player4_id, 0, match.score2);
-      } else {
-        // Team 2 won
+        // Team 1 won - add 2 points for player1 and player2
+        addToPlayerStats(playerWins, match.player1_id, 2, match.score1);
+        addToPlayerStats(playerWins, match.player2_id, 2, match.score1);
+        // Team 2 lost - add 1 point for player3 and player4
         addToPlayerStats(playerWins, match.player3_id, 1, match.score2);
         addToPlayerStats(playerWins, match.player4_id, 1, match.score2);
-        // Team 1 lost
-        addToPlayerStats(playerWins, match.player1_id, 0, match.score1);
-        addToPlayerStats(playerWins, match.player2_id, 0, match.score1);
+      } else {
+        // Team 2 won - add 2 points for player3 and player4
+        addToPlayerStats(playerWins, match.player3_id, 2, match.score2);
+        addToPlayerStats(playerWins, match.player4_id, 2, match.score2);
+        // Team 1 lost - add 1 point for player1 and player2
+        addToPlayerStats(playerWins, match.player1_id, 1, match.score1);
+        addToPlayerStats(playerWins, match.player2_id, 1, match.score1);
       }
     });
     
@@ -73,7 +73,7 @@ export const calculateRankingsFromMatches = async () => {
         
         // Update points and total_scores
         const updatePromise = updateDoc(playerRef, {
-          points: stats.wins,
+          points: stats.wins,  // Now uses 2 for win, 1 for loss
           total_scores: stats.totalScores
         });
         

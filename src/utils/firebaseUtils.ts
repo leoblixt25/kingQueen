@@ -64,6 +64,17 @@ export const loadPlayers = async () => {
         console.log('✅ [LOAD] Male players:', males.length);
         console.log('📊 [LOAD] Expected: 8 female + 8 male = 16 total');
 
+        // Sort by points then totalScores (client-side to avoid Firestore index requirement)
+        females.sort((a: any, b: any) => {
+          if (b.points !== a.points) return b.points - a.points;
+          return b.totalScores - a.totalScores;
+        });
+        
+        males.sort((a: any, b: any) => {
+          if (b.points !== a.points) return b.points - a.points;
+          return b.totalScores - a.totalScores;
+        });
+
         if (females.length === 8 && males.length === 8) {
           console.log('✅ [LOAD] PLAYERS LOADED SUCCESSFULLY');
           return { femalePlayers: females, malePlayers: males };
@@ -102,10 +113,9 @@ export const loadPlayers = async () => {
       return { femalePlayers: [], malePlayers: [] };
     }
 
-    // STEP 2: Collection has data - now use orderBy for proper sorting
-    console.log('📊 [LOAD] Players exist, loading with orderBy query...');
-    const orderedQuery = query(playersRef, orderBy('points', 'desc'), orderBy('total_scores', 'desc'));
-    const snapshot = await getDocs(orderedQuery);
+    // STEP 2: Collection has data - load without orderBy first (avoid index issues)
+    console.log('📊 [LOAD] Players exist, loading data...');
+    const snapshot = await getDocs(simpleQuery);
     const players = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
@@ -280,10 +290,9 @@ export const loadMatches = async (femalePlayers?: any[], malePlayers?: any[]) =>
       }
     }
 
-    // STEP 2: Collection has data - now use orderBy for proper sorting
-    console.log('📊 [MATCH LOAD] Matches exist, loading with orderBy query...');
-    const orderedQuery = query(matchesRef, orderBy('match_number', 'asc'));
-    const snapshot = await getDocs(orderedQuery);
+    // STEP 2: Collection has data - load without orderBy first (avoid index issues)
+    console.log('📊 [MATCH LOAD] Matches exist, loading with simple query...');
+    const snapshot = await getDocs(simpleQuery);
 
     const matches = snapshot.docs.map(doc => {
       const data = doc.data();

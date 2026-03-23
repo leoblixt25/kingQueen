@@ -7,10 +7,10 @@ import { FEMALE_PLAYERS, MALE_PLAYERS, STATIC_MATCHUPS } from './staticMatchups'
  * Deletes ALL data and recreates fresh default state
  * 
  * Process:
- * 1. Delete all players
- * 2. Delete all matches
+ * 1. Delete all players (batch delete)
+ * 2. Delete all matches (batch delete)
  * 3. Create exactly 8 players per gender with deterministic IDs
- * 4. Generate round-robin matches
+ * 4. Generate round-robin matches with deterministic IDs
  */
 export const resetTournament = async () => {
   console.log('🔄 [RESET] Starting COMPLETE tournament reset...');
@@ -27,14 +27,14 @@ export const resetTournament = async () => {
     console.log('✅ [RESET] All matches deleted');
     
     // ========== STEP 3: CREATE DEFAULT PLAYERS ==========
-    console.log('➕ [RESET] Creating EXACTLY 16 default players...');
+    console.log('➕ [RESET] Creating EXACTLY 16 default players with deterministic IDs...');
     await createDefaultPlayers();
-    console.log('✅ [RESET] Default players created');
+    console.log('✅ [RESET] Default players created with IDs: female_1-8, male_1-8');
     
     // ========== STEP 4: GENERATE MATCHES ==========
-    console.log('🏐 [RESET] Generating round-robin matches...');
+    console.log('🏐 [RESET] Generating round-robin matches with deterministic IDs...');
     await generateMatches();
-    console.log('✅ [RESET] Matches generated');
+    console.log('✅ [RESET] Matches generated with IDs: female_match_1-14, male_match_1-14');
     
     console.log('🎉 [RESET] ========================================');
     console.log('🎉 [RESET] TOURNAMENT RESET COMPLETE!');

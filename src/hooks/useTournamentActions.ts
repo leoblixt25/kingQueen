@@ -27,11 +27,9 @@ export const useTournamentActions = ({
       console.log(`🏐 Match updated, ID: ${matchId}`);
       if (matchId) {
         console.log(`🏐 Match updated successfully, database trigger will handle player stats automatically`);
-        // Database trigger handles player stats calculation automatically
-        // No need for manual updatePlayerPointsFromMatch call
-        await loadPlayersData();
-        await loadMatchesData();
-        console.log(`🏐 Data reloaded successfully`);
+        // IMMEDIATELY reload players and matches to show updated rankings
+        await Promise.all([loadPlayersData(), loadMatchesData()]);
+        console.log(`🏐 Data reloaded immediately`);
       } else {
         console.error('Failed to update match score - no match ID returned');
       }
@@ -76,9 +74,10 @@ export const useTournamentActions = ({
   const resetScoresAndReload = async () => {
     try {
       await resetScoresOnly();
-      // Real-time subscriptions will handle the reload automatically
-      // but we can force a reload for immediate feedback
-      await loadTournamentData();
+      console.log('🔄 [RESET] Scores reset complete, forcing immediate reload...');
+      // Force immediate reload instead of waiting for real-time
+      await Promise.all([loadPlayersData(), loadMatchesData(), loadTournamentData()]);
+      console.log('✅ [RESET] Data reloaded immediately');
     } catch (error) {
       console.error('Error in resetScoresAndReload:', error);
       throw error;
@@ -88,9 +87,11 @@ export const useTournamentActions = ({
   const resetAllDataAndReload = async () => {
     try {
       await fullTournamentReset();
-      // Real-time subscriptions will handle most of the reload
-      // but we ensure data is fresh with a manual reload
-      await loadTournamentData();
+      console.log('🔄 [FULL RESET] Tournament reset complete, forcing immediate reload...');
+      // Force immediate reload with a small delay to ensure DB is ready
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await Promise.all([loadPlayersData(), loadMatchesData(), loadTournamentData()]);
+      console.log('✅ [FULL RESET] Data reloaded immediately');
     } catch (error) {
       console.error('Error in resetAllDataAndReload:', error);
       throw error;

@@ -389,21 +389,20 @@ export const loadFinalMatch = async () => {
       return null;
     }
 
-    // STEP 2: Collection has data - now use orderBy for proper sorting
-    console.log('📊 [FINAL MATCH] Final matches exist, loading with orderBy query...');
-    const orderedQuery = query(finalMatchRef, orderBy('created_at', 'desc'));
-    const snapshot = await getDocs(orderedQuery);
+    // STEP 2: Collection has data - use simple query (avoid orderBy to prevent index issues)
+    console.log('📊 [FINAL MATCH] Final matches exist, loading data...');
+    const snapshot = await getDocs(simpleQuery);
 
     // Safety check: ensure we have documents
     if (snapshot.empty || snapshot.docs.length === 0) {
-      console.log('⚠️ [FINAL MATCH] No documents found in ordered query despite check passing');
+      console.log('⚠️ [FINAL MATCH] No documents found');
       return null;
     }
 
-    // Return first document (most recent)
+    // Return first document (we only expect one anyway)
     const firstDoc = snapshot.docs[0];
     const result = { id: firstDoc.id, ...firstDoc.data() };
-    console.log('✅ [FINAL MATCH] Loaded successfully');
+    console.log('✅ [FINAL MATCH] Loaded successfully:', result);
     return result;
   } catch (error) {
     console.error('❌ [FINAL MATCH] Error loading final match:', error);

@@ -77,6 +77,19 @@ export default function KingQueenOfTheBeach() {
 
   const players = gender === 'female' ? femalePlayers : malePlayers
   
+  // DEBUG: Log ranking order to verify sorting
+  console.log('📊 [RANKING DEBUG] Current players array order:', players.map((p, i) => `#${i+1} ${p.name} - ${p.points}pts, ${p.totalScores} total`));
+  if (players.length > 0) {
+    const maxPointsPlayer = players.reduce((max, p) => p.points > max.points ? p : max, players[0]);
+    console.log('🎯 [RANKING DEBUG] Player with MOST points:', maxPointsPlayer.name, '-', maxPointsPlayer.points, 'points');
+    console.log('🎯 [RANKING DEBUG] First player in display:', players[0].name, '-', players[0].points, 'points');
+    if (players[0].id !== maxPointsPlayer.id) {
+      console.error('❌ [RANKING BUG] Top player is NOT first in array! Check sorting logic!');
+    } else {
+      console.log('✅ [RANKING DEBUG] Correct: Top player is first in array');
+    }
+  }
+  
   // Build players map and resolve match player IDs to actual player data
   const playersMap = buildPlayersMap(femalePlayers, malePlayers);
   const resolvedFemaleMatches = resolveMatchPlayers(femaleMatches, playersMap);

@@ -10,6 +10,11 @@ import { Player, Match } from '@/types';
  * - Win = 2 points
  * - Loss = 1 point (participation)
  * 
+ * Ranking Logic:
+ * - Players are ranked by TOTAL POINTS (highest first)
+ * - If tied on points, use TOTAL SCORES as tiebreaker (highest first)
+ * - Example: Player A (6 pts, 120 score) ranks higher than Player B (6 pts, 115 score)
+ * 
  * Called automatically by Firestore trigger when match is completed
  */
 export const calculateRankingsFromMatches = async () => {

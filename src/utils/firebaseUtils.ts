@@ -64,16 +64,24 @@ export const loadPlayers = async () => {
         console.log('✅ [LOAD] Male players:', males.length);
         console.log('📊 [LOAD] Expected: 8 female + 8 male = 16 total');
 
-        // Sort by points then totalScores (client-side to avoid Firestore index requirement)
+        // CRITICAL: Sort rankings by points (descending), then by totalScores (descending) as tiebreaker
+        // Rank #1 = highest points, if tied → higher total score wins
         females.sort((a: any, b: any) => {
+          // Primary sort: points (highest first)
           if (b.points !== a.points) return b.points - a.points;
+          // Secondary sort (tiebreaker): totalScores (highest first)
           return b.totalScores - a.totalScores;
         });
         
         males.sort((a: any, b: any) => {
+          // Primary sort: points (highest first)
           if (b.points !== a.points) return b.points - a.points;
+          // Secondary sort (tiebreaker): totalScores (highest first)
           return b.totalScores - a.totalScores;
         });
+        
+        console.log('📊 [LOAD] Top ranked Female:', females[0]?.name, '-', females[0]?.points, 'points,', females[0]?.totalScores, 'total scores');
+        console.log('📊 [LOAD] Top ranked Male:', males[0]?.name, '-', males[0]?.points, 'points,', males[0]?.totalScores, 'total scores');
 
         if (females.length === 8 && males.length === 8) {
           console.log('✅ [LOAD] PLAYERS LOADED SUCCESSFULLY');

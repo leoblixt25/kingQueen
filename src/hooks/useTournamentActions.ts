@@ -40,8 +40,21 @@ export const useTournamentActions = ({
 
   const updateFinalMatch = async (scores: FinalMatchScores) => {
     console.log('🏆 Final match update called with scores:', scores);
+    console.log('🏆 Players available - Male:', malePlayers.length, 'Female:', femalePlayers.length);
     try {
-      await updateFinalMatchUtil(scores, malePlayers, femalePlayers);
+      // Determine tournament type based on player data
+      const hasMalePlayers = malePlayers && malePlayers.length > 0;
+      const hasFemalePlayers = femalePlayers && femalePlayers.length > 0;
+      
+      let tournamentType = 'mixed'; // default
+      if (hasMalePlayers && !hasFemalePlayers) {
+        tournamentType = 'male';
+      } else if (!hasMalePlayers && hasFemalePlayers) {
+        tournamentType = 'female';
+      }
+      
+      console.log('🏆 Tournament type determined:', tournamentType);
+      await updateFinalMatchUtil(scores, malePlayers, femalePlayers, tournamentType);
       console.log('🏆 Final match updated successfully');
       // Reload tournament data to get the updated final match state
       await loadTournamentData();

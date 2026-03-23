@@ -3,6 +3,12 @@ import { FinalMatchScores, Player } from '@/types';
 import { collection, getDocs, query, where, doc, setDoc, getDoc } from 'firebase/firestore';
 
 export const updateFinalMatch = async (scores: FinalMatchScores, malePlayers: Player[], femalePlayers: Player[], tournamentType: string) => {
+  console.log('🏆 [FINAL MATCH] Starting final match update...');
+  console.log('🏆 [FINAL MATCH] Scores:', scores);
+  console.log('🏆 [FINAL MATCH] Tournament type:', tournamentType);
+  console.log('🏆 [FINAL MATCH] Male players count:', malePlayers?.length || 0);
+  console.log('🏆 [FINAL MATCH] Female players count:', femalePlayers?.length || 0);
+  
   const team1Wins = scores.team1.filter((score, index) => 
     score !== null && scores.team2[index] !== null && score > scores.team2[index]!
   ).length;
@@ -11,9 +17,13 @@ export const updateFinalMatch = async (scores: FinalMatchScores, malePlayers: Pl
     score !== null && scores.team1[index] !== null && score > scores.team1[index]!
   ).length;
 
+  console.log('🏆 [FINAL MATCH] Team 1 wins:', team1Wins, 'Team 2 wins:', team2Wins);
+
   // Calculate total scores for each team
   const team1TotalScore = scores.team1.reduce((sum, score) => sum + (score || 0), 0);
   const team2TotalScore = scores.team2.reduce((sum, score) => sum + (score || 0), 0);
+
+  console.log('🏆 [FINAL MATCH] Team 1 total score:', team1TotalScore, 'Team 2 total score:', team2TotalScore);
 
   // Get player IDs by looking them up in the database
   const playersRef = collection(db, 'players');
@@ -61,18 +71,30 @@ export const updateFinalMatch = async (scores: FinalMatchScores, malePlayers: Pl
     }
   } else {
     // For "King & Queen of the Beach" (mixed) - default behavior
+    console.log('🏆 [FINAL MATCH] Mixed tournament - selecting top ranked players');
+    console.log('🏆 [FINAL MATCH] Male rankings:', malePlayers.map((p, i) => `#${i+1} ${p.name} (${p.points}pts)`));
+    console.log('🏆 [FINAL MATCH] Female rankings:', femalePlayers.map((p, i) => `#${i+1} ${p.name} (${p.points}pts)`));
+    
     if (team1Wins > team2Wins) {
       winnerTeam = 1;
+      // Team 1: Rank #1 Male + Rank #2 Female
+      // Team 2: Rank #2 Male + Rank #1 Female
       maleKingId = getPlayerId(malePlayers[0]?.name, 'male');
       femaleQueenId = getPlayerId(femalePlayers[1]?.name, 'female');
       malePrinceId = getPlayerId(malePlayers[1]?.name, 'male');
       femalePrincessId = getPlayerId(femalePlayers[0]?.name, 'female');
+      
+      console.log('🏆 [FINAL MATCH] Team 1 WINS - King: Male #1, Queen: Female #2');
+      console.log('🏆 [FINAL MATCH] Prince: Male #2, Princess: Female #1');
     } else if (team2Wins > team1Wins) {
       winnerTeam = 2;
       maleKingId = getPlayerId(malePlayers[1]?.name, 'male');
       femaleQueenId = getPlayerId(femalePlayers[0]?.name, 'female');
       malePrinceId = getPlayerId(malePlayers[0]?.name, 'male');
       femalePrincessId = getPlayerId(femalePlayers[1]?.name, 'female');
+      
+      console.log('🏆 [FINAL MATCH] Team 2 WINS - King: Male #2, Queen: Female #1');
+      console.log('🏆 [FINAL MATCH] Prince: Male #1, Princess: Female #2');
     }
   }
 

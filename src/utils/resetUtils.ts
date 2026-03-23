@@ -68,19 +68,25 @@ export const fullTournamentReset = async () => {
     playersSnap.docs.forEach(doc => batch.delete(doc.ref));
     
     await batch.commit();
+    console.log('🗑️ [RESET] All data deleted');
     
     // Reinitialize players first
     await initializePlayers();
+    console.log('✅ [RESET] Players initialized');
     
     // Brief pause for player creation to complete
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, 1000));
     
     // Then initialize matches
     await initializeMatches();
+    console.log('✅ [RESET] Matches initialized');
     
-    console.log('Full tournament reset completed');
+    // Additional pause to ensure all writes are committed
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    console.log('✅ [RESET] Full tournament reset completed successfully');
   } catch (error) {
-    console.error('Error in fullTournamentReset:', error);
+    console.error('❌ [RESET] Error in fullTournamentReset:', error);
     throw error;
   }
 };

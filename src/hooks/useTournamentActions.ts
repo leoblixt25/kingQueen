@@ -86,14 +86,24 @@ export const useTournamentActions = ({
 
   const resetAllDataAndReload = async () => {
     try {
+      console.log('🔄 [FULL RESET] Starting full tournament reset...');
       await fullTournamentReset();
-      console.log('🔄 [FULL RESET] Tournament reset complete, forcing immediate reload...');
-      // Force immediate reload with a small delay to ensure DB is ready
-      await new Promise(resolve => setTimeout(resolve, 500));
-      await Promise.all([loadPlayersData(), loadMatchesData(), loadTournamentData()]);
-      console.log('✅ [FULL RESET] Data reloaded immediately');
+      console.log('🔄 [FULL RESET] Reset complete, waiting for data to be ready...');
+      
+      // Wait a bit longer to ensure all real-time updates have processed
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      console.log('🔄 [FULL RESET] Forcing immediate reload of all data...');
+      // Force immediate reload - load everything in parallel
+      await Promise.all([
+        loadPlayersData().then(() => console.log('✅ Players loaded')),
+        loadMatchesData().then(() => console.log('✅ Matches loaded')),
+        loadTournamentData().then(() => console.log('✅ Tournament data loaded'))
+      ]);
+      
+      console.log('✅ [FULL RESET] All data reloaded successfully');
     } catch (error) {
-      console.error('Error in resetAllDataAndReload:', error);
+      console.error('❌ [FULL RESET] Error:', error);
       throw error;
     }
   };

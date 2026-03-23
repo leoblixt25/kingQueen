@@ -41,9 +41,49 @@ export const useTournamentData = () => {
     console.log('🔄 [LOAD FINAL] Starting to fetch final match...');
     try {
       const result = await loadFinalMatch() as any;
-      state.setFinalMatchScores(result.finalMatchScores);
-      state.setFinalMatchSubmitted(result.finalMatchSubmitted);
-      state.setFinalMatchWinner(result.finalMatchWinner);
+      
+      // Transform Firestore data into the expected format
+      let finalMatchScores = { team1: [null, null, null], team2: [null, null, null] } as any;
+      let finalMatchSubmitted = false;
+      let finalMatchWinner = null;
+      
+      if (result) {
+        console.log('📊 [LOAD FINAL] Raw final match data:', result);
+        
+        // Extract set scores from Firestore fields
+        finalMatchScores = {
+          team1: [
+            result.team1_set1 ?? null,
+            result.team1_set2 ?? null,
+            result.team1_set3 ?? null
+          ],
+          team2: [
+            result.team2_set1 ?? null,
+            result.team2_set2 ?? null,
+            result.team2_set3 ?? null
+          ]
+        };
+        
+        finalMatchSubmitted = result.is_completed || false;
+        
+        // Determine winner based on winner_team field
+        if (result.winner_team) {
+          finalMatchWinner = {
+            winningTeam: result.winner_team,
+            malePlayer: result.male_king_id ? 'King' : '',
+            femalePlayer: result.female_queen_id ? 'Queen' : '',
+            losingMalePlayer: result.male_prince_id ? 'Prince' : '',
+            losingFemalePlayer: result.female_princess_id ? 'Princess' : ''
+          };
+        }
+        
+        console.log('📊 [LOAD FINAL] Transformed scores:', finalMatchScores);
+        console.log('📊 [LOAD FINAL] Submitted:', finalMatchSubmitted, 'Winner:', finalMatchWinner);
+      }
+      
+      state.setFinalMatchScores(finalMatchScores);
+      state.setFinalMatchSubmitted(finalMatchSubmitted);
+      state.setFinalMatchWinner(finalMatchWinner);
       console.log('✅ [LOAD FINAL] Success');
     } catch (error) {
       console.error('❌ [LOAD FINAL] Failed:', error);

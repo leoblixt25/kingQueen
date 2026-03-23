@@ -394,6 +394,12 @@ export const loadFinalMatch = async () => {
     const orderedQuery = query(finalMatchRef, orderBy('created_at', 'desc'));
     const snapshot = await getDocs(orderedQuery);
 
+    // Safety check: ensure we have documents
+    if (snapshot.empty || snapshot.docs.length === 0) {
+      console.log('⚠️ [FINAL MATCH] No documents found in ordered query despite check passing');
+      return null;
+    }
+
     // Return first document (most recent)
     const firstDoc = snapshot.docs[0];
     const result = { id: firstDoc.id, ...firstDoc.data() };

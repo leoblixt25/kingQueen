@@ -24,9 +24,5 @@ export type FinalMatchScores = {
 };
 
 export type FinalMatchWinner = {
-  team: 'team1' | 'team2';
-  malePlayer: string;
-  femalePlayer: string;
-  losingMalePlayer: string;
-  losingFemalePlayer: string;
+  winningTeam: 1 | 2;
 } | null;

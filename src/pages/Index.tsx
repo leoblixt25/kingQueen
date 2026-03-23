@@ -906,20 +906,44 @@ export default function KingQueenOfTheBeach() {
                                 <Crown className="w-8 h-8" />
                               </h3>
                               <div className="space-y-2">
-                                <p className="text-lg font-semibold">
-                                  👑 King <span className="font-bold">{finalMatchWinner.malePlayer}</span>
-                                </p>
-                                <p className="text-lg font-semibold">
-                                  👑 Queen <span className="font-bold">{finalMatchWinner.femalePlayer}</span>
-                                </p>
+                                {/* Calculate King & Queen based on winning team */}
+                                {finalMatchWinner.winningTeam === 1 ? (
+                                  <>
+                                    <p className="text-lg font-semibold">
+                                      👑 King <span className="font-bold">{malePlayers[0]?.name || 'Unknown'}</span>
+                                    </p>
+                                    <p className="text-lg font-semibold">
+                                      👑 Queen <span className="font-bold">{femalePlayers[1]?.name || 'Unknown'}</span>
+                                    </p>
+                                  </>
+                                ) : (
+                                  <>
+                                    <p className="text-lg font-semibold">
+                                      👑 King <span className="font-bold">{malePlayers[1]?.name || 'Unknown'}</span>
+                                    </p>
+                                    <p className="text-lg font-semibold">
+                                      👑 Queen <span className="font-bold">{femalePlayers[0]?.name || 'Unknown'}</span>
+                                    </p>
+                                  </>
+                                )}
                               </div>
                             </div>
                             
                             <div className="bg-white/60 backdrop-blur-sm rounded-xl p-4">
                               <h3 className="text-lg font-semibold mb-2 text-foreground/80">🥈 Runners-up</h3>
                               <div className="space-y-1 text-foreground/70">
-                                <p>🤴 Prince <span className="font-bold">{finalMatchWinner.losingMalePlayer}</span></p>
-                                <p>👸 Princess <span className="font-bold">{finalMatchWinner.losingFemalePlayer}</span></p>
+                                {/* Calculate Prince & Princess based on losing team */}
+                                {finalMatchWinner.winningTeam === 1 ? (
+                                  <>
+                                    <p>🤴 Prince <span className="font-bold">{malePlayers[1]?.name || 'Unknown'}</span></p>
+                                    <p>👸 Princess <span className="font-bold">{femalePlayers[0]?.name || 'Unknown'}</span></p>
+                                  </>
+                                ) : (
+                                  <>
+                                    <p>🤴 Prince <span className="font-bold">{malePlayers[0]?.name || 'Unknown'}</span></p>
+                                    <p>👸 Princess <span className="font-bold">{femalePlayers[1]?.name || 'Unknown'}</span></p>
+                                  </>
+                                )}
                               </div>
                             </div>
                           </div>

@@ -66,14 +66,10 @@ export const useTournamentData = () => {
         
         finalMatchSubmitted = result.is_completed || false;
         
-        // Determine winner based on winner_team field
+        // Store just the winning team number - we'll calculate names when displaying
         if (result.winner_team) {
           finalMatchWinner = {
-            winningTeam: result.winner_team,
-            malePlayer: result.male_king_id ? 'King' : '',
-            femalePlayer: result.female_queen_id ? 'Queen' : '',
-            losingMalePlayer: result.male_prince_id ? 'Prince' : '',
-            losingFemalePlayer: result.female_princess_id ? 'Princess' : ''
+            winningTeam: result.winner_team
           };
         }
         

@@ -368,16 +368,33 @@ export default function KingQueenOfTheBeach() {
   }
 
   const handleFinalMatchSubmit = async () => {
+    console.log('🏆 [FINAL SUBMIT] Button clicked!');
+    console.log('🏆 [FINAL SUBMIT] Current scores:', finalMatchScores);
+    
+    // Validate scores before submitting
+    const hasValidScores = finalMatchScores.team1.some(s => s !== null) || finalMatchScores.team2.some(s => s !== null);
+    if (!hasValidScores) {
+      console.error('❌ [FINAL SUBMIT] No scores entered!');
+      toast({
+        title: "Invalid Scores",
+        description: "Please enter at least one set score before submitting.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     try {
+      console.log('🏆 [FINAL SUBMIT] Calling updateFinalMatchData...');
       // Use the updated final match logic based on tournament type
       await updateFinalMatchData(finalMatchScores);
+      console.log('🏆 [FINAL SUBMIT] Success!');
       
       toast({
         title: "Final Match Submitted",
         description: "Championship match results saved successfully",
       });
     } catch (error) {
-      console.error('Error submitting final match:', error);
+      console.error('❌ [FINAL SUBMIT] Error submitting final match:', error);
       toast({
         title: "Error",
         description: "Failed to submit final match",

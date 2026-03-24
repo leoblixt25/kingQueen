@@ -331,11 +331,7 @@ export default function KingQueenOfTheBeach() {
         });
       } catch (error) {
         console.error('❌ [FULL RESET] Reset failed:', error);
-        toast({
-          title: "Reset Failed",
-          description: "Failed to reset tournament. Please try again.",
-          variant: "destructive",
-        });
+        // Don't show error toast - user can use retry button on error page
       }
     } else {
       console.log('ℹ️ [FULL RESET] User cancelled reset');
@@ -516,27 +512,33 @@ export default function KingQueenOfTheBeach() {
 
   // Show loading state while waiting for data - never show error page
   if (!matches || matches.length === 0) {
-    console.log('⏳ [LOADING] Waiting for matches to load...', { 
-      femaleMatches: femaleMatches?.length || 0, 
-      maleMatches: maleMatches?.length || 0,
-      isLoading,
-      isLoadingUserData 
-    });
+    console.log('⚠️ [ERROR PAGE] No matches found after loading. Showing error page.');
     return (
       <div className="min-h-screen bg-sand-gradient px-4 py-6 flex items-center justify-center">
-        <div className="text-center animate-fade-in space-y-4">
-          <div className="text-6xl mb-4 animate-bounce-gentle">🏐</div>
-          <h2 className="text-2xl font-bold mb-3 bg-ocean-gradient bg-clip-text text-transparent">
-            Initializing Tournament...
+        <div className="text-center space-y-4 animate-fade-in">
+          <div className="text-6xl mb-4">⚠️</div>
+          <h2 className="text-2xl font-bold mb-3 bg-coral-gradient bg-clip-text text-transparent">
+            Failed to Load Matches
           </h2>
-          <p className="text-foreground/70 font-medium">Setting up matches and players</p>
-          <div className="space-y-3 mt-6">
-            <div className="flex items-center justify-center gap-2 text-sm text-foreground/60">
-              <div className="w-2 h-2 bg-ocean rounded-full animate-pulse"></div>
-              <div className="w-2 h-2 bg-ocean rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-              <div className="w-2 h-2 bg-ocean rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
-            </div>
-            <p className="text-xs text-foreground/50">Please wait while we initialize your tournament...</p>
+          <p className="text-foreground/70 font-medium mb-6">
+            Unable to load tournament data. Please try again.
+          </p>
+          <div className="space-y-3 max-w-sm mx-auto">
+            <Button 
+              onClick={loadTournamentData} 
+              className="w-full touch-target bg-ocean hover:bg-ocean-dark text-white font-semibold py-3 transition-all duration-300"
+            >
+              🔄 Retry Loading Data
+            </Button>
+            {isAdmin && (
+              <Button 
+                onClick={handleResetScores} 
+                variant="destructive"
+                className="w-full touch-target bg-coral hover:bg-coral-dark text-white transition-all duration-300"
+              >
+                Reset Tournament Data
+              </Button>
+            )}
           </div>
         </div>
       </div>

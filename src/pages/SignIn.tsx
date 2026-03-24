@@ -11,6 +11,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { signInWithGoogle, signInWithApple, getCurrentUserTournamentData } from "@/utils/authUtils";
 
+// Sign In Page - Google & Apple OAuth only (No magic link)
 export default function SignIn() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();

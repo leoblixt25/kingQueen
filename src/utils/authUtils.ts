@@ -69,22 +69,15 @@ export const registerWithEmailPassword = async (
       displayName: name
     });
 
-    // Save player data to Firestore
-    const playerData = {
-      email: email.toLowerCase(),
-      uid: user.uid,
-      name: name,
-      gender: gender,
-      points: 0,
-      score: 0,
-      is_confirmed: true,
-      created_at: new Date().toISOString()
-    };
-
-    await setDoc(doc(db, 'players', email.toLowerCase()), playerData);
+    // Import registerPlayerToSlot to handle placeholder replacement
+    const { registerPlayerToSlot } = await import('@/utils/placeholderUtils');
+    
+    // Use the placeholder replacement system to save player data
+    // This will find the next available placeholder slot and replace it with real player info
+    const result = await registerPlayerToSlot(name, email, gender as 'male' | 'female');
 
     console.log('✅ Registration Success:', user.email);
-    console.log('✅ Player saved to Firestore');
+    console.log('✅ Player saved to Firestore at position:', result.position);
 
     return {
       success: true,
@@ -105,6 +98,10 @@ export const registerWithEmailPassword = async (
       errorMessage = 'Password is too weak. Use at least 6 characters';
     } else if (error.code === 'auth/invalid-email') {
       errorMessage = 'Invalid email address';
+    } else if (error.message === 'EMAIL_ALREADY_EXISTS') {
+      errorMessage = 'Email already registered';
+    } else if (error.message === 'NO_SLOTS_AVAILABLE') {
+      errorMessage = 'Registration is full for this division';
     }
     
     return {

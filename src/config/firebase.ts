@@ -28,6 +28,6 @@ googleProvider.setCustomParameters({
 // Email link authentication settings
 export const actionCodeSettings = {
   // URL you want to redirect back to. Must be whitelisted in Firebase Console
-  url: window.location.origin + '/auth/callback',
+  url: 'https://sandy-scorekeeper.pages.dev/auth/callback.html',
   handleCodeInApp: true,
 };

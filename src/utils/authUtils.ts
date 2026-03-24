@@ -72,7 +72,7 @@ export const registerWithEmailPassword = async (
     // Check if email already exists in Firestore
     const playersRef = collection(db, 'players');
     const q = query(playersRef, where('email', '==', email.toLowerCase()));
-    const snapshot = await getDoc(q);
+    const snapshot = await getDocs(q);
 
     if (!snapshot.empty) {
       throw new Error('EMAIL_ALREADY_EXISTS');

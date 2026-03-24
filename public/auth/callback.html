@@ -131,7 +131,7 @@
 
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getAuth, signInWithEmailLink } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { getAuth, signInWithEmailLink, isSignInWithEmailLink } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
         // Firebase configuration
         const firebaseConfig = {
@@ -177,8 +177,8 @@
             try {
                 const url = window.location.href;
                 
-                // Check if this is a valid sign-in link
-                if (!auth.isSignInWithEmailLink(url)) {
+                // Check if this is a valid sign-in link using the imported function
+                if (!isSignInWithEmailLink(auth, url)) {
                     throw new Error('Invalid or expired sign-in link. Please request a new one.');
                 }
 

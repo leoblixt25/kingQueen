@@ -1,7 +1,6 @@
-import { auth, db, googleProvider, actionCodeSettings } from '@/config/firebase';
-import { signInWithPopup, signInWithRedirect, getRedirectResult, signOut as firebaseSignOut, createUserWithEmailAndPassword, updateProfile, signInWithEmailAndPassword, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { registerPlayerToSlot } from './placeholderUtils';
+import { auth, db, googleProvider, appleProvider } from '@/config/firebase';
+import { signInWithPopup, signOut as firebaseSignOut } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 
 export interface AuthResult {
   success: boolean;
@@ -9,109 +8,6 @@ export interface AuthResult {
   error?: string;
   needsConfirmation?: boolean;
 }
-
-/**
- * Send magic link to email for passwordless authentication
- */
-export const sendMagicLink = async (email: string): Promise<AuthResult> => {
-  try {
-    // Store the email in localStorage to check later
-    localStorage.setItem('pendingSignInEmail', email.toLowerCase());
-    
-    await sendSignInLinkToEmail(auth, email.toLowerCase(), actionCodeSettings);
-    
-    return {
-      success: true,
-      user: { email: email.toLowerCase() }
-    };
-  } catch (error: any) {
-    console.error('Error sending magic link:', error);
-    return {
-      success: false,
-      error: error.message || 'Failed to send magic link. Please try again.'
-    };
-  }
-};
-
-/**
- * Complete sign-in with email link
- */
-export const completeSignInWithEmailLink = async (email: string, link: string): Promise<AuthResult> => {
-  try {
-    const result = await signInWithEmailLink(auth, email, link);
-    const user = result.user;
-    
-    // Clear the stored email
-    localStorage.removeItem('pendingSignInEmail');
-    
-    return {
-      success: true,
-      user: {
-        ...user,
-        email: user.email,
-        displayName: user.displayName
-      }
-    };
-  } catch (error: any) {
-    console.error('Error completing email link sign-in:', error);
-    return {
-      success: false,
-      error: error.message || 'Failed to complete sign-in. Please try again.'
-    };
-  }
-};
-
-/**
- * Check if current URL contains a valid sign-in link
- */
-export const isSignInLink = (): boolean => {
-  const url = window.location.href;
-  const email = localStorage.getItem('pendingSignInEmail');
-  return email && isSignInWithEmailLink(auth, url);
-};
-
-/**
- * Admin sign in with email and password (for admin access only)
- * This is kept for administrative purposes
- */
-export const adminSignInWithEmail = async (email: string, password: string): Promise<AuthResult> => {
-  try {
-    // Check if the provided credentials match admin credentials
-    const validAdminCredentials = [
-      { email: 'leo.blixt77@gmail.com', password: 'Woodgoat22!!' },
-      { email: 'admin@beachtournament.com', password: 'admin' }
-    ];
-    
-    const isValid = validAdminCredentials.some(cred => 
-      email.toLowerCase() === cred.email && password === cred.password
-    );
-    
-    if (isValid) {
-      // For admin, we still use Firebase email/password auth
-      const userCredential = await signInWithEmailAndPassword(auth, email.toLowerCase(), password);
-      const user = userCredential.user;
-      
-      return {
-        success: true,
-        user: {
-          ...user,
-          email: user.email,
-          user_metadata: { role: 'admin' }
-        }
-      };
-    } else {
-      return {
-        success: false,
-        error: 'Invalid admin credentials'
-      };
-    }
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.message || 'An unexpected error occurred'
-    };
-  }
-};
 
 /**
  * Sign in with Google OAuth - Pure Popup Mode
@@ -168,6 +64,64 @@ export const signInWithGoogle = async (): Promise<AuthResult> => {
 };
 
 /**
+ * Sign in with Apple - Pure Popup Mode
+ */
+export const signInWithApple = async (): Promise<AuthResult> => {
+  try {
+    const userCredential = await signInWithPopup(auth, appleProvider);
+    const user = userCredential.user;
+
+    console.log('✅ Apple Sign-In Success:', user.email);
+
+    return {
+      success: true,
+      user: {
+        ...user,
+        email: user.email,
+        displayName: user.displayName,
+        photoURL: user.photoURL
+      }
+    };
+
+  } catch (error: any) {
+    console.error('❌ Apple Sign-In Error:', error.code, error.message);
+    
+    // Handle specific error cases
+    if (error.code === 'auth/popup-closed-by-user') {
+      return {
+        success: false,
+        error: 'Sign-in cancelled. Please try again.'
+      };
+    } else if (error.code === 'auth/popup-blocked') {
+      return {
+        success: false,
+        error: 'Popup was blocked by browser. Please enable popups and try again.'
+      };
+    } else if (error.code === 'auth/unauthorized-domain') {
+      return {
+        success: false,
+        error: 'This domain is not authorized for Apple sign-in. Please contact support.'
+      };
+    } else if (error.code === 'auth/operation-not-allowed') {
+      return {
+        success: false,
+        error: 'Apple Sign-In is not enabled. Please contact support.'
+      };
+    } else if (error.code === 'auth/account-exists-with-different-credential') {
+      return {
+        success: false,
+        error: 'An account already exists with the same email but different sign-in method. Please use that method instead.'
+      };
+    }
+    
+    return {
+      success: false,
+      error: error.message || 'Failed to sign in with Apple'
+    };
+  }
+};
+
+/**
  * Sign out current user
  */
 export const signOut = async (): Promise<void> => {
@@ -182,7 +136,32 @@ export const getCurrentUser = async () => {
 };
 
 /**
- * Get current user's tournament registration data including gender
+ * Check if user is registered for tournament and return registration data
+ * Returns null if user is not registered
+ */
+export const checkTournamentRegistration = async (email: string) => {
+  if (!email) {
+    return null;
+  }
+  
+  const playerRef = doc(db, 'players', email.toLowerCase());
+  const playerSnap = await getDoc(playerRef);
+
+  if (playerSnap.exists()) {
+    const playerData = playerSnap.data();
+    return { 
+      id: playerSnap.id, 
+      ...playerData,
+      isRegistered: true,
+      isConfirmed: playerData.is_confirmed === true
+    } as any;
+  }
+
+  return null;
+};
+
+/**
+ * Check if current authenticated user is registered for tournament
  */
 export const getCurrentUserTournamentData = async () => {
   try {
@@ -191,17 +170,7 @@ export const getCurrentUserTournamentData = async () => {
       return null;
     }
 
-    const playerRef = doc(db, 'players', user.email.toLowerCase());
-    const playerSnap = await getDoc(playerRef);
-
-    if (playerSnap.exists()) {
-      return { 
-        id: playerSnap.id, 
-        ...playerSnap.data() as any 
-      };
-    }
-
-    return null;
+    return await checkTournamentRegistration(user.email);
   } catch (error) {
     console.error('Error getting user tournament data:', error);
     return null;
@@ -209,20 +178,34 @@ export const getCurrentUserTournamentData = async () => {
 };
 
 /**
- * Check if user is registered for tournament
+ * Validate user registration status after sign-in
+ * Returns: { isAuthenticated: boolean, isRegistered: boolean, user: any, playerData: any }
  */
-export const checkTournamentRegistration = async (email: string) => {
-  const playerRef = doc(db, 'players', email.toLowerCase());
-  const playerSnap = await getDoc(playerRef);
-
-  if (playerSnap.exists()) {
-    return { 
-      id: playerSnap.id, 
-      ...playerSnap.data() as any 
+export const validateUserAccess = async (): Promise<{
+  isAuthenticated: boolean;
+  isRegistered: boolean;
+  user: any | null;
+  playerData: any | null;
+}> => {
+  const user = auth.currentUser;
+  
+  if (!user) {
+    return {
+      isAuthenticated: false,
+      isRegistered: false,
+      user: null,
+      playerData: null
     };
   }
-
-  return null;
+  
+  const playerData = await getCurrentUserTournamentData();
+  
+  return {
+    isAuthenticated: true,
+    isRegistered: !!playerData?.isConfirmed,
+    user,
+    playerData
+  };
 };
 
 /**
@@ -257,53 +240,4 @@ export const isAdmin = async (): Promise<boolean> => {
     console.error('Error checking admin status:', error);
     return false;
   }
-};
-
-/**
- * Admin sign out
- */
-export const adminSignIn = async (username: string, password: string): Promise<AuthResult> => {
-  try {
-    // Check if the provided credentials match admin credentials
-    // Allow 'leo' as admin username as requested by user
-    const validCredentials = [
-      { username: 'admin', password: 'admin' },
-      { username: 'admin', password: 'Woodgoat22!!' }, // Added requested password
-      { username: 'leo', password: 'admin' }, // Added 'leo' as admin username
-      { username: 'leo', password: 'Woodgoat22!!' }, // Added requested password for leo
-      { username: 'leo', password: 'password' }, // Common default password
-      { username: 'leo', password: password } // Allow any password for 'leo' for initial access
-    ];
-    
-    const isValid = validCredentials.some(cred => 
-      username === cred.username && password === cred.password
-    );
-    
-    if (isValid) {
-      // Return a mock admin user object
-      return {
-        success: true,
-        user: {
-          id: 'generated-admin-id-' + Date.now(), // Generate a new ID using timestamp
-          email: username === 'leo' ? 'leo@beachtournament.com' : 'admin@beachtournament.com',
-          user_metadata: { full_name: username === 'leo' ? 'Leo Admin' : 'Admin User', role: 'admin' }
-        }
-      };
-    } else {
-      return {
-        success: false,
-        error: 'Invalid admin credentials'
-      };
-    }
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.message || 'An unexpected error occurred'
-    };
-  }
-};
-
-export const adminSignOut = (): void => {
-  // For now, we're using the same sign out function for both admin and regular users
-  signOut();
 };

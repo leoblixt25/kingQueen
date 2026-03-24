@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, EmailAuthProvider } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, OAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 // Your web app's Firebase configuration
@@ -19,15 +19,14 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
+export const appleProvider = new OAuthProvider('apple.com');
 
 // Configure Google provider
 googleProvider.setCustomParameters({
   prompt: 'select_account'
 });
 
-// Email link authentication settings
-export const actionCodeSettings = {
-  // URL you want to redirect back to. Must be whitelisted in Firebase Console
-  url: 'https://sandy-scorekeeper.pages.dev/auth/callback.html',
-  handleCodeInApp: true,
-};
+// Configure Apple provider
+appleProvider.setCustomParameters({
+  locale: 'en' // Optional, forces English interface
+});

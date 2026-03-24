@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { getCurrentUser, isAdmin as checkIsAdmin, checkTournamentRegistration } from "@/utils/authUtils";
+import { getCurrentUser, isAdmin as checkIsAdmin, validateUserAccess } from "@/utils/authUtils";
 import { db } from "@/config/firebase";
 import { collection, getDocs, query, where } from "firebase/firestore";
 
@@ -21,9 +21,11 @@ export default function ProtectedRoute({ children, adminOnly = false }: Protecte
 
   const checkAuthentication = async () => {
     try {
-      const user = await getCurrentUser();
-      const adminStatus = await checkIsAdmin();
+      // Use the new validateUserAccess function for cleaner logic
+      const accessData = await validateUserAccess();
       
+      // Check admin status separately
+      const adminStatus = await checkIsAdmin();
       setIsAdminUser(adminStatus);
       
       // Admin users always have access
@@ -33,53 +35,13 @@ export default function ProtectedRoute({ children, adminOnly = false }: Protecte
         return;
       }
       
-      // For regular users, check if they're authenticated AND registered for tournament
-      if (user?.email) {
-        setIsAuthenticated(true);
-        
-        // Check if user is registered in the tournament database
-        const playersRef = collection(db, 'players');
-        const q = query(playersRef, where('email', '==', user.email.toLowerCase()), where('is_confirmed', '==', true));
-        const snapshot = await getDocs(q);
-        
-        if (!snapshot.empty) {
-          const player = snapshot.docs[0].data() as any;
-          setIsTournamentRegistered(true);
-          // Store registration data locally for consistency
-          localStorage.setItem('tournament_registered_email', user.email.toLowerCase());
-          localStorage.setItem('tournament_registered_name', player.name);
-        } else {
-          setIsTournamentRegistered(false);
-        }
-      } else {
-        // Check for local registration as fallback (for email-only registrations)
-        const registeredEmail = localStorage.getItem('tournament_registered_email');
-        const registeredName = localStorage.getItem('tournament_registered_name');
-        
-        if (registeredEmail && registeredName) {
-          // If we have local registration data, check if the user is in the database
-          try {
-            const playersRef = collection(db, 'players');
-            const q = query(playersRef, where('email', '==', registeredEmail), where('is_confirmed', '==', true));
-            const snapshot = await getDocs(q);
-            
-            if (!snapshot.empty) {
-              const player = snapshot.docs[0].data() as any;
-              setIsAuthenticated(true);
-              setIsTournamentRegistered(true);
-            } else {
-              setIsAuthenticated(false);
-              setIsTournamentRegistered(false);
-            }
-          } catch (err) {
-            console.error('Error checking local registration in DB:', err);
-            setIsAuthenticated(false);
-            setIsTournamentRegistered(false);
-          }
-        } else {
-          setIsAuthenticated(false);
-          setIsTournamentRegistered(false);
-        }
+      setIsAuthenticated(accessData.isAuthenticated);
+      setIsTournamentRegistered(accessData.isRegistered);
+      
+      // Store registration data if user is registered
+      if (accessData.playerData && accessData.isRegistered) {
+        localStorage.setItem('tournament_registered_email', accessData.user?.email?.toLowerCase() || '');
+        localStorage.setItem('tournament_registered_name', accessData.playerData?.name || '');
       }
     } catch (error) {
       console.error('Error checking authentication:', error);

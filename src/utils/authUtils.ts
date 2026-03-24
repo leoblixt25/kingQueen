@@ -50,6 +50,71 @@ export const signInWithEmail = async (email: string, password: string): Promise<
 };
 
 /**
+ * Register new user with email and password for tournament
+ * Creates Firebase Auth account + saves to Firestore players collection
+ */
+export const registerWithEmailPassword = async (
+  email: string,
+  password: string,
+  name: string,
+  gender: string
+): Promise<AuthResult> => {
+  try {
+    // Create Firebase Auth user
+    const userCredential = await createUserWithEmailAndPassword(auth, email.toLowerCase(), password);
+    const user = userCredential.user;
+
+    // Update display name
+    await updateProfile(user, {
+      displayName: name
+    });
+
+    // Save player data to Firestore
+    const playerData = {
+      email: email.toLowerCase(),
+      uid: user.uid,
+      name: name,
+      gender: gender,
+      points: 0,
+      score: 0,
+      is_confirmed: true,
+      created_at: new Date().toISOString()
+    };
+
+    await setDoc(doc(db, 'players', email.toLowerCase()), playerData);
+
+    console.log('✅ Registration Success:', user.email);
+    console.log('✅ Player saved to Firestore');
+
+    return {
+      success: true,
+      user: {
+        ...user,
+        email: user.email,
+        displayName: name
+      }
+    };
+  } catch (error: any) {
+    console.error('❌ Registration Error:', error.code, error.message);
+    
+    let errorMessage = 'Registration failed';
+    
+    if (error.code === 'auth/email-already-in-use') {
+      errorMessage = 'Email already registered';
+    } else if (error.code === 'auth/weak-password') {
+      errorMessage = 'Password is too weak. Use at least 6 characters';
+    } else if (error.code === 'auth/invalid-email') {
+      errorMessage = 'Invalid email address';
+    }
+    
+    return {
+      success: false,
+      error: errorMessage
+    };
+  }
+};
+
+/**
  * Register new user with email and password
  */
 export const registerWithEmail = async (

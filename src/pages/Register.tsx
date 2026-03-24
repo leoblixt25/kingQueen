@@ -13,7 +13,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Crown, Users, Calendar, AlertCircle, CheckCircle, LogIn, UserPlus, Mail, Info } from "lucide-react";
 import { registerPlayerToSlot } from "@/utils/placeholderUtils";
 import { AuthModal } from "@/components/AuthModal";
-import { getCurrentUser, isAdmin, signInWithGoogle } from "@/utils/authUtils";
+import { getCurrentUser, isAdmin, signInWithGoogle, registerWithEmailPassword } from "@/utils/authUtils";
 
 // Helper function for Google sign-in - Pure Popup Mode
 const handleGoogleSignUp = async () => {
@@ -54,6 +54,7 @@ export default function Register() {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
+    password: "",
     gender: ""
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -401,6 +402,15 @@ export default function Register() {
       return;
     }
 
+    if (!formData.password || formData.password.length < 6) {
+      toast({
+        title: "Invalid Password",
+        description: "Password must be at least 6 characters",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (isGenderFull(formData.gender)) {
       toast({
         title: "Registration Full",
@@ -422,30 +432,34 @@ export default function Register() {
     setIsSubmitting(true);
 
     try {
-      // Use the new placeholder registration system
-      const result = await registerPlayerToSlot(
-        formData.name,
+      // Register with Firebase Auth and save to Firestore
+      const result = await registerWithEmailPassword(
         formData.email,
+        formData.password,
+        formData.name,
         formData.gender as 'male' | 'female'
       );
 
-      // Store registration in localStorage
-      localStorage.setItem('tournament_registered_email', formData.email.trim().toLowerCase());
-      localStorage.setItem('tournament_registered_name', formData.name.trim());
+      if (result.success) {
+        // Store registration in localStorage
+        localStorage.setItem('tournament_registered_email', formData.email.trim().toLowerCase());
+        localStorage.setItem('tournament_registered_name', formData.name.trim());
 
-      // Send confirmation email (simulated)
-      toast({
-        title: "Registration Successful!",
-        description: `You're registered for King & Queen of the Beach as ${formData.gender === 'male' ? 'Male' : 'Female'} Player ${result.position}! A confirmation email has been sent.`,
-      });
+        toast({
+          title: "Registration Successful!",
+          description: `Welcome to King & Queen of the Beach! You're registered as ${formData.gender === 'male' ? 'Male' : 'Female'} Player.`,
+        });
 
-      // Refresh available spots to reflect the new registration
-      if (settings) {
-        loadAvailableSpots(settings.max_players_per_gender || 8);
+        // Refresh available spots to reflect the new registration
+        if (settings) {
+          loadAvailableSpots(settings.max_players_per_gender || 8);
+        }
+        
+        // Redirect to tournament page with user's gender
+        navigate(`/tournament/${formData.gender}`);
+      } else {
+        throw new Error(result.error || 'Registration failed');
       }
-      
-      // Redirect to tournament page with user's gender
-      navigate(`/tournament/${formData.gender}`);
       
     } catch (error: any) {
       console.error('Registration error:', error);
@@ -472,7 +486,7 @@ export default function Register() {
   };
 
   const handleCancel = () => {
-    setFormData({ name: "", email: "", gender: "" });
+    setFormData({ name: "", email: "", password: "", gender: "" });
   };
 
   if (isLoading) {
@@ -630,6 +644,22 @@ export default function Register() {
                     Email pre-filled from your authenticated account
                   </p>
                 )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-foreground font-medium">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  className="w-full touch-target bg-white/70 border-sand-dark/30 focus:border-ocean"
+                  placeholder="Create a password (min 6 characters)"
+                  disabled={!canRegister()}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Must be at least 6 characters
+                </p>
               </div>
 
               <div className="space-y-3">

@@ -316,15 +316,29 @@ export default function KingQueenOfTheBeach() {
   };
 
   const handleFullReset = async () => {
+    console.log('🔄 [FULL RESET] User clicked reset button');
     if (window.confirm('Are you sure you want to completely reset everything? This will delete all data and reinitialize the tournament.')) {
-      await resetAllData();
-      setCurrentMatchIndex(0);
-      setScore1('');
-      setScore2('');
-      toast({
-        title: "Tournament Reset",
-        description: "Tournament has been completely reset",
-      });
+      try {
+        console.log('🔄 [FULL RESET] Confirmed, starting reset...');
+        await resetAllData();
+        console.log('✅ [FULL RESET] Reset completed successfully');
+        setCurrentMatchIndex(0);
+        setScore1('');
+        setScore2('');
+        toast({
+          title: "Tournament Reset",
+          description: "Tournament has been completely reset",
+        });
+      } catch (error) {
+        console.error('❌ [FULL RESET] Reset failed:', error);
+        toast({
+          title: "Reset Failed",
+          description: "Failed to reset tournament. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } else {
+      console.log('ℹ️ [FULL RESET] User cancelled reset');
     }
   };
 

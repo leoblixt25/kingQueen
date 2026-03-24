@@ -71,6 +71,49 @@ export const isSignInLink = (): boolean => {
 };
 
 /**
+ * Admin sign in with email and password (for admin access only)
+ * This is kept for administrative purposes
+ */
+export const adminSignInWithEmail = async (email: string, password: string): Promise<AuthResult> => {
+  try {
+    // Check if the provided credentials match admin credentials
+    const validAdminCredentials = [
+      { email: 'leo.blixt77@gmail.com', password: 'Woodgoat22!!' },
+      { email: 'admin@beachtournament.com', password: 'admin' }
+    ];
+    
+    const isValid = validAdminCredentials.some(cred => 
+      email.toLowerCase() === cred.email && password === cred.password
+    );
+    
+    if (isValid) {
+      // For admin, we still use Firebase email/password auth
+      const userCredential = await signInWithEmailAndPassword(auth, email.toLowerCase(), password);
+      const user = userCredential.user;
+      
+      return {
+        success: true,
+        user: {
+          ...user,
+          email: user.email,
+          user_metadata: { role: 'admin' }
+        }
+      };
+    } else {
+      return {
+        success: false,
+        error: 'Invalid admin credentials'
+      };
+    }
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || 'An unexpected error occurred'
+    };
+  }
+};
+
+/**
  * Sign in with Google OAuth - Pure Popup Mode
  */
 export const signInWithGoogle = async (): Promise<AuthResult> => {

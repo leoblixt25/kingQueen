@@ -1,5 +1,5 @@
 import { auth, db, googleProvider, appleProvider } from '@/config/firebase';
-import { signInWithPopup, signOut as firebaseSignOut } from 'firebase/auth';
+import { signInWithPopup, signOut as firebaseSignOut, signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 
 export interface AuthResult {
@@ -8,6 +8,32 @@ export interface AuthResult {
   error?: string;
   needsConfirmation?: boolean;
 }
+
+/**
+ * Admin sign in with email and password (for admin access only)
+ * Kept for administrative purposes - regular users use OAuth only
+ */
+export const adminSignInWithEmail = async (email: string, password: string): Promise<AuthResult> => {
+  try {
+    // For admin, we still use Firebase email/password auth
+    const userCredential = await signInWithEmailAndPassword(auth, email.toLowerCase(), password);
+    const user = userCredential.user;
+    
+    return {
+      success: true,
+      user: {
+        ...user,
+        email: user.email,
+        user_metadata: { role: 'admin' }
+      }
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || 'Invalid admin credentials'
+    };
+  }
+};
 
 /**
  * Sign in with Google OAuth - Pure Popup Mode

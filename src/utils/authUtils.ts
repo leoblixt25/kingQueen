@@ -321,17 +321,25 @@ export const checkTournamentRegistration = async (email: string) => {
     return null;
   }
   
-  const playerRef = doc(db, 'players', email.toLowerCase());
-  const playerSnap = await getDoc(playerRef);
+  try {
+    // Query players collection by email field (not document ID)
+    const playersRef = collection(db, 'players');
+    const q = query(playersRef, where('email', '==', email.toLowerCase()));
+    const snapshot = await getDocs(q);
 
-  if (playerSnap.exists()) {
-    const playerData = playerSnap.data();
-    return { 
-      id: playerSnap.id, 
-      ...playerData,
-      isRegistered: true,
-      isConfirmed: playerData.is_confirmed === true
-    } as any;
+    if (!snapshot.empty) {
+      const playerDoc = snapshot.docs[0];
+      const playerData = playerDoc.data();
+      return { 
+        id: playerDoc.id, 
+        ...playerData,
+        isRegistered: true,
+        isConfirmed: playerData.is_confirmed === true
+      } as any;
+    }
+  } catch (error) {
+    console.error('Error checking tournament registration:', error);
+    return null;
   }
 
   return null;

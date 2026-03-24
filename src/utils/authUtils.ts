@@ -1,6 +1,6 @@
 import { auth, db, googleProvider } from '@/config/firebase';
 import { signInWithPopup, signOut as firebaseSignOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, query, where, updateDoc, getDocs } from 'firebase/firestore';
 
 export interface AuthResult {
   success: boolean;
@@ -69,15 +69,50 @@ export const registerWithEmailPassword = async (
       displayName: name
     });
 
-    // Import registerPlayerToSlot to handle placeholder replacement
-    const { registerPlayerToSlot } = await import('@/utils/placeholderUtils');
+    // Check if email already exists in Firestore
+    const playersRef = collection(db, 'players');
+    const q = query(playersRef, where('email', '==', email.toLowerCase()));
+    const snapshot = await getDoc(q);
+
+    if (!snapshot.empty) {
+      throw new Error('EMAIL_ALREADY_EXISTS');
+    }
+
+    // Find next available placeholder slot
+    const placeholderPrefix = gender === 'male' ? 'Male Player' : 'Female Player';
+    const playersQuery = query(
+      playersRef,
+      where('gender', '==', gender)
+    );
+    const playersSnapshot = await getDocs(playersQuery);
     
-    // Use the placeholder replacement system to save player data
-    // This will find the next available placeholder slot and replace it with real player info
-    const result = await registerPlayerToSlot(name, email, gender as 'male' | 'female');
+    // Find first unconfirmed placeholder
+    const availableSlots = playersSnapshot.docs
+      .map(docSnap => ({ id: docSnap.id, ...(docSnap.data() as any) }))
+      .filter((player: any) => {
+        const isPlaceholder = player.name.startsWith(placeholderPrefix);
+        const isUnconfirmed = !player.is_confirmed || player.is_confirmed === false;
+        return isPlaceholder && isUnconfirmed;
+      })
+      .sort((a: any, b: any) => (a.position || 0) - (b.position || 0));
+
+    if (availableSlots.length === 0) {
+      throw new Error('NO_SLOTS_AVAILABLE');
+    }
+
+    const placeholder = availableSlots[0] as any;
+    
+    // Update the placeholder with real player info
+    const playerRef = doc(db, 'players', placeholder.id);
+    await updateDoc(playerRef, {
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      is_confirmed: true,
+      registered_at: new Date().toISOString()
+    });
 
     console.log('✅ Registration Success:', user.email);
-    console.log('✅ Player saved to Firestore at position:', result.position);
+    console.log('✅ Player saved to Firestore at position:', placeholder.position);
 
     return {
       success: true,

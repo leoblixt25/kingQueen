@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, EmailAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 // Your web app's Firebase configuration
@@ -24,3 +24,10 @@ export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({
   prompt: 'select_account'
 });
+
+// Email link authentication settings
+export const actionCodeSettings = {
+  // URL you want to redirect back to. Must be whitelisted in Firebase Console
+  url: window.location.origin + '/auth/callback',
+  handleCodeInApp: true,
+};

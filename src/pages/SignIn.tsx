@@ -7,31 +7,66 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { 
   Mail, 
-  Lock, 
   LogIn, 
-  ChevronLeft, 
-  Eye, 
-  EyeOff,
-  Info
+  ChevronLeft,
+  Info,
+  Send
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { auth } from "@/config/firebase";
-import { signInWithEmail, signInWithGoogle, isAdmin, getCurrentUserTournamentData } from "@/utils/authUtils";
+import { signInWithGoogle, sendMagicLink, completeSignInWithEmailLink, isSignInLink, getCurrentUserTournamentData } from "@/utils/authUtils";
 
 export default function SignIn() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [formData, setFormData] = useState({
-    email: "",
-    password: ""
+    email: ""
   });
 
-  // Handle Google auth callback
+  // Handle magic link callback
   useEffect(() => {
-    const authParam = searchParams.get('auth');
-    if (authParam === 'google') {
-      handleGoogleAuthCallback();
-    }
+    const handleAuthCallback = async () => {
+      // Check if this is a sign-in link
+      if (isSignInLink()) {
+        const email = localStorage.getItem('pendingSignInEmail');
+        if (email) {
+          try {
+            const result = await completeSignInWithEmailLink(email, window.location.href);
+            
+            if (result.success) {
+              toast({
+                title: "Welcome Back!",
+                description: "Successfully signed in!",
+              });
+              
+              // Check tournament registration and redirect
+              checkTournamentRegistrationAndRedirect(result.user);
+            } else {
+              toast({
+                title: "Sign In Failed",
+                description: result.error,
+                variant: "destructive",
+              });
+            }
+          } catch (error) {
+            console.error('Auth callback error:', error);
+            toast({
+              title: "Error",
+              description: "An error occurred during authentication.",
+              variant: "destructive",
+            });
+          }
+        }
+      }
+      
+      // Also handle Google auth callback
+      const authParam = searchParams.get('auth');
+      if (authParam === 'google') {
+        handleGoogleAuthCallback();
+      }
+    };
+    
+    handleAuthCallback();
   }, [searchParams]);
 
   const handleGoogleAuthCallback = async () => {
@@ -77,16 +112,17 @@ export default function SignIn() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [magicLinkSent, setMagicLinkSent] = useState(false);
 
   const redirectMode = searchParams.get('mode');
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.email || !formData.password) {
+    if (!formData.email) {
       toast({
         title: "Missing Information",
-        description: "Please fill in all fields",
+        description: "Please enter your email address",
         variant: "destructive",
       });
       return;
@@ -94,20 +130,19 @@ export default function SignIn() {
 
     setIsLoading(true);
     try {
-      const result = await signInWithEmail(formData.email, formData.password);
+      // Send magic link to email
+      const result = await sendMagicLink(formData.email);
       
       if (result.success) {
+        setMagicLinkSent(true);
         toast({
-          title: "Welcome Back!",
-          description: "Signing you in...",
+          title: "Magic Link Sent!",
+          description: `Check your inbox at ${formData.email}. Click the link to sign in.`,
         });
-        
-        // Check if user is registered for the tournament
-        checkTournamentRegistrationAndRedirect(result.user);
       } else {
         toast({
           title: "Sign In Failed",
-          description: result.error || "Please check your credentials and try again.",
+          description: result.error || "Please check your email and try again.",
           variant: "destructive",
         });
       }
@@ -240,66 +275,70 @@ export default function SignIn() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSignIn} className="space-y-6">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="text-foreground font-medium">Email Address</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-foreground/50 w-4 h-4" />
-                    <Input
-                      id="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="w-full touch-target bg-white/70 border-sand-dark/30 focus:border-ocean pl-10"
-                      placeholder="Enter your email"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="password" className="text-foreground font-medium">Password</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-foreground/50 w-4 h-4" />
-                    <Input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      className="w-full touch-target bg-white/70 border-sand-dark/30 focus:border-ocean pl-10 pr-10"
-                      placeholder="Enter your password"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-0 h-auto"
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </Button>
-                  </div>
-                </div>
+            {magicLinkSent ? (
+              // Show success message after sending magic link
+              <div className="space-y-6">
+                <Alert className="border-ocean/30 bg-ocean/10">
+                  <Mail className="h-4 w-4 text-ocean" />
+                  <AlertDescription className="text-ocean-dark">
+                    <p className="font-medium mb-1">Check Your Email!</p>
+                    <p className="text-sm">
+                      We've sent a magic link to <strong>{formData.email}</strong>. Click the link to sign in.
+                    </p>
+                  </AlertDescription>
+                </Alert>
+                
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setMagicLinkSent(false);
+                    setFormData({ email: "" });
+                  }}
+                  className="w-full touch-target bg-white/70 hover:bg-coral hover:text-white border-coral/30 text-coral transition-all duration-300"
+                >
+                  Try Another Email
+                </Button>
               </div>
+            ) : (
+              // Show email input form
+              <form onSubmit={handleSignIn} className="space-y-6">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="text-foreground font-medium">Email Address</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-foreground/50 w-4 h-4" />
+                      <Input
+                        id="email"
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        className="w-full touch-target bg-white/70 border-sand-dark/30 focus:border-ocean pl-10"
+                        placeholder="Enter your email"
+                      />
+                    </div>
+                  </div>
+                </div>
 
-              <Button
-                type="submit"
-                disabled={isLoading}
-                className="w-full touch-target bg-ocean hover:bg-ocean-dark text-white font-semibold py-3 transition-all duration-300"
-              >
-                {isLoading ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
-                    Signing In...
-                  </>
-                ) : (
-                  <>
-                    <LogIn className="w-4 h-4 mr-2" />
-                    Sign In
-                  </>
-                )}
-              </Button>
-            </form>
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full touch-target bg-ocean hover:bg-ocean-dark text-white font-semibold py-3 transition-all duration-300"
+                >
+                  {isLoading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+                      Sending Magic Link...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4 mr-2" />
+                      Send Magic Link
+                    </>
+                  )}
+                </Button>
+              </form>
+            )}
 
             <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">

@@ -1,5 +1,5 @@
-import { auth, db, googleProvider } from '@/config/firebase';
-import { signInWithPopup, signInWithRedirect, getRedirectResult, signOut as firebaseSignOut, createUserWithEmailAndPassword, updateProfile, signInWithEmailAndPassword } from 'firebase/auth';
+import { auth, db, googleProvider, actionCodeSettings } from '@/config/firebase';
+import { signInWithPopup, signInWithRedirect, getRedirectResult, signOut as firebaseSignOut, createUserWithEmailAndPassword, updateProfile, signInWithEmailAndPassword, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { registerPlayerToSlot } from './placeholderUtils';
 
@@ -11,88 +11,63 @@ export interface AuthResult {
 }
 
 /**
- * Sign up with email and password for tournament registration
+ * Send magic link to email for passwordless authentication
  */
-export const signUpWithEmail = async (
-  email: string, 
-  password: string, 
-  name: string, 
-  gender: 'male' | 'female'
-): Promise<AuthResult> => {
+export const sendMagicLink = async (email: string): Promise<AuthResult> => {
   try {
-    // First, check if we can register for the tournament
-    const playerRef = doc(db, 'players', email.toLowerCase());
-    const playerSnap = await getDoc(playerRef);
-
-    if (playerSnap.exists()) {
-      return {
-        success: false,
-        error: 'This email is already registered for the tournament'
-      };
-    }
-
-    // Sign up with Firebase Auth
-    const userCredential = await createUserWithEmailAndPassword(auth, email.toLowerCase(), password);
-    const user = userCredential.user;
-
-    // Update user profile with name
-    await updateProfile(user, {
-      displayName: name
-    });
-
-    // Register for tournament
-    await registerPlayerToSlot(name, email, gender);
-
+    // Store the email in localStorage to check later
+    localStorage.setItem('pendingSignInEmail', email.toLowerCase());
+    
+    await sendSignInLinkToEmail(auth, email.toLowerCase(), actionCodeSettings);
+    
     return {
       success: true,
-      user: {
-        ...user,
-        email: user.email,
-        user_metadata: { full_name: name }
-      }
+      user: { email: email.toLowerCase() }
     };
-
   } catch (error: any) {
+    console.error('Error sending magic link:', error);
     return {
       success: false,
-      error: error.message || 'An unexpected error occurred'
+      error: error.message || 'Failed to send magic link. Please try again.'
     };
   }
 };
 
 /**
- * Sign in with email and password
+ * Complete sign-in with email link
  */
-export const signInWithEmail = async (email: string, password: string): Promise<AuthResult> => {
+export const completeSignInWithEmailLink = async (email: string, link: string): Promise<AuthResult> => {
   try {
-    const userCredential = await signInWithEmailAndPassword(auth, email.toLowerCase(), password);
-    const user = userCredential.user;
-
+    const result = await signInWithEmailLink(auth, email, link);
+    const user = result.user;
+    
+    // Clear the stored email
+    localStorage.removeItem('pendingSignInEmail');
+    
     return {
       success: true,
       user: {
         ...user,
         email: user.email,
-        user_metadata: user.providerData[0] ? { 
-          full_name: user.displayName,
-          picture: user.photoURL 
-        } : {}
+        displayName: user.displayName
       }
     };
-
   } catch (error: any) {
+    console.error('Error completing email link sign-in:', error);
     return {
       success: false,
-      error: error.message || 'An unexpected error occurred'
+      error: error.message || 'Failed to complete sign-in. Please try again.'
     };
   }
 };
 
 /**
- * Admin sign in with email and password (alias for signInWithEmail)
+ * Check if current URL contains a valid sign-in link
  */
-export const adminSignInWithEmail = async (email: string, password: string): Promise<AuthResult> => {
-  return signInWithEmail(email, password);
+export const isSignInLink = (): boolean => {
+  const url = window.location.href;
+  const email = localStorage.getItem('pendingSignInEmail');
+  return email && isSignInWithEmailLink(auth, url);
 };
 
 /**

@@ -15,7 +15,7 @@ import { toast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { auth, db } from "@/config/firebase";
 import { collection, getDocs, query, where, writeBatch } from "firebase/firestore";
-import { getCurrentUser, isAdmin as checkIsAdmin, adminSignOut, signOut, getCurrentUserTournamentData } from "@/utils/authUtils";
+import { getCurrentUser, isAdmin as checkIsAdmin, signOut, getCurrentUserTournamentData } from "@/utils/authUtils";
 import { buildPlayersMap, resolveMatchPlayers } from "@/utils/matchPlayerResolver";
 
 interface TournamentSettings {
@@ -197,11 +197,8 @@ export default function KingQueenOfTheBeach() {
 
   const handleSignOut = async () => {
     try {
-      if (userIsAdmin) {
-        adminSignOut();
-      } else {
-        await signOut();
-      }
+      // Use unified signOut for all users
+      await signOut();
       
       // Clear registration data
       localStorage.removeItem('tournament_registered_email');

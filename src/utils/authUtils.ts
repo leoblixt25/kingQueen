@@ -128,7 +128,16 @@ export const registerWithEmailPassword = async (
     let errorMessage = 'Registration failed';
     
     if (error.code === 'auth/email-already-in-use') {
-      errorMessage = 'Email already registered';
+      // Check if it's in Firestore (already registered player)
+      const playersRef = collection(db, 'players');
+      const q = query(playersRef, where('email', '==', email.toLowerCase()));
+      const snapshot = await getDocs(q);
+      
+      if (!snapshot.empty) {
+        errorMessage = 'Email already registered. Please sign in instead.';
+      } else {
+        errorMessage = 'Email already in use. Please try signing in or use a different email.';
+      }
     } else if (error.code === 'auth/weak-password') {
       errorMessage = 'Password is too weak. Use at least 6 characters';
     } else if (error.code === 'auth/invalid-email') {

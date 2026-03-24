@@ -1,6 +1,6 @@
-import { auth, db, googleProvider, appleProvider } from '@/config/firebase';
-import { signInWithPopup, signOut as firebaseSignOut, signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { auth, db, googleProvider } from '@/config/firebase';
+import { signInWithPopup, signOut as firebaseSignOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 
 export interface AuthResult {
   success: boolean;
@@ -10,8 +10,111 @@ export interface AuthResult {
 }
 
 /**
+ * Sign in with email and password
+ */
+export const signInWithEmail = async (email: string, password: string): Promise<AuthResult> => {
+  try {
+    const userCredential = await signInWithEmailAndPassword(auth, email.toLowerCase(), password);
+    const user = userCredential.user;
+
+    console.log('✅ Email Sign-In Success:', user.email);
+
+    return {
+      success: true,
+      user: {
+        ...user,
+        email: user.email,
+        displayName: user.displayName
+      }
+    };
+  } catch (error: any) {
+    console.error('❌ Email Sign-In Error:', error.code, error.message);
+    
+    let errorMessage = 'Invalid email or password';
+    
+    if (error.code === 'auth/user-not-found') {
+      errorMessage = 'No account found with this email';
+    } else if (error.code === 'auth/wrong-password') {
+      errorMessage = 'Incorrect password';
+    } else if (error.code === 'auth/invalid-email') {
+      errorMessage = 'Invalid email address';
+    } else if (error.code === 'auth/user-disabled') {
+      errorMessage = 'This account has been disabled';
+    }
+    
+    return {
+      success: false,
+      error: errorMessage
+    };
+  }
+};
+
+/**
+ * Register new user with email and password
+ */
+export const registerWithEmail = async (
+  email: string,
+  password: string,
+  name?: string,
+  gender?: string
+): Promise<AuthResult> => {
+  try {
+    // Create Firebase Auth user
+    const userCredential = await createUserWithEmailAndPassword(auth, email.toLowerCase(), password);
+    const user = userCredential.user;
+
+    // Update display name if provided
+    if (name) {
+      await updateProfile(user, {
+        displayName: name
+      });
+    }
+
+    // Save user data to Firestore players collection
+    const playerData = {
+      email: email.toLowerCase(),
+      uid: user.uid,
+      name: name || '',
+      gender: gender || '',
+      is_confirmed: true, // Auto-confirm for now
+      created_at: new Date().toISOString()
+    };
+
+    await setDoc(doc(db, 'players', email.toLowerCase()), playerData);
+
+    console.log('✅ Registration Success:', user.email);
+    console.log('✅ Player saved to Firestore');
+
+    return {
+      success: true,
+      user: {
+        ...user,
+        email: user.email,
+        displayName: name || user.displayName
+      }
+    };
+  } catch (error: any) {
+    console.error('❌ Registration Error:', error.code, error.message);
+    
+    let errorMessage = 'Registration failed';
+    
+    if (error.code === 'auth/email-already-in-use') {
+      errorMessage = 'User already exists with this email';
+    } else if (error.code === 'auth/weak-password') {
+      errorMessage = 'Password is too weak. Use at least 6 characters';
+    } else if (error.code === 'auth/invalid-email') {
+      errorMessage = 'Invalid email address';
+    }
+    
+    return {
+      success: false,
+      error: errorMessage
+    };
+  }
+};
+
+/**
  * Admin sign in with email and password (for admin access only)
- * Kept for administrative purposes - regular users use OAuth only
  */
 export const adminSignInWithEmail = async (email: string, password: string): Promise<AuthResult> => {
   try {
@@ -85,64 +188,6 @@ export const signInWithGoogle = async (): Promise<AuthResult> => {
     return {
       success: false,
       error: error.message || 'Failed to sign in with Google'
-    };
-  }
-};
-
-/**
- * Sign in with Apple - Pure Popup Mode
- */
-export const signInWithApple = async (): Promise<AuthResult> => {
-  try {
-    const userCredential = await signInWithPopup(auth, appleProvider);
-    const user = userCredential.user;
-
-    console.log('✅ Apple Sign-In Success:', user.email);
-
-    return {
-      success: true,
-      user: {
-        ...user,
-        email: user.email,
-        displayName: user.displayName,
-        photoURL: user.photoURL
-      }
-    };
-
-  } catch (error: any) {
-    console.error('❌ Apple Sign-In Error:', error.code, error.message);
-    
-    // Handle specific error cases
-    if (error.code === 'auth/popup-closed-by-user') {
-      return {
-        success: false,
-        error: 'Sign-in cancelled. Please try again.'
-      };
-    } else if (error.code === 'auth/popup-blocked') {
-      return {
-        success: false,
-        error: 'Popup was blocked by browser. Please enable popups and try again.'
-      };
-    } else if (error.code === 'auth/unauthorized-domain') {
-      return {
-        success: false,
-        error: 'This domain is not authorized for Apple sign-in. Please contact support.'
-      };
-    } else if (error.code === 'auth/operation-not-allowed') {
-      return {
-        success: false,
-        error: 'Apple Sign-In is not enabled. Please contact support.'
-      };
-    } else if (error.code === 'auth/account-exists-with-different-credential') {
-      return {
-        success: false,
-        error: 'An account already exists with the same email but different sign-in method. Please use that method instead.'
-      };
-    }
-    
-    return {
-      success: false,
-      error: error.message || 'Failed to sign in with Apple'
     };
   }
 };

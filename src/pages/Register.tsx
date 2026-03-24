@@ -13,7 +13,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Crown, Users, Calendar, AlertCircle, CheckCircle, LogIn, UserPlus, Mail, Info } from "lucide-react";
 import { registerPlayerToSlot } from "@/utils/placeholderUtils";
 import { AuthModal } from "@/components/AuthModal";
-import { getCurrentUser, isAdmin, signInWithGoogle, signInWithApple } from "@/utils/authUtils";
+import { getCurrentUser, isAdmin, signInWithGoogle } from "@/utils/authUtils";
 
 // Helper function for Google sign-in - Pure Popup Mode
 const handleGoogleSignUp = async () => {
@@ -33,27 +33,6 @@ const handleGoogleSignUp = async () => {
     }
   } catch (error) {
     console.error('Google sign up error:', error);
-  }
-};
-
-// Helper function for Apple sign-in - Pure Popup Mode
-const handleAppleSignUp = async () => {
-  try {
-    const result = await signInWithApple();
-    if (result.success) {
-      toast({
-        title: "Welcome!",
-        description: "Please complete your registration below.",
-      });
-    } else if (result.error) {
-      toast({
-        title: "Authentication Error",
-        description: result.error,
-        variant: "destructive",
-      });
-    }
-  } catch (error) {
-    console.error('Apple sign up error:', error);
   }
 };
 
@@ -733,42 +712,28 @@ export default function Register() {
           </Button>
         </div>
         
-        {/* Continue with Google or Apple for Enhanced Registration */}
+        {/* Continue with Google for Enhanced Registration */}
         <Card className="bg-white/80 backdrop-blur-sm border border-ocean/20 shadow-beach">
           <CardContent className="p-6">
             <div className="text-center space-y-4">
-              <h3 className="text-lg font-semibold text-ocean">Continue with Google or Apple</h3>
+              <h3 className="text-lg font-semibold text-ocean">Continue with Google</h3>
               <p className="text-sm text-foreground/70">
-                Sign up with Google or Apple for secure account access and automatic email confirmation.
+                Sign up with Google for secure account access and automatic email confirmation.
               </p>
-              <div className="space-y-3">
-                <Button
-                  onClick={handleGoogleSignUp}
-                  type="button"
-                  variant="outline"
-                  className="w-full touch-target font-semibold py-3 transition-all duration-300 bg-white/70 hover:bg-red-50 hover:text-red-700 border-red-200 text-red-600"
-                >
-                  <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24">
-                    <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                    <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                    <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                    <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                  </svg>
-                  Continue with Google
-                </Button>
-                
-                <Button
-                  onClick={handleAppleSignUp}
-                  type="button"
-                  variant="outline"
-                  className="w-full touch-target font-semibold py-3 transition-all duration-300 bg-black hover:bg-gray-800 text-white border-gray-700"
-                >
-                  <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
-                  </svg>
-                  Continue with Apple
-                </Button>
-              </div>
+              <Button
+                onClick={handleGoogleSignUp}
+                type="button"
+                variant="outline"
+                className="w-full touch-target font-semibold py-3 transition-all duration-300 bg-white/70 hover:bg-red-50 hover:text-red-700 border-red-200 text-red-600"
+              >
+                <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24">
+                  <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                  <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                  <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                  <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                </svg>
+                Continue with Google
+              </Button>
             </div>
           </CardContent>
         </Card>

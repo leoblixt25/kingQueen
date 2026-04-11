@@ -1,0 +1,7 @@
+name = "sandy-scorekeeper-workers"
+main = "workers/delete-firebase-users.ts"
+compatibility_date = "2024-01-01"
+
+[vars]
+# FIREBASE_SERVICE_ACCOUNT should be set as a secret in Cloudflare dashboard
+# Do NOT commit your service account key to version control

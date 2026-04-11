@@ -1,8 +1,9 @@
-import { db, functions } from '@/config/firebase';
+import { db } from '@/config/firebase';
+import { auth } from '@/config/firebase';
 import { collection, getDocs, writeBatch, doc, query } from 'firebase/firestore';
-import { httpsCallable } from 'firebase/functions';
 import { initializePlayers } from './playerInitUtils';
 import { initializeMatches } from './matchInitUtils';
+import { getCurrentUser } from '@/utils/authUtils';
 
 /**
  * Reset scores only - keeps players and match structure
@@ -44,36 +45,45 @@ export const resetScoresOnly = async () => {
 };
 
 /**
- * Delete Firebase Authentication users via Firebase Cloud Function
+ * Delete Firebase Authentication users via Cloudflare Worker (FREE - No Blaze Plan Required)
  */
 export const deleteFirebaseAuthUsers = async () => {
   console.log('🗑️ [AUTH] Deleting Firebase Authentication users...');
   
   try {
-    // Get the callable function
-    const resetEverythingFn = httpsCallable(functions, 'resetEverything');
+    const user = await getCurrentUser();
     
-    console.log('🌐 [AUTH] Calling Firebase Cloud Function to delete users...');
-    
-    // Call the cloud function with confirmation flag
-    const result: any = await resetEverythingFn({ confirm: true });
-    
-    console.log(`✅ [AUTH] Cloud function result:`, result.data);
-    return result.data;
-  } catch (error: any) {
-    console.error('❌ [AUTH] Error calling Firebase Cloud Function:', error);
-    
-    // Provide more specific error messages
-    if (error.code === 'functions/unauthenticated') {
-      throw new Error('You must be logged in to perform this action.');
-    } else if (error.code === 'functions/permission-denied') {
-      throw new Error('Only the admin can perform this action.');
-    } else if (error.code === 'functions/invalid-argument') {
-      throw new Error('Confirmation flag must be set to true.');
-    } else if (error.code === 'functions/not-found') {
-      throw new Error('Cloud function not deployed. Please deploy Firebase Cloud Functions first.');
+    if (!user) {
+      throw new Error('No authenticated user found');
     }
+
+    // Get the Firebase ID token
+    const token = await user.getIdToken();
     
+    // Call Cloudflare Worker endpoint
+    // IMPORTANT: Update this URL after deploying the worker to Cloudflare
+    const workerUrl = 'https://sandy-scorekeeper-workers.leoblixt25.workers.dev';
+    
+    console.log('🌐 [AUTH] Calling Cloudflare Worker to delete users...');
+    
+    const response = await fetch(workerUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ token }),
+    });
+
+    const result = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(result.error || 'Failed to delete Firebase users');
+    }
+
+    console.log(`✅ [AUTH] Successfully deleted ${result.deletedCount} users`);
+    return result;
+  } catch (error) {
+    console.error('❌ [AUTH] Error deleting Firebase Authentication users:', error);
     throw error;
   }
 };
@@ -85,14 +95,14 @@ export const fullTournamentReset = async () => {
   console.log('Performing full tournament reset...');
   
   try {
-    // Step 1: Delete Firebase Authentication users and Firestore data (via Firebase Cloud Function)
-    console.log('🗑️ [RESET] Step 1: Calling Firebase Cloud Function to reset everything...');
+    // Step 1: Delete Firebase Authentication users (via Cloudflare Worker - FREE)
+    console.log('🗑️ [RESET] Step 1: Deleting Firebase Auth users via Cloudflare Worker...');
     try {
       const result = await deleteFirebaseAuthUsers();
-      console.log('✅ [RESET] Cloud function completed:', result);
+      console.log('✅ [RESET] Auth users deleted:', result);
     } catch (authError) {
-      console.error('⚠️ [RESET] Cloud function failed, continuing with local Firestore reset:', authError);
-      // Continue with Firestore reset even if cloud function fails
+      console.error('⚠️ [RESET] Auth user deletion failed, continuing with Firestore reset:', authError);
+      // Continue with Firestore reset even if auth deletion fails
     }
     
     // Step 2: Delete everything using batch operations

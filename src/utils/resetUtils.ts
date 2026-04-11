@@ -1,7 +1,6 @@
-import { db } from '@/config/firebase';
-import { auth } from '@/config/firebase';
+import { db, functions } from '@/config/firebase';
 import { collection, getDocs, writeBatch, doc, query } from 'firebase/firestore';
-import { getFunctions, httpsCallable } from 'firebase/functions';
+import { httpsCallable } from 'firebase/functions';
 import { initializePlayers } from './playerInitUtils';
 import { initializeMatches } from './matchInitUtils';
 
@@ -51,9 +50,6 @@ export const deleteFirebaseAuthUsers = async () => {
   console.log('🗑️ [AUTH] Deleting Firebase Authentication users...');
   
   try {
-    // Get Firebase Functions instance
-    const functions = getFunctions();
-    
     // Get the callable function
     const resetEverythingFn = httpsCallable(functions, 'resetEverything');
     
@@ -74,6 +70,8 @@ export const deleteFirebaseAuthUsers = async () => {
       throw new Error('Only the admin can perform this action.');
     } else if (error.code === 'functions/invalid-argument') {
       throw new Error('Confirmation flag must be set to true.');
+    } else if (error.code === 'functions/not-found') {
+      throw new Error('Cloud function not deployed. Please deploy Firebase Cloud Functions first.');
     }
     
     throw error;

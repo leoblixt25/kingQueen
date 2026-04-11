@@ -5,7 +5,7 @@ import * as admin from "firebase-admin";
 admin.initializeApp();
 
 // Admin email to protect from deletion
-const ADMIN_EMAIL = "leoblixt77@gmail.com";
+const ADMIN_EMAIL = "leo.blixt77@gmail.com";
 
 interface ResetResult {
   success: boolean;

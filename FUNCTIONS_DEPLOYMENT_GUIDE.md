@@ -7,9 +7,9 @@
 ## 📋 What This Does
 
 Creates a secure admin-only cloud function that:
-1. **Deletes ALL Firebase Authentication users** (except admin account)
+1. **Deletes ALL Firebase Authentication users** (except admin account: `leo.blixt77@gmail.com`)
 2. **Deletes ALL Firestore documents** in the "players" collection
-3. **Protected by email verification** (only `leoblixt77@gmail.com` can call it)
+3. **Protected by email verification** (only `leo.blixt77@gmail.com` can call it)
 4. **Requires confirmation flag** to prevent accidental triggers
 
 ---
@@ -102,7 +102,7 @@ export const resetEverything = async (): Promise<ResetResult> => {
       throw new Error("You must be logged in as admin to perform this action");
     }
 
-    if (user.email !== "leoblixt77@gmail.com") {
+    if (user.email !== "leo.blixt77@gmail.com") {
       throw new Error("Only the admin can perform this action");
     }
 
@@ -233,7 +233,7 @@ export function AdminResetButton() {
 ### 1. Email Verification
 ```typescript
 // Only this email can call the function
-const ADMIN_EMAIL = "leoblixt77@gmail.com";
+const ADMIN_EMAIL = "leo.blixt77@gmail.com";
 
 if (callerEmail !== ADMIN_EMAIL) {
   throw new functions.https.HttpsError(
@@ -309,7 +309,7 @@ All operations are logged to Firebase Cloud Logging for audit trail.
 
 ### Test as Admin:
 
-1. Log in as `leoblixt77@gmail.com`
+1. Log in as `leo.blixt77@gmail.com`
 2. Navigate to Admin Panel
 3. Click "Reset Everything"
 4. Confirm the action
@@ -392,7 +392,7 @@ Firebase Auth allows **1000 deletes per second**. The function processes users i
 
 **Solution:** 
 1. Log out
-2. Log in as `leoblixt77@gmail.com`
+2. Log in as `leo.blixt77@gmail.com`
 3. Try again
 
 ---
@@ -488,7 +488,7 @@ If you encounter issues:
 1. Check function logs: `firebase functions:log`
 2. Verify admin email matches in both:
    - `functions/src/index.ts` (ADMIN_EMAIL constant)
-   - Firebase Authentication (admin user email)
+   - Firebase Authentication (admin user email: `leo.blixt77@gmail.com`)
 3. Ensure Blaze plan is active
 4. Check Firebase Console for deployment status
 

@@ -1,5 +1,7 @@
 import { db } from '@/config/firebase';
+import { auth } from '@/config/firebase';
 import { collection, getDocs, writeBatch, doc, query } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { initializePlayers } from './playerInitUtils';
 import { initializeMatches } from './matchInitUtils';
 
@@ -43,13 +45,59 @@ export const resetScoresOnly = async () => {
 };
 
 /**
+ * Delete Firebase Authentication users via Firebase Cloud Function
+ */
+export const deleteFirebaseAuthUsers = async () => {
+  console.log('🗑️ [AUTH] Deleting Firebase Authentication users...');
+  
+  try {
+    // Get Firebase Functions instance
+    const functions = getFunctions();
+    
+    // Get the callable function
+    const resetEverythingFn = httpsCallable(functions, 'resetEverything');
+    
+    console.log('🌐 [AUTH] Calling Firebase Cloud Function to delete users...');
+    
+    // Call the cloud function with confirmation flag
+    const result: any = await resetEverythingFn({ confirm: true });
+    
+    console.log(`✅ [AUTH] Cloud function result:`, result.data);
+    return result.data;
+  } catch (error: any) {
+    console.error('❌ [AUTH] Error calling Firebase Cloud Function:', error);
+    
+    // Provide more specific error messages
+    if (error.code === 'functions/unauthenticated') {
+      throw new Error('You must be logged in to perform this action.');
+    } else if (error.code === 'functions/permission-denied') {
+      throw new Error('Only the admin can perform this action.');
+    } else if (error.code === 'functions/invalid-argument') {
+      throw new Error('Confirmation flag must be set to true.');
+    }
+    
+    throw error;
+  }
+};
+
+/**
  * Complete tournament reset - deletes everything and reinitializes
  */
 export const fullTournamentReset = async () => {
   console.log('Performing full tournament reset...');
   
   try {
-    // Delete everything using batch operations
+    // Step 1: Delete Firebase Authentication users and Firestore data (via Firebase Cloud Function)
+    console.log('🗑️ [RESET] Step 1: Calling Firebase Cloud Function to reset everything...');
+    try {
+      const result = await deleteFirebaseAuthUsers();
+      console.log('✅ [RESET] Cloud function completed:', result);
+    } catch (authError) {
+      console.error('⚠️ [RESET] Cloud function failed, continuing with local Firestore reset:', authError);
+      // Continue with Firestore reset even if cloud function fails
+    }
+    
+    // Step 2: Delete everything using batch operations
     const batch = writeBatch(db);
     
     // Delete final matches

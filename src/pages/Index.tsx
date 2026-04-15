@@ -48,7 +48,6 @@ export default function KingQueenOfTheBeach() {
   const [tournamentSettings, setTournamentSettings] = useState<TournamentSettings | null>(null);
   const [showResetModal, setShowResetModal] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
-  const [isResetLoading, setIsResetLoading] = useState(false);
   const [showScoreResetModal, setShowScoreResetModal] = useState(false);
   const [isResettingScores, setIsResettingScores] = useState(false);
   
@@ -355,7 +354,6 @@ export default function KingQueenOfTheBeach() {
   const handleConfirmReset = async () => {
     console.log('🔄 [FULL RESET] User confirmed reset via modal');
     setIsResetting(true);
-    setIsResetLoading(true);
     
     try {
       console.log('🔄 [FULL RESET] Starting reset process...');
@@ -365,65 +363,13 @@ export default function KingQueenOfTheBeach() {
       // Wait 2 seconds to allow Firebase to fully clear and reinitialize data
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      console.log('🔄 [FULL RESET] Automatically reloading tournament data...');
+      console.log('🔄 [FULL RESET] Reloading page...');
       
-      // Retry loading data up to 3 times with 1 second delay between retries
-      let retryCount = 0;
-      const maxRetries = 3;
-      let dataLoaded = false;
-      
-      while (retryCount < maxRetries && !dataLoaded) {
-        try {
-          await Promise.all([
-            loadPlayersData(),
-            loadMatchesData(),
-            loadTournamentData()
-          ]);
-          
-          // Check if data was actually loaded
-          if (matches && matches.length > 0) {
-            dataLoaded = true;
-            console.log('✅ [FULL RESET] Data loaded successfully');
-          } else {
-            retryCount++;
-            console.log(`⚠️ [FULL RESET] Data not ready, retry ${retryCount}/${maxRetries}`);
-            await new Promise(resolve => setTimeout(resolve, 1000));
-          }
-        } catch (error) {
-          retryCount++;
-          console.log(`⚠️ [FULL RESET] Load attempt ${retryCount}/${maxRetries} failed:`, error);
-          if (retryCount < maxRetries) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
-          }
-        }
-      }
-      
-      if (dataLoaded) {
-        setCurrentMatchIndex(0);
-        setScore1('');
-        setScore2('');
-        setShowResetModal(false);
-        setIsResetting(false);
-        setIsResetLoading(false);
-        toast({
-          title: "Tournament Reset ✓",
-          description: "Tournament has been completely reset and reloaded",
-        });
-      } else {
-        // If all retries failed, show error but don't close modal
-        console.error('❌ [FULL RESET] All retry attempts failed');
-        setIsResetting(false);
-        setIsResetLoading(false);
-        toast({
-          title: "Reset Completed, Loading Failed",
-          description: "The reset was successful but data loading failed. Please refresh the page.",
-          variant: "destructive",
-        });
-      }
+      // Simple page reload - cleanest and most reliable approach
+      window.location.reload();
     } catch (error) {
       console.error('❌ [FULL RESET] Reset failed:', error);
       setIsResetting(false);
-      setIsResetLoading(false);
       toast({
         title: "Reset Failed",
         description: "Failed to reset tournament. Please try again.",
@@ -610,46 +556,25 @@ export default function KingQueenOfTheBeach() {
     );
   }
 
-  // Show loading state while waiting for data - with improved UX
+  // Show loading state while waiting for data
   if (!matches || matches.length === 0) {
-    console.log('⚠️ [ERROR PAGE] No matches found after loading. Showing loading state.');
-    
-    // If we just reset, show a special loading state
-    if (isResetLoading || isResetting) {
-      return (
-        <div className="min-h-screen bg-sand-gradient px-4 py-6 flex items-center justify-center">
-          <div className="text-center space-y-4 animate-fade-in">
-            <div className="text-6xl mb-4 animate-bounce-gentle">🔄</div>
-            <h2 className="text-2xl font-bold mb-3 bg-ocean-gradient bg-clip-text text-transparent">
-              Resetting Tournament...
-            </h2>
-            <p className="text-foreground/70 font-medium">Please wait while we reset and reload data</p>
-            <div className="space-y-3 mt-6">
-              <div className="flex items-center justify-center gap-2 text-sm text-foreground/60">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Clearing and reinitializing...</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      );
-    }
+    console.log('⚠️ [LOADING] No matches found yet, showing loading state.');
     
     return (
       <div className="min-h-screen bg-sand-gradient px-4 py-6 flex items-center justify-center">
         <div className="text-center space-y-4 animate-fade-in">
-          <div className="text-6xl mb-4">⚠️</div>
-          <h2 className="text-2xl font-bold mb-3 bg-coral-gradient bg-clip-text text-transparent">
-            Loading Tournament Data
+          <div className="text-6xl mb-4 animate-bounce-gentle">🏐</div>
+          <h2 className="text-2xl font-bold mb-3 bg-ocean-gradient bg-clip-text text-transparent">
+            Loading Tournament Data...
           </h2>
-          <p className="text-foreground/70 font-medium mb-6">
-            Please wait while we fetch the latest tournament data...
-          </p>
+          <p className="text-foreground/70 font-medium">Setting up the beach volleyball tracker</p>
           <div className="space-y-3 mt-6">
             <div className="flex items-center justify-center gap-2 text-sm text-foreground/60">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              <span>Retrying automatically...</span>
+              <div className="w-2 h-2 bg-ocean rounded-full animate-pulse"></div>
+              <div className="w-2 h-2 bg-ocean rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+              <div className="w-2 h-2 bg-ocean rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
             </div>
+            <p className="text-xs text-foreground/50">If this takes too long, please refresh the page</p>
           </div>
         </div>
       </div>
@@ -689,6 +614,23 @@ export default function KingQueenOfTheBeach() {
 
   return (
     <div className="min-h-screen bg-sand-gradient px-4 py-6">
+      {/* Loading overlay during reset */}
+      {isResetting && (
+        <div className="fixed inset-0 z-50 bg-sand-gradient/95 backdrop-blur-sm flex items-center justify-center">
+          <div className="text-center space-y-4 animate-fade-in">
+            <div className="text-6xl mb-4 animate-bounce-gentle">🔄</div>
+            <h2 className="text-2xl font-bold mb-3 bg-ocean-gradient bg-clip-text text-transparent">
+              Resetting Tournament...
+            </h2>
+            <p className="text-foreground/70 font-medium">Please wait while we reset and reload</p>
+            <div className="flex items-center justify-center gap-2 text-sm text-foreground/60">
+              <Loader2 className="w-5 h-5 animate-spin text-ocean" />
+              <span>Clearing and reinitializing data...</span>
+            </div>
+          </div>
+        </div>
+      )}
+      
       <div className="max-w-lg mx-auto space-y-6 animate-fade-in">
         <header>
           <div className="flex flex-col items-center gap-6">

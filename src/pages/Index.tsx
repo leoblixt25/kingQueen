@@ -579,13 +579,18 @@ export default function KingQueenOfTheBeach() {
           </h2>
           <p className="text-foreground/70 font-medium">Setting up the beach volleyball tracker</p>
           {(isLoading && !isLoadingUserData) && (
-            <div className="space-y-3 mt-6">
-              <div className="flex items-center justify-center gap-2 text-sm text-foreground/60">
+            <div className="space-y-3 max-w-sm mx-auto mt-6">
+              <div className="flex items-center justify-center gap-2 text-sm text-foreground/60 mb-4">
                 <div className="w-2 h-2 bg-ocean rounded-full animate-pulse"></div>
                 <div className="w-2 h-2 bg-ocean rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
                 <div className="w-2 h-2 bg-ocean rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
               </div>
-              <p className="text-xs text-foreground/50">Automatically reloading if this takes too long...</p>
+              <Button 
+                onClick={loadTournamentData} 
+                className="w-full touch-target bg-ocean hover:bg-ocean-dark text-white font-semibold py-3 transition-all duration-300"
+              >
+                🔄 Continue to Tournament
+              </Button>
             </div>
           )}
         </div>
@@ -616,12 +621,18 @@ export default function KingQueenOfTheBeach() {
           <h2 className="text-2xl font-bold mb-3 bg-ocean-gradient bg-clip-text text-transparent">
             Loading Tournament Data...
           </h2>
-          <p className="text-foreground/70 font-medium">Setting up the beach volleyball tracker</p>
-          <div className="space-y-3 mt-6">
-            <div className="flex items-center justify-center gap-2 text-sm text-foreground/60">
+          <p className="text-foreground/70 font-medium mb-6">Setting up the beach volleyball tracker</p>
+          <div className="space-y-3 max-w-sm mx-auto">
+            <div className="flex items-center justify-center gap-2 text-sm text-foreground/60 mb-4">
               <Loader2 className="w-4 h-4 animate-spin" />
-              <span>Auto-reloading if needed...</span>
+              <span>Loading data...</span>
             </div>
+            <Button 
+              onClick={loadTournamentData} 
+              className="w-full touch-target bg-ocean hover:bg-ocean-dark text-white font-semibold py-3 transition-all duration-300"
+            >
+              🔄 Continue to Tournament
+            </Button>
           </div>
         </div>
       </div>

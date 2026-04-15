@@ -88,20 +88,16 @@ export const useTournamentActions = ({
     try {
       console.log('🔄 [FULL RESET] Starting full tournament reset...');
       await fullTournamentReset();
-      console.log('🔄 [FULL RESET] Reset complete, waiting for data to be ready...');
+      console.log('🔄 [FULL RESET] Reset complete, waiting for Firebase to stabilize...');
       
-      // Wait a bit longer to ensure all real-time updates have processed
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Wait for Firebase to fully process the reset and reinitialize data
+      // This includes: auth deletion, data deletion, player creation, match creation
+      await new Promise(resolve => setTimeout(resolve, 1500));
       
-      console.log('🔄 [FULL RESET] Forcing immediate reload of all data...');
-      // Force immediate reload - load everything in parallel
-      await Promise.all([
-        loadPlayersData().then(() => console.log('✅ Players loaded')),
-        loadMatchesData().then(() => console.log('✅ Matches loaded')),
-        loadTournamentData().then(() => console.log('✅ Tournament data loaded'))
-      ]);
-      
-      console.log('✅ [FULL RESET] All data reloaded successfully');
+      console.log('🔄 [FULL RESET] Firebase stabilization complete');
+      // Note: The actual data loading and retry logic is now handled in Index.tsx
+      // This function just performs the reset operation
+      console.log('✅ [FULL RESET] Reset operation completed successfully');
     } catch (error) {
       console.error('❌ [FULL RESET] Error:', error);
       throw error;

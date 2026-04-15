@@ -365,12 +365,9 @@ export default function KingQueenOfTheBeach() {
       
       console.log('🔄 [FULL RESET] Reloading tournament data...');
       
-      // Reload all tournament data
-      await Promise.all([
-        loadPlayersData(),
-        loadMatchesData(),
-        loadTournamentData()
-      ]);
+      // Just call loadTournamentData - it already loads players, matches, and final match
+      // and properly manages the isLoading state
+      await loadTournamentData();
       
       console.log('✅ [FULL RESET] Data reloaded successfully');
       
@@ -394,11 +391,7 @@ export default function KingQueenOfTheBeach() {
       
       // Try to reload data anyway
       try {
-        await Promise.all([
-          loadPlayersData(),
-          loadMatchesData(),
-          loadTournamentData()
-        ]);
+        await loadTournamentData();
       } catch (e) {
         console.error('❌ [FULL RESET] Data reload also failed:', e);
       }

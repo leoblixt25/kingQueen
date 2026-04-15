@@ -119,6 +119,20 @@ export default function KingQueenOfTheBeach() {
     }
   }, [isLoading, isLoadingUserData, loadTournamentData]);
 
+  // Auto-retry if matches are empty after loading completes
+  useEffect(() => {
+    if (!isLoading && (!matches || matches.length === 0)) {
+      console.log('⏱️ [AUTO-RETRY-MATCHES] Loading finished but no matches, setting up retry...');
+      
+      const retryTimer = setTimeout(() => {
+        console.log('⏱️ [AUTO-RETRY-MATCHES] Still no matches, reloading data...');
+        loadTournamentData();
+      }, 3000);
+      
+      return () => clearTimeout(retryTimer);
+    }
+  }, [matches, isLoading, loadTournamentData]);
+
   // Update gender based on URL if it changes
   useEffect(() => {
     const pathParts = window.location.pathname.split('/');
@@ -601,18 +615,6 @@ export default function KingQueenOfTheBeach() {
   // Show loading state while waiting for data
   if (!matches || matches.length === 0) {
     console.log('⚠️ [LOADING] No matches found yet, showing loading state.');
-    
-    // Auto-retry if stuck here
-    useEffect(() => {
-      console.log('⏱️ [AUTO-RETRY-MATCHES] Setting up auto-retry for empty matches...');
-      
-      const retryTimer = setTimeout(() => {
-        console.log('⏱️ [AUTO-RETRY-MATCHES] Still no matches, reloading data...');
-        loadTournamentData();
-      }, 5000);
-      
-      return () => clearTimeout(retryTimer);
-    }, [loadTournamentData]);
     
     return (
       <div className="min-h-screen bg-sand-gradient px-4 py-6 flex items-center justify-center">

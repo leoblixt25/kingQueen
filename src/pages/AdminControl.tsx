@@ -9,7 +9,7 @@ import { db } from "@/config/firebase";
 import { collection, getDocs, query, orderBy, limit, doc, setDoc, where } from "firebase/firestore";
 import { signOut } from "@/utils/authUtils";
 import { LogOut, Save, Crown, Users, AlertTriangle } from "lucide-react";
-import { fullTournamentReset } from "@/utils/tournamentReset";
+import { fullTournamentReset } from "@/utils/resetUtils";
 
 interface TournamentSettings {
   id?: string;

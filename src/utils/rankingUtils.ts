@@ -90,6 +90,9 @@ export const calculateRankingsFromMatches = async () => {
     await Promise.all(updatePromises);
     console.log('🎉 [RANKINGS] Rankings updated successfully!');
     
+    // Small delay to ensure Firebase writes are fully committed
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
   } catch (error) {
     console.error('❌ [RANKINGS] Error calculating rankings:', error);
   }

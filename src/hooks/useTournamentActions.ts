@@ -26,10 +26,12 @@ export const useTournamentActions = ({
       const matchId = await updateMatchScoreUtil(matchIndex, score1, score2, gender, isEdit);
       console.log(`🏐 Match updated, ID: ${matchId}`);
       if (matchId) {
-        console.log(`🏐 Match updated successfully, database trigger will handle player stats automatically`);
+        console.log(`🏐 Match updated successfully, rankings calculated`);
+        // Small delay to ensure Firebase ranking updates are committed before reload
+        await new Promise(resolve => setTimeout(resolve, 500));
         // IMMEDIATELY reload players and matches to show updated rankings
         await Promise.all([loadPlayersData(), loadMatchesData()]);
-        console.log(`🏐 Data reloaded immediately`);
+        console.log(`🏐 Data reloaded immediately with updated rankings`);
       } else {
         console.error('Failed to update match score - no match ID returned');
       }

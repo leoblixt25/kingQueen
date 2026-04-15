@@ -8,7 +8,8 @@ import { toast } from "@/hooks/use-toast";
 import { db } from "@/config/firebase";
 import { collection, getDocs, query, orderBy, limit, doc, setDoc, where } from "firebase/firestore";
 import { signOut } from "@/utils/authUtils";
-import { LogOut, Save, Crown, Users } from "lucide-react";
+import { LogOut, Save, Crown, Users, AlertTriangle } from "lucide-react";
+import { fullTournamentReset } from "@/utils/tournamentReset";
 
 interface TournamentSettings {
   id?: string;
@@ -27,6 +28,7 @@ export default function AdminControl() {
   const [existingSettingsId, setExistingSettingsId] = useState<string | null>(null);
   const [playerCounts, setPlayerCounts] = useState<{ maleCount: number; femaleCount: number } | null>(null);
   const [showTournamentConfig, setShowTournamentConfig] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
 
   useEffect(() => {
     loadTournamentSettings();
@@ -130,6 +132,45 @@ export default function AdminControl() {
         description: "Failed to log out",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleResetEverything = async () => {
+    if (!window.confirm(
+      'This will delete ALL players, matches, and scores. The tournament will be completely reset. Are you sure?'
+    )) {
+      return;
+    }
+
+    if (!window.confirm(
+      'This action cannot be undone. All tournament data will be lost. Continue?'
+    )) {
+      return;
+    }
+
+    setIsResetting(true);
+    try {
+      console.log('🔄 [RESET] Starting full tournament reset from admin control...');
+      await fullTournamentReset();
+      console.log('✅ [RESET] Tournament reset completed successfully');
+      
+      toast({
+        title: "Success",
+        description: "Tournament has been completely reset",
+      });
+
+      // Navigate to tournament page - reuses the same flow as "View Tournament" button
+      // The tournament page will automatically load the fresh data
+      navigate('/tournament');
+    } catch (error) {
+      console.error('❌ [RESET] Error resetting tournament:', error);
+      toast({
+        title: "Error",
+        description: "Failed to reset tournament",
+        variant: "destructive",
+      });
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -281,6 +322,25 @@ export default function AdminControl() {
             View Tournament
           </Button>
         </div>
+
+        <Button
+          onClick={handleResetEverything}
+          disabled={isResetting}
+          variant="destructive"
+          className="w-full bg-coral hover:bg-coral-dark text-white font-semibold py-3 transition-all duration-300 flex items-center justify-center gap-2"
+        >
+          {isResetting ? (
+            <>
+              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              Resetting...
+            </>
+          ) : (
+            <>
+              <AlertTriangle className="w-4 h-4" />
+              Reset Everything
+            </>
+          )}
+        </Button>
 
 
 

@@ -102,6 +102,23 @@ export default function KingQueenOfTheBeach() {
     loadTournamentSettings();
   }, []);
 
+  // Auto-retry loading if stuck for too long
+  useEffect(() => {
+    if (isLoading && !isLoadingUserData) {
+      console.log('⏱️ [AUTO-RETRY] Setting up auto-retry timer...');
+      
+      // If loading takes more than 8 seconds, automatically retry
+      const retryTimer = setTimeout(() => {
+        console.log('⏱️ [AUTO-RETRY] Loading took too long, automatically reloading data...');
+        loadTournamentData();
+      }, 8000);
+      
+      return () => {
+        clearTimeout(retryTimer);
+      };
+    }
+  }, [isLoading, isLoadingUserData, loadTournamentData]);
+
   // Update gender based on URL if it changes
   useEffect(() => {
     const pathParts = window.location.pathname.split('/');
@@ -568,7 +585,7 @@ export default function KingQueenOfTheBeach() {
                 <div className="w-2 h-2 bg-ocean rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
                 <div className="w-2 h-2 bg-ocean rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
               </div>
-              <p className="text-xs text-foreground/50">If this takes too long, please refresh the page</p>
+              <p className="text-xs text-foreground/50">Automatically reloading if this takes too long...</p>
             </div>
           )}
         </div>
@@ -580,6 +597,18 @@ export default function KingQueenOfTheBeach() {
   if (!matches || matches.length === 0) {
     console.log('⚠️ [LOADING] No matches found yet, showing loading state.');
     
+    // Auto-retry if stuck here
+    useEffect(() => {
+      console.log('⏱️ [AUTO-RETRY-MATCHES] Setting up auto-retry for empty matches...');
+      
+      const retryTimer = setTimeout(() => {
+        console.log('⏱️ [AUTO-RETRY-MATCHES] Still no matches, reloading data...');
+        loadTournamentData();
+      }, 5000);
+      
+      return () => clearTimeout(retryTimer);
+    }, [loadTournamentData]);
+    
     return (
       <div className="min-h-screen bg-sand-gradient px-4 py-6 flex items-center justify-center">
         <div className="text-center space-y-4 animate-fade-in">
@@ -590,11 +619,9 @@ export default function KingQueenOfTheBeach() {
           <p className="text-foreground/70 font-medium">Setting up the beach volleyball tracker</p>
           <div className="space-y-3 mt-6">
             <div className="flex items-center justify-center gap-2 text-sm text-foreground/60">
-              <div className="w-2 h-2 bg-ocean rounded-full animate-pulse"></div>
-              <div className="w-2 h-2 bg-ocean rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-              <div className="w-2 h-2 bg-ocean rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Auto-reloading if needed...</span>
             </div>
-            <p className="text-xs text-foreground/50">If this takes too long, please refresh the page</p>
           </div>
         </div>
       </div>

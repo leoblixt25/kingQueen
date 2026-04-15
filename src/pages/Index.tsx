@@ -358,10 +358,10 @@ export default function KingQueenOfTheBeach() {
     try {
       console.log('🔄 [FULL RESET] Starting reset process...');
       await resetAllData();
-      console.log('✅ [FULL RESET] Reset completed, waiting for Firebase to stabilize...');
+      console.log('✅ [FULL RESET] Reset completed, waiting 5 seconds for Firebase to stabilize...');
       
-      // Wait 2 seconds to allow Firebase to fully clear and reinitialize data
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Wait 5 seconds to allow Firebase to fully clear and reinitialize data
+      await new Promise(resolve => setTimeout(resolve, 5000));
       
       console.log('🔄 [FULL RESET] Reloading page...');
       
@@ -369,12 +369,9 @@ export default function KingQueenOfTheBeach() {
       window.location.reload();
     } catch (error) {
       console.error('❌ [FULL RESET] Reset failed:', error);
-      setIsResetting(false);
-      toast({
-        title: "Reset Failed",
-        description: "Failed to reset tournament. Please try again.",
-        variant: "destructive",
-      });
+      // Don't show error toast - just reload the page anyway
+      // The page reload will show the current state
+      window.location.reload();
     }
   };
 

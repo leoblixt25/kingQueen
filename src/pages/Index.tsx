@@ -358,20 +358,50 @@ export default function KingQueenOfTheBeach() {
     try {
       console.log('🔄 [FULL RESET] Starting reset process...');
       await resetAllData();
-      console.log('✅ [FULL RESET] Reset completed, waiting 5 seconds for Firebase to stabilize...');
+      console.log('✅ [FULL RESET] Reset completed, waiting 3 seconds for Firebase to stabilize...');
       
-      // Wait 5 seconds to allow Firebase to fully clear and reinitialize data
-      await new Promise(resolve => setTimeout(resolve, 5000));
+      // Wait 3 seconds to allow Firebase to fully clear and reinitialize data
+      await new Promise(resolve => setTimeout(resolve, 3000));
       
-      console.log('🔄 [FULL RESET] Reloading page...');
+      console.log('🔄 [FULL RESET] Reloading tournament data...');
       
-      // Simple page reload - cleanest and most reliable approach
-      window.location.reload();
+      // Reload all tournament data
+      await Promise.all([
+        loadPlayersData(),
+        loadMatchesData(),
+        loadTournamentData()
+      ]);
+      
+      console.log('✅ [FULL RESET] Data reloaded successfully');
+      
+      // Reset local state
+      setCurrentMatchIndex(0);
+      setScore1('');
+      setScore2('');
+      setShowFinalMatch(false);
+      setShowResetModal(false);
+      setIsResetting(false);
+      
+      toast({
+        title: "Tournament Reset",
+        description: "Tournament has been completely reset",
+      });
     } catch (error) {
-      console.error('❌ [FULL RESET] Reset failed:', error);
-      // Don't show error toast - just reload the page anyway
-      // The page reload will show the current state
-      window.location.reload();
+      console.error('❌ [FULL RESET] Error:', error);
+      // Just close the modal and reset state - no error message
+      setShowResetModal(false);
+      setIsResetting(false);
+      
+      // Try to reload data anyway
+      try {
+        await Promise.all([
+          loadPlayersData(),
+          loadMatchesData(),
+          loadTournamentData()
+        ]);
+      } catch (e) {
+        console.error('❌ [FULL RESET] Data reload also failed:', e);
+      }
     }
   };
 
@@ -611,23 +641,6 @@ export default function KingQueenOfTheBeach() {
 
   return (
     <div className="min-h-screen bg-sand-gradient px-4 py-6">
-      {/* Loading overlay during reset */}
-      {isResetting && (
-        <div className="fixed inset-0 z-50 bg-sand-gradient/95 backdrop-blur-sm flex items-center justify-center">
-          <div className="text-center space-y-4 animate-fade-in">
-            <div className="text-6xl mb-4 animate-bounce-gentle">🔄</div>
-            <h2 className="text-2xl font-bold mb-3 bg-ocean-gradient bg-clip-text text-transparent">
-              Resetting Tournament...
-            </h2>
-            <p className="text-foreground/70 font-medium">Please wait while we reset and reload</p>
-            <div className="flex items-center justify-center gap-2 text-sm text-foreground/60">
-              <Loader2 className="w-5 h-5 animate-spin text-ocean" />
-              <span>Clearing and reinitializing data...</span>
-            </div>
-          </div>
-        </div>
-      )}
-      
       <div className="max-w-lg mx-auto space-y-6 animate-fade-in">
         <header>
           <div className="flex flex-col items-center gap-6">

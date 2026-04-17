@@ -907,6 +907,9 @@ export default function KingQueenOfTheBeach() {
                         🏐 Team 1
                       </CardTitle>
                       <div className="text-center">
+                        <p className="text-sm text-ocean/60 mb-1">
+                          (Male #1: {malePlayers[0]?.name} - {malePlayers[0]?.points}pts) & (Female #2: {femalePlayers[1]?.name} - {femalePlayers[1]?.points}pts)
+                        </p>
                         <p className="text-xl text-ocean-dark font-semibold">
                           {malePlayers[0]?.name} & {femalePlayers[1]?.name}
                         </p>
@@ -954,6 +957,9 @@ export default function KingQueenOfTheBeach() {
                         🏐 Team 2
                       </CardTitle>
                       <div className="text-center">
+                        <p className="text-sm text-sunset/60 mb-1">
+                          (Female #1: {femalePlayers[0]?.name} - {femalePlayers[0]?.points}pts) & (Male #2: {malePlayers[1]?.name} - {malePlayers[1]?.points}pts)
+                        </p>
                         <p className="text-xl text-sunset-dark font-semibold">
                           {femalePlayers[0]?.name} & {malePlayers[1]?.name}
                         </p>

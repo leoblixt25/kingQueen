@@ -206,6 +206,11 @@ const updateFinalMatchBracket = async () => {
     console.log('✅ [FINAL MATCH BRACKET] Bracket updated successfully');
     console.log(`  Team 1: ${rank1Male.name} + ${rank2Female.name}`);
     console.log(`  Team 2: ${rank2Male.name} + ${rank1Female.name}`);
+    console.log('📊 [FINAL MATCH BRACKET] Player IDs stored in Firebase:');
+    console.log(`  male_king_id: ${rank1Male.id}`);
+    console.log(`  female_queen_id: ${rank2Female.id}`);
+    console.log(`  male_prince_id: ${rank2Male.id}`);
+    console.log(`  female_princess_id: ${rank1Female.id}`);
     
   } catch (error) {
     console.error('❌ [FINAL MATCH BRACKET] Error updating bracket:', error);

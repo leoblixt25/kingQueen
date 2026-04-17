@@ -889,7 +889,7 @@ export default function KingQueenOfTheBeach() {
         {!showPlayerReplacer && (
           <main>
             {showFinalMatch ? (
-              <div className="space-y-6" key={`champ-final-${malePlayers[0]?.points || 0}-${femalePlayers[0]?.points || 0}`}>
+              <div className="space-y-6">
                 <div className="text-center">
                   <div className="bg-beach-gradient text-white rounded-2xl p-6 shadow-beach">
                     <h2 className="text-2xl font-bold flex items-center justify-center gap-2">
@@ -907,9 +907,6 @@ export default function KingQueenOfTheBeach() {
                         🏐 Team 1
                       </CardTitle>
                       <div className="text-center">
-                        <p className="text-sm text-ocean/60 mb-1">
-                          (Male #1: {malePlayers[0]?.name} - {malePlayers[0]?.points}pts) & (Female #2: {femalePlayers[1]?.name} - {femalePlayers[1]?.points}pts)
-                        </p>
                         <p className="text-xl text-ocean-dark font-semibold">
                           {malePlayers[0]?.name} & {femalePlayers[1]?.name}
                         </p>
@@ -957,9 +954,6 @@ export default function KingQueenOfTheBeach() {
                         🏐 Team 2
                       </CardTitle>
                       <div className="text-center">
-                        <p className="text-sm text-sunset/60 mb-1">
-                          (Female #1: {femalePlayers[0]?.name} - {femalePlayers[0]?.points}pts) & (Male #2: {malePlayers[1]?.name} - {malePlayers[1]?.points}pts)
-                        </p>
                         <p className="text-xl text-sunset-dark font-semibold">
                           {femalePlayers[0]?.name} & {malePlayers[1]?.name}
                         </p>

@@ -6,6 +6,7 @@ import { resetScoresOnly, fullTournamentReset } from '@/utils/resetUtils';
 interface UseTournamentActionsProps {
   loadPlayersData: () => Promise<void>;
   loadMatchesData: () => Promise<void>;
+  loadFinalMatchData: () => Promise<void>;
   loadTournamentData: () => Promise<void>;
   malePlayers: Player[];
   femalePlayers: Player[];
@@ -15,6 +16,7 @@ interface UseTournamentActionsProps {
 export const useTournamentActions = ({
   loadPlayersData,
   loadMatchesData,
+  loadFinalMatchData,
   loadTournamentData,
   malePlayers,
   femalePlayers,
@@ -29,9 +31,9 @@ export const useTournamentActions = ({
         console.log(`🏐 Match updated successfully, rankings calculated`);
         // Small delay to ensure Firebase ranking updates are committed before reload
         await new Promise(resolve => setTimeout(resolve, 500));
-        // IMMEDIATELY reload players and matches to show updated rankings
-        await Promise.all([loadPlayersData(), loadMatchesData()]);
-        console.log(`🏐 Data reloaded immediately with updated rankings`);
+        // IMMEDIATELY reload players, matches, and final match to show updated rankings and bracket
+        await Promise.all([loadPlayersData(), loadMatchesData(), loadFinalMatchData()]);
+        console.log(`🏐 Data reloaded immediately with updated rankings and final match bracket`);
       } else {
         console.error('Failed to update match score - no match ID returned');
       }

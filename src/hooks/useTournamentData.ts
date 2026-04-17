@@ -167,6 +167,7 @@ export const useTournamentData = () => {
   const actions = useTournamentActions({
     loadPlayersData,
     loadMatchesData,
+    loadFinalMatchData,
     loadTournamentData,
     malePlayers: state.malePlayers,
     femalePlayers: state.femalePlayers,

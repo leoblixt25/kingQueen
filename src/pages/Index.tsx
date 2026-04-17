@@ -889,7 +889,7 @@ export default function KingQueenOfTheBeach() {
         {!showPlayerReplacer && (
           <main>
             {showFinalMatch ? (
-              <div className="space-y-6">
+              <div className="space-y-6" key={`champ-final-${malePlayers[0]?.points || 0}-${femalePlayers[0]?.points || 0}`}>
                 <div className="text-center">
                   <div className="bg-beach-gradient text-white rounded-2xl p-6 shadow-beach">
                     <h2 className="text-2xl font-bold flex items-center justify-center gap-2">

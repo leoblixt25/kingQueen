@@ -23,17 +23,19 @@ export const useTournamentActions = ({
   setFinalMatchSubmitted,
 }: UseTournamentActionsProps) => {
   const updateMatchScore = async (matchIndex: number, score1: number, score2: number, gender: 'male' | 'female', isEdit: boolean = false) => {
+    const startTime = Date.now();
     console.log(`🏐 UPDATE MATCH SCORE CALLED: match=${matchIndex}, scores=${score1}-${score2}, gender=${gender}, isEdit=${isEdit}`);
     try {
       const matchId = await updateMatchScoreUtil(matchIndex, score1, score2, gender, isEdit);
       console.log(`🏐 Match updated, ID: ${matchId}`);
       if (matchId) {
         console.log(`🏐 Match updated successfully, rankings calculated`);
-        // Small delay to ensure Firebase ranking updates are committed before reload
-        await new Promise(resolve => setTimeout(resolve, 500));
-        // IMMEDIATELY reload players, matches, and final match to show updated rankings and bracket
+        // Minimal delay to ensure Firebase writes are committed
+        await new Promise(resolve => setTimeout(resolve, 100));
+        // IMMEDIATELY reload players, matches, and final match to show updated rankings
         await Promise.all([loadPlayersData(), loadMatchesData(), loadFinalMatchData()]);
-        console.log(`🏐 Data reloaded immediately with updated rankings and final match bracket`);
+        const duration = Date.now() - startTime;
+        console.log(`🏐 Data reloaded immediately with updated rankings (total: ${duration}ms)`);
       } else {
         console.error('Failed to update match score - no match ID returned');
       }

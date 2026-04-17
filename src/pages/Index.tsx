@@ -92,9 +92,10 @@ export default function KingQueenOfTheBeach() {
   
   // Log Championship Final pairings for debugging
   if (malePlayers.length >= 2 && femalePlayers.length >= 2) {
-    console.log('🏆 [CHAMPIONSHIP FINAL] Current pairings:');
+    console.log('🏆 [CHAMPIONSHIP FINAL] Current pairings (updated):');
     console.log('  Team 1 - Male #1:', malePlayers[0]?.name, `(${malePlayers[0]?.points}pts)`, '& Female #2:', femalePlayers[1]?.name, `(${femalePlayers[1]?.points}pts)`);
     console.log('  Team 2 - Female #1:', femalePlayers[0]?.name, `(${femalePlayers[0]?.points}pts)`, '& Male #2:', malePlayers[1]?.name, `(${malePlayers[1]?.points}pts)`);
+    console.log('  🕐 Updated at:', new Date().toLocaleTimeString());
   }
   
   // Build players map and resolve match player IDs to actual player data

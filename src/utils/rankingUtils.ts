@@ -90,11 +90,9 @@ export const calculateRankingsFromMatches = async () => {
     await Promise.all(updatePromises);
     console.log('🎉 [RANKINGS] Rankings updated successfully!');
     
-    // Small delay to ensure Firebase writes are fully committed
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    // Automatically update final match bracket with latest rankings
-    await updateFinalMatchBracket();
+    // Championship Final computes dynamically from live player data
+    // No need to store bracket in Firebase - it will update automatically
+    // via real-time subscriptions when players collection changes
     
   } catch (error) {
     console.error('❌ [RANKINGS] Error calculating rankings:', error);

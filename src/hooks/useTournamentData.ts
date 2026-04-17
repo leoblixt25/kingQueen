@@ -12,12 +12,14 @@ export const useTournamentData = () => {
   
   // Define loaders inline - wrapped in useCallback to prevent recreation
   const loadPlayersData = useCallback(async () => {
+    const startTime = Date.now();
     console.log('🔄 [LOAD PLAYERS] Starting to fetch players...');
     try {
       const result = await loadPlayers() as any;
       state.setFemalePlayers(result.femalePlayers);
       state.setMalePlayers(result.malePlayers);
-      console.log('✅ [LOAD PLAYERS] Success:', result.femalePlayers.length + result.malePlayers.length, 'players');
+      const duration = Date.now() - startTime;
+      console.log(`✅ [LOAD PLAYERS] Success: ${result.femalePlayers.length + result.malePlayers.length} players (${duration}ms)`);
     } catch (error) {
       console.error('❌ [LOAD PLAYERS] Failed:', error);
       throw error;

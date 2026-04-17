@@ -19,6 +19,7 @@ export const useTournamentRealtimeSubscriptions = ({
     // Set up Firestore realtime listeners for each collection
     const playersUnsubscribe = onSnapshot(collection(db, 'players'), (snapshot) => {
       console.log('🔁 [REALTIME] Players collection changed -', snapshot.docs.length, 'documents, reloading...');
+      console.log('🏆 [REALTIME] This will update Championship Final pairings');
       loadPlayersData().catch(err => console.error('[REALTIME] Error reloading players:', err));
     });
 

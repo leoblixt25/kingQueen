@@ -90,6 +90,13 @@ export default function KingQueenOfTheBeach() {
     return b.totalScores - a.totalScores;
   });
   
+  // Log Championship Final pairings for debugging
+  if (malePlayers.length >= 2 && femalePlayers.length >= 2) {
+    console.log('🏆 [CHAMPIONSHIP FINAL] Current pairings:');
+    console.log('  Team 1 - Male #1:', malePlayers[0]?.name, `(${malePlayers[0]?.points}pts)`, '& Female #2:', femalePlayers[1]?.name, `(${femalePlayers[1]?.points}pts)`);
+    console.log('  Team 2 - Female #1:', femalePlayers[0]?.name, `(${femalePlayers[0]?.points}pts)`, '& Male #2:', malePlayers[1]?.name, `(${malePlayers[1]?.points}pts)`);
+  }
+  
   // Build players map and resolve match player IDs to actual player data
   const playersMap = buildPlayersMap(femalePlayers, malePlayers);
   const resolvedFemaleMatches = resolveMatchPlayers(femaleMatches, playersMap);
@@ -897,10 +904,25 @@ export default function KingQueenOfTheBeach() {
                       Championship Final
                       <Crown className="w-6 h-6" />
                     </h2>
+                    {malePlayers.length < 2 || femalePlayers.length < 2 ? (
+                      <p className="text-sm mt-2 opacity-90">
+                        Waiting for at least 2 male and 2 female players...
+                      </p>
+                    ) : null}
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 gap-4">
+                  {malePlayers.length < 2 || femalePlayers.length < 2 ? (
+                    <Card className="border-2 border-ocean/20 bg-white/80 backdrop-blur-sm shadow-beach">
+                      <CardContent className="p-8 text-center">
+                        <p className="text-lg text-foreground/60">
+                          Championship Final will be available once there are at least 2 male and 2 female players with rankings.
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <>
                   <Card className="border-2 border-ocean/20 bg-white/80 backdrop-blur-sm shadow-beach">
                     <CardHeader className="pb-3">
                       <CardTitle className="text-center text-lg font-bold text-ocean">
@@ -988,6 +1010,8 @@ export default function KingQueenOfTheBeach() {
                       </div>
                     </CardContent>
                   </Card>
+                  </>
+                  )}
                 </div>
 
                 {!finalMatchSubmitted ? (

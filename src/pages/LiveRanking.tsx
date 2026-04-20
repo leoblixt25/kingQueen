@@ -5,22 +5,43 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Crown, ArrowLeft, Trophy, Check } from "lucide-react";
 import { db } from "@/config/firebase";
 import { collection, onSnapshot } from "firebase/firestore";
-import { Player } from "@/types";
+import { Player, Match } from "@/types";
+import { getTiebreakerLevel } from "@/utils/rankingTiebreaker";
 
 // Rankings Tab Component
-function RankingsTab({ activeTab, currentPlayers }: { activeTab: string; currentPlayers: Player[] }) {
-  // Sort players deterministically
+function RankingsTab({ activeTab, currentPlayers, matches }: { activeTab: string; currentPlayers: Player[]; matches: Match[] }) {
+  // Sort players deterministically using full tiebreaker system
+  const playerPointsMap = new Map<string, number>();
+  currentPlayers.forEach(p => {
+    if (p.id) playerPointsMap.set(p.id, p.points);
+  });
+  
   const sortedPlayers = [...currentPlayers].sort((a, b) => {
     if (b.points !== a.points) return b.points - a.points;
     if (b.totalScores !== a.totalScores) return b.totalScores - a.totalScores;
-    // Final fallback: player ID for deterministic ordering
-    return (a.id || '').localeCompare(b.id || '');
+    // Use full tiebreaker system
+    return getTiebreakerLevel(a, b, matches, playerPointsMap) === null ? 
+      (b.totalScores - a.totalScores || (a.id || '').localeCompare(b.id || '')) :
+      getTiebreakerLevel(a, b, matches, playerPointsMap) === 'Score' ? -1 : 
+      getTiebreakerLevel(a, b, matches, playerPointsMap) === 'Difference' ? -1 :
+      getTiebreakerLevel(a, b, matches, playerPointsMap) === 'Head-to-head' ? -1 :
+      getTiebreakerLevel(a, b, matches, playerPointsMap) === 'Opponents' ? -1 :
+      (a.id || '').localeCompare(b.id || '');
   });
   
-  // Check if tiebreaker is needed
-  const needsTiebreaker = (index: number): boolean => {
-    if (index === 0) return false;
-    return sortedPlayers[index].points === sortedPlayers[index - 1].points;
+  // Detect which tiebreaker was used
+  const getTiebreakerForPlayer = (index: number): string | null => {
+    if (index === 0 || index >= sortedPlayers.length) return null;
+    
+    const currentPlayer = sortedPlayers[index];
+    const previousPlayer = sortedPlayers[index - 1];
+    
+    // Only show tiebreaker if points are tied
+    if (currentPlayer.points === previousPlayer.points) {
+      return getTiebreakerLevel(previousPlayer, currentPlayer, matches, playerPointsMap);
+    }
+    
+    return null;
   };
   
   return (
@@ -41,7 +62,7 @@ function RankingsTab({ activeTab, currentPlayers }: { activeTab: string; current
         ) : (
           <div className="space-y-3">
             {sortedPlayers.map((player, index) => {
-              const showTiebreaker = needsTiebreaker(index);
+              const tiebreaker = getTiebreakerForPlayer(index);
               
               return (
               <div
@@ -96,11 +117,11 @@ function RankingsTab({ activeTab, currentPlayers }: { activeTab: string; current
                     </div>
                   </div>
                 </div>
-                {showTiebreaker && (
+                {tiebreaker && (
                   <div className={`text-xs text-center ${
                     index === 0 ? 'text-white/70' : 'text-foreground/50'
                   }`}>
-                    Tiebreaker: Score
+                    Tiebreaker: {tiebreaker}
                   </div>
                 )}
               </div>
@@ -373,6 +394,7 @@ export default function LiveRanking() {
   const [malePlayers, setMalePlayers] = useState<Player[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [finalMatchData, setFinalMatchData] = useState<any>(null);
+  const [matches, setMatches] = useState<Match[]>([]);
 
   useEffect(() => {
     console.log('🏆 [LIVE RANKING] Setting up real-time listeners...');
@@ -419,6 +441,31 @@ export default function LiveRanking() {
       setIsLoading(false);
     });
 
+    // Set up real-time listener for matches collection
+    const matchesRef = collection(db, 'matches');
+    const unsubscribeMatches = onSnapshot(matchesRef, (snapshot) => {
+      console.log('🔁 [LIVE RANKING] Matches data updated:', snapshot.docs.length, 'matches');
+      
+      const allMatches = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          player1: { id: data.player1_id || '', name: data.player1_name || '', points: 0, totalScores: 0, gender: data.gender || 'female' as any },
+          player2: { id: data.player2_id || '', name: data.player2_name || '', points: 0, totalScores: 0, gender: data.gender || 'female' as any },
+          player3: { id: data.player3_id || '', name: data.player3_name || '', points: 0, totalScores: 0, gender: data.gender || 'female' as any },
+          player4: { id: data.player4_id || '', name: data.player4_name || '', points: 0, totalScores: 0, gender: data.gender || 'female' as any },
+          score1: data.score1 || 0,
+          score2: data.score2 || 0,
+          isSubmitted: data.is_completed || data.is_submitted || false
+        } as Match;
+      });
+      
+      setMatches(allMatches);
+      console.log('✅ [LIVE RANKING] Matches loaded:', allMatches.length);
+    }, (error) => {
+      console.error('❌ [LIVE RANKING] Error loading matches:', error);
+    });
+
     // Set up real-time listener for final match
     const finalMatchRef = collection(db, 'finalMatches');
     const unsubscribeFinal = onSnapshot(finalMatchRef, (snapshot) => {
@@ -441,6 +488,7 @@ export default function LiveRanking() {
     return () => {
       console.log('🧹 [LIVE RANKING] Cleaning up listeners...');
       unsubscribePlayers();
+      unsubscribeMatches();
       unsubscribeFinal();
     };
   }, []);
@@ -529,6 +577,7 @@ export default function LiveRanking() {
           <RankingsTab 
             activeTab={activeTab}
             currentPlayers={currentPlayers}
+            matches={matches}
           />
         )}
 

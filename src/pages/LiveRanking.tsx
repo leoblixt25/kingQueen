@@ -2,24 +2,291 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Crown, ArrowLeft, Trophy } from "lucide-react";
+import { Crown, ArrowLeft, Trophy, Check } from "lucide-react";
 import { db } from "@/config/firebase";
 import { collection, onSnapshot } from "firebase/firestore";
 import { Player } from "@/types";
 
+// Rankings Tab Component
+function RankingsTab({ activeTab, currentPlayers }: { activeTab: string; currentPlayers: Player[] }) {
+  return (
+    <Card className="bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach">
+      <CardHeader>
+        <CardTitle className="text-xl font-bold text-center bg-beach-gradient bg-clip-text text-transparent flex items-center justify-center gap-2">
+          <Trophy className="w-6 h-6" />
+          {activeTab === 'female' ? 'Female' : 'Male'} Rankings
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {currentPlayers.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-lg text-foreground/60">
+              No players registered yet
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {currentPlayers.map((player, index) => (
+              <div
+                key={`${player.id || player.name}-${index}`}
+                className={`flex items-center justify-between p-4 rounded-xl shadow-sand transition-all duration-300 ${
+                  index === 0
+                    ? 'bg-sunset-gradient text-white'
+                    : index === 1
+                    ? 'bg-ocean/20 border-2 border-ocean/30'
+                    : index === 2
+                    ? 'bg-palm/20 border-2 border-palm/30'
+                    : 'bg-sand-light/50'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <span
+                    className={`text-xl font-bold ${
+                      index === 0
+                        ? 'text-white'
+                        : index === 1
+                        ? 'text-ocean'
+                        : index === 2
+                        ? 'text-palm'
+                        : 'text-foreground'
+                    }`}
+                  >
+                    #{index + 1}
+                  </span>
+                  <span
+                    className={`font-bold text-lg ${
+                      index === 0 ? 'text-white' : 'text-foreground'
+                    }`}
+                  >
+                    {player.name}
+                  </span>
+                </div>
+                <div className="text-right">
+                  <div
+                    className={`text-lg font-bold ${
+                      index === 0 ? 'text-white' : 'text-foreground'
+                    }`}
+                  >
+                    {player.points} pts
+                  </div>
+                  <div
+                    className={`text-sm ${
+                      index === 0 ? 'text-white/80' : 'text-foreground/60'
+                    }`}
+                  >
+                    {player.totalScores} total
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// Final Match Tab Component
+function FinalMatchTab({ finalMatchData, femalePlayers, malePlayers }: { 
+  finalMatchData: any; 
+  femalePlayers: Player[]; 
+  malePlayers: Player[];
+}) {
+  // Check if final match has been submitted
+  const isSubmitted = finalMatchData?.is_submitted || finalMatchData?.isSubmitted;
+  const team1Scores = finalMatchData?.team1_scores || finalMatchData?.team1 || [null, null, null];
+  const team2Scores = finalMatchData?.team2_scores || finalMatchData?.team2 || [null, null, null];
+  
+  // Determine winner based on sets won
+  let team1Sets = 0;
+  let team2Sets = 0;
+  
+  if (isSubmitted) {
+    for (let i = 0; i < 3; i++) {
+      const s1 = team1Scores[i] ?? 0;
+      const s2 = team2Scores[i] ?? 0;
+      if (s1 > s2) team1Sets++;
+      else if (s2 > s1) team2Sets++;
+    }
+  }
+  
+  const winningTeam = team1Sets > team2Sets ? 1 : team2Sets > team1Sets ? 2 : null;
+  
+  if (!isSubmitted) {
+    return (
+      <Card className="bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach">
+        <CardHeader>
+          <CardTitle className="text-xl font-bold text-center bg-beach-gradient bg-clip-text text-transparent flex items-center justify-center gap-2">
+            <Crown className="w-6 h-6" />
+            Championship Final
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8 space-y-4">
+            <div className="text-6xl">🏐</div>
+            <p className="text-lg text-foreground/60 font-medium">
+              Final match not played yet
+            </p>
+            <p className="text-sm text-foreground/50">
+              The championship final will be displayed here once completed
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  return (
+    <div className="space-y-4">
+      {/* Match Header */}
+      <Card className="bg-beach-gradient text-white shadow-beach">
+        <CardContent className="p-6 text-center">
+          <h2 className="text-2xl font-bold flex items-center justify-center gap-2 mb-2">
+            <Crown className="w-6 h-6" />
+            Championship Final
+            <Crown className="w-6 h-6" />
+          </h2>
+          <div className="flex items-center justify-center gap-2">
+            <Check className="w-5 h-5" />
+            <span className="font-semibold">Match Complete</span>
+          </div>
+        </CardContent>
+      </Card>
+      
+      {/* Teams and Scores */}
+      <div className="grid grid-cols-1 gap-4">
+        {/* Team 1 */}
+        <Card className={`border-2 ${winningTeam === 1 ? 'border-palm/50 bg-palm-light/20' : 'border-ocean/20 bg-white/80'} backdrop-blur-sm shadow-beach`}>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-center text-lg font-bold text-ocean">
+              🏐 Team 1 {winningTeam === 1 && '👑'}
+            </CardTitle>
+            <div className="text-center">
+              <p className="text-xl text-ocean-dark font-semibold">
+                {malePlayers[0]?.name || 'TBD'} & {femalePlayers[1]?.name || 'TBD'}
+              </p>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex justify-center gap-4">
+              {team1Scores.map((score: number | null, index: number) => (
+                <div key={index} className="text-center">
+                  <p className="text-xs text-foreground/60 mb-1">Set {index + 1}</p>
+                  <p className="text-2xl font-bold text-ocean">
+                    {score ?? '-'}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* VS Divider */}
+        <div className="flex items-center justify-center">
+          <div className="bg-sunset-gradient text-white px-8 py-3 rounded-full font-bold text-xl shadow-beach">
+            ⚡ VS ⚡
+          </div>
+        </div>
+
+        {/* Team 2 */}
+        <Card className={`border-2 ${winningTeam === 2 ? 'border-palm/50 bg-palm-light/20' : 'border-sunset/20 bg-white/80'} backdrop-blur-sm shadow-beach`}>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-center text-lg font-bold text-sunset">
+              🏐 Team 2 {winningTeam === 2 && '👑'}
+            </CardTitle>
+            <div className="text-center">
+              <p className="text-xl text-sunset-dark font-semibold">
+                {femalePlayers[0]?.name || 'TBD'} & {malePlayers[1]?.name || 'TBD'}
+              </p>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex justify-center gap-4">
+              {team2Scores.map((score: number | null, index: number) => (
+                <div key={index} className="text-center">
+                  <p className="text-xs text-foreground/60 mb-1">Set {index + 1}</p>
+                  <p className="text-2xl font-bold text-sunset">
+                    {score ?? '-'}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Winner Display */}
+      {winningTeam && (
+        <Card className="border-2 border-sunset/30 bg-sunset-gradient shadow-beach">
+          <CardContent className="p-6">
+            <div className="text-center space-y-4">
+              <div className="bg-white/20 backdrop-blur-sm text-white rounded-2xl p-4">
+                <h3 className="text-xl font-bold mb-3 flex items-center justify-center gap-2">
+                  <Crown className="w-8 h-8" />
+                  🏆 Champions 🏆
+                  <Crown className="w-8 h-8" />
+                </h3>
+                <div className="space-y-2">
+                  {winningTeam === 1 ? (
+                    <>
+                      <p className="text-lg font-semibold">
+                        👑 King <span className="font-bold">{malePlayers[0]?.name || 'Unknown'}</span>
+                      </p>
+                      <p className="text-lg font-semibold">
+                        👑 Queen <span className="font-bold">{femalePlayers[1]?.name || 'Unknown'}</span>
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-lg font-semibold">
+                        👑 King <span className="font-bold">{malePlayers[1]?.name || 'Unknown'}</span>
+                      </p>
+                      <p className="text-lg font-semibold">
+                        👑 Queen <span className="font-bold">{femalePlayers[0]?.name || 'Unknown'}</span>
+                      </p>
+                    </>
+                  )}
+                </div>
+              </div>
+              
+              <div className="bg-white/60 backdrop-blur-sm rounded-xl p-4">
+                <h3 className="text-lg font-semibold mb-2 text-white">🥈 Runners-up</h3>
+                <div className="space-y-1 text-white/90">
+                  {winningTeam === 1 ? (
+                    <>
+                      <p>🤴 Prince <span className="font-bold">{malePlayers[1]?.name || 'Unknown'}</span></p>
+                      <p>👸 Princess <span className="font-bold">{femalePlayers[0]?.name || 'Unknown'}</span></p>
+                    </>
+                  ) : (
+                    <>
+                      <p>🤴 Prince <span className="font-bold">{malePlayers[0]?.name || 'Unknown'}</span></p>
+                      <p>👸 Princess <span className="font-bold">{femalePlayers[1]?.name || 'Unknown'}</span></p>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
 export default function LiveRanking() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'female' | 'male'>('female');
+  const [activeTab, setActiveTab] = useState<'female' | 'male' | 'final'>('female');
   const [femalePlayers, setFemalePlayers] = useState<Player[]>([]);
   const [malePlayers, setMalePlayers] = useState<Player[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [finalMatchData, setFinalMatchData] = useState<any>(null);
 
   useEffect(() => {
-    console.log('🏆 [LIVE RANKING] Setting up real-time listener...');
+    console.log('🏆 [LIVE RANKING] Setting up real-time listeners...');
     
     // Set up real-time listener for players collection
     const playersRef = collection(db, 'players');
-    const unsubscribe = onSnapshot(playersRef, (snapshot) => {
+    const unsubscribePlayers = onSnapshot(playersRef, (snapshot) => {
       console.log('🔁 [LIVE RANKING] Players data updated:', snapshot.docs.length, 'players');
       
       const allPlayers = snapshot.docs.map(doc => ({
@@ -55,10 +322,29 @@ export default function LiveRanking() {
       setIsLoading(false);
     });
 
-    // Cleanup listener on unmount
+    // Set up real-time listener for final match
+    const finalMatchRef = collection(db, 'finalMatches');
+    const unsubscribeFinal = onSnapshot(finalMatchRef, (snapshot) => {
+      console.log('🔁 [LIVE RANKING] Final match data updated');
+      
+      if (snapshot.empty) {
+        console.log('ℹ️ [LIVE RANKING] No final match yet');
+        setFinalMatchData(null);
+      } else {
+        const firstDoc = snapshot.docs[0];
+        const data = { id: firstDoc.id, ...firstDoc.data() };
+        console.log('✅ [LIVE RANKING] Final match loaded:', data);
+        setFinalMatchData(data);
+      }
+    }, (error) => {
+      console.error('❌ [LIVE RANKING] Error loading final match:', error);
+    });
+
+    // Cleanup listeners on unmount
     return () => {
-      console.log('🧹 [LIVE RANKING] Cleaning up listener...');
-      unsubscribe();
+      console.log('🧹 [LIVE RANKING] Cleaning up listeners...');
+      unsubscribePlayers();
+      unsubscribeFinal();
     };
   }, []);
 
@@ -102,10 +388,10 @@ export default function LiveRanking() {
         </header>
 
         {/* Tabs */}
-        <div className="flex gap-3">
+        <div className="flex gap-2">
           <Button
             onClick={() => setActiveTab('female')}
-            className={`flex-1 touch-target font-semibold text-lg py-4 transition-all duration-300 ${
+            className={`flex-1 touch-target font-semibold text-base py-3 transition-all duration-300 ${
               activeTab === 'female'
                 ? 'bg-sunset hover:bg-sunset-dark text-white shadow-beach'
                 : 'bg-white/70 hover:bg-sunset hover:text-white border-sunset/30 text-sunset-dark shadow-sand'
@@ -115,7 +401,7 @@ export default function LiveRanking() {
           </Button>
           <Button
             onClick={() => setActiveTab('male')}
-            className={`flex-1 touch-target font-semibold text-lg py-4 transition-all duration-300 ${
+            className={`flex-1 touch-target font-semibold text-base py-3 transition-all duration-300 ${
               activeTab === 'male'
                 ? 'bg-ocean hover:bg-ocean-dark text-white shadow-beach'
                 : 'bg-white/70 hover:bg-ocean hover:text-white border-ocean/30 text-ocean-dark shadow-sand'
@@ -123,82 +409,31 @@ export default function LiveRanking() {
           >
             👨 Male
           </Button>
+          <Button
+            onClick={() => setActiveTab('final')}
+            className={`flex-1 touch-target font-semibold text-base py-3 transition-all duration-300 ${
+              activeTab === 'final'
+                ? 'bg-beach-gradient hover:opacity-90 text-white shadow-beach'
+                : 'bg-white/70 hover:bg-beach-gradient hover:text-white border-primary/30 text-primary shadow-sand'
+            }`}
+          >
+            👑 Final
+          </Button>
         </div>
 
-        {/* Rankings List */}
-        <Card className="bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach">
-          <CardHeader>
-            <CardTitle className="text-xl font-bold text-center bg-beach-gradient bg-clip-text text-transparent flex items-center justify-center gap-2">
-              <Trophy className="w-6 h-6" />
-              {activeTab === 'female' ? 'Female' : 'Male'} Rankings
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {currentPlayers.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-lg text-foreground/60">
-                  No players registered yet
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {currentPlayers.map((player, index) => (
-                  <div
-                    key={`${player.id || player.name}-${index}`}
-                    className={`flex items-center justify-between p-4 rounded-xl shadow-sand transition-all duration-300 ${
-                      index === 0
-                        ? 'bg-sunset-gradient text-white'
-                        : index === 1
-                        ? 'bg-ocean/20 border-2 border-ocean/30'
-                        : index === 2
-                        ? 'bg-palm/20 border-2 border-palm/30'
-                        : 'bg-sand-light/50'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span
-                        className={`text-xl font-bold ${
-                          index === 0
-                            ? 'text-white'
-                            : index === 1
-                            ? 'text-ocean'
-                            : index === 2
-                            ? 'text-palm'
-                            : 'text-foreground'
-                        }`}
-                      >
-                        #{index + 1}
-                      </span>
-                      <span
-                        className={`font-bold text-lg ${
-                          index === 0 ? 'text-white' : 'text-foreground'
-                        }`}
-                      >
-                        {player.name}
-                      </span>
-                    </div>
-                    <div className="text-right">
-                      <div
-                        className={`text-lg font-bold ${
-                          index === 0 ? 'text-white' : 'text-foreground'
-                        }`}
-                      >
-                        {player.points} pts
-                      </div>
-                      <div
-                        className={`text-sm ${
-                          index === 0 ? 'text-white/80' : 'text-foreground/60'
-                        }`}
-                      >
-                        {player.totalScores} total
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {/* Content */}
+        {activeTab === 'final' ? (
+          <FinalMatchTab 
+            finalMatchData={finalMatchData}
+            femalePlayers={femalePlayers}
+            malePlayers={malePlayers}
+          />
+        ) : (
+          <RankingsTab 
+            activeTab={activeTab}
+            currentPlayers={currentPlayers}
+          />
+        )}
 
         {/* Footer Info */}
         <div className="text-center text-xs text-foreground/60">

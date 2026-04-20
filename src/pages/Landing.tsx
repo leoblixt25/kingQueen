@@ -23,7 +23,7 @@ export default function Landing() {
     // Ball spinning animation
     const ballInterval = setInterval(() => {
       setBallFrame((prev) => (prev + 1) % 3);
-    }, 120);
+    }, 200);
     
     return () => clearInterval(ballInterval);
   }, []);
@@ -104,7 +104,7 @@ The losing team will be named Prince and Princess of the Beach. 👑`;
           <img 
             src={`/ball${ballFrame + 1}.jpg`} 
             alt="Volleyball" 
-            className="w-32 h-32 md:w-40 md:h-40 mx-auto object-cover rounded-full shadow-2xl transition-opacity duration-100"
+            className="w-24 h-24 md:w-32 md:h-32 mx-auto object-cover rounded-full shadow-2xl transition-opacity duration-100"
           />
         </div>
         <h1 className="text-4xl md:text-5xl font-extrabold text-transparent bg-gradient-to-r from-ocean via-sunset to-coral bg-clip-text mb-10 drop-shadow-sm tracking-wide">

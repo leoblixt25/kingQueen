@@ -91,6 +91,13 @@ export default function InfoPage() {
           </div>
         </header>
 
+        {/* Intro Text */}
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-beach border border-sand-dark/20">
+          <p className="text-base leading-relaxed text-foreground">
+            This tournament is all about good energy, fair play, and enjoying beach volleyball together. Keep it competitive but relaxed, no stress, just great games and positive vibes. 🏖️🏐
+          </p>
+        </div>
+
         {/* Info Sections */}
         <div className="space-y-6">
           {tournamentInfo.map((section, index) => (
@@ -107,13 +114,6 @@ export default function InfoPage() {
               </p>
             </div>
           ))}
-        </div>
-
-        {/* Footer Note */}
-        <div className="text-center pt-4 pb-8">
-          <p className="text-sm text-foreground/60">
-            This tournament is all about good energy, fair play, and enjoying beach volleyball together. Keep it competitive but relaxed, no stress, just great games and positive vibes. 🏖️🏐
-          </p>
         </div>
       </div>
     </div>

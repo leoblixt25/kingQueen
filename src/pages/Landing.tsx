@@ -45,14 +45,16 @@ export default function Landing() {
         <div className="mb-8 animate-bounce-gentle">
           <div className="text-6xl md:text-7xl">🏐</div>
         </div>
-        <h1 className="text-center font-bold whitespace-nowrap mb-10 tracking-wide">
-          <span className="text-3xl sm:text-4xl md:text-5xl bg-gradient-to-r from-ocean via-sunset to-coral bg-clip-text text-transparent drop-shadow-sm">
-            King & Queen
-          </span>{" "}
-          <span className="text-xl sm:text-2xl md:text-3xl text-foreground/80">
-            of the Beach
-          </span>
-        </h1>
+        <div className="w-full max-w-2xl mx-auto text-center px-4 mb-10">
+          <h1 className="font-bold text-2xl sm:text-3xl md:text-3xl lg:text-4xl leading-tight tracking-wide">
+            <span className="bg-gradient-to-r from-ocean via-sunset to-coral bg-clip-text text-transparent drop-shadow-sm">
+              King & Queen
+            </span>{" "}
+            <span className="text-lg sm:text-xl md:text-xl lg:text-2xl text-foreground/80">
+              of the Beach
+            </span>
+          </h1>
+        </div>
         
 
         

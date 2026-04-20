@@ -57,9 +57,9 @@ export default function InfoPage() {
       content: "The app automatically tracks match results, individual points, and player rankings. Rankings update immediately after a score is submitted."
     },
     {
-      title: "Tiebreaker Rule",
+      title: "Tiebreaker Rules",
       emoji: "⚖️",
-      content: "If players are tied on total points, ranking is decided by total points scored, then point difference, then head-to-head results. If still tied, a final rule is applied to ensure a unique ranking."
+      content: "If players are tied on points, ranking is decided by total score, then point difference, then head-to-head results, then strength of opponents. If still tied, a final rule such as player ID is used to ensure a unique ranking."
     },
     {
       title: "Final Match & Titles",

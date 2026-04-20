@@ -9,6 +9,20 @@ import { Player } from "@/types";
 
 // Rankings Tab Component
 function RankingsTab({ activeTab, currentPlayers }: { activeTab: string; currentPlayers: Player[] }) {
+  // Sort players deterministically
+  const sortedPlayers = [...currentPlayers].sort((a, b) => {
+    if (b.points !== a.points) return b.points - a.points;
+    if (b.totalScores !== a.totalScores) return b.totalScores - a.totalScores;
+    // Final fallback: player ID for deterministic ordering
+    return (a.id || '').localeCompare(b.id || '');
+  });
+  
+  // Check if tiebreaker is needed
+  const needsTiebreaker = (index: number): boolean => {
+    if (index === 0) return false;
+    return sortedPlayers[index].points === sortedPlayers[index - 1].points;
+  };
+  
   return (
     <Card className="bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach">
       <CardHeader>
@@ -26,10 +40,13 @@ function RankingsTab({ activeTab, currentPlayers }: { activeTab: string; current
           </div>
         ) : (
           <div className="space-y-3">
-            {currentPlayers.map((player, index) => (
+            {sortedPlayers.map((player, index) => {
+              const showTiebreaker = needsTiebreaker(index);
+              
+              return (
               <div
                 key={`${player.id || player.name}-${index}`}
-                className={`flex items-center justify-between p-4 rounded-xl shadow-sand transition-all duration-300 ${
+                className={`flex flex-col gap-1 p-4 rounded-xl shadow-sand transition-all duration-300 ${
                   index === 0
                     ? 'bg-sunset-gradient text-white'
                     : index === 1
@@ -39,46 +56,56 @@ function RankingsTab({ activeTab, currentPlayers }: { activeTab: string; current
                     : 'bg-sand-light/50'
                 }`}
               >
-                <div className="flex items-center gap-3">
-                  <span
-                    className={`text-xl font-bold ${
-                      index === 0
-                        ? 'text-white'
-                        : index === 1
-                        ? 'text-ocean'
-                        : index === 2
-                        ? 'text-palm'
-                        : 'text-foreground'
-                    }`}
-                  >
-                    #{index + 1}
-                  </span>
-                  <span
-                    className={`font-bold text-lg ${
-                      index === 0 ? 'text-white' : 'text-foreground'
-                    }`}
-                  >
-                    {player.name}
-                  </span>
-                </div>
-                <div className="text-right">
-                  <div
-                    className={`text-lg font-bold ${
-                      index === 0 ? 'text-white' : 'text-foreground'
-                    }`}
-                  >
-                    {player.points} pts
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`text-xl font-bold ${
+                        index === 0
+                          ? 'text-white'
+                          : index === 1
+                          ? 'text-ocean'
+                          : index === 2
+                          ? 'text-palm'
+                          : 'text-foreground'
+                      }`}
+                    >
+                      #{index + 1}
+                    </span>
+                    <span
+                      className={`font-bold text-lg ${
+                        index === 0 ? 'text-white' : 'text-foreground'
+                      }`}
+                    >
+                      {player.name}
+                    </span>
                   </div>
-                  <div
-                    className={`text-sm ${
-                      index === 0 ? 'text-white/80' : 'text-foreground/60'
-                    }`}
-                  >
-                    {player.totalScores} total
+                  <div className="text-right">
+                    <div
+                      className={`text-lg font-bold ${
+                        index === 0 ? 'text-white' : 'text-foreground'
+                      }`}
+                    >
+                      {player.points} pts
+                    </div>
+                    <div
+                      className={`text-sm ${
+                        index === 0 ? 'text-white/80' : 'text-foreground/60'
+                      }`}
+                    >
+                      {player.totalScores} total
+                    </div>
                   </div>
                 </div>
+                {showTiebreaker && (
+                  <div className={`text-xs text-center ${
+                    index === 0 ? 'text-white/70' : 'text-foreground/50'
+                  }`}>
+                    Tiebreaker: Score
+                  </div>
+                )}
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </CardContent>

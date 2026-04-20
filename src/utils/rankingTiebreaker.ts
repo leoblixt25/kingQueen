@@ -115,6 +115,54 @@ const calculateStrengthOfOpponents = (
 };
 
 /**
+ * Get the tiebreaker level that determined the ranking between two players
+ * Returns the level name or null if no tiebreaker was needed
+ */
+export const getTiebreakerLevel = (
+  a: Player,
+  b: Player,
+  matches: Match[],
+  playerPointsMap: Map<string, number>
+): string | null => {
+  // If points are different, no tiebreaker needed
+  if (b.points !== a.points) {
+    return null;
+  }
+
+  // Points are tied, check tiebreakers
+  // 1. Total score
+  if (b.totalScores !== a.totalScores) {
+    return 'Score';
+  }
+
+  // 2. Point differential
+  const aDiff = calculatePointDifferential(a.id || '', matches);
+  const bDiff = calculatePointDifferential(b.id || '', matches);
+  if (bDiff !== aDiff) {
+    return 'Difference';
+  }
+
+  // 3. Head-to-head
+  const h2h = getHeadToHeadStats(a.id || '', b.id || '', matches);
+  if (h2h.wins !== 0) {
+    return 'Head-to-head';
+  }
+  if (h2h.scoreDiff !== 0) {
+    return 'Head-to-head';
+  }
+
+  // 4. Strength of opponents
+  const aStrength = calculateStrengthOfOpponents(a.id || '', matches, playerPointsMap);
+  const bStrength = calculateStrengthOfOpponents(b.id || '', matches, playerPointsMap);
+  if (bStrength !== aStrength) {
+    return 'Opponents';
+  }
+
+  // 5. Final rule (player ID)
+  return 'Final rule';
+};
+
+/**
  * Compare two players using the complete tiebreaker system
  * Returns negative if a should rank higher, positive if b should rank higher
  */

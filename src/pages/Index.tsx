@@ -19,7 +19,7 @@ import { auth, db } from "@/config/firebase";
 import { collection, getDocs, query, where, writeBatch } from "firebase/firestore";
 import { getCurrentUser, isAdmin as checkIsAdmin, signOut, getCurrentUserTournamentData } from "@/utils/authUtils";
 import { buildPlayersMap, resolveMatchPlayers } from "@/utils/matchPlayerResolver";
-import { sortPlayersWithTiebreakers } from "@/utils/rankingTiebreaker";
+import { sortPlayersWithTiebreakers, getTiebreakerLevel } from "@/utils/rankingTiebreaker";
 
 interface TournamentSettings {
   id?: string;
@@ -90,6 +90,27 @@ export default function KingQueenOfTheBeach() {
     if (b.points !== a.points) return b.points - a.points;
     return b.totalScores - a.totalScores;
   });
+  
+  // Build player points map for tiebreaker detection
+  const playerPointsMap = new Map<string, number>();
+  players.forEach(p => {
+    if (p.id) playerPointsMap.set(p.id, p.points);
+  });
+  
+  // Detect tiebreaker levels for display
+  const getTiebreakerForPlayer = (playerIndex: number): string | null => {
+    if (playerIndex === 0 || playerIndex >= sortedPlayers.length) return null;
+    
+    const currentPlayer = sortedPlayers[playerIndex];
+    const previousPlayer = sortedPlayers[playerIndex - 1];
+    
+    // Only show tiebreaker if points are tied
+    if (currentPlayer.points === previousPlayer.points) {
+      return getTiebreakerLevel(previousPlayer, currentPlayer, matches, playerPointsMap);
+    }
+    
+    return null;
+  };
   
   // Log Championship Final pairings for debugging
   if (malePlayers.length >= 2 && femalePlayers.length >= 2) {
@@ -1332,36 +1353,49 @@ export default function KingQueenOfTheBeach() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {sortedPlayers.map((player, index) => (
-                        <div key={`${player.name}-${index}`} className={`flex items-center justify-between p-4 rounded-xl shadow-sand transition-all duration-300 ${
+                      {sortedPlayers.map((player, index) => {
+                        const tiebreaker = getTiebreakerForPlayer(index);
+                        
+                        return (
+                        <div key={`${player.name}-${index}`} className={`flex flex-col gap-1 p-4 rounded-xl shadow-sand transition-all duration-300 ${
                           index === 0 ? 'bg-sunset-gradient text-white' : 
                           index === 1 ? 'bg-ocean/20 border-2 border-ocean/30' : 
                           index === 2 ? 'bg-palm/20 border-2 border-palm/30' : 
                           'bg-sand-light/50'
                         }`}>
-                          <div className="flex items-center gap-3">
-                            <span className={`text-xl font-bold ${
-                              index === 0 ? 'text-white' : 
-                              index === 1 ? 'text-ocean' : 
-                              index === 2 ? 'text-palm' : 
-                              'text-foreground'
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <span className={`text-xl font-bold ${
+                                index === 0 ? 'text-white' : 
+                                index === 1 ? 'text-ocean' : 
+                                index === 2 ? 'text-palm' : 
+                                'text-foreground'
+                              }`}>
+                                #{index + 1}
+                              </span>
+                              <span className={`font-bold text-lg ${
+                                index === 0 ? 'text-white' : 'text-foreground'
+                              }`}>{player.name}</span>
+                            </div>
+                            <div className="text-right">
+                              <div className={`text-lg font-bold ${
+                                index === 0 ? 'text-white' : 'text-foreground'
+                              }`}>{player.points} pts</div>
+                              <div className={`text-sm ${
+                                index === 0 ? 'text-white/80' : 'text-foreground/60'
+                              }`}>{player.totalScores} total</div>
+                            </div>
+                          </div>
+                          {tiebreaker && (
+                            <div className={`text-xs text-center ${
+                              index === 0 ? 'text-white/70' : 'text-foreground/50'
                             }`}>
-                              #{index + 1}
-                            </span>
-                            <span className={`font-bold text-lg ${
-                              index === 0 ? 'text-white' : 'text-foreground'
-                            }`}>{player.name}</span>
-                          </div>
-                          <div className="text-right">
-                            <div className={`text-lg font-bold ${
-                              index === 0 ? 'text-white' : 'text-foreground'
-                            }`}>{player.points} pts</div>
-                            <div className={`text-sm ${
-                              index === 0 ? 'text-white/80' : 'text-foreground/60'
-                            }`}>{player.totalScores} total</div>
-                          </div>
+                              Tiebreaker: {tiebreaker}
+                            </div>
+                          )}
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </CardContent>
                 </Card>

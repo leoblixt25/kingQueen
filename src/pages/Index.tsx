@@ -1047,50 +1047,68 @@ export default function KingQueenOfTheBeach() {
                     {finalMatchWinner && (
                       <Card className="border-2 border-sunset/30 bg-sunset-gradient shadow-beach">
                         <CardContent className="p-6">
-                          <div className="text-center space-y-4">
-                            <div className="bg-white/20 backdrop-blur-sm text-white rounded-2xl p-4">
-                              <h3 className="text-xl font-bold mb-3 flex items-center justify-center gap-2">
-                                <Crown className="w-8 h-8" />
+                          <div className="text-center space-y-6">
+                            {/* Champions Section - Main Highlight */}
+                            <div className="bg-white/20 backdrop-blur-sm text-white rounded-3xl p-6 space-y-4">
+                              <h3 className="text-3xl font-extrabold flex items-center justify-center gap-3 mb-4">
+                                <Crown className="w-10 h-10" />
                                 🏆 Champions 🏆
-                                <Crown className="w-8 h-8" />
+                                <Crown className="w-10 h-10" />
                               </h3>
-                              <div className="space-y-2">
+                              <div className="space-y-4">
                                 {/* Calculate King & Queen based on winning team */}
                                 {finalMatchWinner.winningTeam === 1 ? (
                                   <>
-                                    <p className="text-lg font-semibold">
-                                      👑 King <span className="font-bold">{malePlayers[0]?.name || 'Unknown'}</span>
-                                    </p>
-                                    <p className="text-lg font-semibold">
-                                      👑 Queen <span className="font-bold">{femalePlayers[1]?.name || 'Unknown'}</span>
-                                    </p>
+                                    <div className="bg-white/10 rounded-xl p-4">
+                                      <p className="text-base font-semibold mb-1 opacity-90">👑 King</p>
+                                      <p className="text-2xl font-extrabold">{malePlayers[0]?.name || 'Unknown'}</p>
+                                    </div>
+                                    <div className="bg-white/10 rounded-xl p-4">
+                                      <p className="text-base font-semibold mb-1 opacity-90">👑 Queen</p>
+                                      <p className="text-2xl font-extrabold">{femalePlayers[1]?.name || 'Unknown'}</p>
+                                    </div>
                                   </>
                                 ) : (
                                   <>
-                                    <p className="text-lg font-semibold">
-                                      👑 King <span className="font-bold">{malePlayers[1]?.name || 'Unknown'}</span>
-                                    </p>
-                                    <p className="text-lg font-semibold">
-                                      👑 Queen <span className="font-bold">{femalePlayers[0]?.name || 'Unknown'}</span>
-                                    </p>
+                                    <div className="bg-white/10 rounded-xl p-4">
+                                      <p className="text-base font-semibold mb-1 opacity-90">👑 King</p>
+                                      <p className="text-2xl font-extrabold">{malePlayers[1]?.name || 'Unknown'}</p>
+                                    </div>
+                                    <div className="bg-white/10 rounded-xl p-4">
+                                      <p className="text-base font-semibold mb-1 opacity-90">👑 Queen</p>
+                                      <p className="text-2xl font-extrabold">{femalePlayers[0]?.name || 'Unknown'}</p>
+                                    </div>
                                   </>
                                 )}
                               </div>
                             </div>
                             
-                            <div className="bg-white/60 backdrop-blur-sm rounded-xl p-4">
-                              <h3 className="text-lg font-semibold mb-2 text-foreground/80">🥈 Runners-up</h3>
-                              <div className="space-y-1 text-foreground/70">
+                            {/* Runners-up Section - Secondary */}
+                            <div className="bg-white/15 backdrop-blur-sm rounded-2xl p-5 space-y-3">
+                              <h3 className="text-xl font-bold text-white mb-3">🥈 Runners-up</h3>
+                              <div className="space-y-3">
                                 {/* Calculate Prince & Princess based on losing team */}
                                 {finalMatchWinner.winningTeam === 1 ? (
                                   <>
-                                    <p>🤴 Prince <span className="font-bold">{malePlayers[1]?.name || 'Unknown'}</span></p>
-                                    <p>👸 Princess <span className="font-bold">{femalePlayers[0]?.name || 'Unknown'}</span></p>
+                                    <div className="bg-white/10 rounded-lg p-3">
+                                      <p className="text-sm font-semibold text-white/80 mb-1">🤴 Prince</p>
+                                      <p className="text-lg font-bold text-white">{malePlayers[1]?.name || 'Unknown'}</p>
+                                    </div>
+                                    <div className="bg-white/10 rounded-lg p-3">
+                                      <p className="text-sm font-semibold text-white/80 mb-1">👸 Princess</p>
+                                      <p className="text-lg font-bold text-white">{femalePlayers[0]?.name || 'Unknown'}</p>
+                                    </div>
                                   </>
                                 ) : (
                                   <>
-                                    <p>🤴 Prince <span className="font-bold">{malePlayers[0]?.name || 'Unknown'}</span></p>
-                                    <p>👸 Princess <span className="font-bold">{femalePlayers[1]?.name || 'Unknown'}</span></p>
+                                    <div className="bg-white/10 rounded-lg p-3">
+                                      <p className="text-sm font-semibold text-white/80 mb-1">🤴 Prince</p>
+                                      <p className="text-lg font-bold text-white">{malePlayers[0]?.name || 'Unknown'}</p>
+                                    </div>
+                                    <div className="bg-white/10 rounded-lg p-3">
+                                      <p className="text-sm font-semibold text-white/80 mb-1">👸 Princess</p>
+                                      <p className="text-lg font-bold text-white">{femalePlayers[1]?.name || 'Unknown'}</p>
+                                    </div>
                                   </>
                                 )}
                               </div>

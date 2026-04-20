@@ -25,4 +25,5 @@ export type FinalMatchScores = {
 
 export type FinalMatchWinner = {
   winningTeam: 1 | 2;
+  completedAt?: string;
 } | null;

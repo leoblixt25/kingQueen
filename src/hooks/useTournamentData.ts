@@ -84,7 +84,8 @@ export const useTournamentData = () => {
         // Store just the winning team number - we'll calculate names when displaying
         if (result.winner_team) {
           finalMatchWinner = {
-            winningTeam: result.winner_team
+            winningTeam: result.winner_team,
+            completedAt: result.completed_at || null
           };
         }
         

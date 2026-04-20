@@ -15,9 +15,17 @@ export default function Landing() {
   const navigate = useNavigate();
   const [isAdminRegistered, setIsAdminRegistered] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
+  const [ballFrame, setBallFrame] = useState(0);
 
   useEffect(() => {
     checkAdminStatus();
+    
+    // Ball spinning animation
+    const ballInterval = setInterval(() => {
+      setBallFrame((prev) => (prev + 1) % 3);
+    }, 120);
+    
+    return () => clearInterval(ballInterval);
   }, []);
 
   const checkAdminStatus = async () => {
@@ -92,7 +100,13 @@ The losing team will be named Prince and Princess of the Beach. 👑`;
   return (
     <div className="min-h-screen bg-gradient-to-br from-sand-light via-sand to-ocean-light/20 px-4 py-8 flex items-center justify-center">
       <div className="w-full max-w-md mx-auto text-center animate-fade-in">
-        <div className="text-7xl mb-8 animate-bounce-gentle">🏐</div>
+        <div className="mb-8 animate-bounce-gentle">
+          <img 
+            src={`/ball${ballFrame + 1}.jpg`} 
+            alt="Volleyball" 
+            className="w-32 h-32 md:w-40 md:h-40 mx-auto object-cover rounded-full shadow-2xl transition-opacity duration-100"
+          />
+        </div>
         <h1 className="text-4xl md:text-5xl font-extrabold text-transparent bg-gradient-to-r from-ocean via-sunset to-coral bg-clip-text mb-10 drop-shadow-sm tracking-wide">
           King & Queen of the Beach
         </h1>

@@ -43,11 +43,7 @@ export default function Landing() {
     <div className="min-h-screen bg-gradient-to-br from-sand-light via-sand to-ocean-light/20 px-4 py-8 flex items-center justify-center">
       <div className="w-full max-w-md mx-auto text-center animate-fade-in">
         <div className="mb-8 animate-bounce-gentle">
-          <img 
-            src="/ball1.jpg" 
-            alt="Volleyball" 
-            className="w-24 h-24 md:w-32 md:h-32 mx-auto object-cover rounded-full shadow-xl"
-          />
+          <div className="text-6xl md:text-7xl">🏐</div>
         </div>
         <h1 className="text-4xl md:text-5xl font-extrabold text-transparent bg-gradient-to-r from-ocean via-sunset to-coral bg-clip-text mb-10 drop-shadow-sm tracking-wide">
           King & Queen of the Beach

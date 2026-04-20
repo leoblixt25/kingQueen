@@ -9,7 +9,7 @@ import { db } from "@/config/firebase";
 import { collection, getDocs, query, orderBy, limit, doc, setDoc, where } from "firebase/firestore";
 import { signOut } from "@/utils/authUtils";
 import { LogOut, Save, Crown, Users, AlertTriangle } from "lucide-react";
-import { fullTournamentReset } from "@/utils/resetUtils";
+import { ResetConfirmationModal } from "@/components/ResetConfirmationModal";
 
 interface TournamentSettings {
   id?: string;
@@ -28,6 +28,7 @@ export default function AdminControl() {
   const [existingSettingsId, setExistingSettingsId] = useState<string | null>(null);
   const [playerCounts, setPlayerCounts] = useState<{ maleCount: number; femaleCount: number } | null>(null);
   const [showTournamentConfig, setShowTournamentConfig] = useState(false);
+  const [showResetModal, setShowResetModal] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
 
   useEffect(() => {
@@ -136,41 +137,48 @@ export default function AdminControl() {
   };
 
   const handleResetEverything = async () => {
-    if (!window.confirm(
-      'This will delete ALL players, matches, and scores. The tournament will be completely reset. Are you sure?'
-    )) {
-      return;
-    }
+    console.log('🔄 [FULL RESET] User clicked reset button, showing modal');
+    setShowResetModal(true);
+  };
 
-    if (!window.confirm(
-      'This action cannot be undone. All tournament data will be lost. Continue?'
-    )) {
-      return;
-    }
-
+  const handleConfirmReset = async () => {
+    console.log('🔄 [FULL RESET] User confirmed reset via modal');
     setIsResetting(true);
+    
     try {
-      console.log('🔄 [RESET] Starting full tournament reset from admin control...');
+      console.log('🔄 [FULL RESET] Starting reset process...');
+      const { fullTournamentReset } = await import('@/utils/resetUtils');
       await fullTournamentReset();
-      console.log('✅ [RESET] Tournament reset completed successfully');
+      console.log('✅ [FULL RESET] Reset completed, waiting 3 seconds for Firebase to stabilize...');
+      
+      // Wait 3 seconds to allow Firebase to fully clear and reinitialize data
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      console.log('✅ [FULL RESET] Firebase stabilization complete');
+      setShowResetModal(false);
+      setIsResetting(false);
       
       toast({
-        title: "Success",
+        title: "Tournament Reset",
         description: "Tournament has been completely reset",
       });
-
-      // Navigate to tournament page - reuses the same flow as "View Tournament" button
-      // The tournament page will automatically load the fresh data
+      
+      // Navigate to tournament page to see the fresh data
       navigate('/tournament');
     } catch (error) {
-      console.error('❌ [RESET] Error resetting tournament:', error);
-      toast({
-        title: "Error",
-        description: "Failed to reset tournament",
-        variant: "destructive",
-      });
-    } finally {
+      console.error('❌ [FULL RESET] Error:', error);
+      // Just close the modal and reset state - no error message
+      setShowResetModal(false);
       setIsResetting(false);
+      
+      // Try to navigate anyway
+      navigate('/tournament');
+    }
+  };
+
+  const handleCloseResetModal = () => {
+    if (!isResetting) {
+      setShowResetModal(false);
     }
   };
 
@@ -305,6 +313,13 @@ export default function AdminControl() {
           </CardContent>
         </Card>
         )}
+
+        <ResetConfirmationModal
+          isOpen={showResetModal}
+          onClose={handleCloseResetModal}
+          onConfirm={handleConfirmReset}
+          isResetting={isResetting}
+        />
 
         <div className="flex flex-col sm:flex-row gap-4">
           <Button

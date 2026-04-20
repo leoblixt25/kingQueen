@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Crown, Users, Info } from "lucide-react";
+import { Crown, Users, Info, Trophy } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { auth } from "@/config/firebase";
 import {
@@ -41,6 +41,10 @@ export default function Landing() {
 
   const handleInfoClick = () => {
     setShowInfoModal(true);
+  };
+
+  const handleLiveRankingClick = () => {
+    navigate('/live-ranking');
   };
 
   const tournamentInfo = `This tournament is all about good energy, fair play, and enjoying beach volleyball together. Keep it competitive but relaxed, no stress, just great games and positive vibes. 🏖️🏐
@@ -116,6 +120,13 @@ The losing team will be named Prince and Princess of the Beach. 👑`;
           >
             <Info className="w-6 h-6" />
             Info
+          </Button>
+          <Button
+            onClick={handleLiveRankingClick}
+            className="w-full py-6 text-xl font-bold bg-beach-gradient hover:opacity-90 text-white shadow-beach transition-all duration-300 flex items-center justify-center gap-3"
+          >
+            <Trophy className="w-6 h-6" />
+            Live Ranking
           </Button>
         </div>
         

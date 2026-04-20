@@ -10,6 +10,7 @@ import SignIn from "./pages/SignIn";
 import PlayerAccess from "./pages/PlayerAccess";
 import AdminLogin from "./pages/AdminLogin";
 import AdminControl from "./pages/AdminControl";
+import LiveRanking from "./pages/LiveRanking";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -23,6 +24,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Landing />} />
+          <Route path="/live-ranking" element={<LiveRanking />} />
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin/control" element={
             <ProtectedRoute adminOnly={true}>

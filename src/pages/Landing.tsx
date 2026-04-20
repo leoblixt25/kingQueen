@@ -90,40 +90,40 @@ The winning team in the final match will be crowned King and Queen of the Beach.
 The losing team will be named Prince and Princess of the Beach. 👑`;
 
   return (
-    <div className="min-h-screen bg-sand-gradient px-4 py-6 flex items-center justify-center">
-      <div className="w-full max-w-md mx-auto text-center">
-        <div className="text-6xl mb-6 animate-bounce-gentle">🏐</div>
-        <h1 className="text-3xl md:text-4xl font-bold text-transparent bg-beach-gradient bg-clip-text mb-8 drop-shadow-sm">
+    <div className="min-h-screen bg-gradient-to-br from-sand-light via-sand to-ocean-light/20 px-4 py-8 flex items-center justify-center">
+      <div className="w-full max-w-md mx-auto text-center animate-fade-in">
+        <div className="text-7xl mb-8 animate-bounce-gentle">🏐</div>
+        <h1 className="text-4xl md:text-5xl font-extrabold text-transparent bg-gradient-to-r from-ocean via-sunset to-coral bg-clip-text mb-10 drop-shadow-sm tracking-wide">
           King & Queen of the Beach
         </h1>
         
 
         
-        <div className="space-y-6">
+        <div className="space-y-5">
           <Button
             onClick={handleAdminClick}
-            className="w-full py-6 text-xl font-bold bg-sunset hover:bg-sunset-dark text-white shadow-beach transition-all duration-300 flex items-center justify-center gap-3"
+            className="w-full py-7 text-xl font-bold bg-gradient-to-r from-sunset to-coral hover:from-sunset-dark hover:to-coral text-white shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 flex items-center justify-center gap-3 rounded-2xl"
           >
             <Crown className="w-6 h-6" />
             Admin
           </Button>
           <Button
             onClick={handlePlayerClick}
-            className="w-full py-6 text-xl font-bold bg-ocean hover:bg-ocean-dark text-white shadow-beach transition-all duration-300 flex items-center justify-center gap-3"
+            className="w-full py-7 text-xl font-bold bg-gradient-to-r from-ocean to-ocean-light hover:from-ocean-dark hover:to-ocean text-white shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 flex items-center justify-center gap-3 rounded-2xl"
           >
             <Users className="w-6 h-6" />
             Player
           </Button>
           <Button
             onClick={handleInfoClick}
-            className="w-full py-6 text-xl font-bold bg-palm hover:bg-palm-dark text-white shadow-beach transition-all duration-300 flex items-center justify-center gap-3"
+            className="w-full py-7 text-xl font-bold bg-gradient-to-r from-palm to-palm-light hover:from-palm-dark hover:to-palm text-white shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 flex items-center justify-center gap-3 rounded-2xl"
           >
             <Info className="w-6 h-6" />
             Info
           </Button>
           <Button
             onClick={handleLiveRankingClick}
-            className="w-full py-6 text-xl font-bold bg-beach-gradient hover:opacity-90 text-white shadow-beach transition-all duration-300 flex items-center justify-center gap-3"
+            className="w-full py-7 text-xl font-bold bg-beach-gradient hover:opacity-90 text-white shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 flex items-center justify-center gap-3 rounded-2xl"
           >
             <Trophy className="w-6 h-6" />
             Live Ranking

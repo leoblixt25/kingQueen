@@ -1045,38 +1045,38 @@ export default function KingQueenOfTheBeach() {
                     </Card>
 
                     {finalMatchWinner && (
-                      <Card className="border-2 border-sunset/30 bg-sunset-gradient shadow-beach">
-                        <CardContent className="p-6">
-                          <div className="text-center space-y-6">
+                      <Card className="border-2 border-sunset/40 bg-gradient-to-br from-sunset via-sunset-light to-coral shadow-2xl">
+                        <CardContent className="p-8">
+                          <div className="text-center space-y-8">
                             {/* Champions Section - Main Highlight */}
-                            <div className="bg-white/20 backdrop-blur-sm text-white rounded-3xl p-6 space-y-4">
-                              <h3 className="text-3xl font-extrabold flex items-center justify-center gap-3 mb-4">
-                                <Crown className="w-10 h-10" />
+                            <div className="bg-white/25 backdrop-blur-md text-white rounded-3xl p-8 space-y-6 shadow-lg border border-white/30">
+                              <h3 className="text-4xl md:text-5xl font-extrabold flex items-center justify-center gap-4 mb-6">
+                                <Crown className="w-12 h-12 md:w-14 md:h-14" />
                                 🏆 Champions 🏆
-                                <Crown className="w-10 h-10" />
+                                <Crown className="w-12 h-12 md:w-14 md:h-14" />
                               </h3>
-                              <div className="space-y-4">
+                              <div className="space-y-5">
                                 {/* Calculate King & Queen based on winning team */}
                                 {finalMatchWinner.winningTeam === 1 ? (
                                   <>
-                                    <div className="bg-white/10 rounded-xl p-4">
-                                      <p className="text-lg font-bold mb-1 opacity-90">👑 King</p>
-                                      <p className="text-2xl font-extrabold">{malePlayers[0]?.name || 'Unknown'}</p>
+                                    <div className="bg-gradient-to-br from-white/20 to-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/30 hover:scale-105 transition-transform duration-200 shadow-lg">
+                                      <p className="text-xl font-bold mb-2 opacity-95">👑 King</p>
+                                      <p className="text-2xl font-extrabold tracking-wide">{malePlayers[0]?.name || 'Unknown'}</p>
                                     </div>
-                                    <div className="bg-white/10 rounded-xl p-4">
-                                      <p className="text-lg font-bold mb-1 opacity-90">👑 Queen</p>
-                                      <p className="text-2xl font-extrabold">{femalePlayers[1]?.name || 'Unknown'}</p>
+                                    <div className="bg-gradient-to-br from-white/20 to-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/30 hover:scale-105 transition-transform duration-200 shadow-lg">
+                                      <p className="text-xl font-bold mb-2 opacity-95">👑 Queen</p>
+                                      <p className="text-2xl font-extrabold tracking-wide">{femalePlayers[1]?.name || 'Unknown'}</p>
                                     </div>
                                   </>
                                 ) : (
                                   <>
-                                    <div className="bg-white/10 rounded-xl p-4">
-                                      <p className="text-lg font-bold mb-1 opacity-90">👑 King</p>
-                                      <p className="text-2xl font-extrabold">{malePlayers[1]?.name || 'Unknown'}</p>
+                                    <div className="bg-gradient-to-br from-white/20 to-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/30 hover:scale-105 transition-transform duration-200 shadow-lg">
+                                      <p className="text-xl font-bold mb-2 opacity-95">👑 King</p>
+                                      <p className="text-2xl font-extrabold tracking-wide">{malePlayers[1]?.name || 'Unknown'}</p>
                                     </div>
-                                    <div className="bg-white/10 rounded-xl p-4">
-                                      <p className="text-lg font-bold mb-1 opacity-90">👑 Queen</p>
-                                      <p className="text-2xl font-extrabold">{femalePlayers[0]?.name || 'Unknown'}</p>
+                                    <div className="bg-gradient-to-br from-white/20 to-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/30 hover:scale-105 transition-transform duration-200 shadow-lg">
+                                      <p className="text-xl font-bold mb-2 opacity-95">👑 Queen</p>
+                                      <p className="text-2xl font-extrabold tracking-wide">{femalePlayers[0]?.name || 'Unknown'}</p>
                                     </div>
                                   </>
                                 )}
@@ -1084,28 +1084,28 @@ export default function KingQueenOfTheBeach() {
                             </div>
                             
                             {/* Runners-up Section - Secondary */}
-                            <div className="bg-white/15 backdrop-blur-sm rounded-2xl p-5 space-y-3">
-                              <h3 className="text-xl font-bold text-white mb-3">🥈 Runners-up</h3>
-                              <div className="space-y-3">
+                            <div className="bg-white/15 backdrop-blur-sm rounded-2xl p-6 space-y-4 border border-white/20">
+                              <h3 className="text-2xl font-bold text-white mb-4">🥈 Runners-up</h3>
+                              <div className="space-y-4">
                                 {/* Calculate Prince & Princess based on losing team */}
                                 {finalMatchWinner.winningTeam === 1 ? (
                                   <>
-                                    <div className="bg-white/10 rounded-lg p-3">
+                                    <div className="bg-white/10 rounded-xl p-4 border border-white/15">
                                       <p className="text-base font-bold text-white/80 mb-1">🤴 Prince</p>
                                       <p className="text-lg font-bold text-white">{malePlayers[1]?.name || 'Unknown'}</p>
                                     </div>
-                                    <div className="bg-white/10 rounded-lg p-3">
+                                    <div className="bg-white/10 rounded-xl p-4 border border-white/15">
                                       <p className="text-base font-bold text-white/80 mb-1">👸 Princess</p>
                                       <p className="text-lg font-bold text-white">{femalePlayers[0]?.name || 'Unknown'}</p>
                                     </div>
                                   </>
                                 ) : (
                                   <>
-                                    <div className="bg-white/10 rounded-lg p-3">
+                                    <div className="bg-white/10 rounded-xl p-4 border border-white/15">
                                       <p className="text-base font-bold text-white/80 mb-1">🤴 Prince</p>
                                       <p className="text-lg font-bold text-white">{malePlayers[0]?.name || 'Unknown'}</p>
                                     </div>
-                                    <div className="bg-white/10 rounded-lg p-3">
+                                    <div className="bg-white/10 rounded-xl p-4 border border-white/15">
                                       <p className="text-base font-bold text-white/80 mb-1">👸 Princess</p>
                                       <p className="text-lg font-bold text-white">{femalePlayers[1]?.name || 'Unknown'}</p>
                                     </div>

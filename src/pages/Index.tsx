@@ -20,6 +20,7 @@ import { collection, getDocs, query, where, writeBatch } from "firebase/firestor
 import { getCurrentUser, isAdmin as checkIsAdmin, signOut, getCurrentUserTournamentData } from "@/utils/authUtils";
 import { buildPlayersMap, resolveMatchPlayers } from "@/utils/matchPlayerResolver";
 import { sortPlayersWithTiebreakers, getTiebreakerLevel } from "@/utils/rankingTiebreaker";
+import MainTitle from "@/components/MainTitle";
 
 interface TournamentSettings {
   id?: string;
@@ -751,9 +752,9 @@ export default function KingQueenOfTheBeach() {
 
             <div className="text-center pt-4 relative w-full">
               <div className="relative">
-                <h1 className="text-2xl md:text-3xl font-bold text-transparent bg-beach-gradient bg-clip-text mb-4 drop-shadow-sm">
-                  King & Queen of the Beach
-                </h1>
+                <div className="w-full max-w-2xl mx-auto text-center px-4 mb-4">
+                  <MainTitle />
+                </div>
                 <div className="w-16 h-1 bg-sunset mx-auto rounded-full"></div>
               </div>
             </div>

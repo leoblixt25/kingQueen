@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Crown, Users, Info, Trophy } from "lucide-react";
 import { auth } from "@/config/firebase";
+import MainTitle from "@/components/MainTitle";
 
 export default function Landing() {
   const navigate = useNavigate();
@@ -46,14 +47,7 @@ export default function Landing() {
           <div className="text-6xl md:text-7xl">🏐</div>
         </div>
         <div className="w-full max-w-2xl mx-auto text-center px-4 mb-10">
-          <h1 className="font-bold text-2xl sm:text-3xl md:text-3xl lg:text-4xl leading-tight tracking-wide">
-            <span className="bg-gradient-to-r from-ocean via-sunset to-coral bg-clip-text text-transparent drop-shadow-sm">
-              King & Queen
-            </span>{" "}
-            <span className="text-lg sm:text-xl md:text-xl lg:text-2xl text-foreground/80">
-              of the Beach
-            </span>
-          </h1>
+          <MainTitle />
         </div>
         
 

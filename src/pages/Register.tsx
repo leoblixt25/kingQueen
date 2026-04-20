@@ -14,6 +14,7 @@ import { Crown, Users, Calendar, AlertCircle, CheckCircle, LogIn, UserPlus, Mail
 import { registerPlayerToSlot } from "@/utils/placeholderUtils";
 import { AuthModal } from "@/components/AuthModal";
 import { getCurrentUser, isAdmin, signInWithGoogle, registerWithEmailPassword } from "@/utils/authUtils";
+import MainTitle from "@/components/MainTitle";
 
 // Helper function for Google sign-in - Pure Popup Mode
 const handleGoogleSignUp = async () => {
@@ -510,9 +511,9 @@ export default function Register() {
       <div className="max-w-lg mx-auto space-y-6 animate-fade-in">
         <header className="text-center pt-8">
           <div className="relative">
-            <h1 className="text-2xl md:text-3xl font-bold text-transparent bg-beach-gradient bg-clip-text mb-4 drop-shadow-sm">
-              King & Queen of the Beach
-            </h1>
+            <div className="w-full max-w-2xl mx-auto text-center px-4 mb-4">
+              <MainTitle />
+            </div>
             <div className="w-16 h-1 bg-sunset mx-auto rounded-full mb-6"></div>
             <h2 className="text-xl font-semibold text-ocean mb-2">Tournament Access Portal</h2>
             

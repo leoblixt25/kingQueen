@@ -16,6 +16,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { signInWithGoogle, signInWithEmail } from "@/utils/authUtils";
 import { getCurrentUserTournamentData } from "@/utils/authUtils";
+import MainTitle from "@/components/MainTitle";
 
 export default function SignIn() {
   const navigate = useNavigate();
@@ -144,9 +145,9 @@ export default function SignIn() {
             Back
           </Button>
           <div className="text-6xl mb-4 animate-bounce-gentle">🏐</div>
-          <h1 className="text-3xl md:text-4xl font-bold text-transparent bg-beach-gradient bg-clip-text mb-2 drop-shadow-sm">
-            King & Queen of the Beach
-          </h1>
+          <div className="w-full max-w-2xl mx-auto text-center px-4 mb-2">
+            <MainTitle />
+          </div>
         </div>
         
         <Card className="bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach">

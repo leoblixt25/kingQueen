@@ -74,8 +74,13 @@ export default function PlayerAccess() {
     <div className="min-h-screen bg-sand-gradient px-4 py-6 flex items-center justify-center">
       <div className="w-full max-w-md mx-auto text-center">
         <div className="text-6xl mb-6 animate-bounce-gentle">🏐</div>
-        <h1 className="text-3xl md:text-4xl font-bold text-transparent bg-beach-gradient bg-clip-text mb-8 drop-shadow-sm">
-          King & Queen of the Beach
+        <h1 className="text-center font-bold whitespace-nowrap mb-8 tracking-wide">
+          <span className="text-3xl sm:text-4xl md:text-5xl bg-gradient-to-r from-ocean via-sunset to-coral bg-clip-text text-transparent drop-shadow-sm">
+            King & Queen
+          </span>{" "}
+          <span className="text-xl sm:text-2xl md:text-3xl text-foreground/80">
+            of the Beach
+          </span>
         </h1>
         
 

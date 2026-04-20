@@ -46,7 +46,7 @@ export default function Landing() {
           <div className="text-6xl md:text-7xl">🏐</div>
         </div>
         <h1 className="text-center font-bold whitespace-nowrap mb-10 tracking-wide">
-          <span className="text-2xl sm:text-3xl md:text-4xl bg-gradient-to-r from-ocean via-sunset to-coral bg-clip-text text-transparent drop-shadow-sm">
+          <span className="text-3xl sm:text-4xl md:text-5xl bg-gradient-to-r from-ocean via-sunset to-coral bg-clip-text text-transparent drop-shadow-sm">
             King & Queen
           </span>{" "}
           <span className="text-xl sm:text-2xl md:text-3xl text-foreground/80">

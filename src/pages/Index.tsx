@@ -19,6 +19,7 @@ import { auth, db } from "@/config/firebase";
 import { collection, getDocs, query, where, writeBatch } from "firebase/firestore";
 import { getCurrentUser, isAdmin as checkIsAdmin, signOut, getCurrentUserTournamentData } from "@/utils/authUtils";
 import { buildPlayersMap, resolveMatchPlayers } from "@/utils/matchPlayerResolver";
+import { sortPlayersWithTiebreakers } from "@/utils/rankingTiebreaker";
 
 interface TournamentSettings {
   id?: string;
@@ -103,6 +104,9 @@ export default function KingQueenOfTheBeach() {
   const resolvedFemaleMatches = resolveMatchPlayers(femaleMatches, playersMap);
   const resolvedMaleMatches = resolveMatchPlayers(maleMatches, playersMap);
   const matches = gender === 'female' ? resolvedFemaleMatches : resolvedMaleMatches
+  
+  // Use deterministic tiebreaker system for final rankings
+  const rankedPlayers = sortPlayersWithTiebreakers(players, matches);
 
   // Initialize user state on mount
   useEffect(() => {

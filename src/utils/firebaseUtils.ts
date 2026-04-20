@@ -66,18 +66,23 @@ export const loadPlayers = async () => {
 
         // CRITICAL: Sort rankings by points (descending), then by totalScores (descending) as tiebreaker
         // Rank #1 = highest points, if tied → higher total score wins
+        // Final fallback: player ID for deterministic ordering
         females.sort((a: any, b: any) => {
           // Primary sort: points (highest first)
           if (b.points !== a.points) return b.points - a.points;
           // Secondary sort (tiebreaker): totalScores (highest first)
-          return b.totalScores - a.totalScores;
+          if (b.totalScores !== a.totalScores) return b.totalScores - a.totalScores;
+          // Final fallback: player ID for deterministic ordering
+          return (a.id || '').localeCompare(b.id || '');
         });
         
         males.sort((a: any, b: any) => {
           // Primary sort: points (highest first)
           if (b.points !== a.points) return b.points - a.points;
           // Secondary sort (tiebreaker): totalScores (highest first)
-          return b.totalScores - a.totalScores;
+          if (b.totalScores !== a.totalScores) return b.totalScores - a.totalScores;
+          // Final fallback: player ID for deterministic ordering
+          return (a.id || '').localeCompare(b.id || '');
         });
         
         console.log('📊 [LOAD] Top ranked Female:', females[0]?.name, '-', females[0]?.points, 'points');
@@ -152,18 +157,23 @@ export const loadPlayers = async () => {
 
       // CRITICAL: Sort rankings by points (descending), then by totalScores (descending) as tiebreaker
       // Rank #1 = highest points, if tied → higher total score wins
+      // Final fallback: player ID for deterministic ordering
       females.sort((a: any, b: any) => {
         // Primary sort: points (highest first)
         if (b.points !== a.points) return b.points - a.points;
         // Secondary sort (tiebreaker): totalScores (highest first)
-        return b.totalScores - a.totalScores;
+        if (b.totalScores !== a.totalScores) return b.totalScores - a.totalScores;
+        // Final fallback: player ID for deterministic ordering
+        return (a.id || '').localeCompare(b.id || '');
       });
       
       males.sort((a: any, b: any) => {
         // Primary sort: points (highest first)
         if (b.points !== a.points) return b.points - a.points;
         // Secondary sort (tiebreaker): totalScores (highest first)
-        return b.totalScores - a.totalScores;
+        if (b.totalScores !== a.totalScores) return b.totalScores - a.totalScores;
+        // Final fallback: player ID for deterministic ordering
+        return (a.id || '').localeCompare(b.id || '');
       });
       
       console.log('📊 [LOAD] Top ranked Female:', females[0]?.name, '-', females[0]?.points, 'points');

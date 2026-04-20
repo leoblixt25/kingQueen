@@ -347,19 +347,23 @@ export default function LiveRanking() {
         gender: doc.data().gender
       }));
 
-      // Separate and sort players
+      // Separate and sort players with deterministic tiebreaking
       const females = allPlayers
         .filter(p => p.gender === 'female')
         .sort((a, b) => {
           if (b.points !== a.points) return b.points - a.points;
-          return b.totalScores - a.totalScores;
+          if (b.totalScores !== a.totalScores) return b.totalScores - a.totalScores;
+          // Final fallback: player ID for deterministic ordering
+          return (a.id || '').localeCompare(b.id || '');
         });
 
       const males = allPlayers
         .filter(p => p.gender === 'male')
         .sort((a, b) => {
           if (b.points !== a.points) return b.points - a.points;
-          return b.totalScores - a.totalScores;
+          if (b.totalScores !== a.totalScores) return b.totalScores - a.totalScores;
+          // Final fallback: player ID for deterministic ordering
+          return (a.id || '').localeCompare(b.id || '');
         });
 
       setFemalePlayers(females);

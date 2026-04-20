@@ -138,18 +138,21 @@ const updateFinalMatchBracket = async () => {
     const allPlayers: any[] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     
     // Separate and sort by points (descending), then total_scores (descending)
+    // Final fallback: player ID for deterministic ordering
     const females = allPlayers
       .filter((p: any) => p.gender === 'female')
       .sort((a: any, b: any) => {
         if (b.points !== a.points) return b.points - a.points;
-        return (b.total_scores || 0) - (a.total_scores || 0);
+        if (b.total_scores !== a.total_scores) return b.total_scores - a.total_scores;
+        return (a.id || '').localeCompare(b.id || '');
       });
     
     const males = allPlayers
       .filter((p: any) => p.gender === 'male')
       .sort((a: any, b: any) => {
         if (b.points !== a.points) return b.points - a.points;
-        return (b.total_scores || 0) - (a.total_scores || 0);
+        if (b.total_scores !== a.total_scores) return b.total_scores - a.total_scores;
+        return (a.id || '').localeCompare(b.id || '');
       });
     
     // Need at least 2 players from each gender

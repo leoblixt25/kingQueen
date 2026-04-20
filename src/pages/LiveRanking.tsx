@@ -92,10 +92,29 @@ function FinalMatchTab({ finalMatchData, femalePlayers, malePlayers }: {
   femalePlayers: Player[]; 
   malePlayers: Player[];
 }) {
-  // Check if final match has been submitted
-  const isSubmitted = finalMatchData?.is_submitted || finalMatchData?.isSubmitted;
-  const team1Scores = finalMatchData?.team1_scores || finalMatchData?.team1 || [null, null, null];
-  const team2Scores = finalMatchData?.team2_scores || finalMatchData?.team2 || [null, null, null];
+  console.log('🏆 [FINAL TAB] Rendering with data:', finalMatchData);
+  console.log('🏆 [FINAL TAB] Female players:', femalePlayers.length);
+  console.log('🏆 [FINAL TAB] Male players:', malePlayers.length);
+  
+  // Check if final match has been submitted - use actual Firebase field names
+  const isSubmitted = finalMatchData?.is_completed || false;
+  
+  // Extract scores using actual Firebase field names: team1_set1, team1_set2, team1_set3
+  const team1Scores = [
+    finalMatchData?.team1_set1 ?? null,
+    finalMatchData?.team1_set2 ?? null,
+    finalMatchData?.team1_set3 ?? null
+  ];
+  
+  const team2Scores = [
+    finalMatchData?.team2_set1 ?? null,
+    finalMatchData?.team2_set2 ?? null,
+    finalMatchData?.team2_set3 ?? null
+  ];
+  
+  console.log('🏆 [FINAL TAB] isSubmitted:', isSubmitted);
+  console.log('🏆 [FINAL TAB] Team 1 scores:', team1Scores);
+  console.log('🏆 [FINAL TAB] Team 2 scores:', team2Scores);
   
   // Determine winner based on sets won
   let team1Sets = 0;
@@ -110,7 +129,9 @@ function FinalMatchTab({ finalMatchData, femalePlayers, malePlayers }: {
     }
   }
   
-  const winningTeam = team1Sets > team2Sets ? 1 : team2Sets > team1Sets ? 2 : null;
+  const winningTeam = finalMatchData?.winner_team || (team1Sets > team2Sets ? 1 : team2Sets > team1Sets ? 2 : null);
+  
+  console.log('🏆 [FINAL TAB] Team 1 sets:', team1Sets, 'Team 2 sets:', team2Sets, 'Winner:', winningTeam);
   
   if (!isSubmitted) {
     return (

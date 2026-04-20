@@ -262,24 +262,32 @@ function FinalMatchTab({ finalMatchData, femalePlayers, malePlayers }: {
                 <div className="space-y-4">
                   {winningTeam === 1 ? (
                     <>
-                      <div className="bg-white/10 backdrop-blur-sm rounded-xl p-5 border border-white/20 shadow-lg">
-                        <p className="text-lg font-bold mb-1 opacity-90">👑 King</p>
-                        <p className="text-2xl font-extrabold tracking-wide">{malePlayers[0]?.name || 'Unknown'}</p>
+                      <div className="bg-yellow-500/20 backdrop-blur-sm rounded-xl p-5 border border-yellow-400/30 shadow-lg">
+                        <p className="text-lg font-bold mb-1 opacity-95 flex items-center justify-center gap-2">
+                          <span className="text-2xl">👑</span> King <span className="text-2xl">👑</span>
+                        </p>
+                        <p className="text-2xl font-extrabold tracking-wide text-center">{malePlayers[0]?.name || 'Unknown'}</p>
                       </div>
-                      <div className="bg-white/10 backdrop-blur-sm rounded-xl p-5 border border-white/20 shadow-lg">
-                        <p className="text-lg font-bold mb-1 opacity-90">👑 Queen</p>
-                        <p className="text-2xl font-extrabold tracking-wide">{femalePlayers[1]?.name || 'Unknown'}</p>
+                      <div className="bg-yellow-500/20 backdrop-blur-sm rounded-xl p-5 border border-yellow-400/30 shadow-lg">
+                        <p className="text-lg font-bold mb-1 opacity-95 flex items-center justify-center gap-2">
+                          <span className="text-2xl">👑</span> Queen <span className="text-2xl">👑</span>
+                        </p>
+                        <p className="text-2xl font-extrabold tracking-wide text-center">{femalePlayers[1]?.name || 'Unknown'}</p>
                       </div>
                     </>
                   ) : (
                     <>
-                      <div className="bg-white/10 backdrop-blur-sm rounded-xl p-5 border border-white/20 shadow-lg">
-                        <p className="text-lg font-bold mb-1 opacity-90">👑 King</p>
-                        <p className="text-2xl font-extrabold tracking-wide">{malePlayers[1]?.name || 'Unknown'}</p>
+                      <div className="bg-yellow-500/20 backdrop-blur-sm rounded-xl p-5 border border-yellow-400/30 shadow-lg">
+                        <p className="text-lg font-bold mb-1 opacity-95 flex items-center justify-center gap-2">
+                          <span className="text-2xl">👑</span> King <span className="text-2xl">👑</span>
+                        </p>
+                        <p className="text-2xl font-extrabold tracking-wide text-center">{malePlayers[1]?.name || 'Unknown'}</p>
                       </div>
-                      <div className="bg-white/10 backdrop-blur-sm rounded-xl p-5 border border-white/20 shadow-lg">
-                        <p className="text-lg font-bold mb-1 opacity-90">👑 Queen</p>
-                        <p className="text-2xl font-extrabold tracking-wide">{femalePlayers[0]?.name || 'Unknown'}</p>
+                      <div className="bg-yellow-500/20 backdrop-blur-sm rounded-xl p-5 border border-yellow-400/30 shadow-lg">
+                        <p className="text-lg font-bold mb-1 opacity-95 flex items-center justify-center gap-2">
+                          <span className="text-2xl">👑</span> Queen <span className="text-2xl">👑</span>
+                        </p>
+                        <p className="text-2xl font-extrabold tracking-wide text-center">{femalePlayers[0]?.name || 'Unknown'}</p>
                       </div>
                     </>
                   )}
@@ -288,28 +296,36 @@ function FinalMatchTab({ finalMatchData, femalePlayers, malePlayers }: {
               
               {/* Runners-up Section - Secondary */}
               <div className="bg-white/10 backdrop-blur-sm rounded-xl p-5 space-y-3 border border-white/15">
-                <h3 className="text-xl font-bold text-white mb-3">🥈 Runners-up</h3>
+                <h3 className="text-xl font-bold text-white mb-3 text-center">🥈 Runners-up</h3>
                 <div className="space-y-3">
                   {winningTeam === 1 ? (
                     <>
                       <div className="bg-white/10 rounded-lg p-3 border border-white/15">
-                        <p className="text-sm font-semibold text-white/80 mb-1">🤴 Prince</p>
-                        <p className="text-lg font-bold text-white">{malePlayers[1]?.name || 'Unknown'}</p>
+                        <p className="text-sm font-semibold text-white/80 mb-1 flex items-center justify-center gap-1">
+                          <span className="text-lg">🤴</span> Prince <span className="text-lg">🤴</span>
+                        </p>
+                        <p className="text-lg font-bold text-white text-center">{malePlayers[1]?.name || 'Unknown'}</p>
                       </div>
                       <div className="bg-white/10 rounded-lg p-3 border border-white/15">
-                        <p className="text-sm font-semibold text-white/80 mb-1">👸 Princess</p>
-                        <p className="text-lg font-bold text-white">{femalePlayers[0]?.name || 'Unknown'}</p>
+                        <p className="text-sm font-semibold text-white/80 mb-1 flex items-center justify-center gap-1">
+                          <span className="text-lg">👸</span> Princess <span className="text-lg">👸</span>
+                        </p>
+                        <p className="text-lg font-bold text-white text-center">{femalePlayers[0]?.name || 'Unknown'}</p>
                       </div>
                     </>
                   ) : (
                     <>
                       <div className="bg-white/10 rounded-lg p-3 border border-white/15">
-                        <p className="text-sm font-semibold text-white/80 mb-1">🤴 Prince</p>
-                        <p className="text-lg font-bold text-white">{malePlayers[0]?.name || 'Unknown'}</p>
+                        <p className="text-sm font-semibold text-white/80 mb-1 flex items-center justify-center gap-1">
+                          <span className="text-lg">🤴</span> Prince <span className="text-lg">🤴</span>
+                        </p>
+                        <p className="text-lg font-bold text-white text-center">{malePlayers[0]?.name || 'Unknown'}</p>
                       </div>
                       <div className="bg-white/10 rounded-lg p-3 border border-white/15">
-                        <p className="text-sm font-semibold text-white/80 mb-1">👸 Princess</p>
-                        <p className="text-lg font-bold text-white">{femalePlayers[1]?.name || 'Unknown'}</p>
+                        <p className="text-sm font-semibold text-white/80 mb-1 flex items-center justify-center gap-1">
+                          <span className="text-lg">👸</span> Princess <span className="text-lg">👸</span>
+                        </p>
+                        <p className="text-lg font-bold text-white text-center">{femalePlayers[1]?.name || 'Unknown'}</p>
                       </div>
                     </>
                   )}

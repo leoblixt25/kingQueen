@@ -59,7 +59,7 @@ export default function InfoPage() {
     {
       title: "Tiebreaker Rule",
       emoji: "⚖️",
-      content: "If players are tied on total points, the total points scored across all matches is used as the tiebreaker. Every point counts."
+      content: "If players are tied on total points, ranking is decided by total points scored, then point difference, then head-to-head results. If still tied, a final rule is applied to ensure a unique ranking."
     },
     {
       title: "Final Match & Titles",

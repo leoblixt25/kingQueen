@@ -1,7 +1,7 @@
 # King & Queen of the Beach - Technical Documentation
 
-**Version:** 1.0  
-**Last Updated:** March 24, 2026  
+**Version:** 2.0  
+**Last Updated:** April 20, 2026  
 **Tech Stack:** React + Vite + TypeScript + Firebase + Cloudflare Pages
 
 ---
@@ -13,12 +13,14 @@
 3. [Authentication System](#3-authentication-system)
 4. [Database Structure (Firestore)](#4-database-structure-firestore)
 5. [Core Logic](#5-core-logic)
-6. [App Flow](#6-app-flow)
-7. [Functions & Key Code Logic](#7-functions--key-code-logic)
-8. [Security & Access Control](#8-security--access-control)
-9. [UI Structure](#9-ui-structure)
-10. [Deployment Setup](#10-deployment-setup)
-11. [Improvements & Future Enhancements](#11-improvements--future-enhancements)
+6. [Champion Final System](#6-champion-final-system)
+7. [Deterministic Tiebreaker System](#7-deterministic-tiebreaker-system)
+8. [App Flow](#8-app-flow)
+9. [Functions & Key Code Logic](#9-functions--key-code-logic)
+10. [Security & Access Control](#10-security--access-control)
+11. [UI Structure](#11-ui-structure)
+12. [Deployment Setup](#12-deployment-setup)
+13. [Improvements & Future Enhancements](#13-improvements--future-enhancements)
 
 ---
 
@@ -72,7 +74,14 @@ A web application for managing and tracking a beach volleyball tournament with s
   - Win: 2 points
   - Loss: 1 point
   - No-show: 0 points
-- **Tie-Breaker**: Total score (points scored across all matches)
+- **6-Level Deterministic Tiebreaker System**:
+  1. Total points (highest first)
+  2. Total score (highest first)
+  3. Point differential (scored - conceded, highest first)
+  4. Head-to-head record (wins, then score difference)
+  5. Strength of opponents (sum of opponents' points)
+  6. Final fallback: Player ID (lexicographically smallest)
+- **Tiebreaker Indicators**: Visual labels showing which rule decided tied rankings
 - **Real-Time Updates**: Rankings update automatically when scores are submitted
 - **Division Separation**: Separate rankings for Male and Female divisions
 
@@ -550,29 +559,36 @@ return <>{children}</>; // Access granted
 - **Loss**: 1 point
 - **No-show/Tie**: 0 points (configurable)
 
-**Tie-Breaker:**
-- Higher total score (points scored across all matches) wins
+**6-Level Deterministic Tiebreaker System:**
+1. Total points (highest first)
+2. Total score (highest first)
+3. Point differential (scored - conceded, highest first)
+4. Head-to-head record (wins, then score difference)
+5. Strength of opponents (sum of opponents' points)
+6. Final fallback: Player ID (lexicographically smallest)
+
+**Tiebreaker Indicators:**
+- Visual labels show which rule decided tied rankings
+- Only displayed when tiebreaker was actually used
+- Clean, minimal styling that doesn't distract
 
 **Ranking Calculation:**
 ```typescript
-// src/utils/rankingUtils.ts
-export const calculateRankings = (players: any[]) => {
-  return players
-    .filter(p => p.is_confirmed)
-    .sort((a, b) => {
-      // Primary: Points (descending)
-      if (b.points !== a.points) {
-        return b.points - a.points;
-      }
-      
-      // Secondary: Total score (descending)
-      if (b.score !== a.score) {
-        return b.score - a.score;
-      }
-      
-      // Tertiary: Alphabetical by name
-      return a.name.localeCompare(b.name);
-    });
+// src/utils/rankingTiebreaker.ts
+export const sortPlayersWithTiebreakers = (
+  players: Player[],
+  matches: Match[]
+): Player[] => {
+  // Build player points map
+  const playerPointsMap = new Map<string, number>();
+  players.forEach(p => {
+    if (p.id) playerPointsMap.set(p.id, p.points);
+  });
+
+  // Sort using complete tiebreaker system
+  return [...players].sort((a, b) => 
+    comparePlayers(a, b, matches, playerPointsMap)
+  );
 };
 ```
 
@@ -618,7 +634,190 @@ export const updateMatchAndRankings = async (
 
 ---
 
-## 6. App Flow
+## 6. Champion Final System
+
+### Overview
+After the initial 7 matches per division, the top 2 ranked females and top 2 ranked males qualify for a final mixed doubles match (8th match overall). This determines the tournament champions.
+
+### Final Match Structure
+- **Format**: Best of 3 sets
+- **Sets 1-2**: Played to 21 points
+- **Set 3** (if needed): Played to 15 points
+- **Teams**: Mixed doubles (1 male + 1 female per team)
+
+### Team Composition
+```
+Team 1: Male #1 (highest ranked) + Female #2 (second highest ranked)
+Team 2: Female #1 (highest ranked) + Male #2 (second highest ranked)
+```
+
+This cross-pairing ensures balanced competition.
+
+### Champion Titles
+**Winning Team:**
+- Male player → **👑 King of the Beach 👑**
+- Female player → **👑 Queen of the Beach 👑**
+
+**Losing Team:**
+- Male player → **🤴 Prince of the Beach 🤴**
+- Female player → **👸 Princess of the Beach 👸**
+
+### UI Implementation
+**Champion Section Features:**
+- Golden background for King/Queen cards (`bg-yellow-500/20`)
+- Matching crown emojis flanking titles
+- Centered alignment for all text
+- Final match completion date display (DD/MM/YYYY format)
+- Clean visual hierarchy between champions and runners-up
+
+**Code Location:** `src/pages/Index.tsx` and `src/pages/LiveRanking.tsx`
+
+### Final Match Data Structure
+```typescript
+type FinalMatchWinner = {
+  winningTeam: 1 | 2;
+  completedAt?: string;  // ISO timestamp
+} | null;
+```
+
+---
+
+## 7. Deterministic Tiebreaker System
+
+### Overview
+A comprehensive 6-level tiebreaker system ensures unique player rankings with no shared positions. This is critical for determining the top 2 players who qualify for the Champion Final.
+
+### Tiebreaker Hierarchy
+
+**Level 1: Total Points**
+- Win: 2 points
+- Loss: 1 point
+- Higher points = higher rank
+
+**Level 2: Total Score**
+- Sum of all points scored across matches
+- Higher total score = higher rank
+
+**Level 3: Point Differential**
+- Calculation: `points_scored - points_conceded`
+- Higher differential = higher rank
+- Rewards both offensive and defensive performance
+
+**Level 4: Head-to-Head Record**
+- Direct matches between the two tied players
+- Primary: Number of wins against each other
+- Secondary: Score difference in head-to-head matches
+- More wins or better score difference = higher rank
+
+**Level 5: Strength of Opponents**
+- Sum of total points of all opponents faced
+- Higher strength = higher rank
+- Rewards players who faced tougher competition
+
+**Level 6: Final Fallback (Player ID)**
+- Lexicographic comparison of player document IDs
+- Smallest ID wins
+- Guarantees deterministic ordering even in extreme edge cases
+
+### Implementation
+
+**Core Function:**
+```typescript
+// src/utils/rankingTiebreaker.ts
+export const comparePlayers = (
+  a: Player,
+  b: Player,
+  matches: Match[],
+  playerPointsMap: Map<string, number>
+): number => {
+  // 1. Total points
+  if (b.points !== a.points) return b.points - a.points;
+  
+  // 2. Total score
+  if (b.totalScores !== a.totalScores) return b.totalScores - a.totalScores;
+  
+  // 3. Point differential
+  const aDiff = calculatePointDifferential(a.id, matches);
+  const bDiff = calculatePointDifferential(b.id, matches);
+  if (bDiff !== aDiff) return bDiff - aDiff;
+  
+  // 4. Head-to-head
+  const h2h = getHeadToHeadStats(a.id, b.id, matches);
+  if (h2h.wins !== 0) return h2h.wins > 0 ? -1 : 1;
+  if (h2h.scoreDiff !== 0) return h2h.scoreDiff > 0 ? -1 : 1;
+  
+  // 5. Strength of opponents
+  const aStrength = calculateStrengthOfOpponents(a.id, matches, playerPointsMap);
+  const bStrength = calculateStrengthOfOpponents(b.id, matches, playerPointsMap);
+  if (bStrength !== aStrength) return bStrength - aStrength;
+  
+  // 6. Player ID fallback
+  return (a.id || '').localeCompare(b.id || '');
+};
+```
+
+### Tiebreaker Indicators
+
+**Visual Display:**
+When players are tied on points, a small label appears below their ranking card showing which tiebreaker rule determined their order:
+
+- `Tiebreaker: Score` - Total score decided
+- `Tiebreaker: Difference` - Point differential decided
+- `Tiebreaker: Head-to-head` - Head-to-head record decided
+- `Tiebreaker: Opponents` - Strength of opponents decided
+- `Tiebreaker: Final rule` - Player ID was the final decider
+
+**Styling:**
+- Small text (`text-xs`)
+- Subtle color (`text-foreground/50` or `text-white/70` for rank #1)
+- Centered below player card
+- Only shown when tiebreaker was actually used
+
+**Code Location:**
+- Detection: `src/utils/rankingTiebreaker.ts` (`getTiebreakerLevel` function)
+- Display: `src/pages/Index.tsx` and `src/pages/LiveRanking.tsx`
+
+### Real-Time Tiebreaker Updates
+
+**LiveRanking Page:**
+- Fetches match data in real-time via Firestore listener
+- Applies full tiebreaker system (same as tournament page)
+- Indicators update automatically when scores change
+
+**Implementation:**
+```typescript
+// src/pages/LiveRanking.tsx
+const [matches, setMatches] = useState<Match[]>([]);
+
+// Real-time listener for matches
+const matchesRef = collection(db, 'matches');
+onSnapshot(matchesRef, (snapshot) => {
+  const allMatches = snapshot.docs.map(doc => {
+    const data = doc.data();
+    return {
+      id: doc.id,
+      player1: { id: data.player1_id, name: data.player1_name, ... },
+      // ... other players
+      score1: data.score1,
+      score2: data.score2,
+      isSubmitted: data.is_completed || data.is_submitted
+    } as Match;
+  });
+  setMatches(allMatches);
+});
+```
+
+### Benefits
+
+1. **Fairness**: Multiple criteria ensure comprehensive evaluation
+2. **Deterministic**: Always produces unique rankings, no ties
+3. **Transparent**: Players can see exactly why they ranked where they did
+4. **Performance**: Optimized for 8 players × 7 matches
+5. **Maintainable**: Centralized logic in single utility file
+
+---
+
+## 8. App Flow
 
 ### New User Registration Flow
 
@@ -1104,12 +1303,20 @@ if (match.player1_id !== userId && match.player2_id !== userId) {
 ├── /register (Tournament Registration)
 │   ├── Registration form
 │   └── Google Sign-In option
-├── /tournament/{gender} (Main Tournament Page)
-│   ├── Matchups tab
-│   │   └── Match cards
-│   ├── Rankings tab
-│   │   └── Leaderboard table
-│   └── Settings tab (optional)
+├── /tournament (Main Tournament Page - Index.tsx)
+│   ├── Gender selector (Male/Female)
+│   ├── Match cards with score submission
+│   ├── Rankings with tiebreaker indicators
+│   └── Champion Final section (post-tournament)
+├── /live-ranking (Live Ranking Page)
+│   ├── Female/Male/Final tabs
+│   ├── Real-time rankings with tiebreaker indicators
+│   └── Champion Final display
+├── /info (Tournament Info Page)
+│   ├── Beach Volleyball Rules
+│   ├── How Rankings Work
+│   ├── Tiebreaker Rules explanation
+│   └── Final Match & Titles info
 └── /admin (Admin Panel)
     ├── Player management
     ├── Match controls
@@ -1127,6 +1334,14 @@ if (match.player1_id !== userId && match.player2_id !== userId) {
 - "Sign In" button
 - Tournament details (date, location)
 - Feature highlights
+- **Animated volleyball**: Spinning ball animation cycling through 3 ball images (ball1.jpg, ball2.jpg, ball3.jpg) with ocean blue glow effect
+- Info button linking to /info page
+
+**Ball Animation:**
+- Rotates through 3 frames every 300ms
+- CSS transitions for smooth animation
+- Drop-shadow with ocean blue color matching app theme
+- Combined with bounce animation for subtle movement
 
 **State:**
 - No authentication required
@@ -1179,33 +1394,28 @@ if (match.player1_id !== userId && match.player2_id !== userId) {
 
 ---
 
-### Tournament Page (`/tournament/{gender}`)
+### Tournament Page (`/tournament`)
 
 **Purpose:** Main tournament interface.
 
-**Tabs:**
+**Features:**
+- Gender selector (Male/Female toggle)
+- Match cards with score submission
+- Rankings with tiebreaker indicators
+- Champion Final section (appears after tournament completion)
 
-#### 1. Matchups Tab
-**Components:**
-- MatchCard components (bracket view)
-- Each card shows:
-  - Player names and seeds
-  - Score display (if completed)
-  - "Submit Score" button (for participants)
-  - Match status indicator
+**Rankings Section:**
+- Sorted by 6-level deterministic tiebreaker system
+- Visual indicators show which tiebreaker decided tied rankings
+- Color-coded ranking cards (1st: sunset gradient, 2nd: ocean, 3rd: palm)
+- Real-time updates via Firestore listeners
 
-#### 2. Rankings Tab
-**Components:**
-- RankingsTable
-- Columns: Rank, Name, Points, Score, Matches Played
-- Sorted by points → score → name
-- Separate tables for Male/Female
-
-#### 3. Players Tab (Optional)
-**Components:**
-- List of all registered players
-- Player stats
-- Contact info (if public)
+**Champion Final Section:**
+- Appears when final match is completed
+- Displays King/Queen (winners) with golden backgrounds
+- Displays Prince/Princess (runners-up)
+- Shows final match completion date
+- Premium visual design with crown emojis
 
 **State:**
 - Protected by ProtectedRoute
@@ -1251,6 +1461,81 @@ if (match.player1_id !== userId && match.player2_id !== userId) {
 - ProtectedRoute with adminOnly=true
 - Additional admin check in component
 - Admin login required
+
+---
+
+### Live Ranking Page (`/live-ranking`)
+
+**Purpose:** Public-facing real-time rankings display (no authentication required).
+
+**Features:**
+- Three tabs: Female, Male, Final
+- Real-time updates via Firestore listeners
+- Tiebreaker indicators for tied players
+- Champion Final display (when completed)
+
+**Rankings Tab:**
+- Fetches players and matches in real-time
+- Applies full 6-level tiebreaker system
+- Shows tiebreaker labels when players are tied on points
+- Color-coded ranking cards matching tournament page style
+
+**Final Tab:**
+- Displays completed final match scores
+- Shows King/Queen with golden backgrounds and crown emojis
+- Shows Prince/Princess as runners-up
+- Displays final match completion date
+
+**Real-Time Data:**
+```typescript
+// Listens to players collection
+const playersRef = collection(db, 'players');
+onSnapshot(playersRef, (snapshot) => {
+  // Update player rankings
+});
+
+// Listens to matches collection  
+const matchesRef = collection(db, 'matches');
+onSnapshot(matchesRef, (snapshot) => {
+  // Update tiebreaker calculations
+});
+
+// Listens to finalMatches collection
+const finalMatchRef = collection(db, 'finalMatches');
+onSnapshot(finalMatchRef, (snapshot) => {
+  // Update final match display
+});
+```
+
+**State:**
+- Public access (no authentication required)
+- Auto-refreshes when data changes
+
+---
+
+### Info Page (`/info`)
+
+**Purpose:** Tournament rules and information display.
+
+**Sections:**
+1. **Beach Volleyball Rules** - Standard rules explanation
+2. **How Rankings Work** - Points system (Win=2, Loss=1)
+3. **Tiebreaker Rules** - 6-level tiebreaker explanation
+4. **Final Match & Titles** - Championship final format and titles
+
+**Design:**
+- Full-page layout (not a dialog)
+- Match app's beach theme with sand gradient background
+- Card-based sections with rounded corners
+- Back button to return to landing page
+- Clean typography and spacing
+
+**Tiebreaker Rules Text:**
+> If players are tied on points, ranking is decided by total score, then point difference, then head-to-head results, then strength of opponents. If still tied, a final rule such as player ID is used to ensure a unique ranking.
+
+**State:**
+- Public access (no authentication required)
+- Static content
 
 ---
 
@@ -1613,7 +1898,10 @@ sandy-scorekeeper/
 │   │   ├── useTournamentData.ts
 │   │   └── useRegistrationCheck.ts
 │   ├── pages/
-│   │   ├── Index.tsx         # Landing page
+│   │   ├── Index.tsx         # Main tournament page
+│   │   ├── Landing.tsx       # Landing page with ball animation
+│   │   ├── LiveRanking.tsx   # Real-time public rankings
+│   │   ├── InfoPage.tsx      # Tournament info and rules
 │   │   ├── Register.tsx      # Registration
 │   │   ├── SignIn.tsx        # Login
 │   │   └── AdminControl.tsx  # Admin panel
@@ -1621,6 +1909,7 @@ sandy-scorekeeper/
 │   │   ├── authUtils.ts      # Authentication functions
 │   │   ├── matchUtils.ts     # Match operations
 │   │   ├── rankingUtils.ts   # Ranking calculations
+│   │   ├── rankingTiebreaker.ts  # 6-level tiebreaker system (NEW)
 │   │   ├── placeholderUtils.ts # Placeholder system
 │   │   └── resetUtils.ts     # Tournament reset
 │   ├── types/
@@ -1628,6 +1917,9 @@ sandy-scorekeeper/
 │   ├── App.tsx               # Main app component
 │   └── main.tsx              # Entry point
 ├── public/
+│   ├── ball1.jpg             # Volleyball image 1
+│   ├── ball2.jpg             # Volleyball image 2
+│   ├── ball3.jpg             # Volleyball image 3
 │   └── assets/
 ├── package.json
 ├── vite.config.ts

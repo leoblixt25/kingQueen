@@ -1060,22 +1060,22 @@ export default function KingQueenOfTheBeach() {
                                 {finalMatchWinner.winningTeam === 1 ? (
                                   <>
                                     <div className="bg-white/10 rounded-xl p-4">
-                                      <p className="text-base font-semibold mb-1 opacity-90">👑 King</p>
+                                      <p className="text-lg font-bold mb-1 opacity-90">👑 King</p>
                                       <p className="text-2xl font-extrabold">{malePlayers[0]?.name || 'Unknown'}</p>
                                     </div>
                                     <div className="bg-white/10 rounded-xl p-4">
-                                      <p className="text-base font-semibold mb-1 opacity-90">👑 Queen</p>
+                                      <p className="text-lg font-bold mb-1 opacity-90">👑 Queen</p>
                                       <p className="text-2xl font-extrabold">{femalePlayers[1]?.name || 'Unknown'}</p>
                                     </div>
                                   </>
                                 ) : (
                                   <>
                                     <div className="bg-white/10 rounded-xl p-4">
-                                      <p className="text-base font-semibold mb-1 opacity-90">👑 King</p>
+                                      <p className="text-lg font-bold mb-1 opacity-90">👑 King</p>
                                       <p className="text-2xl font-extrabold">{malePlayers[1]?.name || 'Unknown'}</p>
                                     </div>
                                     <div className="bg-white/10 rounded-xl p-4">
-                                      <p className="text-base font-semibold mb-1 opacity-90">👑 Queen</p>
+                                      <p className="text-lg font-bold mb-1 opacity-90">👑 Queen</p>
                                       <p className="text-2xl font-extrabold">{femalePlayers[0]?.name || 'Unknown'}</p>
                                     </div>
                                   </>
@@ -1091,22 +1091,22 @@ export default function KingQueenOfTheBeach() {
                                 {finalMatchWinner.winningTeam === 1 ? (
                                   <>
                                     <div className="bg-white/10 rounded-lg p-3">
-                                      <p className="text-sm font-semibold text-white/80 mb-1">🤴 Prince</p>
+                                      <p className="text-base font-bold text-white/80 mb-1">🤴 Prince</p>
                                       <p className="text-lg font-bold text-white">{malePlayers[1]?.name || 'Unknown'}</p>
                                     </div>
                                     <div className="bg-white/10 rounded-lg p-3">
-                                      <p className="text-sm font-semibold text-white/80 mb-1">👸 Princess</p>
+                                      <p className="text-base font-bold text-white/80 mb-1">👸 Princess</p>
                                       <p className="text-lg font-bold text-white">{femalePlayers[0]?.name || 'Unknown'}</p>
                                     </div>
                                   </>
                                 ) : (
                                   <>
                                     <div className="bg-white/10 rounded-lg p-3">
-                                      <p className="text-sm font-semibold text-white/80 mb-1">🤴 Prince</p>
+                                      <p className="text-base font-bold text-white/80 mb-1">🤴 Prince</p>
                                       <p className="text-lg font-bold text-white">{malePlayers[0]?.name || 'Unknown'}</p>
                                     </div>
                                     <div className="bg-white/10 rounded-lg p-3">
-                                      <p className="text-sm font-semibold text-white/80 mb-1">👸 Princess</p>
+                                      <p className="text-base font-bold text-white/80 mb-1">👸 Princess</p>
                                       <p className="text-lg font-bold text-white">{femalePlayers[1]?.name || 'Unknown'}</p>
                                     </div>
                                   </>

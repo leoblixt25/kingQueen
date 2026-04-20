@@ -15,7 +15,7 @@ export default function Landing() {
     // Ball spinning animation
     const ballInterval = setInterval(() => {
       setBallFrame((prev) => (prev + 1) % 3);
-    }, 200);
+    }, 300);
     
     return () => clearInterval(ballInterval);
   }, []);
@@ -54,7 +54,10 @@ export default function Landing() {
           <img 
             src={`/ball${ballFrame + 1}.jpg`} 
             alt="Volleyball" 
-            className="w-24 h-24 md:w-32 md:h-32 mx-auto object-cover rounded-full shadow-2xl transition-opacity duration-100"
+            className="w-24 h-24 md:w-32 md:h-32 mx-auto object-cover rounded-full opacity-95 shadow-lg transition-all duration-300 ease-in-out"
+            style={{
+              filter: 'drop-shadow(0 4px 12px hsl(200 85% 45% / 0.3))',
+            }}
           />
         </div>
         <h1 className="text-4xl md:text-5xl font-extrabold text-transparent bg-gradient-to-r from-ocean via-sunset to-coral bg-clip-text mb-10 drop-shadow-sm tracking-wide">

@@ -133,9 +133,9 @@ The losing team will be named Prince and Princess of the Beach. 👑`;
         <Dialog open={showInfoModal} onOpenChange={setShowInfoModal}>
           <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>King & Queen Tournament Info</DialogTitle>
+              <DialogTitle className="text-lg">King & Queen Tournament Info</DialogTitle>
             </DialogHeader>
-            <div className="text-sm leading-relaxed max-h-[60vh] overflow-y-auto pr-2">
+            <div className="text-base sm:text-sm leading-relaxed sm:leading-normal max-h-[60vh] overflow-y-auto pr-2 space-y-1">
               {tournamentInfo.split('\n').map((line, index) => {
                 // Define titles that should be bold
                 const titles = [
@@ -164,14 +164,14 @@ The losing team will be named Prince and Princess of the Beach. 👑`;
                   const remainingText = parts.slice(emoji ? 2 : 1).join(' ');
                   
                   return (
-                    <p key={index} className="font-bold my-2 text-base text-ocean">
+                    <p key={index} className="font-bold my-3 sm:my-2 text-lg sm:text-base text-ocean">
                       {title} {emoji} {remainingText && <span className="font-normal">{remainingText}</span>}
                     </p>
                   );
                 }
                 
                 return (
-                  <p key={index} className="my-1 text-foreground">
+                  <p key={index} className="my-2 sm:my-1 text-base sm:text-sm text-foreground">
                     {line}
                   </p>
                 );

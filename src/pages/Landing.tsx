@@ -145,11 +145,13 @@ The losing team will be named Prince and Princess of the Beach. 👑`;
         </div>
         
         <Dialog open={showInfoModal} onOpenChange={setShowInfoModal}>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto bg-gradient-to-br from-sand-light via-sand to-ocean-light/10">
             <DialogHeader>
-              <DialogTitle className="text-lg">King & Queen Tournament Info</DialogTitle>
+              <DialogTitle className="text-2xl font-bold text-center bg-beach-gradient bg-clip-text text-transparent">
+                King & Queen Tournament Info
+              </DialogTitle>
             </DialogHeader>
-            <div className="text-base sm:text-sm leading-relaxed sm:leading-normal max-h-[60vh] overflow-y-auto pr-2 space-y-1">
+            <div className="max-h-[65vh] overflow-y-auto pr-2 space-y-4">
               {tournamentInfo.split('\n').map((line, index) => {
                 // Define titles that should be bold
                 const titles = [
@@ -178,14 +180,19 @@ The losing team will be named Prince and Princess of the Beach. 👑`;
                   const remainingText = parts.slice(emoji ? 2 : 1).join(' ');
                   
                   return (
-                    <p key={index} className="font-bold my-3 sm:my-2 text-lg sm:text-base text-ocean">
-                      {title} {emoji} {remainingText && <span className="font-normal">{remainingText}</span>}
-                    </p>
+                    <div key={index} className="bg-white/60 backdrop-blur-sm rounded-xl p-4 shadow-sm border border-sand-dark/20 mt-4">
+                      <p className="font-bold text-lg text-ocean mb-2">
+                        {title} {emoji} {remainingText && <span className="font-normal">{remainingText}</span>}
+                      </p>
+                    </div>
                   );
                 }
                 
+                // Skip empty lines
+                if (line.trim() === '') return null;
+                
                 return (
-                  <p key={index} className="my-2 sm:my-1 text-base sm:text-sm text-foreground">
+                  <p key={index} className="my-2 text-base leading-relaxed text-foreground pl-2">
                     {line}
                   </p>
                 );

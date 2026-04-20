@@ -1057,7 +1057,7 @@ export default function KingQueenOfTheBeach() {
                                   <Crown className="w-10 h-10 md:w-12 md:h-12" />
                                 </h3>
                                 {finalMatchWinner.completedAt && (
-                                  <p className="text-sm text-white/70 mt-2">
+                                  <p className="text-sm font-bold text-white/70 mt-2">
                                     {new Date(finalMatchWinner.completedAt).toLocaleDateString('en-GB', { 
                                       day: '2-digit', 
                                       month: '2-digit', 

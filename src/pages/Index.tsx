@@ -167,6 +167,23 @@ export default function KingQueenOfTheBeach() {
     }
   }, [matches, isLoading, loadTournamentData]);
 
+  // Auto-jump to next unfinished match when matches load
+  useEffect(() => {
+    if (!matches || matches.length === 0) return;
+
+    const savedIndex = localStorage.getItem('lastMatchIndex');
+    if (savedIndex) {
+      setCurrentMatchIndex(Number(savedIndex));
+      return;
+    }
+
+    const nextUnfinishedIndex = matches.findIndex(m => !m.isSubmitted);
+    if (nextUnfinishedIndex !== -1) {
+      setCurrentMatchIndex(nextUnfinishedIndex);
+      console.log('⏭️ [AUTO-NAV] Jumped to next unfinished match:', nextUnfinishedIndex);
+    }
+  }, [matches]);
+
   // Update gender based on URL if it changes
   useEffect(() => {
     const pathParts = window.location.pathname.split('/');
@@ -175,6 +192,7 @@ export default function KingQueenOfTheBeach() {
     if (['male', 'female'].includes(urlGender)) {
       const selectedGender = urlGender as Gender;
       setGender(selectedGender);
+      localStorage.removeItem('lastMatchIndex'); // Clear saved index when switching gender
       
       // For regular users, only allow access to their registered division
       if (!userIsAdmin && userGender && userGender !== selectedGender) {
@@ -358,8 +376,25 @@ export default function KingQueenOfTheBeach() {
       setScore2('');
       console.log('🧹 [SUBMIT] Score inputs cleared');
 
-      // Stay on the current match after score submission
-      // Users can manually navigate to other matches using Previous/Next buttons
+      // Auto-advance to next unfinished match after 3 seconds
+      setTimeout(() => {
+        const currentMatches = gender === 'female' ? resolvedFemaleMatches : resolvedMaleMatches;
+        const nextUnfinishedIndex = currentMatches.findIndex(
+          (m, idx) => idx > currentMatchIndex && !m.isSubmitted
+        );
+        
+        if (nextUnfinishedIndex !== -1) {
+          setCurrentMatchIndex(nextUnfinishedIndex);
+          console.log('⏭️ [SUBMIT] Auto-advanced to match', nextUnfinishedIndex);
+        } else {
+          // Wrap around to first unfinished match
+          const firstUnfinishedIndex = currentMatches.findIndex(m => !m.isSubmitted);
+          if (firstUnfinishedIndex !== -1) {
+            setCurrentMatchIndex(firstUnfinishedIndex);
+            console.log('⏭️ [SUBMIT] Wrapped to first unfinished match', firstUnfinishedIndex);
+          }
+        }
+      }, 3000);
     } catch (error) {
       console.error('❌ [SUBMIT] Score submission failed:', error);
       toast({
@@ -601,6 +636,7 @@ export default function KingQueenOfTheBeach() {
     if (currentMatchIndex > 0) {
       const newIndex = currentMatchIndex - 1;
       setCurrentMatchIndex(newIndex);
+      localStorage.setItem('lastMatchIndex', newIndex.toString());
       setEditingMatchId(null);
       setScore1('');
       setScore2('');
@@ -611,6 +647,7 @@ export default function KingQueenOfTheBeach() {
     if (currentMatchIndex < matches.length - 1) {
       const newIndex = currentMatchIndex + 1;
       setCurrentMatchIndex(newIndex);
+      localStorage.setItem('lastMatchIndex', newIndex.toString());
       setEditingMatchId(null);
       setScore1('');
       setScore2('');

@@ -56,17 +56,15 @@ function RankingsTab({ activeTab, currentPlayers, matches }: { activeTab: string
   
   return (
     <Card className="bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach">
-      <CardHeader>
-        <div className="w-full flex flex-col items-center justify-center text-center mb-6">
-          <CardTitle className="text-xl font-semibold bg-beach-gradient bg-clip-text text-transparent flex items-center justify-center gap-2">
-            <Trophy className="w-6 h-6" />
-            {activeTab === 'female' ? 'Female' : 'Male'} Rankings
-          </CardTitle>
-          <p className="text-sm font-bold text-foreground mt-2">
-            Match {finishedMatches}/{totalMatches} finished
-          </p>
-        </div>
-      </CardHeader>
+      <div className="w-full px-6 pt-6 pb-0 flex flex-col items-center justify-center text-center">
+        <h2 className="text-xl font-semibold bg-beach-gradient bg-clip-text text-transparent flex items-center justify-center gap-2 mb-3">
+          <Trophy className="w-6 h-6" />
+          {activeTab === 'female' ? 'Female' : 'Male'} Rankings
+        </h2>
+        <p className="text-base font-bold text-foreground mb-6">
+          Match {finishedMatches}/{totalMatches} finished
+        </p>
+      </div>
       <CardContent>
         
         {currentPlayers.length === 0 ? (

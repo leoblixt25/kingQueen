@@ -44,6 +44,8 @@ export default function AdminControl() {
       
       if (!snapshot.empty) {
         const data = snapshot.docs[0].data() as TournamentSettings & { id: string };
+        console.log('Loaded settings:', data);
+        console.log('City from Firebase:', data.tournament_city);
         setTournamentDate(data.tournament_date);
         setTournamentCity(data.tournament_city || '');
         setMaxPlayers(data.max_players_per_gender || 8);

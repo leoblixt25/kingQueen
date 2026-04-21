@@ -214,7 +214,10 @@ export default function KingQueenOfTheBeach() {
       
       if (!snapshot.empty) {
         const firstDoc = snapshot.docs[0];
-        setTournamentSettings(firstDoc.data() as any);
+        const data = firstDoc.data() as any;
+        console.log('Index.tsx loaded settings:', data);
+        console.log('Index.tsx city:', data.tournament_city);
+        setTournamentSettings(data);
       }
     } catch (error) {
       console.error('Error loading tournament settings:', error);

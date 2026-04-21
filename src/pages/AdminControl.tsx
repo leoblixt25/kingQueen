@@ -97,15 +97,20 @@ export default function AdminControl() {
         updated_at: new Date().toISOString(),
       };
 
+      console.log('Saving settings:', settingsData);
+      console.log('Saving city:', tournamentCity);
+
       let result;
       if (existingSettingsId) {
         // Update existing settings
         const settingsRef = doc(db, 'tournamentSettings', existingSettingsId);
         result = await setDoc(settingsRef, settingsData, { merge: true });
+        console.log('Updated existing settings with ID:', existingSettingsId);
       } else {
         // Insert new settings
         const settingsRef = doc(collection(db, 'tournamentSettings'));
         result = await setDoc(settingsRef, settingsData);
+        console.log('Created new settings with ID:', settingsRef.id);
       }
 
       toast({

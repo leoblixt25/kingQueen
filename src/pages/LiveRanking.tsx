@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Crown, ArrowLeft, Trophy, Check } from "lucide-react";
 import { db } from "@/config/firebase";
-import { collection, onSnapshot, getDocs } from "firebase/firestore";
+import { collection, onSnapshot, getDocs, doc, getDoc } from "firebase/firestore";
 import { Player, Match } from "@/types";
 import { getTiebreakerLevel } from "@/utils/rankingTiebreaker";
 
@@ -424,14 +424,17 @@ export default function LiveRanking() {
     // Load tournament city
     const loadTournamentCity = async () => {
       try {
-        const settingsRef = collection(db, 'tournamentSettings');
-        const snapshot = await getDocs(settingsRef);
-        if (!snapshot.empty) {
-          const data = snapshot.docs[0].data();
-          setTournamentCity(data.tournament_city || '');
+        const settingsRef = doc(db, 'tournamentSettings', 'default_settings');
+        const snapshot = await getDoc(settingsRef);
+        if (snapshot.exists()) {
+          const data = snapshot.data();
+          setTournamentCity(data.tournament_city || 'Da Nang');
+        } else {
+          setTournamentCity('Da Nang');
         }
       } catch (error) {
         console.error('Error loading tournament city:', error);
+        setTournamentCity('Da Nang');
       }
     };
     loadTournamentCity();

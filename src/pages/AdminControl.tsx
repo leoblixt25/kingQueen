@@ -40,24 +40,22 @@ export default function AdminControl() {
   const loadTournamentSettings = async () => {
     try {
       console.log('=== LOAD STARTED ===');
-      // Try to get the first settings document
-      const settingsRef = collection(db, 'tournamentSettings');
-      const snapshot = await getDocs(query(settingsRef, orderBy('created_at', 'desc'), limit(1)));
+      // Use a fixed document ID for settings
+      const settingsRef = doc(db, 'tournamentSettings', 'default_settings');
+      const snapshot = await getDoc(settingsRef);
       
-      console.log('Snapshot empty?', snapshot.empty);
-      console.log('Number of docs:', snapshot.size);
+      console.log('Document exists?', snapshot.exists());
       
-      if (!snapshot.empty) {
-        const data = snapshot.docs[0].data() as TournamentSettings & { id: string };
+      if (snapshot.exists()) {
+        const data = snapshot.data() as TournamentSettings;
         console.log('Loaded settings:', data);
         console.log('City from Firebase:', data.tournament_city);
-        console.log('Document ID:', snapshot.docs[0].id);
         setTournamentDate(data.tournament_date);
         setTournamentCity(data.tournament_city || '');
         setMaxPlayers(data.max_players_per_gender || 8);
         setRegistrationCutoff(data.registration_cutoff_days || 3);
-        setExistingSettingsId(snapshot.docs[0].id);
-        console.log('Set existingSettingsId to:', snapshot.docs[0].id);
+        setExistingSettingsId('default_settings');
+        console.log('Set existingSettingsId to: default_settings');
       } else {
         console.log('No settings found, using defaults');
         // Set default values if no settings exist
@@ -65,6 +63,7 @@ export default function AdminControl() {
         setTournamentCity('Da Nang');
         setMaxPlayers(8);
         setRegistrationCutoff(3);
+        setExistingSettingsId('default_settings');
       }
       console.log('=== LOAD COMPLETED ===');
     } catch (error) {
@@ -114,19 +113,11 @@ export default function AdminControl() {
 
       console.log('Full settings data to save:', settingsData);
 
-      // Always use the existing ID or create one
-      let settingsRef;
-      if (existingSettingsId) {
-        settingsRef = doc(db, 'tournamentSettings', existingSettingsId);
-        await setDoc(settingsRef, settingsData, { merge: true });
-        console.log('✅ Updated existing settings with ID:', existingSettingsId);
-      } else {
-        // Create new document and save its ID
-        settingsRef = doc(collection(db, 'tournamentSettings'));
-        await setDoc(settingsRef, settingsData);
-        setExistingSettingsId(settingsRef.id);
-        console.log('✅ Created new settings with ID:', settingsRef.id);
-      }
+      // Always use the fixed document ID
+      const settingsRef = doc(db, 'tournamentSettings', 'default_settings');
+      await setDoc(settingsRef, settingsData, { merge: true });
+      setExistingSettingsId('default_settings');
+      console.log('✅ Saved settings to fixed document ID: default_settings');
       
       console.log('=== SAVE COMPLETED ===');
 

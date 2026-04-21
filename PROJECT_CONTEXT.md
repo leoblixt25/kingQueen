@@ -1,4 +1,13 @@
 # PROJECT CONTEXT
+## 0. TOKEN RULES (CRITICAL)
+
+* Keep output short and direct
+* Prefer code over explanation
+* Do NOT repeat context or requirements
+* Do NOT explain obvious things
+* Modify only what is needed
+* Output final solution only
+* If solvable under 10 lines, do not exceed 10 lines
 
 ## 1. Project Overview
 

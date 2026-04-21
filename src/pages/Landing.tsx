@@ -92,10 +92,8 @@ export default function Landing() {
             className="w-full py-7 text-xl font-bold bg-beach-gradient hover:opacity-90 text-white shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 flex items-center justify-center gap-3 rounded-2xl"
           >
             <Trophy className="w-6 h-6" />
-            <span className="flex items-center gap-2">
-              Live Ranking
-              <span className={`w-2.5 h-2.5 rounded-full ${finishedMatches === 28 ? 'bg-red-500' : 'bg-green-500 animate-pulse'}`} />
-            </span>
+            <span>Live Ranking</span>
+            <span className={`w-3 h-3 rounded-full border-2 border-white ${finishedMatches === 28 ? 'bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.8)]' : 'bg-green-400 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.9)]'}`} />
           </Button>
         </div>
         

@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import { db } from "@/config/firebase";
-import { collection, getDocs, query, orderBy, limit, doc, setDoc, where } from "firebase/firestore";
+import { collection, getDocs, query, orderBy, limit, doc, setDoc, getDoc, updateDoc, where } from "firebase/firestore";
 import { signOut } from "@/utils/authUtils";
 import { LogOut, Save, Crown, Users, AlertTriangle } from "lucide-react";
 import { ResetConfirmationModal } from "@/components/ResetConfirmationModal";
@@ -39,6 +39,7 @@ export default function AdminControl() {
 
   const loadTournamentSettings = async () => {
     try {
+      // Try to get the first settings document
       const settingsRef = collection(db, 'tournamentSettings');
       const snapshot = await getDocs(query(settingsRef, orderBy('created_at', 'desc'), limit(1)));
       
@@ -54,6 +55,7 @@ export default function AdminControl() {
       } else {
         // Set default values if no settings exist
         setTournamentDate(new Date().toISOString().split('T')[0]);
+        setTournamentCity('');
         setMaxPlayers(8);
         setRegistrationCutoff(3);
       }
@@ -89,6 +91,10 @@ export default function AdminControl() {
   const handleSaveSettings = async () => {
     setIsSaving(true);
     try {
+      console.log('=== SAVE STARTED ===');
+      console.log('Current city value:', tournamentCity);
+      console.log('Current date value:', tournamentDate);
+      
       const settingsData = {
         tournament_date: tournamentDate,
         tournament_city: tournamentCity,
@@ -97,21 +103,22 @@ export default function AdminControl() {
         updated_at: new Date().toISOString(),
       };
 
-      console.log('Saving settings:', settingsData);
-      console.log('Saving city:', tournamentCity);
+      console.log('Full settings data to save:', settingsData);
 
       let result;
       if (existingSettingsId) {
         // Update existing settings
         const settingsRef = doc(db, 'tournamentSettings', existingSettingsId);
         result = await setDoc(settingsRef, settingsData, { merge: true });
-        console.log('Updated existing settings with ID:', existingSettingsId);
+        console.log('✅ Updated existing settings with ID:', existingSettingsId);
       } else {
         // Insert new settings
         const settingsRef = doc(collection(db, 'tournamentSettings'));
         result = await setDoc(settingsRef, settingsData);
-        console.log('Created new settings with ID:', settingsRef.id);
+        console.log('✅ Created new settings with ID:', settingsRef.id);
       }
+      
+      console.log('=== SAVE COMPLETED ===');
 
       toast({
         title: "Success",

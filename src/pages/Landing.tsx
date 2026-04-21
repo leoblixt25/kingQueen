@@ -2,15 +2,28 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Crown, Users, Info, Trophy } from "lucide-react";
-import { auth } from "@/config/firebase";
+import { auth, db } from "@/config/firebase";
+import { collection, onSnapshot } from "firebase/firestore";
 import MainTitle from "@/components/MainTitle";
 
 export default function Landing() {
   const navigate = useNavigate();
   const [isAdminRegistered, setIsAdminRegistered] = useState(false);
+  const [finishedMatches, setFinishedMatches] = useState(0);
 
   useEffect(() => {
     checkAdminStatus();
+    
+    const matchesRef = collection(db, 'matches');
+    const unsubscribeMatches = onSnapshot(matchesRef, (snapshot) => {
+      const allMatches = snapshot.docs.map(doc => doc.data());
+      const finished = allMatches.filter(match => 
+        match.is_completed || (match.score1 !== undefined && match.score2 !== undefined && match.score1 > 0 && match.score2 > 0)
+      ).length;
+      setFinishedMatches(finished);
+    });
+    
+    return () => unsubscribeMatches();
   }, []);
 
   const checkAdminStatus = async () => {
@@ -79,7 +92,10 @@ export default function Landing() {
             className="w-full py-7 text-xl font-bold bg-beach-gradient hover:opacity-90 text-white shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 flex items-center justify-center gap-3 rounded-2xl"
           >
             <Trophy className="w-6 h-6" />
-            Live Ranking
+            <span className="flex items-center gap-2">
+              Live Ranking
+              <span className={`w-2.5 h-2.5 rounded-full ${finishedMatches === 28 ? 'bg-red-500' : 'bg-green-500 animate-pulse'}`} />
+            </span>
           </Button>
         </div>
         

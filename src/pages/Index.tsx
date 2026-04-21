@@ -1132,6 +1132,7 @@ export default function KingQueenOfTheBeach() {
                                       month: '2-digit', 
                                       year: 'numeric' 
                                     })}
+                                    {tournamentSettings?.tournament_city && ` · ${tournamentSettings.tournament_city}`}
                                   </p>
                                 )}
                               </div>

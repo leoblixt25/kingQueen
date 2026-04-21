@@ -94,6 +94,7 @@ export default function AdminControl() {
       console.log('=== SAVE STARTED ===');
       console.log('Current city value:', tournamentCity);
       console.log('Current date value:', tournamentDate);
+      console.log('Existing settings ID:', existingSettingsId);
       
       const settingsData = {
         tournament_date: tournamentDate,
@@ -105,16 +106,17 @@ export default function AdminControl() {
 
       console.log('Full settings data to save:', settingsData);
 
-      let result;
+      // Always use the existing ID or create one
+      let settingsRef;
       if (existingSettingsId) {
-        // Update existing settings
-        const settingsRef = doc(db, 'tournamentSettings', existingSettingsId);
-        result = await setDoc(settingsRef, settingsData, { merge: true });
+        settingsRef = doc(db, 'tournamentSettings', existingSettingsId);
+        await setDoc(settingsRef, settingsData, { merge: true });
         console.log('✅ Updated existing settings with ID:', existingSettingsId);
       } else {
-        // Insert new settings
-        const settingsRef = doc(collection(db, 'tournamentSettings'));
-        result = await setDoc(settingsRef, settingsData);
+        // Create new document and save its ID
+        settingsRef = doc(collection(db, 'tournamentSettings'));
+        await setDoc(settingsRef, settingsData);
+        setExistingSettingsId(settingsRef.id);
         console.log('✅ Created new settings with ID:', settingsRef.id);
       }
       

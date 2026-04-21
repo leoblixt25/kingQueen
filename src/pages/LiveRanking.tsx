@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Crown, ArrowLeft, Trophy, Check } from "lucide-react";
 import { db } from "@/config/firebase";
-import { collection, onSnapshot } from "firebase/firestore";
+import { collection, onSnapshot, getDocs } from "firebase/firestore";
 import { Player, Match } from "@/types";
 import { getTiebreakerLevel } from "@/utils/rankingTiebreaker";
 
@@ -154,10 +154,11 @@ function RankingsTab({ activeTab, currentPlayers, matches }: { activeTab: string
 }
 
 // Final Match Tab Component
-function FinalMatchTab({ finalMatchData, femalePlayers, malePlayers }: { 
+function FinalMatchTab({ finalMatchData, femalePlayers, malePlayers, tournamentCity }: { 
   finalMatchData: any; 
   femalePlayers: Player[]; 
   malePlayers: Player[];
+  tournamentCity: string;
 }) {
   console.log('🏆 [FINAL TAB] Rendering with data:', finalMatchData);
   console.log('🏆 [FINAL TAB] Female players:', femalePlayers.length);
@@ -323,6 +324,7 @@ function FinalMatchTab({ finalMatchData, femalePlayers, malePlayers }: {
                         month: '2-digit', 
                         year: 'numeric' 
                       })}
+                      {tournamentCity && ` · ${tournamentCity}`}
                     </p>
                   )}
                 </div>
@@ -368,13 +370,13 @@ function FinalMatchTab({ finalMatchData, femalePlayers, malePlayers }: {
                   {winningTeam === 1 ? (
                     <>
                       <div className="bg-white/10 rounded-lg p-3 border border-white/15">
-                        <p className="text-sm font-semibold text-white/80 mb-1 flex items-center justify-center gap-1">
+                        <p className="text-sm font-bold text-white/80 mb-1 flex items-center justify-center gap-1">
                           <span className="text-lg">🤴</span> Prince <span className="text-lg">🤴</span>
                         </p>
                         <p className="text-lg font-bold text-white text-center">{malePlayers[1]?.name || 'Unknown'}</p>
                       </div>
                       <div className="bg-white/10 rounded-lg p-3 border border-white/15">
-                        <p className="text-sm font-semibold text-white/80 mb-1 flex items-center justify-center gap-1">
+                        <p className="text-sm font-bold text-white/80 mb-1 flex items-center justify-center gap-1">
                           <span className="text-lg">👸</span> Princess <span className="text-lg">👸</span>
                         </p>
                         <p className="text-lg font-bold text-white text-center">{femalePlayers[0]?.name || 'Unknown'}</p>
@@ -383,13 +385,13 @@ function FinalMatchTab({ finalMatchData, femalePlayers, malePlayers }: {
                   ) : (
                     <>
                       <div className="bg-white/10 rounded-lg p-3 border border-white/15">
-                        <p className="text-sm font-semibold text-white/80 mb-1 flex items-center justify-center gap-1">
+                        <p className="text-sm font-bold text-white/80 mb-1 flex items-center justify-center gap-1">
                           <span className="text-lg">🤴</span> Prince <span className="text-lg">🤴</span>
                         </p>
                         <p className="text-lg font-bold text-white text-center">{malePlayers[0]?.name || 'Unknown'}</p>
                       </div>
                       <div className="bg-white/10 rounded-lg p-3 border border-white/15">
-                        <p className="text-sm font-semibold text-white/80 mb-1 flex items-center justify-center gap-1">
+                        <p className="text-sm font-bold text-white/80 mb-1 flex items-center justify-center gap-1">
                           <span className="text-lg">👸</span> Princess <span className="text-lg">👸</span>
                         </p>
                         <p className="text-lg font-bold text-white text-center">{femalePlayers[1]?.name || 'Unknown'}</p>
@@ -414,9 +416,25 @@ export default function LiveRanking() {
   const [isLoading, setIsLoading] = useState(true);
   const [finalMatchData, setFinalMatchData] = useState<any>(null);
   const [matches, setMatches] = useState<Match[]>([]);
+  const [tournamentCity, setTournamentCity] = useState('');
 
   useEffect(() => {
     console.log('🏆 [LIVE RANKING] Setting up real-time listeners...');
+    
+    // Load tournament city
+    const loadTournamentCity = async () => {
+      try {
+        const settingsRef = collection(db, 'tournamentSettings');
+        const snapshot = await getDocs(settingsRef);
+        if (!snapshot.empty) {
+          const data = snapshot.docs[0].data();
+          setTournamentCity(data.tournament_city || '');
+        }
+      } catch (error) {
+        console.error('Error loading tournament city:', error);
+      }
+    };
+    loadTournamentCity();
     
     // Set up real-time listener for players collection
     const playersRef = collection(db, 'players');
@@ -592,6 +610,7 @@ export default function LiveRanking() {
             finalMatchData={finalMatchData}
             femalePlayers={femalePlayers}
             malePlayers={malePlayers}
+            tournamentCity={tournamentCity}
           />
         ) : (
           <RankingsTab 

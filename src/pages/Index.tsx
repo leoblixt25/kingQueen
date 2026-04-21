@@ -1179,13 +1179,13 @@ export default function KingQueenOfTheBeach() {
                                 {finalMatchWinner.winningTeam === 1 ? (
                                   <>
                                     <div className="bg-white/10 rounded-lg p-3 border border-white/15">
-                                      <p className="text-sm font-semibold text-white/80 mb-1 flex items-center justify-center gap-1">
+                                      <p className="text-sm font-bold text-white/80 mb-1 flex items-center justify-center gap-1">
                                         <span className="text-lg">🤴</span> Prince <span className="text-lg">🤴</span>
                                       </p>
                                       <p className="text-lg font-bold text-white text-center">{malePlayers[1]?.name || 'Unknown'}</p>
                                     </div>
                                     <div className="bg-white/10 rounded-lg p-3 border border-white/15">
-                                      <p className="text-sm font-semibold text-white/80 mb-1 flex items-center justify-center gap-1">
+                                      <p className="text-sm font-bold text-white/80 mb-1 flex items-center justify-center gap-1">
                                         <span className="text-lg">👸</span> Princess <span className="text-lg">👸</span>
                                       </p>
                                       <p className="text-lg font-bold text-white text-center">{femalePlayers[0]?.name || 'Unknown'}</p>
@@ -1194,13 +1194,13 @@ export default function KingQueenOfTheBeach() {
                                 ) : (
                                   <>
                                     <div className="bg-white/10 rounded-lg p-3 border border-white/15">
-                                      <p className="text-sm font-semibold text-white/80 mb-1 flex items-center justify-center gap-1">
+                                      <p className="text-sm font-bold text-white/80 mb-1 flex items-center justify-center gap-1">
                                         <span className="text-lg">🤴</span> Prince <span className="text-lg">🤴</span>
                                       </p>
                                       <p className="text-lg font-bold text-white text-center">{malePlayers[0]?.name || 'Unknown'}</p>
                                     </div>
                                     <div className="bg-white/10 rounded-lg p-3 border border-white/15">
-                                      <p className="text-sm font-semibold text-white/80 mb-1 flex items-center justify-center gap-1">
+                                      <p className="text-sm font-bold text-white/80 mb-1 flex items-center justify-center gap-1">
                                         <span className="text-lg">👸</span> Princess <span className="text-lg">👸</span>
                                       </p>
                                       <p className="text-lg font-bold text-white text-center">{femalePlayers[1]?.name || 'Unknown'}</p>

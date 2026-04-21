@@ -14,6 +14,7 @@ import { ResetConfirmationModal } from "@/components/ResetConfirmationModal";
 interface TournamentSettings {
   id?: string;
   tournament_date: string;
+  tournament_city: string;
   max_players_per_gender: number;
   registration_cutoff_days: number;
 }
@@ -21,6 +22,7 @@ interface TournamentSettings {
 export default function AdminControl() {
   const navigate = useNavigate();
   const [tournamentDate, setTournamentDate] = useState("");
+  const [tournamentCity, setTournamentCity] = useState("");
   const [maxPlayers, setMaxPlayers] = useState(8);
   const [registrationCutoff, setRegistrationCutoff] = useState(3);
   const [isLoading, setIsLoading] = useState(true);
@@ -43,6 +45,7 @@ export default function AdminControl() {
       if (!snapshot.empty) {
         const data = snapshot.docs[0].data() as TournamentSettings & { id: string };
         setTournamentDate(data.tournament_date);
+        setTournamentCity(data.tournament_city || '');
         setMaxPlayers(data.max_players_per_gender || 8);
         setRegistrationCutoff(data.registration_cutoff_days || 3);
         setExistingSettingsId(data.id);
@@ -86,6 +89,7 @@ export default function AdminControl() {
     try {
       const settingsData = {
         tournament_date: tournamentDate,
+        tournament_city: tournamentCity,
         max_players_per_gender: maxPlayers,
         registration_cutoff_days: registrationCutoff,
         updated_at: new Date().toISOString(),
@@ -259,6 +263,18 @@ export default function AdminControl() {
                   type="date"
                   value={tournamentDate}
                   onChange={(e) => setTournamentDate(e.target.value)}
+                  className="w-full px-3 py-2 border border-sand-dark/30 rounded-md bg-white/70 focus:border-ocean focus:outline-none"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="tournamentCity">Tournament City</Label>
+                <input
+                  id="tournamentCity"
+                  type="text"
+                  placeholder="e.g., Da Nang"
+                  value={tournamentCity}
+                  onChange={(e) => setTournamentCity(e.target.value)}
                   className="w-full px-3 py-2 border border-sand-dark/30 rounded-md bg-white/70 focus:border-ocean focus:outline-none"
                 />
               </div>

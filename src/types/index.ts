@@ -9,6 +9,7 @@ export type Player = {
 
 export type Match = {
   id?: string; // Optional for backwards compatibility
+  gender?: 'male' | 'female';
   player1: Player;
   player2: Player;
   player3: Player;

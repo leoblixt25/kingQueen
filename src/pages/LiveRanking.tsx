@@ -10,6 +10,16 @@ import { getTiebreakerLevel } from "@/utils/rankingTiebreaker";
 
 // Rankings Tab Component
 function RankingsTab({ activeTab, currentPlayers, matches }: { activeTab: string; currentPlayers: Player[]; matches: Match[] }) {
+  // Calculate finished matches for the current division
+  const totalMatches = 14;
+  const selectedGender = activeTab === 'female' ? 'female' : 'male';
+  
+  const finishedMatches = matches.filter(match => {
+    return match.gender === selectedGender &&
+      (match.isSubmitted || 
+       (match.score1 !== undefined && match.score2 !== undefined && match.score1 > 0 && match.score2 > 0));
+  }).length;
+  
   // Sort players deterministically using full tiebreaker system
   const playerPointsMap = new Map<string, number>();
   currentPlayers.forEach(p => {
@@ -53,6 +63,11 @@ function RankingsTab({ activeTab, currentPlayers, matches }: { activeTab: string
         </CardTitle>
       </CardHeader>
       <CardContent>
+        {/* Match Progress Counter */}
+        <p className="text-center text-sm text-muted-foreground mb-3">
+          Match {finishedMatches}/{totalMatches} finished
+        </p>
+        
         {currentPlayers.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-lg text-foreground/60">
@@ -450,6 +465,7 @@ export default function LiveRanking() {
         const data = doc.data();
         return {
           id: doc.id,
+          gender: data.gender || 'female' as any,
           player1: { id: data.player1_id || '', name: data.player1_name || '', points: 0, totalScores: 0, gender: data.gender || 'female' as any },
           player2: { id: data.player2_id || '', name: data.player2_name || '', points: 0, totalScores: 0, gender: data.gender || 'female' as any },
           player3: { id: data.player3_id || '', name: data.player3_name || '', points: 0, totalScores: 0, gender: data.gender || 'female' as any },

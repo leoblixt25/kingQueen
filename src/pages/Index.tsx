@@ -171,7 +171,7 @@ export default function KingQueenOfTheBeach() {
   useEffect(() => {
     if (!matches || matches.length === 0) return;
 
-    const savedIndex = localStorage.getItem('lastMatchIndex');
+    const savedIndex = localStorage.getItem(`lastMatchIndex_${gender}`);
     if (savedIndex) {
       setCurrentMatchIndex(Number(savedIndex));
       return;
@@ -182,7 +182,7 @@ export default function KingQueenOfTheBeach() {
       setCurrentMatchIndex(nextUnfinishedIndex);
       console.log('⏭️ [AUTO-NAV] Jumped to next unfinished match:', nextUnfinishedIndex);
     }
-  }, [matches]);
+  }, [matches, gender]);
 
   // Update gender based on URL if it changes
   useEffect(() => {
@@ -192,7 +192,7 @@ export default function KingQueenOfTheBeach() {
     if (['male', 'female'].includes(urlGender)) {
       const selectedGender = urlGender as Gender;
       setGender(selectedGender);
-      localStorage.removeItem('lastMatchIndex'); // Clear saved index when switching gender
+      // Don't clear - each gender has its own saved index
       
       // For regular users, only allow access to their registered division
       if (!userIsAdmin && userGender && userGender !== selectedGender) {
@@ -388,14 +388,14 @@ export default function KingQueenOfTheBeach() {
           
           if (nextUnfinishedIndex !== -1) {
             setCurrentMatchIndex(nextUnfinishedIndex);
-            localStorage.setItem('lastMatchIndex', nextUnfinishedIndex.toString());
+            localStorage.setItem(`lastMatchIndex_${gender}`, nextUnfinishedIndex.toString());
             console.log('⏭️ [SUBMIT] Auto-advanced to match', nextUnfinishedIndex);
           } else {
             // Wrap around to first unfinished match
             const firstUnfinishedIndex = currentMatches.findIndex(m => !m.isSubmitted);
             if (firstUnfinishedIndex !== -1) {
               setCurrentMatchIndex(firstUnfinishedIndex);
-              localStorage.setItem('lastMatchIndex', firstUnfinishedIndex.toString());
+              localStorage.setItem(`lastMatchIndex_${gender}`, firstUnfinishedIndex.toString());
               console.log('⏭️ [SUBMIT] Wrapped to first unfinished match', firstUnfinishedIndex);
             }
           }
@@ -642,7 +642,7 @@ export default function KingQueenOfTheBeach() {
     if (currentMatchIndex > 0) {
       const newIndex = currentMatchIndex - 1;
       setCurrentMatchIndex(newIndex);
-      localStorage.setItem('lastMatchIndex', newIndex.toString());
+      localStorage.setItem(`lastMatchIndex_${gender}`, newIndex.toString());
       setEditingMatchId(null);
       setScore1('');
       setScore2('');
@@ -653,7 +653,7 @@ export default function KingQueenOfTheBeach() {
     if (currentMatchIndex < matches.length - 1) {
       const newIndex = currentMatchIndex + 1;
       setCurrentMatchIndex(newIndex);
-      localStorage.setItem('lastMatchIndex', newIndex.toString());
+      localStorage.setItem(`lastMatchIndex_${gender}`, newIndex.toString());
       setEditingMatchId(null);
       setScore1('');
       setScore2('');

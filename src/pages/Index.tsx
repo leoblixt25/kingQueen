@@ -377,23 +377,29 @@ export default function KingQueenOfTheBeach() {
       console.log('🧹 [SUBMIT] Score inputs cleared');
 
       // Auto-advance to next unfinished match after 3 seconds
-      setTimeout(() => {
-        const currentMatches = gender === 'female' ? resolvedFemaleMatches : resolvedMaleMatches;
-        const nextUnfinishedIndex = currentMatches.findIndex(
-          (m, idx) => idx > currentMatchIndex && !m.isSubmitted
-        );
+      setTimeout(async () => {
+        await loadMatchesData(); // Reload fresh match data
         
-        if (nextUnfinishedIndex !== -1) {
-          setCurrentMatchIndex(nextUnfinishedIndex);
-          console.log('⏭️ [SUBMIT] Auto-advanced to match', nextUnfinishedIndex);
-        } else {
-          // Wrap around to first unfinished match
-          const firstUnfinishedIndex = currentMatches.findIndex(m => !m.isSubmitted);
-          if (firstUnfinishedIndex !== -1) {
-            setCurrentMatchIndex(firstUnfinishedIndex);
-            console.log('⏭️ [SUBMIT] Wrapped to first unfinished match', firstUnfinishedIndex);
+        setTimeout(() => {
+          const currentMatches = gender === 'female' ? resolvedFemaleMatches : resolvedMaleMatches;
+          const nextUnfinishedIndex = currentMatches.findIndex(
+            (m, idx) => idx > currentMatchIndex && !m.isSubmitted
+          );
+          
+          if (nextUnfinishedIndex !== -1) {
+            setCurrentMatchIndex(nextUnfinishedIndex);
+            localStorage.setItem('lastMatchIndex', nextUnfinishedIndex.toString());
+            console.log('⏭️ [SUBMIT] Auto-advanced to match', nextUnfinishedIndex);
+          } else {
+            // Wrap around to first unfinished match
+            const firstUnfinishedIndex = currentMatches.findIndex(m => !m.isSubmitted);
+            if (firstUnfinishedIndex !== -1) {
+              setCurrentMatchIndex(firstUnfinishedIndex);
+              localStorage.setItem('lastMatchIndex', firstUnfinishedIndex.toString());
+              console.log('⏭️ [SUBMIT] Wrapped to first unfinished match', firstUnfinishedIndex);
+            }
           }
-        }
+        }, 500); // Wait for data to update
       }, 3000);
     } catch (error) {
       console.error('❌ [SUBMIT] Score submission failed:', error);

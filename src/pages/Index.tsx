@@ -16,7 +16,7 @@ import { ScoreResetConfirmationModal } from "@/components/ScoreResetConfirmation
 import { toast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { auth, db } from "@/config/firebase";
-import { collection, getDocs, query, where, writeBatch } from "firebase/firestore";
+import { collection, getDocs, query, where, writeBatch, orderBy, limit } from "firebase/firestore";
 import { getCurrentUser, isAdmin as checkIsAdmin, signOut, getCurrentUserTournamentData } from "@/utils/authUtils";
 import { buildPlayersMap, resolveMatchPlayers } from "@/utils/matchPlayerResolver";
 import { sortPlayersWithTiebreakers, getTiebreakerLevel } from "@/utils/rankingTiebreaker";
@@ -210,7 +210,7 @@ export default function KingQueenOfTheBeach() {
   const loadTournamentSettings = async () => {
     try {
       const settingsRef = collection(db, 'tournamentSettings');
-      const snapshot = await getDocs(settingsRef);
+      const snapshot = await getDocs(query(settingsRef, orderBy('created_at', 'desc'), limit(1)));
       
       if (!snapshot.empty) {
         const firstDoc = snapshot.docs[0];
@@ -218,6 +218,14 @@ export default function KingQueenOfTheBeach() {
         console.log('Index.tsx loaded settings:', data);
         console.log('Index.tsx city:', data.tournament_city);
         setTournamentSettings(data);
+      } else {
+        // Default settings if none exist
+        setTournamentSettings({
+          tournament_date: new Date().toISOString().split('T')[0],
+          tournament_city: 'Da Nang',
+          max_players_per_gender: 8,
+          registration_cutoff_days: 3,
+        });
       }
     } catch (error) {
       console.error('Error loading tournament settings:', error);

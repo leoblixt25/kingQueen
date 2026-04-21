@@ -39,26 +39,34 @@ export default function AdminControl() {
 
   const loadTournamentSettings = async () => {
     try {
+      console.log('=== LOAD STARTED ===');
       // Try to get the first settings document
       const settingsRef = collection(db, 'tournamentSettings');
       const snapshot = await getDocs(query(settingsRef, orderBy('created_at', 'desc'), limit(1)));
+      
+      console.log('Snapshot empty?', snapshot.empty);
+      console.log('Number of docs:', snapshot.size);
       
       if (!snapshot.empty) {
         const data = snapshot.docs[0].data() as TournamentSettings & { id: string };
         console.log('Loaded settings:', data);
         console.log('City from Firebase:', data.tournament_city);
+        console.log('Document ID:', snapshot.docs[0].id);
         setTournamentDate(data.tournament_date);
         setTournamentCity(data.tournament_city || '');
         setMaxPlayers(data.max_players_per_gender || 8);
         setRegistrationCutoff(data.registration_cutoff_days || 3);
-        setExistingSettingsId(data.id);
+        setExistingSettingsId(snapshot.docs[0].id);
+        console.log('Set existingSettingsId to:', snapshot.docs[0].id);
       } else {
+        console.log('No settings found, using defaults');
         // Set default values if no settings exist
         setTournamentDate(new Date().toISOString().split('T')[0]);
-        setTournamentCity('');
+        setTournamentCity('Da Nang');
         setMaxPlayers(8);
         setRegistrationCutoff(3);
       }
+      console.log('=== LOAD COMPLETED ===');
     } catch (error) {
       console.error('Error loading settings:', error);
       toast({

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Check, Edit, Trash, Crown, ChevronLeft, ChevronRight, Home, Users, RotateCcw, UserPlus, LogOut, Loader2 } from "lucide-react";
+import { Check, Edit, Trash, Crown, ChevronLeft, ChevronRight, Home, Users, RotateCcw, UserPlus, LogOut, Loader2, Settings } from "lucide-react";
 import { Gender, FinalMatchScores } from "@/types";
 import { useTournamentData } from "@/hooks/useTournamentData";
 import { useTournamentRealtimeSubscriptions } from "@/hooks/useTournamentRealtimeSubscriptions";
@@ -25,6 +25,7 @@ import MainTitle from "@/components/MainTitle";
 interface TournamentSettings {
   id?: string;
   tournament_date: string;
+  tournament_city: string;
   max_players_per_gender: number;
   registration_cutoff_days: number;
   created_at?: string;
@@ -890,6 +891,14 @@ export default function KingQueenOfTheBeach() {
                 <div className="text-center mb-2">
                   <p className="text-sm font-semibold text-foreground/70">🔧 Admin Controls</p>
                 </div>
+                <Button 
+                  variant="outline" 
+                  onClick={() => navigate('/admin/control')} 
+                  className="w-full touch-target bg-white/70 hover:bg-ocean hover:text-white border-ocean/30 text-ocean-dark transition-all duration-300"
+                >
+                  <Settings className="w-4 h-4 mr-2" />
+                  Configure Tournament
+                </Button>
                 <Button 
                   variant="outline" 
                   onClick={() => setShowAdminPanel(true)} 

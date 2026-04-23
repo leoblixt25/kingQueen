@@ -1,7 +1,7 @@
 # King & Queen of the Beach - Technical Documentation
 
-**Version:** 2.0  
-**Last Updated:** April 20, 2026  
+**Version:** 2.1  
+**Last Updated:** April 22, 2026  
 **Tech Stack:** React + Vite + TypeScript + Firebase + Cloudflare Pages
 
 ---
@@ -85,12 +85,21 @@ A web application for managing and tracking a beach volleyball tournament with s
 - **Real-Time Updates**: Rankings update automatically when scores are submitted
 - **Division Separation**: Separate rankings for Male and Female divisions
 
+### Match Progress Tracking
+- **Live Ranking Counter**: Displays "Match X/14 finished" for each division
+- **Status Indicators**: Green blinking dot (in progress) or red dot (complete)
+- **Auto-Advance**: After score submission, automatically moves to next unfinished match
+- **Division-Specific State**: Separate localStorage keys per gender division
+- **Landing Page Button**: Live Ranking button shows tournament progress status
+
 ### Admin Controls
 - **Player Management**: View all registered players
 - **Database Reset**: Reset entire tournament (players, matches, scores)
 - **Match Initialization**: Create/modify match brackets
 - **Player Replacement**: Replace no-show players
 - **Unregistration**: Allow players to unregister before deadline
+- **Tournament Configuration**: Configure tournament date, city, and settings via admin panel
+- **Admin Navigation**: "Configure Tournament" button in Admin Controls section navigates to `/admin/control`
 
 ### Payment Integration (Optional)
 - Stripe payment processing for registration fees
@@ -387,36 +396,40 @@ Stores individual score submissions (audit trail).
 }
 ```
 
-### Collection: `tournament_settings`
+### Collection: `tournamentSettings`
 
 Global tournament configuration.
 
 **Document Structure:**
 ```typescript
 {
-  tournament_date: string;
-  max_players_per_gender: number;  // Usually 8
-  registration_cutoff_days: number;
-  current_season: number;
-  is_registration_open: boolean;
-  payment_required: boolean;
-  payment_amount: number;
+  tournament_date: string;          // Tournament date (YYYY-MM-DD)
+  tournament_city: string;          // Tournament city name (e.g., "Da Nang")
+  max_players_per_gender: number;   // Usually 8
+  registration_cutoff_days: number; // Days before tournament to close registration
+  updated_at: string;               // ISO timestamp of last update
 }
 ```
+
+**Document ID:** `default_settings` (fixed document ID to prevent duplicates)
 
 **Example:**
 ```javascript
 {
-  id: "settings_2026",
-  tournament_date: "2026-07-15",
+  id: "default_settings",
+  tournament_date: "2026-04-21",
+  tournament_city: "Da Nang",
   max_players_per_gender: 8,
-  registration_cutoff_days: 7,
-  current_season: 1,
-  is_registration_open: true,
-  payment_required: false,
-  payment_amount: 0
+  registration_cutoff_days: 3,
+  updated_at: "2026-04-21T21:05:57.497Z"
 }
 ```
+
+**Important Implementation Notes:**
+- Uses **fixed document ID** (`default_settings`) instead of auto-generated IDs
+- This prevents multiple settings documents from being created
+- All saves use `setDoc()` with `{ merge: true }` to update the same document
+- Loaded via: `doc(db, 'tournamentSettings', 'default_settings')`
 
 ### Collection: `admin_users`
 
@@ -666,9 +679,25 @@ This cross-pairing ensures balanced competition.
 **Champion Section Features:**
 - Golden background for King/Queen cards (`bg-yellow-500/20`)
 - Matching crown emojis flanking titles
+- **Prince/Princess text in bold** (`font-bold`) for visual balance with King/Queen
 - Centered alignment for all text
-- Final match completion date display (DD/MM/YYYY format)
+- Final match completion date display in format: `DD/MM/YYYY · City` (e.g., "21/04/2026 · Da Nang")
+- Tournament city loaded from `tournamentSettings` collection
 - Clean visual hierarchy between champions and runners-up
+
+**Tournament City Display:**
+```tsx
+{finalMatchWinner.completedAt && (
+  <p className="text-sm font-bold text-white/70 mt-2">
+    {new Date(finalMatchWinner.completedAt).toLocaleDateString('en-GB', { 
+      day: '2-digit', 
+      month: '2-digit', 
+      year: 'numeric' 
+    })}
+    {tournamentSettings?.tournament_city && ` · ${tournamentSettings.tournament_city}`}
+  </p>
+)}
+```
 
 **Code Location:** `src/pages/Index.tsx` and `src/pages/LiveRanking.tsx`
 
@@ -1453,9 +1482,11 @@ if (match.player1_id !== userId && match.player2_id !== userId) {
 - Danger zone warnings
 
 #### 5. Settings
-- Tournament dates
+- Tournament date configuration
+- **Tournament city field** (e.g., "Da Nang")
 - Max players setting
-- Payment configuration
+- Registration cutoff days
+- Save/Load from `tournamentSettings/default_settings` document
 
 **Access Control:**
 - ProtectedRoute with adminOnly=true
@@ -1473,6 +1504,8 @@ if (match.player1_id !== userId && match.player2_id !== userId) {
 - Real-time updates via Firestore listeners
 - Tiebreaker indicators for tied players
 - Champion Final display (when completed)
+- **Match progress counter**: Shows "Match X/14 finished" with blinking status indicator
+- **Tournament city display**: Shows in champion section as "DD/MM/YYYY · City"
 
 **Rankings Tab:**
 - Fetches players and matches in real-time

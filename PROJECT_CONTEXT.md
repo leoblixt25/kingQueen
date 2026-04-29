@@ -68,6 +68,7 @@
 5. Make minimal changes that solve the specific problem
 6. Verify changes don't break existing functionality
 7. Commit and push all changes to GitHub after completion
+8. Update this file every time you make changes to be up to date
 
 ## 7. Key Files Structure
 

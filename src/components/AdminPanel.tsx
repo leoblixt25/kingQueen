@@ -46,9 +46,7 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
   const [confirmedPlayers, setConfirmedPlayers] = useState<ConfirmedPlayer[]>([]);
   const [pendingPlayers, setPendingPlayers] = useState<PendingPlayer[]>([]);
   const [settings, setSettings] = useState<TournamentSettings | null>(null);
-  const [tournamentDate, setTournamentDate] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     loadAdminData();
@@ -84,55 +82,10 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
       const settingsData = settingsSnap.empty ? null : settingsSnap.docs[0].data();
 
       setSettings(settingsData as any);
-      setTournamentDate(settingsData?.tournament_date || '');
     } catch (error) {
       console.error('Error loading admin data:', error);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleUpdateTournamentDate = async () => {
-    if (!tournamentDate) {
-      toast({
-        title: "Invalid Date",
-        description: "Please select a tournament date",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      if (settings) {
-        // Update existing settings
-        const settingsRef = doc(db, 'tournamentSettings', settings.id);
-        await setDoc(settingsRef, { tournament_date: tournamentDate }, { merge: true });
-      } else {
-        // Create new settings
-        const settingsRef = doc(collection(db, 'tournamentSettings'));
-        await setDoc(settingsRef, {
-          tournament_date: tournamentDate,
-          max_players_per_gender: 8,
-          registration_cutoff_days: 3
-        });
-      }
-
-      toast({
-        title: "Settings Updated",
-        description: "Tournament date has been updated successfully",
-      });
-
-      await loadAdminData();
-    } catch (error) {
-      console.error('Error updating settings:', error);
-      toast({
-        title: "Update Failed",
-        description: "Failed to update tournament date",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -321,25 +274,6 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="tournamentDate">Tournament Date</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="tournamentDate"
-                  type="date"
-                  value={tournamentDate}
-                  onChange={(e) => setTournamentDate(e.target.value)}
-                  className="flex-1"
-                />
-                <Button
-                  onClick={handleUpdateTournamentDate}
-                  disabled={isSaving}
-                  className="bg-ocean hover:bg-ocean-dark text-white"
-                >
-                  {isSaving ? 'Saving...' : 'Update'}
-                </Button>
-              </div>
-            </div>
             {settings && (
               <div className="text-sm text-foreground/70">
                 <p>Registration closes {settings.registration_cutoff_days} days before tournament</p>

@@ -46,12 +46,34 @@ export const exportMatchupsToPDF = async () => {
       console.log('Loaded players via fallback:', players.length);
     }
 
+    // Load tournament settings for date
+    let tournamentDate = '';
+    try {
+      const settingsRef = collection(db, 'tournamentSettings');
+      const settingsSnapshot = await getDocs(settingsRef);
+      if (!settingsSnapshot.empty) {
+        const settingsData = settingsSnapshot.docs[0].data() as any;
+        if (settingsData.tournament_date) {
+          tournamentDate = new Date(settingsData.tournament_date).toLocaleDateString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          });
+        }
+      }
+    } catch (error) {
+      console.warn('Could not load tournament date:', error);
+    }
+
     // Load matches
     const matchesRef = collection(db, 'matches');
     let matches: Match[] = [];
     try {
       const matchesSnapshot = await getDocs(matchesRef);
       matches = matchesSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as Match));
+      // Sort matches by match_number
+      matches.sort((a, b) => a.match_number - b.match_number);
       console.log('Loaded matches:', matches.length);
     } catch (error) {
       console.error('Error loading matches:', error);
@@ -62,22 +84,27 @@ export const exportMatchupsToPDF = async () => {
       return;
     }
 
-    // Tournament Header
-    doc.setFontSize(24);
+    // ====== PDF HEADER ======
+    doc.setFillColor(0, 102, 153);
+    doc.rect(0, 0, 210, 45, 'F');
+    
+    doc.setFontSize(28);
     doc.setFont(undefined, 'bold');
-    doc.setTextColor(0, 102, 153);
-    doc.text('Beach Volleyball Tournament', 105, 20, { align: 'center' });
+    doc.setTextColor(255, 255, 255);
+    doc.text('King & Queen', 105, 18, { align: 'center' });
+    doc.text('Beach Volleyball Tournament', 105, 28, { align: 'center' });
     
-    doc.setFontSize(12);
-    doc.setFont(undefined, 'normal');
-    doc.setTextColor(100, 100, 100);
-    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 105, 28, { align: 'center' });
+    if (tournamentDate) {
+      doc.setFontSize(12);
+      doc.setFont(undefined, 'normal');
+      doc.text(tournamentDate, 105, 37, { align: 'center' });
+    }
     
-    let yPosition = 40;
+    let yPosition = 55;
     
     // Helper to add new page if needed
     const checkPageBreak = (needed: number = 20) => {
-      if (yPosition + needed > 280) {
+      if (yPosition + needed > 275) {
         doc.addPage();
         yPosition = 20;
       }
@@ -89,125 +116,151 @@ export const exportMatchupsToPDF = async () => {
       return player ? player.name : 'TBD';
     };
     
-    // Player List Section
+    // ====== PLAYER ROSTER ======
     const femalePlayers = players.filter(p => p.gender === 'female');
     const malePlayers = players.filter(p => p.gender === 'male');
     
-    doc.setFontSize(16);
-    doc.setFont(undefined, 'bold');
-    doc.setTextColor(0, 102, 153);
-    doc.text('Registered Players', 14, yPosition);
-    yPosition += 10;
-    
-    // Female Players
-    if (femalePlayers.length > 0) {
-      checkPageBreak(15 + femalePlayers.length * 7);
-      
-      doc.setFontSize(12);
+    if (femalePlayers.length > 0 || malePlayers.length > 0) {
+      doc.setFontSize(18);
       doc.setFont(undefined, 'bold');
-      doc.setTextColor(255, 127, 80);
-      doc.text(`Female Players (${femalePlayers.length})`, 14, yPosition);
-      yPosition += 7;
+      doc.setTextColor(0, 102, 153);
+      doc.text('Player Roster', 14, yPosition);
+      yPosition += 3;
       
-      doc.setFontSize(9);
-      doc.setFont(undefined, 'normal');
-      doc.setTextColor(0, 0, 0);
+      // Draw line under header
+      doc.setDrawColor(0, 102, 153);
+      doc.setLineWidth(0.5);
+      doc.line(14, yPosition, 196, yPosition);
+      yPosition += 8;
       
-      // Table header
-      doc.setFont(undefined, 'bold');
-      doc.text('Pos', 14, yPosition);
-      doc.text('Name', 30, yPosition);
-      doc.text('Email', 100, yPosition);
-      yPosition += 5;
+      // Female Players
+      if (femalePlayers.length > 0) {
+        checkPageBreak(15 + femalePlayers.length * 7);
+        
+        doc.setFillColor(255, 243, 224);
+        doc.rect(14, yPosition - 5, 182, 7, 'F');
+        doc.setFontSize(11);
+        doc.setFont(undefined, 'bold');
+        doc.setTextColor(255, 127, 80);
+        doc.text(`FEMALE DIVISION (${femalePlayers.length})`, 16, yPosition);
+        yPosition += 6;
+        
+        doc.setFontSize(9);
+        doc.setFont(undefined, 'normal');
+        doc.setTextColor(0, 0, 0);
+        
+        femalePlayers.forEach((p, idx) => {
+          checkPageBreak(7);
+          // Alternating row colors
+          if (idx % 2 === 0) {
+            doc.setFillColor(250, 250, 250);
+            doc.rect(14, yPosition - 4, 182, 6, 'F');
+          }
+          doc.text(`${idx + 1}. ${p.name}`, 16, yPosition);
+          yPosition += 6;
+        });
+        
+        yPosition += 5;
+      }
       
-      doc.setFont(undefined, 'normal');
-      femalePlayers.forEach((p, idx) => {
-        checkPageBreak(7);
-        doc.text(String(idx + 1), 14, yPosition);
-        doc.text(p.name.substring(0, 30), 30, yPosition);
-        doc.text((p.email || 'N/A').substring(0, 35), 100, yPosition);
-        yPosition += 7;
-      });
-      
-      yPosition += 5;
+      // Male Players
+      if (malePlayers.length > 0) {
+        checkPageBreak(15 + malePlayers.length * 7);
+        
+        doc.setFillColor(224, 247, 255);
+        doc.rect(14, yPosition - 5, 182, 7, 'F');
+        doc.setFontSize(11);
+        doc.setFont(undefined, 'bold');
+        doc.setTextColor(0, 153, 204);
+        doc.text(`MALE DIVISION (${malePlayers.length})`, 16, yPosition);
+        yPosition += 6;
+        
+        doc.setFontSize(9);
+        doc.setFont(undefined, 'normal');
+        doc.setTextColor(0, 0, 0);
+        
+        malePlayers.forEach((p, idx) => {
+          checkPageBreak(7);
+          // Alternating row colors
+          if (idx % 2 === 0) {
+            doc.setFillColor(250, 250, 250);
+            doc.rect(14, yPosition - 4, 182, 6, 'F');
+          }
+          doc.text(`${idx + 1}. ${p.name}`, 16, yPosition);
+          yPosition += 6;
+        });
+        
+        yPosition += 8;
+      }
     }
     
-    // Male Players
-    if (malePlayers.length > 0) {
-      checkPageBreak(15 + malePlayers.length * 7);
-      
-      doc.setFontSize(12);
-      doc.setFont(undefined, 'bold');
-      doc.setTextColor(0, 153, 204);
-      doc.text(`Male Players (${malePlayers.length})`, 14, yPosition);
-      yPosition += 7;
-      
-      doc.setFontSize(9);
-      doc.setFont(undefined, 'normal');
-      doc.setTextColor(0, 0, 0);
-      
-      // Table header
-      doc.setFont(undefined, 'bold');
-      doc.text('Pos', 14, yPosition);
-      doc.text('Name', 30, yPosition);
-      doc.text('Email', 100, yPosition);
-      yPosition += 5;
-      
-      doc.setFont(undefined, 'normal');
-      malePlayers.forEach((p, idx) => {
-        checkPageBreak(7);
-        doc.text(String(idx + 1), 14, yPosition);
-        doc.text(p.name.substring(0, 30), 30, yPosition);
-        doc.text((p.email || 'N/A').substring(0, 35), 100, yPosition);
-        yPosition += 7;
-      });
-      
-      yPosition += 10;
-    }
-    
-    // Match Schedule Section
+    // ====== MATCH SCHEDULE ======
     if (matches.length > 0) {
-      checkPageBreak(20);
+      checkPageBreak(25);
       
-      doc.setFontSize(16);
+      doc.setFontSize(18);
       doc.setFont(undefined, 'bold');
       doc.setTextColor(0, 102, 153);
       doc.text('Match Schedule', 14, yPosition);
-      yPosition += 10;
+      yPosition += 3;
+      
+      doc.setDrawColor(0, 102, 153);
+      doc.setLineWidth(0.5);
+      doc.line(14, yPosition, 196, yPosition);
+      yPosition += 8;
       
       const femaleMatches = matches.filter(m => m.gender === 'female');
       const maleMatches = matches.filter(m => m.gender === 'male');
       
       // Female Matches
       if (femaleMatches.length > 0) {
-        checkPageBreak(15 + femaleMatches.length * 10);
+        checkPageBreak(20 + femaleMatches.length * 18);
         
+        doc.setFillColor(255, 243, 224);
+        doc.rect(14, yPosition - 5, 182, 8, 'F');
         doc.setFontSize(12);
         doc.setFont(undefined, 'bold');
         doc.setTextColor(255, 127, 80);
-        doc.text('Female Division', 14, yPosition);
+        doc.text('FEMALE DIVISION', 16, yPosition);
         yPosition += 7;
         
-        doc.setFontSize(9);
-        doc.setFont(undefined, 'normal');
-        doc.setTextColor(0, 0, 0);
-        
-        femaleMatches.forEach(m => {
-          checkPageBreak(10);
+        femaleMatches.forEach((m, idx) => {
+          checkPageBreak(18);
+          
           const team1 = `${getPlayerName(m.player1_id)} & ${getPlayerName(m.player2_id)}`;
           const team2 = `${getPlayerName(m.player3_id)} & ${getPlayerName(m.player4_id)}`;
           const score = m.is_completed ? `${m.score1} - ${m.score2}` : 'TBD';
-          const status = m.is_completed ? '✓' : '○';
           
+          // Match box background
+          doc.setFillColor(idx % 2 === 0 ? 255 : 250, idx % 2 === 0 ? 250 : 248, idx % 2 === 0 ? 245 : 240);
+          doc.rect(14, yPosition - 4, 182, 16, 'F');
+          
+          // Match number
+          doc.setFontSize(10);
           doc.setFont(undefined, 'bold');
-          doc.text(`Match ${m.match_number}`, 14, yPosition);
+          doc.setTextColor(0, 102, 153);
+          doc.text(`Match ${m.match_number}`, 16, yPosition);
+          
+          // Team A
+          doc.setFontSize(9);
           doc.setFont(undefined, 'normal');
-          doc.text(team1.substring(0, 45), 35, yPosition);
-          yPosition += 5;
-          doc.text('vs', 35, yPosition);
-          doc.text(team2.substring(0, 45), 45, yPosition);
-          doc.text(`${status} ${score}`, 170, yPosition - 5, { align: 'right' });
-          yPosition += 8;
+          doc.setTextColor(0, 0, 0);
+          doc.text('Team A:', 16, yPosition + 5);
+          doc.setFont(undefined, 'bold');
+          doc.text(team1.substring(0, 60), 32, yPosition + 5);
+          
+          // Team B
+          doc.setFont(undefined, 'normal');
+          doc.text('Team B:', 16, yPosition + 10);
+          doc.setFont(undefined, 'bold');
+          doc.text(team2.substring(0, 60), 32, yPosition + 10);
+          
+          // Result
+          doc.setFont(undefined, 'bold');
+          doc.setTextColor(m.is_completed ? 76 : 150, m.is_completed ? 175 : 150, m.is_completed ? 80 : 150);
+          doc.text(`Result: ${score}`, 150, yPosition + 10, { align: 'right' });
+          
+          yPosition += 18;
         });
         
         yPosition += 5;
@@ -215,41 +268,75 @@ export const exportMatchupsToPDF = async () => {
       
       // Male Matches
       if (maleMatches.length > 0) {
-        checkPageBreak(15 + maleMatches.length * 10);
+        checkPageBreak(20 + maleMatches.length * 18);
         
+        doc.setFillColor(224, 247, 255);
+        doc.rect(14, yPosition - 5, 182, 8, 'F');
         doc.setFontSize(12);
         doc.setFont(undefined, 'bold');
         doc.setTextColor(0, 153, 204);
-        doc.text('Male Division', 14, yPosition);
+        doc.text('MALE DIVISION', 16, yPosition);
         yPosition += 7;
         
-        doc.setFontSize(9);
-        doc.setFont(undefined, 'normal');
-        doc.setTextColor(0, 0, 0);
-        
-        maleMatches.forEach(m => {
-          checkPageBreak(10);
+        maleMatches.forEach((m, idx) => {
+          checkPageBreak(18);
+          
           const team1 = `${getPlayerName(m.player1_id)} & ${getPlayerName(m.player2_id)}`;
           const team2 = `${getPlayerName(m.player3_id)} & ${getPlayerName(m.player4_id)}`;
           const score = m.is_completed ? `${m.score1} - ${m.score2}` : 'TBD';
-          const status = m.is_completed ? '✓' : '○';
           
+          // Match box background
+          doc.setFillColor(idx % 2 === 0 ? 255 : 250, idx % 2 === 0 ? 250 : 248, idx % 2 === 0 ? 245 : 240);
+          doc.rect(14, yPosition - 4, 182, 16, 'F');
+          
+          // Match number
+          doc.setFontSize(10);
           doc.setFont(undefined, 'bold');
-          doc.text(`Match ${m.match_number}`, 14, yPosition);
+          doc.setTextColor(0, 102, 153);
+          doc.text(`Match ${m.match_number}`, 16, yPosition);
+          
+          // Team A
+          doc.setFontSize(9);
           doc.setFont(undefined, 'normal');
-          doc.text(team1.substring(0, 45), 35, yPosition);
-          yPosition += 5;
-          doc.text('vs', 35, yPosition);
-          doc.text(team2.substring(0, 45), 45, yPosition);
-          doc.text(`${status} ${score}`, 170, yPosition - 5, { align: 'right' });
-          yPosition += 8;
+          doc.setTextColor(0, 0, 0);
+          doc.text('Team A:', 16, yPosition + 5);
+          doc.setFont(undefined, 'bold');
+          doc.text(team1.substring(0, 60), 32, yPosition + 5);
+          
+          // Team B
+          doc.setFont(undefined, 'normal');
+          doc.text('Team B:', 16, yPosition + 10);
+          doc.setFont(undefined, 'bold');
+          doc.text(team2.substring(0, 60), 32, yPosition + 10);
+          
+          // Result
+          doc.setFont(undefined, 'bold');
+          doc.setTextColor(m.is_completed ? 76 : 150, m.is_completed ? 175 : 150, m.is_completed ? 80 : 150);
+          doc.text(`Result: ${score}`, 150, yPosition + 10, { align: 'right' });
+          
+          yPosition += 18;
         });
       }
     }
     
+    // ====== FOOTER ======
+    const pageCount = doc.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setFont(undefined, 'normal');
+      doc.setTextColor(150, 150, 150);
+      doc.text(
+        `Generated on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()} | Page ${i} of ${pageCount}`,
+        105,
+        290,
+        { align: 'center' }
+      );
+    }
+    
     console.log('PDF generated successfully, saving...');
     // Save the PDF
-    doc.save(`tournament-matchups-${new Date().toISOString().split('T')[0]}.pdf`);
+    doc.save(`King-Queen-Beach-Volleyball-${new Date().toISOString().split('T')[0]}.pdf`);
     console.log('PDF saved!');
   } catch (error: any) {
     console.error('Error generating PDF:', error);

@@ -162,6 +162,12 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
       const femaleMatchesData = femaleMatches || [];
       const maleMatchesData = maleMatches || [];
       
+      console.log('=== ADMIN PANEL PDF EXPORT ===');
+      console.log('Players from props:', playersData.length, playersData);
+      console.log('Female matches from props:', femaleMatchesData.length, femaleMatchesData);
+      console.log('Male matches from props:', maleMatchesData.length, maleMatchesData);
+      console.log('Tournament date:', tournamentDate || settings?.tournament_date || '');
+      
       if (playersData.length === 0 && femaleMatchesData.length === 0 && maleMatchesData.length === 0) {
         toast({
           title: "No Data",

@@ -36,6 +36,10 @@ interface PDFExportData {
 export const exportMatchupsToPDF = async (data: PDFExportData) => {
   try {
     console.log('Starting PDF export with app state data...');
+    console.log('PDF DATA:', data);
+    console.log('Female Matches:', data.femaleMatches);
+    console.log('Male Matches:', data.maleMatches);
+    console.log('Players:', data.players);
     
     const { players, femaleMatches, maleMatches, tournamentDate } = data;
     
@@ -81,25 +85,24 @@ export const exportMatchupsToPDF = async (data: PDFExportData) => {
       }
     };
     
-    // Helper to get player name - handles both resolved players and player IDs
-    const getPlayerName = (match: Match, playerKey: 'player1' | 'player2' | 'player3' | 'player4' | 'player1_id' | 'player2_id' | 'player3_id' | 'player4_id'): string => {
-      // Try resolved player object first
-      if (playerKey.startsWith('player') && !playerKey.endsWith('_id')) {
-        const player = match[playerKey as 'player1' | 'player2' | 'player3' | 'player4'];
-        if (player && player.name) {
-          return player.name;
-        }
+    // Helper to get player name from resolved player object
+    const getPlayerName = (match: Match, playerKey: 'player1' | 'player2' | 'player3' | 'player4'): string => {
+      const player = match[playerKey];
+      if (player && player.name) {
+        return player.name;
       }
       
-      // Try player ID lookup
-      const playerId = match[playerKey as 'player1_id' | 'player2_id' | 'player3_id' | 'player4_id'];
+      // Fallback: try player_id if player object is missing
+      const playerIdKey = `${playerKey}_id` as keyof Match;
+      const playerId = match[playerIdKey] as string;
       if (playerId) {
-        const player = players.find(p => p.id === playerId);
-        if (player) {
-          return player.name;
+        const foundPlayer = players.find(p => p.id === playerId);
+        if (foundPlayer && foundPlayer.name) {
+          return foundPlayer.name;
         }
       }
       
+      console.warn(`Player not found for ${playerKey} in match:`, match);
       return 'TBD';
     };
     
@@ -258,14 +261,17 @@ const renderMatchGrid = (
   doc: jsPDF,
   matchesList: Match[],
   divisionColor: [number, number, number],
-  getPlayerNameFn: (match: Match, playerKey: string) => string,
+  getPlayerNameFn: (match: Match, playerKey: 'player1' | 'player2' | 'player3' | 'player4') => string,
   startY: number
 ): number => {
   if (matchesList.length === 0) return startY;
   
+  console.log(`Rendering ${matchesList.length} matches in grid`);
+  console.log('First match sample:', matchesList[0]);
+  
   let yPosition = startY;
   
-  // Render matches in pairs (2 per row)
+  // Render matches in pairs (2 per row) - DO NOT SORT, use as-is
   for (let i = 0; i < matchesList.length; i += 2) {
     const match1 = matchesList[i];
     const match2 = matchesList[i + 1];
@@ -282,8 +288,17 @@ const renderMatchGrid = (
       yPosition = 20;
     }
     
-    // Get match number
+    // Get match number from app data
     const match1Number = match1.match_number || (i + 1);
+    console.log(`Match ${match1Number}:`, {
+      player1: getPlayerNameFn(match1, 'player1'),
+      player2: getPlayerNameFn(match1, 'player2'),
+      player3: getPlayerNameFn(match1, 'player3'),
+      player4: getPlayerNameFn(match1, 'player4'),
+      score1: match1.score1,
+      score2: match1.score2,
+      isCompleted: match1.is_completed || match1.isSubmitted
+    });
     
     // ====== MATCH 1 CARD ======
     // Card background
@@ -301,7 +316,7 @@ const renderMatchGrid = (
     doc.setTextColor(0, 102, 153);
     doc.text(`MATCH ${match1Number}`, leftX + 3, yPosition + 5);
     
-    // Team names
+    // Team names - USE EXACT PLAYER DATA FROM APP
     const team1_1 = getPlayerNameFn(match1, 'player1') + ' & ' + getPlayerNameFn(match1, 'player2');
     const team2_1 = getPlayerNameFn(match1, 'player3') + ' & ' + getPlayerNameFn(match1, 'player4');
     
@@ -354,7 +369,7 @@ const renderMatchGrid = (
       doc.setTextColor(0, 102, 153);
       doc.text(`MATCH ${match2Number}`, rightX + 3, yPosition + 5);
       
-      // Team names
+      // Team names - USE EXACT PLAYER DATA FROM APP
       const team1_2 = getPlayerNameFn(match2, 'player1') + ' & ' + getPlayerNameFn(match2, 'player2');
       const team2_2 = getPlayerNameFn(match2, 'player3') + ' & ' + getPlayerNameFn(match2, 'player4');
       

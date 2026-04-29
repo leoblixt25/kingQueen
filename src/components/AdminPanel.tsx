@@ -12,6 +12,7 @@ import { resetPlayersToPlaceholders } from "@/utils/placeholderUtils";
 import { initializePlayers } from "@/utils/playerInitUtils";
 import { initializeMatches } from "@/utils/matchInitUtils";
 import { exportMatchupsToPDF } from "@/utils/pdfExport";
+import { Player, Match } from "@/types";
 
 interface ConfirmedPlayer {
   id: string;
@@ -40,9 +41,13 @@ interface TournamentSettings {
 
 interface AdminPanelProps {
   onClose: () => void;
+  players?: (Player & { gender: string })[];
+  femaleMatches?: Match[];
+  maleMatches?: Match[];
+  tournamentDate?: string;
 }
 
-export function AdminPanel({ onClose }: AdminPanelProps) {
+export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tournamentDate }: AdminPanelProps) {
   const [confirmedPlayers, setConfirmedPlayers] = useState<ConfirmedPlayer[]>([]);
   const [pendingPlayers, setPendingPlayers] = useState<PendingPlayer[]>([]);
   const [settings, setSettings] = useState<TournamentSettings | null>(null);
@@ -151,7 +156,28 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
   const handleExportPDF = async () => {
     try {
       setIsLoading(true);
-      await exportMatchupsToPDF();
+      
+      // Use props data if available, otherwise load from Firestore
+      const playersData = players || [];
+      const femaleMatchesData = femaleMatches || [];
+      const maleMatchesData = maleMatches || [];
+      
+      if (playersData.length === 0 && femaleMatchesData.length === 0 && maleMatchesData.length === 0) {
+        toast({
+          title: "No Data",
+          description: "No tournament data available to export.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      await exportMatchupsToPDF({
+        players: playersData,
+        femaleMatches: femaleMatchesData,
+        maleMatches: maleMatchesData,
+        tournamentDate: tournamentDate || settings?.tournament_date || ''
+      });
+      
       toast({
         title: "PDF Exported",
         description: "Matchups have been exported to PDF successfully",

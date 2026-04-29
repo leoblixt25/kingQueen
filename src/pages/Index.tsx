@@ -957,8 +957,15 @@ export default function KingQueenOfTheBeach() {
         )}
 
         {showAdminPanel && userIsAdmin && (
-          <AdminPanel 
+          <AdminPanel
             onClose={() => setShowAdminPanel(false)}
+            players={[
+              ...femalePlayers.map(p => ({ ...p, gender: 'female' })),
+              ...malePlayers.map(p => ({ ...p, gender: 'male' }))
+            ]}
+            femaleMatches={femaleMatches}
+            maleMatches={maleMatches}
+            tournamentDate={tournamentSettings?.tournament_date}
           />
         )}
 

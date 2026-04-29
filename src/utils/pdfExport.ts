@@ -1,12 +1,12 @@
 import { db } from '@/config/firebase';
 import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
-declare module 'jspdf' {
-  interface jsPDF {
-    autoTable: (options: any) => jsPDF;
-  }
+// Extend jsPDF with autoTable
+interface jsPDFWithAutoTable extends jsPDF {
+  autoTable: (options: any) => jsPDF;
+  lastAutoTable: any;
 }
 
 interface Player {
@@ -34,7 +34,7 @@ export const exportMatchupsToPDF = async () => {
   try {
     console.log('Starting PDF export...');
     
-    const doc = new jsPDF();
+    const doc = new jsPDF() as jsPDFWithAutoTable;
     
     // Load approved players (fallback to is_confirmed for backward compatibility)
     const playersRef = collection(db, 'players');

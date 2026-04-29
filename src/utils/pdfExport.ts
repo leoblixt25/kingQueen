@@ -53,17 +53,24 @@ export const exportMatchupsToPDF = async () => {
       const settingsSnapshot = await getDocs(settingsRef);
       if (!settingsSnapshot.empty) {
         const settingsData = settingsSnapshot.docs[0].data() as any;
+        console.log('Tournament settings loaded:', settingsData);
         if (settingsData.tournament_date) {
-          tournamentDate = new Date(settingsData.tournament_date).toLocaleDateString('en-US', {
+          const dateObj = new Date(settingsData.tournament_date);
+          tournamentDate = dateObj.toLocaleDateString('en-US', {
             weekday: 'long',
             year: 'numeric',
             month: 'long',
             day: 'numeric'
           });
+          console.log('Tournament date formatted:', tournamentDate);
+        } else {
+          console.warn('No tournament_date field in settings');
         }
+      } else {
+        console.warn('No tournament settings found in database');
       }
     } catch (error) {
-      console.warn('Could not load tournament date:', error);
+      console.error('Could not load tournament date:', error);
     }
 
     // Load matches
@@ -207,116 +214,150 @@ export const exportMatchupsToPDF = async () => {
       doc.setDrawColor(0, 102, 153);
       doc.setLineWidth(0.5);
       doc.line(14, yPosition, 196, yPosition);
-      yPosition += 8;
+      yPosition += 10;
       
       const femaleMatches = matches.filter(m => m.gender === 'female');
       const maleMatches = matches.filter(m => m.gender === 'male');
       
-      // Female Matches
-      if (femaleMatches.length > 0) {
-        checkPageBreak(20 + femaleMatches.length * 18);
+      // Helper to render matches in 2-column grid
+      const renderMatchGrid = (matchesList: Match[], divisionColor: [number, number, number], divisionName: string) => {
+        if (matchesList.length === 0) return;
         
-        doc.setFillColor(255, 243, 224);
+        // Division header
+        checkPageBreak(20);
+        doc.setFillColor(divisionColor[0], divisionColor[1], divisionColor[2]);
         doc.rect(14, yPosition - 5, 182, 8, 'F');
         doc.setFontSize(12);
         doc.setFont(undefined, 'bold');
-        doc.setTextColor(255, 127, 80);
-        doc.text('FEMALE DIVISION', 16, yPosition);
-        yPosition += 7;
+        doc.setTextColor(255, 255, 255);
+        doc.text(divisionName, 16, yPosition);
+        yPosition += 8;
         
-        femaleMatches.forEach((m, idx) => {
-          checkPageBreak(18);
+        // Render matches in pairs (2 per row)
+        for (let i = 0; i < matchesList.length; i += 2) {
+          const match1 = matchesList[i];
+          const match2 = matchesList[i + 1];
           
-          const team1 = `${getPlayerName(m.player1_id)} & ${getPlayerName(m.player2_id)}`;
-          const team2 = `${getPlayerName(m.player3_id)} & ${getPlayerName(m.player4_id)}`;
-          const score = m.is_completed ? `${m.score1} - ${m.score2}` : 'TBD';
+          // Check if we need a new page
+          checkPageBreak(40);
           
-          // Match box background
-          doc.setFillColor(idx % 2 === 0 ? 255 : 250, idx % 2 === 0 ? 250 : 248, idx % 2 === 0 ? 245 : 240);
-          doc.rect(14, yPosition - 4, 182, 16, 'F');
+          const cardWidth = 88;
+          const cardHeight = 32;
+          const gap = 8;
+          const leftX = 14;
+          const rightX = 14 + cardWidth + gap;
+          
+          // ====== MATCH 1 CARD ======
+          // Card background
+          doc.setFillColor(250, 250, 250);
+          doc.roundedRect(leftX, yPosition, cardWidth, cardHeight, 2, 2, 'F');
+          
+          // Card border
+          doc.setDrawColor(200, 200, 200);
+          doc.setLineWidth(0.3);
+          doc.roundedRect(leftX, yPosition, cardWidth, cardHeight, 2, 2, 'S');
           
           // Match number
-          doc.setFontSize(10);
+          doc.setFontSize(8);
           doc.setFont(undefined, 'bold');
           doc.setTextColor(0, 102, 153);
-          doc.text(`Match ${m.match_number}`, 16, yPosition);
+          doc.text(`MATCH ${match1.match_number}`, leftX + 3, yPosition + 5);
           
-          // Team A
-          doc.setFontSize(9);
-          doc.setFont(undefined, 'normal');
+          // Team names
+          const team1_1 = getPlayerName(match1.player1_id) + ' & ' + getPlayerName(match1.player2_id);
+          const team2_1 = getPlayerName(match1.player3_id) + ' & ' + getPlayerName(match1.player4_id);
+          
+          doc.setFontSize(8);
+          doc.setFont(undefined, 'bold');
           doc.setTextColor(0, 0, 0);
-          doc.text('Team A:', 16, yPosition + 5);
-          doc.setFont(undefined, 'bold');
-          doc.text(team1.substring(0, 60), 32, yPosition + 5);
           
-          // Team B
+          // Team 1 with score
+          if (match1.is_completed) {
+            doc.text(team1_1.substring(0, 28), leftX + 3, yPosition + 12);
+            doc.text(String(match1.score1), leftX + cardWidth - 3, yPosition + 12, { align: 'right' });
+          } else {
+            doc.text(team1_1.substring(0, 32), leftX + 3, yPosition + 12);
+          }
+          
+          // VS divider
+          doc.setFontSize(7);
           doc.setFont(undefined, 'normal');
-          doc.text('Team B:', 16, yPosition + 10);
-          doc.setFont(undefined, 'bold');
-          doc.text(team2.substring(0, 60), 32, yPosition + 10);
+          doc.setTextColor(150, 150, 150);
+          doc.text('vs', leftX + cardWidth / 2, yPosition + 17, { align: 'center' });
           
-          // Result
+          // Team 2 with score
+          doc.setFontSize(8);
           doc.setFont(undefined, 'bold');
-          doc.setTextColor(m.is_completed ? 76 : 150, m.is_completed ? 175 : 150, m.is_completed ? 80 : 150);
-          doc.text(`Result: ${score}`, 150, yPosition + 10, { align: 'right' });
+          doc.setTextColor(0, 0, 0);
+          if (match1.is_completed) {
+            doc.text(team2_1.substring(0, 28), leftX + 3, yPosition + 22);
+            doc.text(String(match1.score2), leftX + cardWidth - 3, yPosition + 22, { align: 'right' });
+          } else {
+            doc.text(team2_1.substring(0, 32), leftX + 3, yPosition + 22);
+          }
           
-          yPosition += 18;
-        });
+          // ====== MATCH 2 CARD (if exists) ======
+          if (match2) {
+            // Card background
+            doc.setFillColor(250, 250, 250);
+            doc.roundedRect(rightX, yPosition, cardWidth, cardHeight, 2, 2, 'F');
+            
+            // Card border
+            doc.setDrawColor(200, 200, 200);
+            doc.setLineWidth(0.3);
+            doc.roundedRect(rightX, yPosition, cardWidth, cardHeight, 2, 2, 'S');
+            
+            // Match number
+            doc.setFontSize(8);
+            doc.setFont(undefined, 'bold');
+            doc.setTextColor(0, 102, 153);
+            doc.text(`MATCH ${match2.match_number}`, rightX + 3, yPosition + 5);
+            
+            // Team names
+            const team1_2 = getPlayerName(match2.player1_id) + ' & ' + getPlayerName(match2.player2_id);
+            const team2_2 = getPlayerName(match2.player3_id) + ' & ' + getPlayerName(match2.player4_id);
+            
+            doc.setFontSize(8);
+            doc.setFont(undefined, 'bold');
+            doc.setTextColor(0, 0, 0);
+            
+            // Team 1 with score
+            if (match2.is_completed) {
+              doc.text(team1_2.substring(0, 28), rightX + 3, yPosition + 12);
+              doc.text(String(match2.score1), rightX + cardWidth - 3, yPosition + 12, { align: 'right' });
+            } else {
+              doc.text(team1_2.substring(0, 32), rightX + 3, yPosition + 12);
+            }
+            
+            // VS divider
+            doc.setFontSize(7);
+            doc.setFont(undefined, 'normal');
+            doc.setTextColor(150, 150, 150);
+            doc.text('vs', rightX + cardWidth / 2, yPosition + 17, { align: 'center' });
+            
+            // Team 2 with score
+            doc.setFontSize(8);
+            doc.setFont(undefined, 'bold');
+            doc.setTextColor(0, 0, 0);
+            if (match2.is_completed) {
+              doc.text(team2_2.substring(0, 28), rightX + 3, yPosition + 22);
+              doc.text(String(match2.score2), rightX + cardWidth - 3, yPosition + 22, { align: 'right' });
+            } else {
+              doc.text(team2_2.substring(0, 32), rightX + 3, yPosition + 22);
+            }
+          }
+          
+          yPosition += cardHeight + 4;
+        }
         
         yPosition += 5;
-      }
+      };
       
-      // Male Matches
-      if (maleMatches.length > 0) {
-        checkPageBreak(20 + maleMatches.length * 18);
-        
-        doc.setFillColor(224, 247, 255);
-        doc.rect(14, yPosition - 5, 182, 8, 'F');
-        doc.setFontSize(12);
-        doc.setFont(undefined, 'bold');
-        doc.setTextColor(0, 153, 204);
-        doc.text('MALE DIVISION', 16, yPosition);
-        yPosition += 7;
-        
-        maleMatches.forEach((m, idx) => {
-          checkPageBreak(18);
-          
-          const team1 = `${getPlayerName(m.player1_id)} & ${getPlayerName(m.player2_id)}`;
-          const team2 = `${getPlayerName(m.player3_id)} & ${getPlayerName(m.player4_id)}`;
-          const score = m.is_completed ? `${m.score1} - ${m.score2}` : 'TBD';
-          
-          // Match box background
-          doc.setFillColor(idx % 2 === 0 ? 255 : 250, idx % 2 === 0 ? 250 : 248, idx % 2 === 0 ? 245 : 240);
-          doc.rect(14, yPosition - 4, 182, 16, 'F');
-          
-          // Match number
-          doc.setFontSize(10);
-          doc.setFont(undefined, 'bold');
-          doc.setTextColor(0, 102, 153);
-          doc.text(`Match ${m.match_number}`, 16, yPosition);
-          
-          // Team A
-          doc.setFontSize(9);
-          doc.setFont(undefined, 'normal');
-          doc.setTextColor(0, 0, 0);
-          doc.text('Team A:', 16, yPosition + 5);
-          doc.setFont(undefined, 'bold');
-          doc.text(team1.substring(0, 60), 32, yPosition + 5);
-          
-          // Team B
-          doc.setFont(undefined, 'normal');
-          doc.text('Team B:', 16, yPosition + 10);
-          doc.setFont(undefined, 'bold');
-          doc.text(team2.substring(0, 60), 32, yPosition + 10);
-          
-          // Result
-          doc.setFont(undefined, 'bold');
-          doc.setTextColor(m.is_completed ? 76 : 150, m.is_completed ? 175 : 150, m.is_completed ? 80 : 150);
-          doc.text(`Result: ${score}`, 150, yPosition + 10, { align: 'right' });
-          
-          yPosition += 18;
-        });
-      }
+      // Render female matches
+      renderMatchGrid(femaleMatches, [255, 127, 80], 'FEMALE DIVISION');
+      
+      // Render male matches
+      renderMatchGrid(maleMatches, [0, 153, 204], 'MALE DIVISION');
     }
     
     // ====== FOOTER ======

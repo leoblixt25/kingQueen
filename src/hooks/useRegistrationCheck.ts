@@ -24,7 +24,7 @@ export const useRegistrationCheck = (): RegistrationStatus => {
     try {
       // For now, we'll check if there are any confirmed players
       const playersRef = collection(db, 'players');
-      const q = query(playersRef, where('is_confirmed', '==', true));
+      const q = query(playersRef, where('status', '==', 'approved'));
       const snapshot = await getDocs(q);
       const confirmedPlayers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       const hasConfirmedPlayers = confirmedPlayers && confirmedPlayers.length > 0;

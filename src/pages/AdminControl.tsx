@@ -82,7 +82,7 @@ export default function AdminControl() {
   const loadPlayerCounts = async () => {
     try {
       const playersRef = collection(db, 'players');
-      const snapshot = await getDocs(query(playersRef, where('is_confirmed', '==', true)));
+      const snapshot = await getDocs(query(playersRef, where('status', '==', 'approved')));
       const players = snapshot.docs.map(doc => doc.data() as any);
       
       if (players) {

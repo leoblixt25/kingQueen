@@ -331,10 +331,10 @@ export default function Register() {
   const loadAvailableSpots = async (maxPlayersPerGender: number) => {
     try {
       // Query Firestore for registered players
-      const maleQuery = query(collection(db, 'players'), where('gender', '==', 'male'), where('is_confirmed', '==', true));
+      const maleQuery = query(collection(db, 'players'), where('gender', '==', 'male'), where('status', '==', 'approved'));
       const maleSnap = await getDocs(maleQuery);
       
-      const femaleQuery = query(collection(db, 'players'), where('gender', '==', 'female'), where('is_confirmed', '==', true));
+      const femaleQuery = query(collection(db, 'players'), where('gender', '==', 'female'), where('status', '==', 'approved'));
       const femaleSnap = await getDocs(femaleQuery);
 
       const maleRegisteredCount = maleSnap.size;
@@ -447,8 +447,8 @@ export default function Register() {
         localStorage.setItem('tournament_registered_name', formData.name.trim());
 
         toast({
-          title: "Registration Successful!",
-          description: `Welcome to King & Queen of the Beach! You're registered as ${formData.gender === 'male' ? 'Male' : 'Female'} Player.`,
+          title: "Registration Pending Approval!",
+          description: `Your registration has been submitted. Please wait for admin approval before accessing the tournament.`,
         });
 
         // Refresh available spots to reflect the new registration
@@ -456,8 +456,10 @@ export default function Register() {
           loadAvailableSpots(settings.max_players_per_gender || 8);
         }
         
-        // Redirect to tournament page with user's gender
-        navigate(`/tournament/${formData.gender}`);
+        // Show pending approval message instead of redirecting
+        setTimeout(() => {
+          navigate('/pending-approval');
+        }, 1500);
       } else {
         throw new Error(result.error || 'Registration failed');
       }

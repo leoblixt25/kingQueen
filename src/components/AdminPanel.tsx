@@ -5,12 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { db } from "@/config/firebase";
-import { collection, getDocs, query, where, doc, setDoc, writeBatch, orderBy, limit } from "firebase/firestore";
+import { collection, getDocs, query, where, doc, setDoc, writeBatch, orderBy, limit, updateDoc } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
-import { Calendar, Users, Trash2, Settings, Crown, Mail } from "lucide-react";
+import { Calendar, Users, Trash2, Settings, Crown, Mail, CheckCircle, FileText, Clock } from "lucide-react";
 import { resetPlayersToPlaceholders } from "@/utils/placeholderUtils";
 import { initializePlayers } from "@/utils/playerInitUtils";
 import { initializeMatches } from "@/utils/matchInitUtils";
+import { exportMatchupsToPDF } from "@/utils/pdfExport";
 
 interface ConfirmedPlayer {
   id: string;
@@ -18,6 +19,16 @@ interface ConfirmedPlayer {
   email: string;
   gender: string;
   registered_at: string;
+  status?: string;
+}
+
+interface PendingPlayer {
+  id: string;
+  name: string;
+  email: string;
+  gender: string;
+  registered_at: string;
+  status?: string;
 }
 
 interface TournamentSettings {
@@ -33,6 +44,7 @@ interface AdminPanelProps {
 
 export function AdminPanel({ onClose }: AdminPanelProps) {
   const [confirmedPlayers, setConfirmedPlayers] = useState<ConfirmedPlayer[]>([]);
+  const [pendingPlayers, setPendingPlayers] = useState<PendingPlayer[]>([]);
   const [settings, setSettings] = useState<TournamentSettings | null>(null);
   const [tournamentDate, setTournamentDate] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -44,13 +56,27 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
 
   const loadAdminData = async () => {
     try {
-      // Load confirmed players
+      // Load confirmed/approved players
       const playersRef = collection(db, 'players');
-      const q = query(playersRef, where('is_confirmed', '==', true));
-      const snapshot = await getDocs(q);
-      const players = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ConfirmedPlayer));
+      const approvedQuery = query(
+        playersRef, 
+        where('status', '==', 'approved')
+      );
+      const approvedSnapshot = await getDocs(approvedQuery);
+      const approved = approvedSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ConfirmedPlayer));
+      setConfirmedPlayers(approved || []);
 
-      setConfirmedPlayers(players || []);
+      // Load pending players
+      const pendingQuery = query(
+        playersRef,
+        where('status', '==', 'pending')
+      );
+      const pendingSnapshot = await getDocs(pendingQuery);
+      const pending = pendingSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PendingPlayer));
+      
+      // Sort by registration date (oldest first)
+      pending.sort((a, b) => new Date(a.registered_at).getTime() - new Date(b.registered_at).getTime());
+      setPendingPlayers(pending || []);
 
       // Load tournament settings
       const settingsRef = collection(db, 'tournamentSettings');
@@ -134,6 +160,58 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
         description: "Failed to remove player",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleApprovePlayer = async (playerId: string, playerName: string, playerEmail: string, gender: string) => {
+    if (!window.confirm(`Approve ${playerName} for the tournament?`)) {
+      return;
+    }
+
+    try {
+      const playerRef = doc(db, 'players', playerId);
+      await updateDoc(playerRef, {
+        status: 'approved',
+        is_confirmed: true,
+        approved_at: new Date().toISOString()
+      });
+
+      toast({
+        title: "Player Approved",
+        description: `${playerName} has been approved and added to the tournament`,
+      });
+
+      // TODO: Send approval email here if email service is configured
+      // await sendApprovalEmail(playerEmail, playerName);
+
+      await loadAdminData();
+    } catch (error) {
+      console.error('Error approving player:', error);
+      toast({
+        title: "Approval Failed",
+        description: "Failed to approve player",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleExportPDF = async () => {
+    try {
+      setIsLoading(true);
+      await exportMatchupsToPDF();
+      toast({
+        title: "PDF Exported",
+        description: "Matchups have been exported to PDF successfully",
+      });
+    } catch (error) {
+      console.error('Error exporting PDF:', error);
+      toast({
+        title: "Export Failed",
+        description: "Failed to export matchups to PDF",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -314,6 +392,88 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
             </CardContent>
           </Card>
         </div>
+
+        {/* Export Matchups PDF */}
+        <Card className="border-palm/20 bg-palm/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-palm">
+              <FileText className="w-5 h-5" />
+              Export Tournament Data
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Button
+              onClick={handleExportPDF}
+              disabled={isLoading}
+              className="w-full bg-palm hover:bg-palm-dark text-white"
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              Export Matchups as PDF
+            </Button>
+            <p className="text-xs text-foreground/60 mt-2">
+              Download a printable PDF with all players and match schedules.
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Pending Registrations */}
+        <Card className="border-amber/20 bg-amber/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-amber-600">
+              <Clock className="w-5 h-5" />
+              Pending Registrations ({pendingPlayers.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {pendingPlayers.length === 0 ? (
+              <Alert>
+                <AlertDescription>
+                  No pending registrations.
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {pendingPlayers.map((player) => (
+                  <div
+                    key={player.id}
+                    className="flex items-center justify-between p-3 bg-white rounded-lg border border-amber/20"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold">{player.name}</span>
+                        <span className={`px-2 py-1 text-xs rounded-full ${
+                          player.gender === 'male' 
+                            ? 'bg-ocean/20 text-ocean' 
+                            : 'bg-sunset/20 text-sunset'
+                        }`}>
+                          {player.gender}
+                        </span>
+                        <span className="px-2 py-1 text-xs rounded-full bg-amber/20 text-amber-700">
+                          pending
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1 text-sm text-foreground/60">
+                        <Mail className="w-3 h-3" />
+                        {player.email}
+                      </div>
+                      <div className="text-xs text-foreground/50">
+                        Registered: {new Date(player.registered_at).toLocaleDateString()}
+                      </div>
+                    </div>
+                    <Button
+                      onClick={() => handleApprovePlayer(player.id, player.name, player.email, player.gender)}
+                      size="sm"
+                      className="ml-2 bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      <CheckCircle className="w-4 h-4 mr-1" />
+                      Approve
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Confirmed Players */}
         <Card className="border-palm/20 bg-palm/5">

@@ -26,7 +26,7 @@ export default function PlayerAccess() {
       if (user) {
         // Check if user is already registered for the tournament
         const playersRef = collection(db, 'players');
-        const q = query(playersRef, where('email', '==', user.email?.toLowerCase() || ''), where('is_confirmed', '==', true));
+        const q = query(playersRef, where('email', '==', user.email?.toLowerCase() || ''), where('status', '==', 'approved'));
         const snapshot = await getDocs(q);
 
         if (!snapshot.empty) {

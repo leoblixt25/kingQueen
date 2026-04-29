@@ -13,6 +13,7 @@ import AdminControl from "./pages/AdminControl";
 import LiveRanking from "./pages/LiveRanking";
 import InfoPage from "./pages/InfoPage";
 import NotFound from "./pages/NotFound";
+import PendingApproval from "./pages/PendingApproval";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -46,6 +47,7 @@ const App = () => (
           <Route path="/sign-in" element={<SignIn />} />
           <Route path="/player-access" element={<PlayerAccess />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/pending-approval" element={<PendingApproval />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

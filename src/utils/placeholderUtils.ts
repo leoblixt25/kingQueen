@@ -20,6 +20,7 @@ export const resetPlayersToPlaceholders = async () => {
         total_scores: 0,
         matches_played: 0,
         is_confirmed: false,
+        status: null,
         email: null,
         registered_at: null
       });
@@ -35,6 +36,7 @@ export const resetPlayersToPlaceholders = async () => {
         total_scores: 0,
         matches_played: 0,
         is_confirmed: false,
+        status: null,
         email: null,
         registered_at: null
       });
@@ -96,7 +98,7 @@ export const getNextAvailablePlaceholder = async (gender: 'male' | 'female') => 
     // Filter for unconfirmed placeholders client-side
     const placeholderPrefix = gender === 'male' ? 'Male Player' : 'Female Player';
     const availableSlots = snapshot.docs
-      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .map(doc => ({ id: doc.id, ...doc.data() } as any))
       .filter((player: any) => {
         const isPlaceholder = player.name.startsWith(placeholderPrefix);
         const isUnconfirmed = !player.is_confirmed || player.is_confirmed === false;
@@ -154,7 +156,8 @@ export const registerPlayerToSlot = async (
     await updateDoc(playerRef, {
       name: name.trim(),
       email: email.trim().toLowerCase(),
-      is_confirmed: true,
+      is_confirmed: false,
+      status: 'pending',
       registered_at: new Date().toISOString()
     });
 
@@ -181,7 +184,7 @@ export const unregisterPlayer = async (email: string) => {
     const q = query(
       playersRef,
       where('email', '==', email.toLowerCase()),
-      where('is_confirmed', '==', true)
+      where('status', '==', 'approved')
     );
     const snapshot = await getDocs(q);
 
@@ -202,6 +205,7 @@ export const unregisterPlayer = async (email: string) => {
       name: placeholderName,
       email: null,
       is_confirmed: false,
+      status: null,
       registered_at: null,
       points: 0,
       total_scores: 0,

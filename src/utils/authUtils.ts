@@ -107,7 +107,8 @@ export const registerWithEmailPassword = async (
     await updateDoc(playerRef, {
       name: name.trim(),
       email: email.trim().toLowerCase(),
-      is_confirmed: true,
+      is_confirmed: false,
+      status: 'pending',
       registered_at: new Date().toISOString()
     });
 
@@ -334,7 +335,7 @@ export const checkTournamentRegistration = async (email: string) => {
         id: playerDoc.id, 
         ...playerData,
         isRegistered: true,
-        isConfirmed: playerData.is_confirmed === true
+        isConfirmed: playerData.status === 'approved' || playerData.is_confirmed === true
       } as any;
     }
   } catch (error) {

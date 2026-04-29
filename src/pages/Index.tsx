@@ -265,7 +265,7 @@ export default function KingQueenOfTheBeach() {
           // Check if user exists in the database
           try {
             const playersRef = collection(db, 'players');
-            const q = query(playersRef, where('email', '==', localEmail), where('is_confirmed', '==', true));
+            const q = query(playersRef, where('email', '==', localEmail), where('status', '==', 'approved'));
             const snapshot = await getDocs(q);
             
             if (!snapshot.empty) {

@@ -126,9 +126,9 @@ export const exportMatchupsToPDF = async (data: PDFExportData) => {
       return 'TBD';
     };
     
-    // Sort matches by match_number - EXACT same sort as UI
-    const sortedFemaleMatches = [...femaleMatches].sort((a, b) => (a.match_number || 0) - (b.match_number || 0));
-    const sortedMaleMatches = [...maleMatches].sort((a, b) => (a.match_number || 0) - (b.match_number || 0));
+    // Sort matches by match_number - EXACT same sort as UI with fallback
+    const sortedFemaleMatches = [...femaleMatches].sort((a, b) => (a.match_number ?? 999) - (b.match_number ?? 999));
+    const sortedMaleMatches = [...maleMatches].sort((a, b) => (a.match_number ?? 999) - (b.match_number ?? 999));
     
     // ====== PAGE 1: PLAYER ROSTER ======
     drawPageHeader(1);
@@ -299,27 +299,29 @@ const renderDivisionMatches = (
   doc.line(14, yPosition, 196, yPosition);
   yPosition += 6;
   
-  // Compact card dimensions - 25% smaller height
+  // Compact card dimensions - tighter but readable
   const cardWidth = 88;
-  const cardHeight = 22; // Reduced from ~32
+  const cardHeight = 18; // Tighter but still readable
   const gapX = 10;
-  const gapY = 5;
+  const gapY = 4;
   const leftX = 14;
   const rightX = 14 + cardWidth + gapX;
-  const maxY = 285; // Page bottom margin
+  const maxY = 270; // Safer margin to guarantee single page
   
   // Calculate available space and scale if needed
   const availableHeight = maxY - yPosition;
   const rowsNeeded = Math.ceil(matches.length / 2);
   const totalHeightNeeded = rowsNeeded * (cardHeight + gapY);
   
-  // If won't fit, scale down proportionally
+  // FORCE FIT: Ensure all matches fit on single page
   let scaleFactor = 1;
-  if (totalHeightNeeded > availableHeight) {
-    scaleFactor = availableHeight / totalHeightNeeded;
-    // Don't scale below 0.7 to maintain readability
-    scaleFactor = Math.max(scaleFactor, 0.7);
+  const maxRows = Math.floor((maxY - yPosition) / (cardHeight + gapY));
+  if (rowsNeeded > maxRows) {
+    scaleFactor = maxRows / rowsNeeded;
   }
+  // Clamp scale factor for readability
+  scaleFactor = Math.min(scaleFactor, 1);
+  scaleFactor = Math.max(scaleFactor, 0.6);
   
   const scaledCardHeight = cardHeight * scaleFactor;
   const scaledGapY = gapY * scaleFactor;
@@ -381,11 +383,11 @@ const renderCompactMatchCard = (
   vsColor: [number, number, number]
 ): void => {
   const matchNumber = match.match_number || 0;
-  const isCompleted = match.is_completed || match.isSubmitted || false;
+  const isCompleted = match.score1 !== undefined && match.score2 !== undefined && (match.is_completed || match.isSubmitted);
   
-  // Team names - EXACT same as UI
-  const teamAName = getPlayerNameFn(match, 'player1') + ' & ' + getPlayerNameFn(match, 'player2');
-  const teamBName = getPlayerNameFn(match, 'player3') + ' & ' + getPlayerNameFn(match, 'player4');
+  // Team names - DIRECT from match object (exact same as UI)
+  const teamAName = `${match.player1?.name || ''} & ${match.player2?.name || ''}`;
+  const teamBName = `${match.player3?.name || ''} & ${match.player4?.name || ''}`;
   
   // Card shadow effect (subtle)
   doc.setFillColor(230, 230, 230);
@@ -407,30 +409,27 @@ const renderCompactMatchCard = (
   doc.text(`MATCH ${matchNumber}`, x + 3, y + 4);
   
   // Layout: Team A card (top), VS, Team B card (bottom)
-  const teamCardHeight = (height - 14) / 2; // Space for match number and VS
+  const teamCardHeight = (height - 10) / 2; // Space for match number and VS
   const teamCardWidth = width - 6;
   const teamAX = x + 3;
-  const teamAY = y + 6;
+  const teamAY = y + 5;
   
   // Team A Card (Blue - matching UI bg-ocean)
   doc.setFillColor(...COLORS.ocean);
   doc.roundedRect(teamAX, teamAY, teamCardWidth, teamCardHeight - 1, 1.5, 1.5, 'F');
+  // Add contrast border
+  doc.setDrawColor(255, 255, 255);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(teamAX, teamAY, teamCardWidth, teamCardHeight - 1, 1.5, 1.5, 'S');
   
-  // Team A name - auto-scale to fit
+  // Team A name - FULL name with wrapping (no truncation)
   doc.setTextColor(...COLORS.text.white);
-  const teamAFontSize = getScaledFontSize(doc, teamAName, teamCardWidth - 8, 8, 6);
-  doc.setFontSize(teamAFontSize);
+  doc.setFontSize(7);
   doc.setFont(undefined, 'bold');
-  
-  // Truncate if still too long
-  let displayTeamA = teamAName;
-  if (doc.getTextWidth(teamAName) > teamCardWidth - 8) {
-    while (doc.getTextWidth(displayTeamA + '...') > teamCardWidth - 8 && displayTeamA.length > 3) {
-      displayTeamA = displayTeamA.slice(0, -1);
-    }
-    displayTeamA = displayTeamA + '...';
-  }
-  doc.text(displayTeamA, teamAX + teamCardWidth / 2, teamAY + teamCardHeight / 2 + 1, { align: 'center' });
+  doc.text(teamAName, teamAX + teamCardWidth / 2, teamAY + teamCardHeight / 2, {
+    align: 'center',
+    maxWidth: teamCardWidth - 6
+  });
   
   // Score for Team A (if completed)
   if (isCompleted) {
@@ -440,34 +439,31 @@ const renderCompactMatchCard = (
   }
   
   // VS Divider in middle
-  const vsY = teamAY + teamCardHeight + 1;
-  doc.setFontSize(6);
-  doc.setFont(undefined, 'normal');
+  const vsY = teamAY + teamCardHeight + 0.5;
+  doc.setFontSize(7);
+  doc.setFont(undefined, 'bold');
   doc.setTextColor(...vsColor);
-  doc.text('VS', x + width / 2, vsY + 1.5, { align: 'center' });
+  doc.text('VS', x + width / 2, vsY + 2, { align: 'center' });
   
   // Team B Card (Orange - matching UI bg-sunset)
   const teamBX = x + 3;
-  const teamBY = vsY + 3;
+  const teamBY = vsY + 2.5;
   
   doc.setFillColor(...COLORS.sunset);
   doc.roundedRect(teamBX, teamBY, teamCardWidth, teamCardHeight - 1, 1.5, 1.5, 'F');
+  // Add contrast border
+  doc.setDrawColor(255, 255, 255);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(teamBX, teamBY, teamCardWidth, teamCardHeight - 1, 1.5, 1.5, 'S');
   
-  // Team B name - auto-scale to fit
+  // Team B name - FULL name with wrapping (no truncation)
   doc.setTextColor(...COLORS.text.white);
-  const teamBFontSize = getScaledFontSize(doc, teamBName, teamCardWidth - 8, 8, 6);
-  doc.setFontSize(teamBFontSize);
+  doc.setFontSize(7);
   doc.setFont(undefined, 'bold');
-  
-  // Truncate if still too long
-  let displayTeamB = teamBName;
-  if (doc.getTextWidth(teamBName) > teamCardWidth - 8) {
-    while (doc.getTextWidth(displayTeamB + '...') > teamCardWidth - 8 && displayTeamB.length > 3) {
-      displayTeamB = displayTeamB.slice(0, -1);
-    }
-    displayTeamB = displayTeamB + '...';
-  }
-  doc.text(displayTeamB, teamBX + teamCardWidth / 2, teamBY + teamCardHeight / 2 + 1, { align: 'center' });
+  doc.text(teamBName, teamBX + teamCardWidth / 2, teamBY + teamCardHeight / 2, {
+    align: 'center',
+    maxWidth: teamCardWidth - 6
+  });
   
   // Score for Team B (if completed)
   if (isCompleted) {

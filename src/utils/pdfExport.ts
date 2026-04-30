@@ -385,9 +385,18 @@ const renderCompactMatchCard = (
   const matchNumber = match.match_number || 0;
   const isCompleted = match.score1 !== undefined && match.score2 !== undefined && (match.is_completed || match.isSubmitted);
   
-  // Team names - DIRECT from match object (exact same as UI)
-  const teamAName = `${match.player1?.name || ''} & ${match.player2?.name || ''}`;
-  const teamBName = `${match.player3?.name || ''} & ${match.player4?.name || ''}`;
+  // Team names - ALWAYS resolve using getPlayerNameFn (handles player object OR player_id)
+  const teamAName = `${getPlayerNameFn(match, 'player1')} & ${getPlayerNameFn(match, 'player2')}`;
+  const teamBName = `${getPlayerNameFn(match, 'player3')} & ${getPlayerNameFn(match, 'player4')}`;
+  
+  // Debug validation
+  console.log('PDF MATCH DEBUG:', {
+    matchNumber,
+    p1: getPlayerNameFn(match, 'player1'),
+    p2: getPlayerNameFn(match, 'player2'),
+    p3: getPlayerNameFn(match, 'player3'),
+    p4: getPlayerNameFn(match, 'player4')
+  });
   
   // Card shadow effect (subtle)
   doc.setFillColor(230, 230, 230);

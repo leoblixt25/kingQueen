@@ -33,451 +33,248 @@ interface PDFExportData {
   tournamentDate: string;
 }
 
-// Color constants matching the app UI
-const COLORS = {
-  ocean: [0, 119, 182] as [number, number, number],      // Blue for Team A
-  sunset: [255, 127, 80] as [number, number, number],      // Orange for Team B
-  header: [0, 102, 153] as [number, number, number],      // Header blue
-  text: {
-    white: [255, 255, 255] as [number, number, number],
-    black: [0, 0, 0] as [number, number, number],
-    gray: [100, 100, 100] as [number, number, number],
-    lightGray: [150, 150, 150] as [number, number, number]
-  }
-};
+const BLUE: [number, number, number] = [0, 119, 182];
+const ORANGE: [number, number, number] = [255, 127, 80];
+const HEADER_BLUE: [number, number, number] = [0, 86, 130];
+const WHITE: [number, number, number] = [255, 255, 255];
+const LIGHT_GRAY: [number, number, number] = [150, 150, 150];
+const DARK_TEXT: [number, number, number] = [40, 40, 40];
+const CARD_BG: [number, number, number] = [248, 249, 250];
+const BORDER: [number, number, number] = [220, 225, 230];
 
 export const exportMatchupsToPDF = async (data: PDFExportData) => {
   try {
-    console.log('Starting PDF export with app state data...');
-    console.log('PDF DATA:', data);
-    console.log('Female Matches:', data.femaleMatches);
-    console.log('Male Matches:', data.maleMatches);
-    console.log('Players:', data.players);
-    
     const { players, femaleMatches, maleMatches, tournamentDate } = data;
-    
-    if (!players || (!femaleMatches && !maleMatches)) {
-      alert('No tournament data available to export. Please ensure players are registered and matches are created.');
+
+    if (!players || (!femaleMatches?.length && !maleMatches?.length)) {
+      alert('No tournament data available to export.');
       return;
     }
 
-    // Format tournament date
     let formattedDate = '';
     if (tournamentDate) {
-      const dateObj = new Date(tournamentDate);
-      if (!isNaN(dateObj.getTime())) {
-        formattedDate = dateObj.toLocaleDateString('en-US', {
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
+      const d = new Date(tournamentDate);
+      if (!isNaN(d.getTime())) {
+        formattedDate = d.toLocaleDateString('en-US', {
+          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
         });
       }
     }
 
-    // A4 size, 300 DPI quality settings
-    const doc = new jsPDF({
-      unit: 'mm',
-      format: 'a4',
-      putOnlyUsedFonts: true,
-      floatPrecision: 16
-    });
-    
-    // Helper to draw header on each page
-    const drawPageHeader = (pageNum: number) => {
-      // Blue header bar
-      doc.setFillColor(...COLORS.header);
-      doc.rect(0, 0, 210, 35, 'F');
-      
-      // Title
-      doc.setFontSize(22);
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+
+    const drawHeader = () => {
+      doc.setFillColor(...HEADER_BLUE);
+      doc.rect(0, 0, 210, 32, 'F');
+      doc.setTextColor(...WHITE);
       doc.setFont(undefined, 'bold');
-      doc.setTextColor(...COLORS.text.white);
-      doc.text('King & Queen', 105, 14, { align: 'center' });
-      doc.setFontSize(12);
-      doc.text('Beach Volleyball Tournament', 105, 22, { align: 'center' });
-      
-      // Date
+      doc.setFontSize(20);
+      doc.text('King & Queen', 105, 13, { align: 'center' });
+      doc.setFontSize(11);
+      doc.setFont(undefined, 'normal');
+      doc.text('Beach Volleyball Tournament', 105, 21, { align: 'center' });
       if (formattedDate) {
-        doc.setFontSize(9);
-        doc.setFont(undefined, 'normal');
-        doc.text(formattedDate, 105, 30, { align: 'center' });
+        doc.setFontSize(8);
+        doc.text(formattedDate, 105, 28, { align: 'center' });
       }
     };
-    
-    // Helper to get player name from resolved player object - EXACT same logic as UI
-    const getPlayerName = (match: Match, playerKey: 'player1' | 'player2' | 'player3' | 'player4'): string => {
-      const player = match[playerKey];
-      if (player && player.name) {
-        return player.name;
+
+    const getPlayerName = (match: Match, key: 'player1' | 'player2' | 'player3' | 'player4'): string => {
+      const p = match[key];
+      if (p?.name) return p.name;
+      const idKey = `${key}_id` as keyof Match;
+      const id = match[idKey] as string;
+      if (id) {
+        const found = players.find(p => p.id === id);
+        if (found?.name) return found.name;
       }
-      
-      // Fallback: try player_id if player object is missing
-      const playerIdKey = `${playerKey}_id` as keyof Match;
-      const playerId = match[playerIdKey] as string;
-      if (playerId) {
-        const foundPlayer = players.find(p => p.id === playerId);
-        if (foundPlayer && foundPlayer.name) {
-          return foundPlayer.name;
-        }
-      }
-      
-      console.warn(`Player not found for ${playerKey} in match:`, match);
       return 'TBD';
     };
-    
-    // Sort matches by match_number - EXACT same sort as UI with fallback
-    const sortedFemaleMatches = [...femaleMatches].sort((a, b) => (a.match_number ?? 999) - (b.match_number ?? 999));
-    const sortedMaleMatches = [...maleMatches].sort((a, b) => (a.match_number ?? 999) - (b.match_number ?? 999));
-    
-    // ====== PAGE 1: PLAYER ROSTER ======
-    drawPageHeader(1);
-    
-    let yPosition = 45;
-    
-    // Player Roster Title
-    doc.setFontSize(14);
-    doc.setFont(undefined, 'bold');
-    doc.setTextColor(...COLORS.header);
-    doc.text('Player Roster', 14, yPosition);
-    yPosition += 2;
-    
-    // Draw line under header
-    doc.setDrawColor(...COLORS.header);
-    doc.setLineWidth(0.5);
-    doc.line(14, yPosition, 196, yPosition);
-    yPosition += 6;
-    
-    // Filter players by gender
-    const femalePlayers = players.filter(p => p.gender === 'female');
-    const malePlayers = players.filter(p => p.gender === 'male');
-    
-    // Female Players
-    if (femalePlayers.length > 0) {
-      doc.setFillColor(255, 243, 224);
-      doc.rect(14, yPosition - 4, 182, 6, 'F');
-      doc.setFontSize(10);
-      doc.setFont(undefined, 'bold');
-      doc.setTextColor(...COLORS.sunset);
-      doc.text(`FEMALE DIVISION (${femalePlayers.length})`, 16, yPosition);
-      yPosition += 5;
-      
-      doc.setFontSize(8);
-      doc.setFont(undefined, 'normal');
-      doc.setTextColor(...COLORS.text.black);
-      
-      femalePlayers.forEach((p, idx) => {
-        // Alternating row colors
-        if (idx % 2 === 0) {
-          doc.setFillColor(250, 250, 250);
-          doc.rect(14, yPosition - 3.5, 182, 5, 'F');
-        }
-        doc.text(`${idx + 1}. ${p.name}`, 16, yPosition);
-        yPosition += 5;
-      });
-      
-      yPosition += 4;
-    }
-    
-    // Male Players
-    if (malePlayers.length > 0) {
-      doc.setFillColor(224, 247, 255);
-      doc.rect(14, yPosition - 4, 182, 6, 'F');
-      doc.setFontSize(10);
-      doc.setFont(undefined, 'bold');
-      doc.setTextColor(...COLORS.ocean);
-      doc.text(`MALE DIVISION (${malePlayers.length})`, 16, yPosition);
-      yPosition += 5;
-      
-      doc.setFontSize(8);
-      doc.setFont(undefined, 'normal');
-      doc.setTextColor(...COLORS.text.black);
-      
-      malePlayers.forEach((p, idx) => {
-        // Alternating row colors
-        if (idx % 2 === 0) {
-          doc.setFillColor(250, 250, 250);
-          doc.rect(14, yPosition - 3.5, 182, 5, 'F');
-        }
-        doc.text(`${idx + 1}. ${p.name}`, 16, yPosition);
-        yPosition += 5;
-      });
-    }
-    
-    // Force page break after player roster
+
+    // Sort by actual match_number from Firestore
+    const sortByMatchNum = (a: Match, b: Match) => (a.match_number ?? 9999) - (b.match_number ?? 9999);
+    const sortedFemale = [...femaleMatches].sort(sortByMatchNum);
+    const sortedMale = [...maleMatches].sort(sortByMatchNum);
+
+    // ── Page 1: Female Division ──
+    drawHeader();
+    renderDivision(doc, sortedFemale, 'Female Division', ORANGE, getPlayerName);
+
+    // ── Page 2: Male Division ──
     doc.addPage();
-    
-    // ====== PAGE 2: FEMALE DIVISION MATCHES ======
-    // Page break before division - ensures division starts on fresh page
-    doc.setPage(2);
-    drawPageHeader(2);
-    
-    // Render female matches - SINGLE PAGE ONLY
-    renderDivisionMatches(doc, sortedFemaleMatches, 'Female', COLORS.sunset, getPlayerName, players);
-    
-    // Force page break after female division
-    doc.addPage();
-    
-    // ====== PAGE 3: MALE DIVISION MATCHES ======
-    doc.setPage(3);
-    drawPageHeader(3);
-    
-    // Render male matches - SINGLE PAGE ONLY
-    renderDivisionMatches(doc, sortedMaleMatches, 'Male', COLORS.ocean, getPlayerName, players);
-    
-    // ====== FOOTER ======
-    const pageCount = doc.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
+    drawHeader();
+    renderDivision(doc, sortedMale, 'Male Division', BLUE, getPlayerName);
+
+    // Footer on all pages
+    const total = doc.getNumberOfPages();
+    for (let i = 1; i <= total; i++) {
       doc.setPage(i);
       doc.setFontSize(7);
       doc.setFont(undefined, 'normal');
-      doc.setTextColor(...COLORS.text.lightGray);
+      doc.setTextColor(...LIGHT_GRAY);
       doc.text(
-        `Generated on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()} | Page ${i} of ${pageCount}`,
-        105,
-        292,
-        { align: 'center' }
+        `Generated ${new Date().toLocaleDateString()} | Page ${i} of ${total}`,
+        105, 292, { align: 'center' }
       );
     }
-    
-    console.log('PDF generated successfully with 3 pages, saving...');
+
     doc.save(`King-Queen-Beach-Volleyball-${new Date().toISOString().split('T')[0]}.pdf`);
-    console.log('PDF saved!');
   } catch (error: any) {
-    console.error('Error generating PDF:', error);
-    alert(`Failed to generate PDF: ${error.message || 'Unknown error'}\n\nPlease check the browser console for details.`);
-    throw error;
+    console.error('PDF export error:', error);
+    alert(`Failed to generate PDF: ${error.message || 'Unknown error'}`);
   }
 };
 
-// Helper to calculate font size to fit text within a width
-const getScaledFontSize = (
-  doc: jsPDF,
-  text: string,
-  maxWidth: number,
-  baseFontSize: number,
-  minFontSize: number = 6
-): number => {
-  let fontSize = baseFontSize;
-  doc.setFontSize(fontSize);
-  
-  while (doc.getTextWidth(text) > maxWidth && fontSize > minFontSize) {
-    fontSize -= 0.5;
-    doc.setFontSize(fontSize);
-  }
-  
-  return fontSize;
-};
-
-// Render a complete division on ONE page - NO page breaks within division
-const renderDivisionMatches = (
+const renderDivision = (
   doc: jsPDF,
   matches: Match[],
-  divisionName: string,
+  title: string,
   accentColor: [number, number, number],
-  getPlayerNameFn: (match: Match, playerKey: 'player1' | 'player2' | 'player3' | 'player4') => string,
-  players: Player[]
-): void => {
-  if (matches.length === 0) {
+  getPlayerName: (match: Match, key: 'player1' | 'player2' | 'player3' | 'player4') => string
+) => {
+  if (!matches.length) {
     doc.setFontSize(10);
-    doc.setTextColor(...COLORS.text.gray);
-    doc.text(`No ${divisionName} matches available.`, 105, 60, { align: 'center' });
+    doc.setTextColor(150, 150, 150);
+    doc.text(`No matches available.`, 105, 55, { align: 'center' });
     return;
   }
-  
-  // Division Header
-  let yPosition = 42;
-  doc.setFontSize(14);
+
+  // Division title
+  let y = 42;
+  doc.setFontSize(15);
   doc.setFont(undefined, 'bold');
   doc.setTextColor(...accentColor);
-  doc.text(`${divisionName} Division`, 14, yPosition);
-  yPosition += 2;
-  
-  // Underline with accent color
+  doc.text(title, 14, y);
+  y += 2;
   doc.setDrawColor(...accentColor);
-  doc.setLineWidth(0.5);
-  doc.line(14, yPosition, 196, yPosition);
-  yPosition += 6;
-  
-  // Compact card dimensions - tighter but readable
-  const cardWidth = 88;
-  const cardHeight = 18; // Tighter but still readable
-  const gapX = 10;
-  const gapY = 4;
-  const leftX = 14;
-  const rightX = 14 + cardWidth + gapX;
-  const maxY = 270; // Safer margin to guarantee single page
-  
-  // Calculate available space and scale if needed
-  const availableHeight = maxY - yPosition;
-  const rowsNeeded = Math.ceil(matches.length / 2);
-  const totalHeightNeeded = rowsNeeded * (cardHeight + gapY);
-  
-  // FORCE FIT: Ensure all matches fit on single page
-  let scaleFactor = 1;
-  const maxRows = Math.floor((maxY - yPosition) / (cardHeight + gapY));
-  if (rowsNeeded > maxRows) {
-    scaleFactor = maxRows / rowsNeeded;
-  }
-  // Clamp scale factor for readability
-  scaleFactor = Math.min(scaleFactor, 1);
-  scaleFactor = Math.max(scaleFactor, 0.6);
-  
-  const scaledCardHeight = cardHeight * scaleFactor;
-  const scaledGapY = gapY * scaleFactor;
-  
-  // Render matches in 2-column grid
+  doc.setLineWidth(0.6);
+  doc.line(14, y, 196, y);
+  y += 7;
+
+  // Card dimensions — 2 columns
+  const colW = 88;
+  const colGap = 10;
+  const col1X = 14;
+  const col2X = col1X + colW + colGap;
+  const cardH = 22;
+  const rowGap = 5;
+
   for (let i = 0; i < matches.length; i += 2) {
-    const match1 = matches[i];
-    const match2 = matches[i + 1];
-    
-    // Check if we can fit this row
-    if (yPosition + scaledCardHeight > maxY) {
-      // Shouldn't happen with scaling, but just in case
-      console.warn('Division overflow - scaling issue');
-      break;
+    if (y + cardH > 285) {
+      // Add new page if overflow
+      doc.addPage();
+      // Redraw header + division continuation
+      doc.setFillColor(0, 86, 130);
+      doc.rect(0, 0, 210, 32, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFont(undefined, 'bold');
+      doc.setFontSize(11);
+      doc.text(`${title} (continued)`, 105, 20, { align: 'center' });
+      y = 40;
     }
-    
-    // Render Match 1 (left column)
-    renderCompactMatchCard(
-      doc,
-      match1,
-      leftX,
-      yPosition,
-      cardWidth,
-      scaledCardHeight,
-      getPlayerNameFn,
-      players,
-      accentColor
-    );
-    
-    // Render Match 2 (right column) if exists
-    if (match2) {
-      renderCompactMatchCard(
-        doc,
-        match2,
-        rightX,
-        yPosition,
-        cardWidth,
-        scaledCardHeight,
-        getPlayerNameFn,
-        players,
-        accentColor
-      );
+
+    renderMatchCard(doc, matches[i], col1X, y, colW, cardH, getPlayerName, accentColor);
+    if (matches[i + 1]) {
+      renderMatchCard(doc, matches[i + 1], col2X, y, colW, cardH, getPlayerName, accentColor);
     }
-    
-    yPosition += scaledCardHeight + scaledGapY;
+    y += cardH + rowGap;
   }
 };
 
-// Render a compact match card matching UI layout
-const renderCompactMatchCard = (
+const renderMatchCard = (
   doc: jsPDF,
   match: Match,
   x: number,
   y: number,
-  width: number,
-  height: number,
-  getPlayerNameFn: (match: Match, playerKey: 'player1' | 'player2' | 'player3' | 'player4') => string,
-  players: Player[],
-  vsColor: [number, number, number]
-): void => {
-  const matchNumber = match.match_number || 0;
-  const isCompleted = match.score1 !== undefined && match.score2 !== undefined && (match.is_completed || match.isSubmitted);
-  
-  // Team names - ALWAYS resolve using getPlayerNameFn (handles player object OR player_id)
-  const teamAName = `${getPlayerNameFn(match, 'player1')} & ${getPlayerNameFn(match, 'player2')}`;
-  const teamBName = `${getPlayerNameFn(match, 'player3')} & ${getPlayerNameFn(match, 'player4')}`;
-  
-  // Debug validation
-  console.log('PDF MATCH DEBUG:', {
-    matchNumber,
-    p1: getPlayerNameFn(match, 'player1'),
-    p2: getPlayerNameFn(match, 'player2'),
-    p3: getPlayerNameFn(match, 'player3'),
-    p4: getPlayerNameFn(match, 'player4')
-  });
-  
-  // Card shadow effect (subtle)
-  doc.setFillColor(230, 230, 230);
-  doc.roundedRect(x + 0.5, y + 0.5, width, height, 2, 2, 'F');
-  
-  // Card background - white
+  w: number,
+  h: number,
+  getPlayerName: (match: Match, key: 'player1' | 'player2' | 'player3' | 'player4') => string,
+  accentColor: [number, number, number]
+) => {
+  const matchNum = match.match_number ?? '?';
+  const isCompleted = !!(match.is_completed || match.isSubmitted) &&
+    match.score1 !== undefined && match.score2 !== undefined;
+
+  const teamA = `${getPlayerName(match, 'player1')} & ${getPlayerName(match, 'player2')}`;
+  const teamB = `${getPlayerName(match, 'player3')} & ${getPlayerName(match, 'player4')}`;
+
+  // Card background
   doc.setFillColor(255, 255, 255);
-  doc.roundedRect(x, y, width, height, 2, 2, 'F');
-  
-  // Card border
-  doc.setDrawColor(220, 220, 220);
+  doc.setDrawColor(220, 225, 230);
   doc.setLineWidth(0.3);
-  doc.roundedRect(x, y, width, height, 2, 2, 'S');
-  
-  // Match number label at top
-  doc.setFontSize(7);
+  doc.roundedRect(x, y, w, h, 2, 2, 'FD');
+
+  // Match number row
+  const matchLabelH = 5;
+  doc.setFillColor(240, 243, 246);
+  doc.roundedRect(x, y, w, matchLabelH, 2, 2, 'F');
+  // flat bottom for label strip
+  doc.setFillColor(240, 243, 246);
+  doc.rect(x, y + 2, w, matchLabelH - 2, 'F');
+
+  doc.setFontSize(6.5);
   doc.setFont(undefined, 'bold');
-  doc.setTextColor(...COLORS.header);
-  doc.text(`MATCH ${matchNumber}`, x + 3, y + 4);
-  
-  // Layout: Team A card (top), VS, Team B card (bottom)
-  const teamCardHeight = (height - 10) / 2; // Space for match number and VS
-  const teamCardWidth = width - 6;
-  const teamAX = x + 3;
-  const teamAY = y + 5;
-  
-  // Team A Card (Blue - matching UI bg-ocean)
-  doc.setFillColor(...COLORS.ocean);
-  doc.roundedRect(teamAX, teamAY, teamCardWidth, teamCardHeight - 1, 1.5, 1.5, 'F');
-  // Add contrast border
-  doc.setDrawColor(255, 255, 255);
-  doc.setLineWidth(0.3);
-  doc.roundedRect(teamAX, teamAY, teamCardWidth, teamCardHeight - 1, 1.5, 1.5, 'S');
-  
-  // Team A name - FULL name with wrapping (no truncation)
-  doc.setTextColor(...COLORS.text.white);
-  doc.setFontSize(7);
+  doc.setTextColor(0, 86, 130);
+  doc.text(`MATCH ${matchNum}`, x + 3, y + 3.8);
+
+  // Team bar dimensions
+  const barY1 = y + matchLabelH + 1;
+  const barH = (h - matchLabelH - 5) / 2; // split remaining height in 2
+  const vsH = 3;
+  const barY2 = barY1 + barH + vsH;
+  const barX = x + 2;
+  const barW = w - 4;
+  const scoreW = isCompleted ? 9 : 0;
+  const nameW = barW - scoreW - 4;
+
+  // Team A bar (blue)
+  doc.setFillColor(0, 119, 182);
+  doc.roundedRect(barX, barY1, barW, barH, 1.5, 1.5, 'F');
+
+  // Team A name — centered vertically, left-padded
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(6.5);
   doc.setFont(undefined, 'bold');
-  doc.text(teamAName, teamAX + teamCardWidth / 2, teamAY + teamCardHeight / 2, {
-    align: 'center',
-    maxWidth: teamCardWidth - 6
-  });
-  
-  // Score for Team A (if completed)
+  const teamADisplay = fitText(doc, teamA, nameW, 6.5);
+  doc.text(teamADisplay, barX + 3, barY1 + barH / 2 + 2.2);
+
+  // Team A score — right aligned inside bar
   if (isCompleted) {
-    doc.setFontSize(9);
-    doc.setFont(undefined, 'bold');
-    doc.text(String(match.score1), teamAX + teamCardWidth - 4, teamAY + teamCardHeight / 2 + 1, { align: 'right' });
+    doc.setFontSize(8);
+    doc.text(String(match.score1), barX + barW - 2, barY1 + barH / 2 + 2.5, { align: 'right' });
   }
-  
-  // VS Divider in middle
-  const vsY = teamAY + teamCardHeight + 0.5;
-  doc.setFontSize(7);
+
+  // VS label
+  doc.setFontSize(6);
   doc.setFont(undefined, 'bold');
-  doc.setTextColor(...vsColor);
-  doc.text('VS', x + width / 2, vsY + 2, { align: 'center' });
-  
-  // Team B Card (Orange - matching UI bg-sunset)
-  const teamBX = x + 3;
-  const teamBY = vsY + 2.5;
-  
-  doc.setFillColor(...COLORS.sunset);
-  doc.roundedRect(teamBX, teamBY, teamCardWidth, teamCardHeight - 1, 1.5, 1.5, 'F');
-  // Add contrast border
-  doc.setDrawColor(255, 255, 255);
-  doc.setLineWidth(0.3);
-  doc.roundedRect(teamBX, teamBY, teamCardWidth, teamCardHeight - 1, 1.5, 1.5, 'S');
-  
-  // Team B name - FULL name with wrapping (no truncation)
-  doc.setTextColor(...COLORS.text.white);
-  doc.setFontSize(7);
+  doc.setTextColor(...accentColor);
+  doc.text('VS', x + w / 2, barY1 + barH + 2.2, { align: 'center' });
+
+  // Team B bar (orange)
+  doc.setFillColor(255, 127, 80);
+  doc.roundedRect(barX, barY2, barW, barH, 1.5, 1.5, 'F');
+
+  // Team B name
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(6.5);
   doc.setFont(undefined, 'bold');
-  doc.text(teamBName, teamBX + teamCardWidth / 2, teamBY + teamCardHeight / 2, {
-    align: 'center',
-    maxWidth: teamCardWidth - 6
-  });
-  
-  // Score for Team B (if completed)
+  const teamBDisplay = fitText(doc, teamB, nameW, 6.5);
+  doc.text(teamBDisplay, barX + 3, barY2 + barH / 2 + 2.2);
+
+  // Team B score
   if (isCompleted) {
-    doc.setFontSize(9);
-    doc.setFont(undefined, 'bold');
-    doc.text(String(match.score2), teamBX + teamCardWidth - 4, teamBY + teamCardHeight / 2 + 1, { align: 'right' });
+    doc.setFontSize(8);
+    doc.text(String(match.score2), barX + barW - 2, barY2 + barH / 2 + 2.5, { align: 'right' });
   }
+};
+
+// Truncate text with ellipsis to fit within maxWidth
+const fitText = (doc: jsPDF, text: string, maxWidth: number, fontSize: number): string => {
+  doc.setFontSize(fontSize);
+  if (doc.getTextWidth(text) <= maxWidth) return text;
+  let t = text;
+  while (t.length > 3 && doc.getTextWidth(t + '…') > maxWidth) {
+    t = t.slice(0, -1);
+  }
+  return t + '…';
 };

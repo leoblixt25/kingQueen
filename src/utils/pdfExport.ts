@@ -33,14 +33,11 @@ interface PDFExportData {
   tournamentDate: string;
 }
 
-const BLUE: [number, number, number] = [0, 119, 182];
-const ORANGE: [number, number, number] = [255, 127, 80];
-const HEADER_BLUE: [number, number, number] = [0, 86, 130];
-const WHITE: [number, number, number] = [255, 255, 255];
-const LIGHT_GRAY: [number, number, number] = [150, 150, 150];
-const DARK_TEXT: [number, number, number] = [40, 40, 40];
-const CARD_BG: [number, number, number] = [248, 249, 250];
-const BORDER: [number, number, number] = [220, 225, 230];
+const BLUE: [number, number, number]      = [0, 119, 182];
+const ORANGE: [number, number, number]    = [255, 127, 80];
+const HEADER_BG: [number, number, number] = [0, 86, 130];
+const WHITE: [number, number, number]     = [255, 255, 255];
+const FOOTER_GRAY: [number, number, number] = [160, 160, 160];
 
 export const exportMatchupsToPDF = async (data: PDFExportData) => {
   try {
@@ -63,47 +60,45 @@ export const exportMatchupsToPDF = async (data: PDFExportData) => {
 
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
 
-    const drawHeader = () => {
-      doc.setFillColor(...HEADER_BLUE);
-      doc.rect(0, 0, 210, 32, 'F');
-      doc.setTextColor(...WHITE);
-      doc.setFont(undefined, 'bold');
-      doc.setFontSize(20);
-      doc.text('King & Queen', 105, 13, { align: 'center' });
-      doc.setFontSize(11);
-      doc.setFont(undefined, 'normal');
-      doc.text('Beach Volleyball Tournament', 105, 21, { align: 'center' });
-      if (formattedDate) {
-        doc.setFontSize(8);
-        doc.text(formattedDate, 105, 28, { align: 'center' });
-      }
-    };
-
-    const getPlayerName = (match: Match, key: 'player1' | 'player2' | 'player3' | 'player4'): string => {
+    const getName = (match: Match, key: 'player1' | 'player2' | 'player3' | 'player4'): string => {
       const p = match[key];
       if (p?.name) return p.name;
-      const idKey = `${key}_id` as keyof Match;
-      const id = match[idKey] as string;
+      const id = match[`${key}_id` as keyof Match] as string;
       if (id) {
-        const found = players.find(p => p.id === id);
+        const found = players.find(pl => pl.id === id);
         if (found?.name) return found.name;
       }
       return 'TBD';
     };
 
-    // Sort by actual match_number from Firestore
-    const sortByMatchNum = (a: Match, b: Match) => (a.match_number ?? 9999) - (b.match_number ?? 9999);
-    const sortedFemale = [...femaleMatches].sort(sortByMatchNum);
-    const sortedMale = [...maleMatches].sort(sortByMatchNum);
+    const sortByNum = (a: Match, b: Match) => (a.match_number ?? 9999) - (b.match_number ?? 9999);
+    const sortedFemale = [...femaleMatches].sort(sortByNum);
+    const sortedMale   = [...maleMatches].sort(sortByNum);
 
-    // ── Page 1: Female Division ──
-    drawHeader();
-    renderDivision(doc, sortedFemale, 'Female Division', ORANGE, getPlayerName);
+    const drawPageHeader = () => {
+      doc.setFillColor(...HEADER_BG);
+      doc.rect(0, 0, 210, 30, 'F');
+      doc.setTextColor(...WHITE);
+      doc.setFont(undefined, 'bold');
+      doc.setFontSize(18);
+      doc.text('King & Queen', 105, 11, { align: 'center' });
+      doc.setFontSize(10);
+      doc.setFont(undefined, 'normal');
+      doc.text('Beach Volleyball Tournament', 105, 18, { align: 'center' });
+      if (formattedDate) {
+        doc.setFontSize(8);
+        doc.text(formattedDate, 105, 25, { align: 'center' });
+      }
+    };
 
-    // ── Page 2: Male Division ──
+    // Page 1: Female Division
+    drawPageHeader();
+    renderDivision(doc, sortedFemale, 'Female Division', ORANGE, getName, drawPageHeader);
+
+    // Page 2: Male Division
     doc.addPage();
-    drawHeader();
-    renderDivision(doc, sortedMale, 'Male Division', BLUE, getPlayerName);
+    drawPageHeader();
+    renderDivision(doc, sortedMale, 'Male Division', BLUE, getName, drawPageHeader);
 
     // Footer on all pages
     const total = doc.getNumberOfPages();
@@ -111,7 +106,7 @@ export const exportMatchupsToPDF = async (data: PDFExportData) => {
       doc.setPage(i);
       doc.setFontSize(7);
       doc.setFont(undefined, 'normal');
-      doc.setTextColor(...LIGHT_GRAY);
+      doc.setTextColor(...FOOTER_GRAY);
       doc.text(
         `Generated ${new Date().toLocaleDateString()} | Page ${i} of ${total}`,
         105, 292, { align: 'center' }
@@ -119,9 +114,9 @@ export const exportMatchupsToPDF = async (data: PDFExportData) => {
     }
 
     doc.save(`King-Queen-Beach-Volleyball-${new Date().toISOString().split('T')[0]}.pdf`);
-  } catch (error: any) {
-    console.error('PDF export error:', error);
-    alert(`Failed to generate PDF: ${error.message || 'Unknown error'}`);
+  } catch (err: any) {
+    console.error('PDF export error:', err);
+    alert(`Failed to generate PDF: ${err.message || 'Unknown error'}`);
   }
 };
 
@@ -129,152 +124,148 @@ const renderDivision = (
   doc: jsPDF,
   matches: Match[],
   title: string,
-  accentColor: [number, number, number],
-  getPlayerName: (match: Match, key: 'player1' | 'player2' | 'player3' | 'player4') => string
+  accent: [number, number, number],
+  getName: (m: Match, k: 'player1' | 'player2' | 'player3' | 'player4') => string,
+  drawPageHeader: () => void
 ) => {
   if (!matches.length) {
     doc.setFontSize(10);
     doc.setTextColor(150, 150, 150);
-    doc.text(`No matches available.`, 105, 55, { align: 'center' });
+    doc.text('No matches available.', 105, 55, { align: 'center' });
     return;
   }
 
-  // Division title
-  let y = 42;
-  doc.setFontSize(15);
-  doc.setFont(undefined, 'bold');
-  doc.setTextColor(...accentColor);
-  doc.text(title, 14, y);
-  y += 2;
-  doc.setDrawColor(...accentColor);
-  doc.setLineWidth(0.6);
-  doc.line(14, y, 196, y);
-  y += 7;
+  // Card dimensions — large enough to clearly read names
+  const CARD_W  = 88;
+  const CARD_H  = 30;
+  const COL_GAP = 10;
+  const ROW_GAP = 4;
+  const COL1_X  = 11;
+  const COL2_X  = COL1_X + CARD_W + COL_GAP;
+  const PAGE_BOT = 283;
 
-  // Card dimensions — 2 columns
-  const colW = 88;
-  const colGap = 10;
-  const col1X = 14;
-  const col2X = col1X + colW + colGap;
-  const cardH = 22;
-  const rowGap = 5;
+  const drawTitle = (y: number, continued = false) => {
+    doc.setFontSize(13);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(...accent);
+    doc.text(continued ? `${title} (continued)` : title, COL1_X, y);
+    doc.setDrawColor(...accent);
+    doc.setLineWidth(0.5);
+    doc.line(COL1_X, y + 2, 199, y + 2);
+    return y + 8;
+  };
+
+  let y = drawTitle(36);
 
   for (let i = 0; i < matches.length; i += 2) {
-    if (y + cardH > 285) {
-      // Add new page if overflow
+    if (y + CARD_H > PAGE_BOT) {
       doc.addPage();
-      // Redraw header + division continuation
-      doc.setFillColor(0, 86, 130);
-      doc.rect(0, 0, 210, 32, 'F');
-      doc.setTextColor(255, 255, 255);
-      doc.setFont(undefined, 'bold');
-      doc.setFontSize(11);
-      doc.text(`${title} (continued)`, 105, 20, { align: 'center' });
-      y = 40;
+      drawPageHeader();
+      y = drawTitle(36, true);
     }
 
-    renderMatchCard(doc, matches[i], col1X, y, colW, cardH, getPlayerName, accentColor);
+    drawMatchCard(doc, matches[i],     COL1_X, y, CARD_W, CARD_H, accent, getName);
     if (matches[i + 1]) {
-      renderMatchCard(doc, matches[i + 1], col2X, y, colW, cardH, getPlayerName, accentColor);
+      drawMatchCard(doc, matches[i + 1], COL2_X, y, CARD_W, CARD_H, accent, getName);
     }
-    y += cardH + rowGap;
+    y += CARD_H + ROW_GAP;
   }
 };
 
-const renderMatchCard = (
+const drawMatchCard = (
   doc: jsPDF,
   match: Match,
   x: number,
   y: number,
   w: number,
   h: number,
-  getPlayerName: (match: Match, key: 'player1' | 'player2' | 'player3' | 'player4') => string,
-  accentColor: [number, number, number]
+  accent: [number, number, number],
+  getName: (m: Match, k: 'player1' | 'player2' | 'player3' | 'player4') => string
 ) => {
   const matchNum = match.match_number ?? '?';
-  const isCompleted = !!(match.is_completed || match.isSubmitted) &&
-    match.score1 !== undefined && match.score2 !== undefined;
+  const completed = !!(match.is_completed || match.isSubmitted)
+    && match.score1 !== undefined && match.score2 !== undefined;
 
-  const teamA = `${getPlayerName(match, 'player1')} & ${getPlayerName(match, 'player2')}`;
-  const teamB = `${getPlayerName(match, 'player3')} & ${getPlayerName(match, 'player4')}`;
+  const teamA = `${getName(match, 'player1')} & ${getName(match, 'player2')}`;
+  const teamB = `${getName(match, 'player3')} & ${getName(match, 'player4')}`;
 
   // Card background
   doc.setFillColor(255, 255, 255);
-  doc.setDrawColor(220, 225, 230);
-  doc.setLineWidth(0.3);
-  doc.roundedRect(x, y, w, h, 2, 2, 'FD');
+  doc.setDrawColor(210, 218, 226);
+  doc.setLineWidth(0.25);
+  doc.roundedRect(x, y, w, h, 2.5, 2.5, 'FD');
 
-  // Match number row
-  const matchLabelH = 5;
-  doc.setFillColor(240, 243, 246);
-  doc.roundedRect(x, y, w, matchLabelH, 2, 2, 'F');
-  // flat bottom for label strip
-  doc.setFillColor(240, 243, 246);
-  doc.rect(x, y + 2, w, matchLabelH - 2, 'F');
+  // Match label strip
+  const labelH = 6;
+  doc.setFillColor(232, 240, 248);
+  doc.roundedRect(x, y, w, labelH, 2.5, 2.5, 'F');
+  doc.rect(x, y + 2, w, labelH - 2, 'F'); // flatten bottom
 
-  doc.setFontSize(6.5);
+  doc.setFontSize(8);
   doc.setFont(undefined, 'bold');
-  doc.setTextColor(0, 86, 130);
-  doc.text(`MATCH ${matchNum}`, x + 3, y + 3.8);
+  doc.setTextColor(0, 70, 110);
+  doc.text(`MATCH ${matchNum}`, x + 4, y + 4.2);
 
-  // Team bar dimensions
-  const barY1 = y + matchLabelH + 1;
-  const barH = (h - matchLabelH - 5) / 2; // split remaining height in 2
-  const vsH = 3;
-  const barY2 = barY1 + barH + vsH;
-  const barX = x + 2;
-  const barW = w - 4;
-  const scoreW = isCompleted ? 9 : 0;
-  const nameW = barW - scoreW - 4;
+  // Bar layout
+  const PAD    = 2.5;
+  const barX   = x + PAD;
+  const barW   = w - PAD * 2;
+  const inner  = h - labelH - 2;
+  const barH   = (inner - 5) / 2;  // 5mm for VS gap
+  const barY1  = y + labelH + 1;
+  const vsY    = barY1 + barH;
+  const barY2  = vsY + 5;
 
-  // Team A bar (blue)
-  doc.setFillColor(0, 119, 182);
+  // score box right-reserved width
+  const scoreReserve = completed ? 11 : 0;
+  const nameMaxW = barW - scoreReserve - 6;
+
+  // ── Team A (blue) ──
+  doc.setFillColor(...BLUE);
   doc.roundedRect(barX, barY1, barW, barH, 1.5, 1.5, 'F');
 
-  // Team A name — centered vertically, left-padded
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(6.5);
+  doc.setTextColor(...WHITE);
   doc.setFont(undefined, 'bold');
-  const teamADisplay = fitText(doc, teamA, nameW, 6.5);
-  doc.text(teamADisplay, barX + 3, barY1 + barH / 2 + 2.2);
+  const fsA = fitFontSize(doc, teamA, nameMaxW, 9, 6.5);
+  doc.setFontSize(fsA);
+  doc.text(teamA, barX + 3.5, barY1 + barH / 2 + fsA * 0.185);
 
-  // Team A score — right aligned inside bar
-  if (isCompleted) {
-    doc.setFontSize(8);
-    doc.text(String(match.score1), barX + barW - 2, barY1 + barH / 2 + 2.5, { align: 'right' });
+  if (completed) {
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'bold');
+    doc.text(String(match.score1), barX + barW - 2.5, barY1 + barH / 2 + 3.5, { align: 'right' });
   }
 
-  // VS label
-  doc.setFontSize(6);
+  // ── VS ──
+  doc.setFontSize(7.5);
   doc.setFont(undefined, 'bold');
-  doc.setTextColor(...accentColor);
-  doc.text('VS', x + w / 2, barY1 + barH + 2.2, { align: 'center' });
+  doc.setTextColor(...accent);
+  doc.text('VS', x + w / 2, vsY + 3.5, { align: 'center' });
 
-  // Team B bar (orange)
-  doc.setFillColor(255, 127, 80);
+  // ── Team B (orange) ──
+  doc.setFillColor(...ORANGE);
   doc.roundedRect(barX, barY2, barW, barH, 1.5, 1.5, 'F');
 
-  // Team B name
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(6.5);
+  doc.setTextColor(...WHITE);
   doc.setFont(undefined, 'bold');
-  const teamBDisplay = fitText(doc, teamB, nameW, 6.5);
-  doc.text(teamBDisplay, barX + 3, barY2 + barH / 2 + 2.2);
+  const fsB = fitFontSize(doc, teamB, nameMaxW, 9, 6.5);
+  doc.setFontSize(fsB);
+  doc.text(teamB, barX + 3.5, barY2 + barH / 2 + fsB * 0.185);
 
-  // Team B score
-  if (isCompleted) {
-    doc.setFontSize(8);
-    doc.text(String(match.score2), barX + barW - 2, barY2 + barH / 2 + 2.5, { align: 'right' });
+  if (completed) {
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'bold');
+    doc.text(String(match.score2), barX + barW - 2.5, barY2 + barH / 2 + 3.5, { align: 'right' });
   }
 };
 
-// Truncate text with ellipsis to fit within maxWidth
-const fitText = (doc: jsPDF, text: string, maxWidth: number, fontSize: number): string => {
-  doc.setFontSize(fontSize);
-  if (doc.getTextWidth(text) <= maxWidth) return text;
-  let t = text;
-  while (t.length > 3 && doc.getTextWidth(t + '…') > maxWidth) {
-    t = t.slice(0, -1);
+// Shrink font until text fits within maxWidth
+const fitFontSize = (doc: jsPDF, text: string, maxW: number, base: number, min: number): number => {
+  let size = base;
+  doc.setFontSize(size);
+  while (doc.getTextWidth(text) > maxW && size > min) {
+    size -= 0.5;
+    doc.setFontSize(size);
   }
-  return t + '…';
+  return size;
 };

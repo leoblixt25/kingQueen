@@ -142,8 +142,13 @@ const renderPlayersRoster = (
   players: Player[],
   drawPageHeader: () => void
 ) => {
-  const femalePlayers = players.filter(p => p.gender === 'female');
-  const malePlayers = players.filter(p => p.gender === 'male');
+  // Sort players by name for consistent ordering (Female Player 1, 2, 3...)
+  const femalePlayers = players
+    .filter(p => p.gender === 'female')
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+  const malePlayers = players
+    .filter(p => p.gender === 'male')
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
 
   let y = 38;
   doc.setFontSize(14);

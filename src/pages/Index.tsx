@@ -963,8 +963,8 @@ export default function KingQueenOfTheBeach() {
               ...femalePlayers.map(p => ({ ...p, gender: 'female' })),
               ...malePlayers.map(p => ({ ...p, gender: 'male' }))
             ]}
-            femaleMatches={femaleMatches}
-            maleMatches={maleMatches}
+            femaleMatches={resolvedFemaleMatches}
+            maleMatches={resolvedMaleMatches}
             tournamentDate={tournamentSettings?.tournament_date}
           />
         )}

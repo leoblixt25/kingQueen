@@ -1,5 +1,4 @@
 import jsPDF from 'jspdf';
-import { sortMatchesByNumber, logMatchOrder, validateMatchNumbers } from './matchSortUtils';
 
 interface Player {
   id?: string;
@@ -11,7 +10,7 @@ interface Player {
 
 interface Match {
   id?: string;
-  gender?: string;
+  gender?: 'male' | 'female';
   match_number?: number;
   player1?: Player;
   player2?: Player;
@@ -39,6 +38,14 @@ const ORANGE: [number, number, number]    = [255, 127, 80];
 const HEADER_BG: [number, number, number] = [0, 86, 130];
 const WHITE: [number, number, number]     = [255, 255, 255];
 const FOOTER_GRAY: [number, number, number] = [160, 160, 160];
+
+/**
+ * CRITICAL: Sort matches by match_number as NUMBER (not string)
+ * This prevents Match 10 appearing before Match 2
+ */
+export function getOrderedMatches<T extends { match_number?: number }>(matches: T[]): T[] {
+  return [...matches].sort((a, b) => Number(a.match_number ?? 9999) - Number(b.match_number ?? 9999));
+}
 
 export const exportMatchupsToPDF = async (data: PDFExportData) => {
   try {
@@ -72,19 +79,13 @@ export const exportMatchupsToPDF = async (data: PDFExportData) => {
       return 'TBD';
     };
 
-    // Use shared sorting utility for consistent ordering with UI
-    const sortedFemale = sortMatchesByNumber(femaleMatches);
-    const sortedMale   = sortMatchesByNumber(maleMatches);
+    // STRICT ORDERING: Sort female and male matches separately by match_number
+    const sortedFemale = getOrderedMatches(femaleMatches);
+    const sortedMale = getOrderedMatches(maleMatches);
     
-    // Debug logging to verify match order
-    console.log('[PDF Export] Female matches order:');
-    logMatchOrder(sortedFemale, 'PDF Female');
-    console.log('[PDF Export] Male matches order:');
-    logMatchOrder(sortedMale, 'PDF Male');
-    
-    // Validate match numbers
-    validateMatchNumbers(sortedFemale, 'PDF Female');
-    validateMatchNumbers(sortedMale, 'PDF Male');
+    // DEBUG: Log exact match order before rendering
+    console.log("PDF ORDER FEMALE:", sortedFemale.map(m => m.match_number));
+    console.log("PDF ORDER MALE:", sortedMale.map(m => m.match_number));
 
     const drawPageHeader = () => {
       doc.setFillColor(...HEADER_BG);

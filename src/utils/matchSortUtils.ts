@@ -1,5 +1,5 @@
 // Match interface with match_number (extends the base Match type)
-interface MatchWithNumber {
+export interface MatchWithNumber {
   id?: string;
   gender?: 'male' | 'female';
   match_number?: number;
@@ -11,25 +11,28 @@ interface MatchWithNumber {
   player2_id?: string;
   player3_id?: string;
   player4_id?: string;
-  score1: number;
-  score2: number;
+  score1?: number;
+  score2?: number;
   is_completed?: boolean;
   isSubmitted?: boolean;
 }
 
 /**
- * Shared utility to sort matches by match_number for consistent ordering
- * between UI and PDF export.
+ * CRITICAL: Sort matches by match_number as NUMBER (not string)
+ * This prevents Match 10 appearing before Match 2
  * 
  * Uses numeric sorting to prevent string-based ordering issues like:
  * Match 1, Match 10, Match 11, Match 2, etc.
  */
+export function getOrderedMatches<T extends { match_number?: number }>(matches: T[]): T[] {
+  return [...matches].sort((a, b) => Number(a.match_number ?? 9999) - Number(b.match_number ?? 9999));
+}
+
+/**
+ * @deprecated Use getOrderedMatches instead
+ */
 export function sortMatchesByNumber<T extends { match_number?: number }>(matches: T[]): T[] {
-  return [...matches].sort((a, b) => {
-    const numA = Number(a.match_number ?? 9999);
-    const numB = Number(b.match_number ?? 9999);
-    return numA - numB;
-  });
+  return getOrderedMatches(matches);
 }
 
 /**
@@ -40,26 +43,27 @@ export function getSortedMatchesByGender<T extends { gender?: 'male' | 'female';
   matches: T[], 
   gender: 'male' | 'female'
 ): T[] {
-  return sortMatchesByGender(matches, gender);
+  const filtered = matches.filter(m => m.gender === gender);
+  return getOrderedMatches(filtered);
 }
 
 /**
- * Sort and filter matches by gender.
+ * @deprecated Use getSortedMatchesByGender instead
  */
 export function sortMatchesByGender<T extends { gender?: 'male' | 'female'; match_number?: number }>(
   matches: T[], 
   gender: 'male' | 'female'
 ): T[] {
-  const filtered = matches.filter(m => m.gender === gender);
-  return sortMatchesByNumber(filtered);
+  return getSortedMatchesByGender(matches, gender);
 }
 
 /**
  * Get display matches for UI - ensures consistent sorting.
  * Use this function in UI components when rendering matches.
+ * Alias for getOrderedMatches.
  */
 export function getDisplayMatches<T extends { match_number?: number }>(matches: T[]): T[] {
-  return sortMatchesByNumber(matches);
+  return getOrderedMatches(matches);
 }
 
 /**
@@ -71,8 +75,8 @@ export function getPDFSortedMatches<T extends { gender?: 'male' | 'female'; matc
   maleMatches: T[]
 ) {
   return {
-    sortedFemale: sortMatchesByNumber(femaleMatches),
-    sortedMale: sortMatchesByNumber(maleMatches)
+    sortedFemale: getOrderedMatches(femaleMatches),
+    sortedMale: getOrderedMatches(maleMatches)
   };
 }
 
@@ -96,7 +100,5 @@ export function logMatchOrder<T extends { match_number?: number }>(matches: T[],
   console.log(`[${label}] Match order:`, matches.map(m => m.match_number));
 }
 
-export type { MatchWithNumber };
-
 // Default export for convenience
-export default sortMatchesByNumber;
+export default getOrderedMatches;

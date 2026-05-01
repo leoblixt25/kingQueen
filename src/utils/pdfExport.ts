@@ -1,4 +1,5 @@
 import jsPDF from 'jspdf';
+import { sortMatchesByNumber, logMatchOrder, validateMatchNumbers } from './matchSortUtils';
 
 interface Player {
   id?: string;
@@ -71,9 +72,19 @@ export const exportMatchupsToPDF = async (data: PDFExportData) => {
       return 'TBD';
     };
 
-    const sortByNum = (a: Match, b: Match) => (a.match_number ?? 9999) - (b.match_number ?? 9999);
-    const sortedFemale = [...femaleMatches].sort(sortByNum);
-    const sortedMale   = [...maleMatches].sort(sortByNum);
+    // Use shared sorting utility for consistent ordering with UI
+    const sortedFemale = sortMatchesByNumber(femaleMatches);
+    const sortedMale   = sortMatchesByNumber(maleMatches);
+    
+    // Debug logging to verify match order
+    console.log('[PDF Export] Female matches order:');
+    logMatchOrder(sortedFemale, 'PDF Female');
+    console.log('[PDF Export] Male matches order:');
+    logMatchOrder(sortedMale, 'PDF Male');
+    
+    // Validate match numbers
+    validateMatchNumbers(sortedFemale, 'PDF Female');
+    validateMatchNumbers(sortedMale, 'PDF Male');
 
     const drawPageHeader = () => {
       doc.setFillColor(...HEADER_BG);
@@ -91,11 +102,16 @@ export const exportMatchupsToPDF = async (data: PDFExportData) => {
       }
     };
 
-    // Page 1: Female Division
+    // ===== Page 1: Registered Players =====
+    drawPageHeader();
+    renderPlayersRoster(doc, players, drawPageHeader);
+
+    // ===== Page 2: Female Division Matches =====
+    doc.addPage();
     drawPageHeader();
     renderDivision(doc, sortedFemale, 'Female Division', ORANGE, getName, drawPageHeader);
 
-    // Page 2: Male Division
+    // ===== Page 3: Male Division Matches =====
     doc.addPage();
     drawPageHeader();
     renderDivision(doc, sortedMale, 'Male Division', BLUE, getName, drawPageHeader);
@@ -117,6 +133,74 @@ export const exportMatchupsToPDF = async (data: PDFExportData) => {
   } catch (err: any) {
     console.error('PDF export error:', err);
     alert(`Failed to generate PDF: ${err.message || 'Unknown error'}`);
+  }
+};
+
+const renderPlayersRoster = (
+  doc: jsPDF,
+  players: Player[],
+  drawPageHeader: () => void
+) => {
+  const femalePlayers = players.filter(p => p.gender === 'female');
+  const malePlayers = players.filter(p => p.gender === 'male');
+
+  let y = 38;
+  doc.setFontSize(14);
+  doc.setFont(undefined, 'bold');
+  doc.setTextColor(0, 86, 130);
+  doc.text('Registered Players', 11, y);
+  doc.setDrawColor(0, 86, 130);
+  doc.setLineWidth(0.5);
+  doc.line(11, y + 2, 199, y + 2);
+  y += 10;
+
+  // Female Players
+  if (femalePlayers.length > 0) {
+    doc.setFillColor(255, 243, 224);
+    doc.rect(11, y - 4, 188, 6, 'F');
+    doc.setFontSize(11);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(255, 127, 80);
+    doc.text(`FEMALE DIVISION (${femalePlayers.length})`, 13, y);
+    y += 5;
+
+    doc.setFontSize(9);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(0, 0, 0);
+
+    femalePlayers.forEach((p, idx) => {
+      if (idx % 2 === 0) {
+        doc.setFillColor(250, 250, 250);
+        doc.rect(11, y - 3.5, 188, 5, 'F');
+      }
+      doc.text(`${idx + 1}. ${p.name}`, 13, y);
+      y += 5;
+    });
+    y += 4;
+  }
+
+  // Male Players
+  if (malePlayers.length > 0) {
+    doc.setFillColor(224, 247, 255);
+    doc.rect(11, y - 4, 188, 6, 'F');
+    doc.setFontSize(11);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(0, 119, 182);
+    doc.text(`MALE DIVISION (${malePlayers.length})`, 13, y);
+    y += 5;
+
+    doc.setFontSize(9);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(0, 0, 0);
+
+    malePlayers.forEach((p, idx) => {
+      if (idx % 2 === 0) {
+        doc.setFillColor(250, 250, 250);
+        doc.rect(11, y - 3.5, 188, 5, 'F');
+      }
+      doc.text(`${idx + 1}. ${p.name}`, 13, y);
+      y += 5;
+    });
   }
 };
 

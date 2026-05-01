@@ -52,6 +52,12 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
   const [pendingPlayers, setPendingPlayers] = useState<PendingPlayer[]>([]);
   const [settings, setSettings] = useState<TournamentSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Inline confirmation states
+  const [confirmingApproveId, setConfirmingApproveId] = useState<string | null>(null);
+  const [confirmingRemoveId, setConfirmingRemoveId] = useState<string | null>(null);
+  const [confirmingReset, setConfirmingReset] = useState(false);
+  const [confirmingInit, setConfirmingInit] = useState(false);
 
   useEffect(() => {
     loadAdminData();
@@ -95,10 +101,6 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
   };
 
   const handleRemovePlayer = async (playerId: string, playerName: string) => {
-    if (!window.confirm(`Are you sure you want to remove ${playerName} from the tournament?`)) {
-      return;
-    }
-
     try {
       const playerRef = doc(db, 'players', playerId);
       const batch = writeBatch(db);
@@ -110,6 +112,7 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
         description: `${playerName} has been removed from the tournament`,
       });
 
+      setConfirmingRemoveId(null);
       await loadAdminData();
     } catch (error) {
       console.error('Error removing player:', error);
@@ -122,10 +125,6 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
   };
 
   const handleApprovePlayer = async (playerId: string, playerName: string, playerEmail: string, gender: string) => {
-    if (!window.confirm(`Approve ${playerName} for the tournament?`)) {
-      return;
-    }
-
     try {
       const playerRef = doc(db, 'players', playerId);
       await updateDoc(playerRef, {
@@ -142,6 +141,7 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
       // TODO: Send approval email here if email service is configured
       // await sendApprovalEmail(playerEmail, playerName);
 
+      setConfirmingApproveId(null);
       await loadAdminData();
     } catch (error) {
       console.error('Error approving player:', error);
@@ -201,18 +201,6 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
   };
 
   const handleResetToPlaceholders = async () => {
-    if (!window.confirm(
-      'This will reset ALL players to placeholder names ("Female Player 1", "Male Player 1", etc.) and mark them as unconfirmed. All registrations will be lost. Are you sure?'
-    )) {
-      return;
-    }
-
-    if (!window.confirm(
-      'This action cannot be undone. All registered players will lose their registration status. Continue?'
-    )) {
-      return;
-    }
-
     try {
       setIsLoading(true);
       await resetPlayersToPlaceholders();
@@ -222,6 +210,7 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
         description: "All players have been reset to placeholder names. Registration can now begin fresh.",
       });
       
+      setConfirmingReset(false);
       await loadAdminData();
     } catch (error) {
       console.error('Error resetting players:', error);
@@ -236,12 +225,6 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
   };
 
   const handleInitializeDatabase = async () => {
-    if (!window.confirm(
-      'This will completely initialize the tournament database with fresh placeholder players. All existing data will be reset. Continue?'
-    )) {
-      return;
-    }
-
     try {
       setIsLoading(true);
       // Initialize Firebase database
@@ -253,6 +236,7 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
         description: "Tournament database has been set up with placeholder players and is ready for registration.",
       });
       
+      setConfirmingInit(false);
       await loadAdminData();
     } catch (error) {
       console.error('Error initializing database:', error);
@@ -314,25 +298,78 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
             )}
             
             <div className="pt-4 border-t border-ocean/20 space-y-3">
-              <Button
-                onClick={handleInitializeDatabase}
-                disabled={isLoading}
-                className="w-full bg-palm hover:bg-palm-dark text-white"
-              >
-                Initialize Tournament Database
-              </Button>
+              {confirmingInit ? (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-2">
+                  <p className="text-sm text-amber-800 font-medium">
+                    This will reset ALL data. Are you sure?
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={handleInitializeDatabase}
+                      disabled={isLoading}
+                      size="sm"
+                      className="flex-1 bg-palm hover:bg-palm-dark text-white"
+                    >
+                      Yes, Initialize
+                    </Button>
+                    <Button
+                      onClick={() => setConfirmingInit(false)}
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  onClick={() => setConfirmingInit(true)}
+                  disabled={isLoading}
+                  className="w-full bg-palm hover:bg-palm-dark text-white"
+                >
+                  Initialize Tournament Database
+                </Button>
+              )}
               <p className="text-xs text-foreground/60">
                 Complete setup with placeholder players and fresh tournament settings.
               </p>
               
-              <Button
-                onClick={handleResetToPlaceholders}
-                disabled={isLoading}
-                variant="destructive"
-                className="w-full"
-              >
-                Reset Players Only
-              </Button>
+              {confirmingReset ? (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2">
+                  <p className="text-sm text-red-800 font-medium">
+                    Reset all players to placeholders?
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={handleResetToPlaceholders}
+                      disabled={isLoading}
+                      size="sm"
+                      variant="destructive"
+                      className="flex-1"
+                    >
+                      Yes, Reset
+                    </Button>
+                    <Button
+                      onClick={() => setConfirmingReset(false)}
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  onClick={() => setConfirmingReset(true)}
+                  disabled={isLoading}
+                  variant="destructive"
+                  className="w-full"
+                >
+                  Reset Players Only
+                </Button>
+              )}
               <p className="text-xs text-foreground/60">
                 Reset only players to placeholders, keeping existing matches and settings.
               </p>
@@ -426,14 +463,34 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
                         Registered: {new Date(player.registered_at).toLocaleDateString()}
                       </div>
                     </div>
-                    <Button
-                      onClick={() => handleApprovePlayer(player.id, player.name, player.email, player.gender)}
-                      size="sm"
-                      className="ml-2 bg-green-600 hover:bg-green-700 text-white"
-                    >
-                      <CheckCircle className="w-4 h-4 mr-1" />
-                      Approve
-                    </Button>
+                    {confirmingApproveId === player.id ? (
+                      <div className="flex items-center gap-1 ml-2">
+                        <Button
+                          onClick={() => handleApprovePlayer(player.id, player.name, player.email, player.gender)}
+                          size="sm"
+                          className="bg-green-600 hover:bg-green-700 text-white px-2"
+                        >
+                          <CheckCircle className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          onClick={() => setConfirmingApproveId(null)}
+                          size="sm"
+                          variant="outline"
+                          className="px-2"
+                        >
+                          ✕
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        onClick={() => setConfirmingApproveId(player.id)}
+                        size="sm"
+                        className="ml-2 bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        <CheckCircle className="w-4 h-4 mr-1" />
+                        Approve
+                      </Button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -482,14 +539,35 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
                         Registered: {new Date(player.registered_at).toLocaleDateString()}
                       </div>
                     </div>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleRemovePlayer(player.id, player.name)}
-                      className="ml-2"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    {confirmingRemoveId === player.id ? (
+                      <div className="flex items-center gap-1 ml-2">
+                        <Button
+                          onClick={() => handleRemovePlayer(player.id, player.name)}
+                          size="sm"
+                          variant="destructive"
+                          className="px-2"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          onClick={() => setConfirmingRemoveId(null)}
+                          size="sm"
+                          variant="outline"
+                          className="px-2"
+                        >
+                          ✕
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => setConfirmingRemoveId(player.id)}
+                        className="ml-2"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
                   </div>
                 ))}
               </div>

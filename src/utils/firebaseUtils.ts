@@ -297,7 +297,8 @@ export const loadMatches = async (femalePlayers?: any[], malePlayers?: any[]) =>
             score1: m.score1 || 0,
             score2: m.score2 || 0,
             isSubmitted: m.is_completed || false
-          }));
+          }))
+          .sort((a: any, b: any) => Number(a.match_number) - Number(b.match_number));
 
         const maleMatchesData = matches
           .filter((m: any) => m.gender === 'male')
@@ -311,10 +312,13 @@ export const loadMatches = async (femalePlayers?: any[], malePlayers?: any[]) =>
             score1: m.score1 || 0,
             score2: m.score2 || 0,
             isSubmitted: m.is_completed || false
-          }));
+          }))
+          .sort((a: any, b: any) => Number(a.match_number) - Number(b.match_number));
 
-        console.log('✅ [MATCH LOAD] Female matches:', femaleMatchesData.length);
-        console.log('✅ [MATCH LOAD] Male matches:', maleMatchesData.length);
+        console.log('✅ [MATCH LOAD] Female matches:', femaleMatchesData.length,
+          'order:', femaleMatchesData.map((m: any) => m.match_number));
+        console.log('✅ [MATCH LOAD] Male matches:', maleMatchesData.length,
+          'order:', maleMatchesData.map((m: any) => m.match_number));
         console.log('📊 [MATCH LOAD] Expected: 14 female + 14 male = 28 total');
 
         if (femaleMatchesData.length !== 14 || maleMatchesData.length !== 14) {
@@ -362,7 +366,8 @@ export const loadMatches = async (femalePlayers?: any[], malePlayers?: any[]) =>
           score1: m.score1 || 0,
           score2: m.score2 || 0,
           isSubmitted: m.is_completed || false
-        }));
+        }))
+        .sort((a: any, b: any) => Number(a.match_number) - Number(b.match_number));
 
       const maleMatchesData = matches
         .filter((m: any) => m.gender === 'male')
@@ -376,10 +381,13 @@ export const loadMatches = async (femalePlayers?: any[], malePlayers?: any[]) =>
           score1: m.score1 || 0,
           score2: m.score2 || 0,
           isSubmitted: m.is_completed || false
-        }));
+        }))
+        .sort((a: any, b: any) => Number(a.match_number) - Number(b.match_number));
 
-      console.log('✅ [MATCH LOAD] Female matches:', femaleMatchesData.length);
-      console.log('✅ [MATCH LOAD] Male matches:', maleMatchesData.length);
+      console.log('✅ [MATCH LOAD] Female matches:', femaleMatchesData.length,
+        'order:', femaleMatchesData.map((m: any) => m.match_number));
+      console.log('✅ [MATCH LOAD] Male matches:', maleMatchesData.length,
+        'order:', maleMatchesData.map((m: any) => m.match_number));
       console.log('📊 [MATCH LOAD] Expected: 14 female + 14 male = 28 total');
 
       // Check if we have the wrong number of matches

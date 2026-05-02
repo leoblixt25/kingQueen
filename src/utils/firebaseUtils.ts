@@ -289,7 +289,7 @@ export const loadMatches = async (femalePlayers?: any[], malePlayers?: any[]) =>
           .filter((m: any) => m.gender === 'female')
           .map((m: any) => ({
             id: m.id,
-            match_number: m.match_number,
+            match_number: Number(m.match_number),
             player1_id: m.player1_id,
             player2_id: m.player2_id,
             player3_id: m.player3_id,
@@ -304,7 +304,7 @@ export const loadMatches = async (femalePlayers?: any[], malePlayers?: any[]) =>
           .filter((m: any) => m.gender === 'male')
           .map((m: any) => ({
             id: m.id,
-            match_number: m.match_number,
+            match_number: Number(m.match_number),
             player1_id: m.player1_id,
             player2_id: m.player2_id,
             player3_id: m.player3_id,
@@ -358,7 +358,7 @@ export const loadMatches = async (femalePlayers?: any[], malePlayers?: any[]) =>
         .filter((m: any) => m.gender === 'female')
         .map((m: any) => ({
           id: m.id,
-          match_number: m.match_number,
+          match_number: Number(m.match_number),
           player1_id: m.player1_id,
           player2_id: m.player2_id,
           player3_id: m.player3_id,
@@ -373,7 +373,7 @@ export const loadMatches = async (femalePlayers?: any[], malePlayers?: any[]) =>
         .filter((m: any) => m.gender === 'male')
         .map((m: any) => ({
           id: m.id,
-          match_number: m.match_number,
+          match_number: Number(m.match_number),
           player1_id: m.player1_id,
           player2_id: m.player2_id,
           player3_id: m.player3_id,

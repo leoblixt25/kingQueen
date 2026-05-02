@@ -150,64 +150,78 @@ const renderPlayersRoster = (
     .filter(p => p.gender === 'male')
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
 
+  // Shared heading
   let y = 38;
   doc.setFontSize(14);
   doc.setFont(undefined, 'bold');
   doc.setTextColor(0, 86, 130);
-  doc.text('Registered Players', 11, y);
+  doc.text('Registered Players', 105, y, { align: 'center' });
   doc.setDrawColor(0, 86, 130);
   doc.setLineWidth(0.5);
   doc.line(11, y + 2, 199, y + 2);
   y += 10;
 
-  // Female Players
-  if (femalePlayers.length > 0) {
-    doc.setFillColor(255, 243, 224);
-    doc.rect(11, y - 4, 188, 6, 'F');
-    doc.setFontSize(11);
-    doc.setFont(undefined, 'bold');
-    doc.setTextColor(255, 127, 80);
-    doc.text(`FEMALE DIVISION (${femalePlayers.length})`, 13, y);
-    y += 5;
+  // Two-column layout constants
+  const COL_W = 90;       // width of each column
+  const COL_GAP = 8;      // gap between columns
+  const LEFT_X = 11;      // left column x (Female)
+  const RIGHT_X = LEFT_X + COL_W + COL_GAP; // right column x (Male)
+  const ROW_H = 5.5;      // row height per player
+  const HEADER_H = 7;     // division header height
 
+  // ── Helper: render a single division column ──
+  const renderColumn = (
+    list: Player[],
+    colX: number,
+    label: string,
+    count: number,
+    headerBg: [number, number, number],
+    headerFg: [number, number, number]
+  ) => {
+    let cy = y;
+
+    // Division header bar
+    doc.setFillColor(...headerBg);
+    doc.roundedRect(colX, cy - 4, COL_W, HEADER_H, 2, 2, 'F');
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(...headerFg);
+    doc.text(`${label} (${count})`, colX + 4, cy + 0.5);
+    cy += HEADER_H + 1;
+
+    // Player rows
     doc.setFontSize(9);
     doc.setFont(undefined, 'normal');
     doc.setTextColor(0, 0, 0);
 
-    femalePlayers.forEach((p, idx) => {
+    list.forEach((p, idx) => {
       if (idx % 2 === 0) {
         doc.setFillColor(250, 250, 250);
-        doc.rect(11, y - 3.5, 188, 5, 'F');
+        doc.rect(colX, cy - 3.5, COL_W, ROW_H, 'F');
       }
-      doc.text(`${idx + 1}. ${p.name}`, 13, y);
-      y += 5;
+      doc.text(`${idx + 1}. ${p.name}`, colX + 4, cy);
+      cy += ROW_H;
     });
-    y += 4;
-  }
 
-  // Male Players
-  if (malePlayers.length > 0) {
-    doc.setFillColor(224, 247, 255);
-    doc.rect(11, y - 4, 188, 6, 'F');
-    doc.setFontSize(11);
-    doc.setFont(undefined, 'bold');
-    doc.setTextColor(0, 119, 182);
-    doc.text(`MALE DIVISION (${malePlayers.length})`, 13, y);
-    y += 5;
+    return cy; // return final y for this column
+  };
 
-    doc.setFontSize(9);
-    doc.setFont(undefined, 'normal');
-    doc.setTextColor(0, 0, 0);
+  // Render both columns side by side
+  const femaleEndY = renderColumn(
+    femalePlayers, LEFT_X, 'FEMALE DIVISION', femalePlayers.length,
+    [255, 243, 224], [255, 127, 80]
+  );
+  const maleEndY = renderColumn(
+    malePlayers, RIGHT_X, 'MALE DIVISION', malePlayers.length,
+    [224, 247, 255], [0, 119, 182]
+  );
 
-    malePlayers.forEach((p, idx) => {
-      if (idx % 2 === 0) {
-        doc.setFillColor(250, 250, 250);
-        doc.rect(11, y - 3.5, 188, 5, 'F');
-      }
-      doc.text(`${idx + 1}. ${p.name}`, 13, y);
-      y += 5;
-    });
-  }
+  // Vertical divider between columns
+  const dividerTop = y - 4;
+  const dividerBot = Math.max(femaleEndY, maleEndY);
+  doc.setDrawColor(210, 218, 226);
+  doc.setLineWidth(0.3);
+  doc.line(LEFT_X + COL_W + COL_GAP / 2, dividerTop, LEFT_X + COL_W + COL_GAP / 2, dividerBot);
 };
 
 const renderDivision = (

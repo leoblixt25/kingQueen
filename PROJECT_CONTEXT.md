@@ -85,6 +85,10 @@ sandy-scorekeeper/
 │   │   └── Index.tsx            # Main tournament page
 │   ├── utils/          # Utility functions (Firebase operations)
 │   │   ├── pdfExport.ts         # PDF generation with football-style layout
+│   │   ├── firebaseUtils.ts    # Firebase Firestore data loading (matches, players)
+│   │   ├── matchSortUtils.ts   # Shared match sorting utilities (getOrderedMatches)
+│   │   ├── matchPlayerResolver.ts # Resolves player IDs to Player objects in matches
+│   │   ├── matchInitUtils.ts    # Match initialization with deterministic IDs
 │   │   ├── authUtils.ts         # Authentication and registration logic
 │   │   └── placeholderUtils.ts  # Placeholder player management
 │   ├── types/          # TypeScript type definitions
@@ -126,19 +130,49 @@ null (placeholder) → pending → approved
 
 ## 10. PDF Export Features
 
+### 3-Page Structure
+* **Page 1**: Registered Players (side-by-side two-column layout)
+* **Page 2**: Female Division matches
+* **Page 3**: Male Division matches
+* Each section starts on a new page with page header
+
 ### Layout Design
 * Professional football-style match schedule
 * 2-column grid layout (2 matches per row)
 * Card-based design with rounded corners
 * Clean, minimal, player-focused output
 
+### Player Roster (Page 1)
+* Side-by-side two-column layout under shared "Registered Players" heading
+* Left column: Female Division (orange header, numbered 1-8)
+* Right column: Male Division (blue header, numbered 1-8)
+* Vertical divider between columns
+* Players sorted alphabetically within each division
+
 ### Content Rules
 * ✅ Player names only (NO emails)
 * ✅ Match number (MATCH 1, MATCH 2, etc.)
 * ✅ Team A vs Team B format
 * ✅ Scores aligned to right (ONLY if completed)
+* ✅ Names resolved via player objects (not IDs)
 * ❌ NO "TBD" placeholder for incomplete matches
 * ❌ NO score display if match not played
+
+### Match Ordering (CRITICAL)
+* `match_number` is coerced to `Number` at mapping stage in `firebaseUtils.ts`
+* This prevents lexicographic sorting (1, 10, 11... 2, 3) when Firestore stores as string
+* Shared `getOrderedMatches()` function used in both UI and PDF for consistency
+* Sort: `Number(match_number ?? 9999) - Number(match_number ?? 9999)`
+* ❌ NEVER rely on array index, insertion order, or object key order
+* ❌ NEVER split/re-append matches without preserving order
+* ❌ NEVER re-sort after initial getOrderedMatches call
+
+### Data Flow for PDF
+1. `firebaseUtils.loadMatches()` → raw matches with `player1_id` etc. (sorted by Number(match_number))
+2. `matchPlayerResolver.resolveMatchPlayers()` → resolved matches with full Player objects
+3. `Index.tsx` passes `resolvedFemaleMatches`/`resolvedMaleMatches` to `AdminPanel`
+4. `AdminPanel` passes resolved matches to `exportMatchupsToPDF()`
+5. `pdfExport.ts` applies `getOrderedMatches()` as final safety net before rendering
 
 ### Date Display
 * Pulled from `tournamentSettings.tournament_date` in Firestore
@@ -148,9 +182,9 @@ null (placeholder) → pending → approved
 
 ### Division Organization
 * Female Division (orange accent color: rgb(255, 127, 80))
-* Male Division (blue accent color: rgb(0, 153, 204))
+* Male Division (blue accent color: rgb(0, 119, 182))
 * Each division clearly separated with colored headers
-* Matches sorted by match_number ascending
+* Matches sorted by match_number ascending (numeric)
 
 ### Match Card Structure
 ```
@@ -166,14 +200,16 @@ null (placeholder) → pending → approved
 
 ### Removed Features
 * ❌ Tournament Date Update (moved to Tournament Configuration page)
+* ❌ `window.confirm()` popups (replaced with inline confirmation UI)
 
 ### Active Features
-* ✅ Approve pending player registrations
+* ✅ Approve pending player registrations (inline confirmation buttons)
 * ✅ Export tournament PDF (football-style layout)
 * ✅ Initialize tournament database
-* ✅ Reset players to placeholders
-* ✅ Remove players from tournament
+* ✅ Reset players to placeholders (inline confirmation)
+* ✅ Remove players from tournament (inline confirmation)
 * ✅ View player counts (male/female)
+* ✅ Receives resolved match data from Index.tsx (same as UI)
 
 ## 12. Deployment URLs
 
@@ -186,11 +222,14 @@ null (placeholder) → pending → approved
 # Build
 npm run build
 
-# Deploy to Firebase
-firebase deploy --only hosting --project kingqueen-c3543
+# Deploy to Firebase Hosting
+npx firebase deploy --only hosting
 
-# Push to GitHub (triggers Cloudflare deploy)
-git add .
+# Deploy to Cloudflare Pages
+npx wrangler pages deploy dist --project-name sandy-scorekeeper --branch main --commit-dirty=true
+
+# Push to GitHub
+git add -A
 git commit -m "message"
 git push origin main
 ```

@@ -1,4 +1,3 @@
-
 import { db } from '@/config/firebase';
 import { collection, getDocs, addDoc, query, where, doc, updateDoc } from 'firebase/firestore';
 
@@ -111,18 +110,21 @@ export const updateMatchScore = async (matchIndex: number, score1: number, score
   }
   
   try {
-    // First, get the match to update
+    // Find the exact match by gender + match_number (1-based)
     const matchesRef = collection(db, 'matches');
-    const q = query(matchesRef, where('gender', '==', gender));
+    const q = query(
+      matchesRef,
+      where('gender', '==', gender),
+      where('match_number', '==', matchIndex + 1)
+    );
     const snapshot = await getDocs(q);
-    const matches = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-    if (!matches || matchIndex >= matches.length) {
-      console.error('❌ [SCORE UPDATE] Invalid match index:', matchIndex, 'Total matches:', matches?.length);
+    if (snapshot.empty) {
+      console.error('❌ [SCORE UPDATE] Match not found. gender:', gender, 'match_number:', matchIndex + 1);
       return null;
     }
 
-    const matchId = matches[matchIndex].id;
+    const matchId = snapshot.docs[0].id;
     console.log('🎯 [SCORE UPDATE] Updating match ID:', matchId);
 
     // Update the match

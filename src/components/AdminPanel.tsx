@@ -7,7 +7,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { db } from "@/config/firebase";
 import { collection, getDocs, query, where, doc, setDoc, writeBatch, orderBy, limit, updateDoc } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
-import { Calendar, Users, Trash2, Settings, Crown, Mail, CheckCircle, FileText, Clock } from "lucide-react";
+import { Calendar, Users, Trash2, Settings, Crown, Mail, CheckCircle, FileText, Clock, Shuffle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { resetPlayersToPlaceholders } from "@/utils/placeholderUtils";
 import { initializePlayers } from "@/utils/playerInitUtils";
 import { initializeMatches } from "@/utils/matchInitUtils";
@@ -48,6 +49,7 @@ interface AdminPanelProps {
 }
 
 export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tournamentDate }: AdminPanelProps) {
+  const navigate = useNavigate();
   const [confirmedPlayers, setConfirmedPlayers] = useState<ConfirmedPlayer[]>([]);
   const [pendingPlayers, setPendingPlayers] = useState<PendingPlayer[]>([]);
   const [settings, setSettings] = useState<TournamentSettings | null>(null);
@@ -415,6 +417,29 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
             </Button>
             <p className="text-xs text-foreground/60 mt-2">
               Download a printable PDF with all players and match schedules.
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Run Team Draw */}
+        <Card className="border-purple-200 bg-purple-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-purple-700">
+              <Shuffle className="w-5 h-5" />
+              Tournament Draw
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Button
+              onClick={() => navigate('/draw')}
+              disabled={isLoading}
+              className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+            >
+              <Shuffle className="w-4 h-4 mr-2" />
+              Run Team Draw
+            </Button>
+            <p className="text-xs text-foreground/60 mt-2">
+              Shuffle players and generate random match pairings for the tournament.
             </p>
           </CardContent>
         </Card>

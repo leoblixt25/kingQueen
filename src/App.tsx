@@ -15,6 +15,7 @@ import InfoPage from "./pages/InfoPage";
 import NotFound from "./pages/NotFound";
 import PendingApproval from "./pages/PendingApproval";
 import ProtectedRoute from "./components/ProtectedRoute";
+import DrawPage from "./pages/DrawPage";
 
 const queryClient = new QueryClient();
 
@@ -32,6 +33,11 @@ const App = () => (
           <Route path="/admin/control" element={
             <ProtectedRoute adminOnly={true}>
               <AdminControl />
+            </ProtectedRoute>
+          } />
+          <Route path="/draw" element={
+            <ProtectedRoute adminOnly={true}>
+              <DrawPage />
             </ProtectedRoute>
           } />
           <Route path="/tournament" element={

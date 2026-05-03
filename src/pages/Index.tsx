@@ -16,7 +16,8 @@ import { ScoreResetConfirmationModal } from "@/components/ScoreResetConfirmation
 import { toast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { auth, db } from "@/config/firebase";
-import { collection, getDocs, query, where, writeBatch, doc, getDoc } from "firebase/firestore";
+import WaitingForDraw from "./WaitingForDraw";
+import { collection, getDocs, query, where, writeBatch, doc, getDoc, onSnapshot } from "firebase/firestore";
 import { getCurrentUser, isAdmin as checkIsAdmin, signOut, getCurrentUserTournamentData } from "@/utils/authUtils";
 import { buildPlayersMap, resolveMatchPlayers } from "@/utils/matchPlayerResolver";
 import { sortPlayersWithTiebreakers, getTiebreakerLevel } from "@/utils/rankingTiebreaker";
@@ -53,6 +54,7 @@ export default function KingQueenOfTheBeach() {
   const [isResetting, setIsResetting] = useState(false);
   const [showScoreResetModal, setShowScoreResetModal] = useState(false);
   const [isResettingScores, setIsResettingScores] = useState(false);
+  const [drawCompleted, setDrawCompleted] = useState(false);
   
   const [editingMatchId, setEditingMatchId] = useState<string | null>(null);
 
@@ -136,6 +138,21 @@ export default function KingQueenOfTheBeach() {
     initializeUserState();
     loadTournamentSettings();
   }, []);
+
+  // Check if draw is completed for approved non-admin users
+  useEffect(() => {
+    if (!userIsAdmin && (currentUser || localStorage.getItem('tournament_registered_email'))) {
+      const unsub = onSnapshot(
+        doc(db, 'tournamentSettings', 'settings'),
+        snap => {
+          if (snap.exists() && snap.data()?.draw_completed === true) {
+            setDrawCompleted(true);
+          }
+        }
+      );
+      return () => unsub();
+    }
+  }, [userIsAdmin, currentUser]);
 
   // Auto-retry loading if stuck for too long
   useEffect(() => {
@@ -699,6 +716,11 @@ export default function KingQueenOfTheBeach() {
         </div>
       </div>
     );
+  }
+
+  // Gate: Show waiting screen for approved non-admin users until draw is complete
+  if (!userIsAdmin && !drawCompleted) {
+    return <WaitingForDraw onDrawComplete={() => setDrawCompleted(true)} />;
   }
 
   // Show loading state while waiting for data

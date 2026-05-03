@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '@/config/firebase';
-import { collection, getDocs, doc, writeBatch } from 'firebase/firestore';
+import { collection, getDocs, doc, writeBatch, addDoc } from 'firebase/firestore';
 import { MATCH_COMBINATIONS } from '@/utils/matchUtils';
 
 interface Player { id: string; name: string; gender: string; status: string; }
@@ -34,6 +34,7 @@ export default function DrawPage() {
   const [mMatches, setMMatches]           = useState<DrawnMatch[]>([]);
   const [saving, setSaving]               = useState(false);
   const [saved, setSaved]                 = useState(false);
+  const [loadingTestPlayers, setLoadingTestPlayers] = useState(false);
 
   const fCanvasRef = useRef<HTMLCanvasElement>(null);
   const mCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -249,11 +250,72 @@ export default function DrawPage() {
 
   if (loading) return <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-secondary)' }}>Loading players…</div>;
 
+  async function loadTestPlayers() {
+    setLoadingTestPlayers(true);
+    try {
+      const batch = writeBatch(db);
+      const playersRef = collection(db, 'players');
+      
+      // Create 8 female test players
+      for (let i = 1; i <= 8; i++) {
+        const playerData = {
+          name: `Female Player ${i}`,
+          gender: 'female',
+          status: 'approved',
+          is_confirmed: true,
+          points: 0,
+          total_scores: 0,
+          matches_played: 0,
+          position: i,
+          approved_at: new Date().toISOString()
+        };
+        const newDocRef = doc(playersRef);
+        batch.set(newDocRef, playerData);
+      }
+      
+      // Create 8 male test players
+      for (let i = 1; i <= 8; i++) {
+        const playerData = {
+          name: `Male Player ${i}`,
+          gender: 'male',
+          status: 'approved',
+          is_confirmed: true,
+          points: 0,
+          total_scores: 0,
+          matches_played: 0,
+          position: i,
+          approved_at: new Date().toISOString()
+        };
+        const newDocRef = doc(playersRef);
+        batch.set(newDocRef, playerData);
+      }
+      
+      await batch.commit();
+      await loadPlayers(); // Reload to show the new players
+    } catch (e) {
+      console.error('Failed to load test players:', e);
+      alert('Failed to load test players. Check console.');
+    }
+    setLoadingTestPlayers(false);
+  }
+
   if (femalePlayers.length !== 8 || malePlayers.length !== 8) return (
     <div style={{ textAlign: 'center', padding: '3rem' }}>
       <p style={{ color: 'var(--color-text-secondary)', fontSize: 14 }}>Need exactly 8 approved players per division to start the draw.</p>
       <p style={{ color: 'var(--color-text-secondary)', fontSize: 13, marginTop: 8 }}>Female: {femalePlayers.length}/8 &nbsp;|&nbsp; Male: {malePlayers.length}/8</p>
-      <button onClick={() => navigate('/')} style={{ marginTop: 16, padding: '8px 16px', fontSize: 13, cursor: 'pointer' }}>← Back</button>
+      <div style={{ marginTop: 16, display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
+        <button onClick={() => navigate('/')} style={{ padding: '8px 16px', fontSize: 13, cursor: 'pointer' }}>← Back</button>
+        <button 
+          onClick={loadTestPlayers} 
+          disabled={loadingTestPlayers}
+          style={{ padding: '8px 16px', fontSize: 13, cursor: loadingTestPlayers ? 'not-allowed' : 'pointer', background: '#7C3AED', color: 'white', border: 'none', borderRadius: '4px', opacity: loadingTestPlayers ? 0.7 : 1 }}
+        >
+          {loadingTestPlayers ? 'Loading…' : '⚡ Load Test Players'}
+        </button>
+      </div>
+      <p style={{ color: 'var(--color-text-secondary)', fontSize: 11, marginTop: 12, maxWidth: 300, margin: '12px auto 0' }}>
+        Test players will be created as approved placeholders and can be replaced when real players register.
+      </p>
     </div>
   );
 

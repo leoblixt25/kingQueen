@@ -278,26 +278,29 @@ export const loadMatches = async (femalePlayers?: any[], malePlayers?: any[]) =>
     if (checkSnapshot.empty) {
       console.log('⚠️ [MATCH LOAD] No matches found in database');
       
-      // Fix: Check if draw has been completed — if so, matches should exist, don't reinitialize
+      // Check draw_completed — if true, matches should already exist
+      // but may not have propagated yet. Retry a few times before giving up.
       const settingsSnap = await getDoc(doc(db, 'tournamentSettings', 'settings'));
       const drawCompleted = settingsSnap.exists() && settingsSnap.data()?.draw_completed === true;
 
       if (drawCompleted) {
-        // Draw was saved but matches are missing — this is a race condition, retry once after delay
-        console.warn('⚠️ [MATCH LOAD] Draw completed but no matches found — retrying in 1s...');
-        await new Promise(r => setTimeout(r, 1000));
-        const retrySnap = await getDocs(simpleQuery);
-        if (retrySnap.empty) {
-          console.error('❌ [MATCH LOAD] Still no matches after retry. Draw may need to be re-saved.');
-          return { femaleMatches: [], maleMatches: [] };
+        // Retry up to 3 times with 1s delay — draw saves may have a propagation delay
+        for (let attempt = 0; attempt < 3; attempt++) {
+          console.warn(`⚠️ [MATCH LOAD] Draw completed but no matches found — retry ${attempt + 1}/3 in 1s...`);
+          await new Promise(r => setTimeout(r, 1000));
+          const retrySnap = await getDocs(query(collection(db, 'matches')));
+          if (!retrySnap.empty) {
+            const matches = retrySnap.docs.map(d => ({ id: d.id, ...d.data() }));
+            console.log(`✅ [MATCH LOAD] Retry successful, loaded ${matches.length} matches`);
+            return processMatches(matches);
+          }
         }
-        // Process retrySnap normally
-        const matches = retrySnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        console.log(`✅ [MATCH LOAD] Retry successful, loaded ${matches.length} matches`);
-        return processMatches(matches);
+        // Still empty after retries
+        console.error('❌ [MATCH LOAD] Still no matches after 3 retries. Draw may need to be re-saved.');
+        return { femaleMatches: [], maleMatches: [] };
       }
 
-      // No draw yet — safe to auto-initialize
+      // No draw yet — auto-initialize with placeholder players
       console.log('🚀 [MATCH LOAD] Initializing matches now...');
       
       try {

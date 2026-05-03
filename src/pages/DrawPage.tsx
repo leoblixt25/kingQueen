@@ -200,10 +200,10 @@ export default function DrawPage() {
         existing.docs.forEach(d => delBatch.delete(d.ref));
         await delBatch.commit();
         
-        // Fix: STEP 2 - Wait for Firestore consistency (increased to 800ms)
-        await new Promise(resolve => setTimeout(resolve, 800));
+        // Bug 1: STEP 2 - Wait for Firestore consistency
+        await new Promise(resolve => setTimeout(resolve, 500));
         
-        // Fix: STEP 3 - Verify deletion worked
+        // Bug 1: STEP 3 - Verify deletion worked
         const verify = await getDocs(collection(db, 'matches'));
         if (!verify.empty) {
           console.error('❌ [SAVE] Deletion incomplete! Still have', verify.docs.length, 'matches');
@@ -292,18 +292,6 @@ export default function DrawPage() {
       }, { merge: true });
       
       await wb.commit();
-      
-      // Fix: Wait for Firestore to propagate (800ms)
-      await new Promise(r => setTimeout(r, 800));
-      
-      // Fix: Verify exactly 28 matches were written
-      const verifySnap = await getDocs(collection(db, 'matches'));
-      console.log(`✅ [SAVE] Verified ${verifySnap.size} matches written to Firestore`);
-      if (verifySnap.size !== 28) {
-        console.error(`❌ [SAVE] Expected 28 matches, got ${verifySnap.size}`);
-        alert(`Draw saved but match count is wrong (${verifySnap.size}/28). Please restart draw.`);
-      }
-      
       console.log('✅ [SAVE] Draw saved successfully!');
       setSaved(true);
     } catch (e) { 

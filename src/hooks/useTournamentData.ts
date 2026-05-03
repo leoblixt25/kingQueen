@@ -205,13 +205,7 @@ export const useTournamentData = () => {
     updateFinalMatch: actions.updateFinalMatch,
     resetScores: actions.resetScores,
     resetAllData: actions.resetAllData,
-    // Fix 3: retryMatchInitialization now reloads data instead of being a no-op
-    retryMatchInitialization: async () => {
-      console.log('🔄 [RETRY] Manual retry triggered — reloading tournament data...');
-      await loadTournamentData();
-      // Force a page reload as fallback to ensure fresh data from Firestore
-      window.location.reload();
-    },
+    retryMatchInitialization: () => Promise.resolve(),
     setFinalMatchScores: state.setFinalMatchScores,
     loadTournamentData,
     loadPlayersData,

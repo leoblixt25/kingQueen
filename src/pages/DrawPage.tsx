@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '@/config/firebase';
-import { collection, getDocs, doc, writeBatch, addDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, writeBatch, addDoc, setDoc, getDoc } from 'firebase/firestore';
 import { MATCH_COMBINATIONS } from '@/utils/matchUtils';
 
 interface Player { id: string; name: string; gender: string; status: string; }
@@ -64,12 +64,32 @@ export default function DrawPage() {
 
   async function loadPlayers() {
     try {
+      // Load saved draw results if they exist
+      const settingsSnap = await getDoc(doc(db, 'tournamentSettings', 'settings'));
+      if (settingsSnap.exists()) {
+        const data = settingsSnap.data();
+        if (data.draw_completed && data.drawn_female_matches && data.drawn_male_matches) {
+          setSaved(true);
+          setFDone(true);
+          setMDone(true);
+          setFStarted(true);
+          setMStarted(true);
+          setFMatches(data.drawn_female_matches);
+          setMMatches(data.drawn_male_matches);
+          // Restore wheel order from saved matches
+          const fNames: string[] = [...new Set((data.drawn_female_matches as DrawnMatch[]).flatMap(m => [m.p1, m.p2, m.p3, m.p4]))];
+          const mNames: string[] = [...new Set((data.drawn_male_matches as DrawnMatch[]).flatMap(m => [m.p1, m.p2, m.p3, m.p4]))];
+          fOrder.current = fNames;
+          mOrder.current = mNames;
+        }
+      }
+
       const snap = await getDocs(collection(db, 'players'));
       const all = snap.docs.map(d => ({ id: d.id, ...d.data() } as Player));
       // Trim player names for consistent lookup
       all.forEach(p => { if (p.name) p.name = p.name.trim(); });
-      setFemalePlayers(all.filter(p => p.gender === 'female' && p.status === 'approved'));
-      setMalePlayers(all.filter(p => p.gender === 'male'   && p.status === 'approved'));
+      setFemalePlayers(all.filter(p => p.gender === 'female' && p.status === 'approved').map(p => ({ ...p, name: p.name.trim() })));
+      setMalePlayers(all.filter(p => p.gender === 'male'   && p.status === 'approved').map(p => ({ ...p, name: p.name.trim() })));
     } catch (e) { console.error(e); }
     setLoading(false);
   }
@@ -87,12 +107,14 @@ export default function DrawPage() {
       ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
       ctx.save(); ctx.translate(h, h); ctx.rotate(s + arc / 2);
       ctx.textAlign = 'right'; ctx.fillStyle = '#fff';
-      const fs = Math.max(8, sz * 0.052);
-      ctx.font = `500 ${fs}px sans-serif`;
+      // Bug 5: Larger font size and bold
+      const fs = Math.max(10, sz * 0.065);
+      ctx.font = `700 ${fs}px sans-serif`;
       ctx.fillText(pool[i].length > 10 ? pool[i].slice(0, 9) + '…' : pool[i], r - 5, fs * 0.35);
       ctx.restore();
     }
-    ctx.beginPath(); ctx.arc(h, h, sz * 0.06, 0, 2 * Math.PI);
+    // Bug 5: Slightly larger center circle
+    ctx.beginPath(); ctx.arc(h, h, sz * 0.07, 0, 2 * Math.PI);
     ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#ddd'; ctx.lineWidth = 1; ctx.stroke();
   }
 
@@ -168,31 +190,145 @@ export default function DrawPage() {
   async function saveDraw() {
     setSaving(true);
     try {
-      const delBatch = writeBatch(db);
+      // Bug 1: STEP 1 - Delete ALL existing matches first with verification
+      console.log('🗑️ [SAVE] Deleting existing matches...');
       const existing = await getDocs(collection(db, 'matches'));
-      existing.docs.forEach(d => delBatch.delete(d.ref));
-      await delBatch.commit();
+      console.log(`🗑️ [SAVE] Found ${existing.docs.length} existing matches to delete`);
+      
+      if (!existing.empty) {
+        const delBatch = writeBatch(db);
+        existing.docs.forEach(d => delBatch.delete(d.ref));
+        await delBatch.commit();
+        
+        // Bug 1: STEP 2 - Wait for Firestore consistency
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Bug 1: STEP 3 - Verify deletion worked
+        const verify = await getDocs(collection(db, 'matches'));
+        if (!verify.empty) {
+          console.error('❌ [SAVE] Deletion incomplete! Still have', verify.docs.length, 'matches');
+          alert('Failed to clear existing matches. Please try again.');
+          setSaving(false);
+          return;
+        }
+      }
+      console.log('✅ [SAVE] All existing matches deleted');
 
+      // Bug 2: Load players with detailed logging
       const playerSnap = await getDocs(collection(db, 'players'));
-      const allPlayers = playerSnap.docs.map(d => ({ id: d.id, ...d.data() } as Player));
-      // Trim names for consistent matching
-      allPlayers.forEach(p => { if (p.name) p.name = p.name.trim(); });
+      const allPlayers = playerSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
+      
+      console.log('📋 [SAVE] Players in Firestore:', allPlayers.map(p => `"${p.name}" (id: ${p.id})`));
+      console.log('📋 [SAVE] Female wheel order:', fOrder.current);
+      console.log('📋 [SAVE] Male wheel order:', mOrder.current);
+      console.log('📋 [SAVE] Female matches to save:', fMatches);
+      console.log('📋 [SAVE] Male matches to save:', mMatches);
+
+      // Bug 2: Case-insensitive name matching with error throwing
+      const byName = (name: string): string => {
+        const found = allPlayers.find(p => p.name?.trim().toLowerCase() === name?.trim().toLowerCase());
+        if (!found) {
+          console.error(`❌ [SAVE] Player not found by name: "${name}"`);
+          throw new Error(`Player not found: "${name}". Draw cannot be saved.`);
+        }
+        return found.id;
+      };
 
       const wb = writeBatch(db);
       const matchesRef = collection(db, 'matches');
-      // byName function with warning log for missing players
-      const byName = (name: string) => {
-        const found = allPlayers.find(p => p.name.trim() === name.trim());
-        if (!found) console.warn('Player not found by name:', name);
-        return found?.id ?? name;
-      };
-      fMatches.forEach(m => wb.set(doc(matchesRef), { match_number: m.matchNum, gender: 'female', player1_id: byName(m.p1), player2_id: byName(m.p2), player3_id: byName(m.p3), player4_id: byName(m.p4), score1: 0, score2: 0, is_completed: false }));
-      mMatches.forEach(m => wb.set(doc(matchesRef), { match_number: m.matchNum, gender: 'male',   player1_id: byName(m.p1), player2_id: byName(m.p2), player3_id: byName(m.p3), player4_id: byName(m.p4), score1: 0, score2: 0, is_completed: false }));
-      wb.set(doc(db, 'tournamentSettings', 'settings'), { draw_completed: true }, { merge: true });
+      
+      // Bug 2: Wrap in try/catch for name errors
+      try {
+        // Bug 1: STEP 4 - Write exactly 14 female + 14 male = 28 total matches
+        fMatches.forEach(m => {
+          const p1id = byName(m.p1);
+          const p2id = byName(m.p2);
+          const p3id = byName(m.p3);
+          const p4id = byName(m.p4);
+          console.log(`✅ [SAVE] Female match ${m.matchNum}: ${m.p1}(${p1id}) & ${m.p2}(${p2id}) vs ${m.p3}(${p3id}) & ${m.p4}(${p4id})`);
+          wb.set(doc(matchesRef), { 
+            match_number: m.matchNum, 
+            gender: 'female', 
+            player1_id: p1id, 
+            player2_id: p2id, 
+            player3_id: p3id, 
+            player4_id: p4id, 
+            score1: 0, 
+            score2: 0, 
+            is_completed: false 
+          });
+        });
+        
+        mMatches.forEach(m => {
+          const p1id = byName(m.p1);
+          const p2id = byName(m.p2);
+          const p3id = byName(m.p3);
+          const p4id = byName(m.p4);
+          console.log(`✅ [SAVE] Male match ${m.matchNum}: ${m.p1}(${p1id}) & ${m.p2}(${p2id}) vs ${m.p3}(${p3id}) & ${m.p4}(${p4id})`);
+          wb.set(doc(matchesRef), { 
+            match_number: m.matchNum, 
+            gender: 'male', 
+            player1_id: p1id, 
+            player2_id: p2id, 
+            player3_id: p3id, 
+            player4_id: p4id, 
+            score1: 0, 
+            score2: 0, 
+            is_completed: false 
+          });
+        });
+      } catch (nameError) {
+        console.error('❌ [SAVE] Name lookup error:', nameError);
+        alert(String(nameError));
+        setSaving(false);
+        return;
+      }
+      
+      // Bug 3: Also persist draw results for display
+      wb.set(doc(db, 'tournamentSettings', 'settings'), { 
+        draw_completed: true,
+        drawn_female_matches: fMatches,
+        drawn_male_matches: mMatches
+      }, { merge: true });
+      
       await wb.commit();
+      console.log('✅ [SAVE] Draw saved successfully!');
       setSaved(true);
-    } catch (e) { console.error(e); alert('Failed to save draw. Check console.'); }
+    } catch (e) { 
+      console.error('❌ [SAVE] Failed to save draw:', e); 
+      alert('Failed to save draw. Check console.'); 
+    }
     setSaving(false);
+  }
+
+  // Bug 4: Restart draw function
+  async function restartDraw() {
+    if (!window.confirm('This will clear the current draw and all match data. Players will need to wait for a new draw. Are you sure?')) return;
+    try {
+      console.log('🔄 [RESTART] Clearing draw data...');
+      
+      // Clear settings
+      await setDoc(doc(db, 'tournamentSettings', 'settings'), {
+        draw_completed: false,
+        drawn_female_matches: [],
+        drawn_male_matches: []
+      }, { merge: true });
+
+      // Delete all matches
+      const existing = await getDocs(collection(db, 'matches'));
+      if (!existing.empty) {
+        const delBatch = writeBatch(db);
+        existing.docs.forEach(d => delBatch.delete(d.ref));
+        await delBatch.commit();
+      }
+
+      // Reset local state
+      resetDraw();
+      console.log('✅ [RESTART] Draw restarted successfully');
+    } catch (e) {
+      console.error('❌ [RESTART] Failed to restart draw:', e);
+      alert('Failed to restart draw.');
+    }
   }
 
   function resetDraw() {
@@ -223,7 +359,8 @@ export default function DrawPage() {
           <div style={{ fontSize: 12, fontWeight: 500, padding: '3px 14px', borderRadius: 6, background: accentBg, color: accentText, marginBottom: '.6rem' }}>
             {isFemale ? 'Female division' : 'Male division'}
           </div>
-          <div style={{ position: 'relative', width: 'min(200px, 55vw)', height: 'min(200px, 55vw)', marginBottom: '.4rem' }}>
+          {/* Bug 5: Larger wheel size */}
+          <div style={{ position: 'relative', width: 'min(260px, 70vw)', height: 'min(260px, 70vw)', marginBottom: '.4rem' }}>
             <div style={{ position: 'absolute', top: -7, left: '50%', transform: 'translateX(-50%)', width: 0, height: 0, borderLeft: '8px solid transparent', borderRight: '8px solid transparent', borderTop: '14px solid var(--color-text-primary)', zIndex: 10 }} />
             <canvas ref={cvRef} style={{ borderRadius: '50%', width: '100%', height: '100%' }} />
           </div>
@@ -344,9 +481,18 @@ export default function DrawPage() {
       {saved && (
         <div style={{ textAlign: 'center', marginTop: '1rem' }}>
           <p style={{ color: 'var(--color-text-success)', fontWeight: 500, fontSize: 14 }}>✓ Draw saved — tournament is now open to players</p>
-          <button onClick={() => navigate('/')} style={{ marginTop: 10, padding: '8px 20px', fontSize: 13, borderRadius: 6, border: '0.5px solid var(--color-border-secondary)', background: 'transparent', color: 'var(--color-text-primary)', cursor: 'pointer' }}>
-            Go to tournament →
-          </button>
+          <div style={{ display: 'flex', gap: '.5rem', justifyContent: 'center', flexWrap: 'wrap', marginTop: 10 }}>
+            <button onClick={() => navigate('/')} style={{ padding: '8px 20px', fontSize: 13, borderRadius: 6, border: '0.5px solid var(--color-border-secondary)', background: 'transparent', color: 'var(--color-text-primary)', cursor: 'pointer' }}>
+              Go to tournament →
+            </button>
+            {/* Bug 4: Restart draw button */}
+            <button 
+              onClick={restartDraw} 
+              style={{ padding: '8px 16px', fontSize: 13, borderRadius: 6, border: '0.5px solid #DC2626', background: 'transparent', color: '#DC2626', cursor: 'pointer' }}
+            >
+              ↺ Restart draw
+            </button>
+          </div>
         </div>
       )}
     </div>

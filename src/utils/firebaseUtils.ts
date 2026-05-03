@@ -226,6 +226,41 @@ export const loadPlayers = async () => {
   return { femalePlayers: [], malePlayers: [] };
 };
 
+// Helper function to process matches data (extracted to avoid duplication)
+function processMatches(matches: any[]) {
+  const femaleMatches = matches
+    .filter(m => m.gender === 'female')
+    .map(m => ({
+      id: m.id,
+      match_number: Number(m.match_number),
+      player1_id: m.player1_id,
+      player2_id: m.player2_id,
+      player3_id: m.player3_id,
+      player4_id: m.player4_id,
+      score1: m.score1 || 0,
+      score2: m.score2 || 0,
+      isSubmitted: m.is_completed || false
+    }))
+    .sort((a, b) => a.match_number - b.match_number);
+
+  const maleMatches = matches
+    .filter(m => m.gender === 'male')
+    .map(m => ({
+      id: m.id,
+      match_number: Number(m.match_number),
+      player1_id: m.player1_id,
+      player2_id: m.player2_id,
+      player3_id: m.player3_id,
+      player4_id: m.player4_id,
+      score1: m.score1 || 0,
+      score2: m.score2 || 0,
+      isSubmitted: m.is_completed || false
+    }))
+    .sort((a, b) => a.match_number - b.match_number);
+
+  return { femaleMatches, maleMatches };
+}
+
 export const loadMatches = async (femalePlayers?: any[], malePlayers?: any[]) => {
   console.log('🔄 [MATCH LOAD] loadMatches() called');
   console.log('📊 [MATCH LOAD] Available players - Female:', femalePlayers?.length || 0, 'Male:', malePlayers?.length || 0);
@@ -243,14 +278,26 @@ export const loadMatches = async (femalePlayers?: any[], malePlayers?: any[]) =>
     if (checkSnapshot.empty) {
       console.log('⚠️ [MATCH LOAD] No matches found in database');
       
-      // Bug 1 Fix: Check if draw is already completed - don't auto-initialize if so
+      // Fix: Check if draw has been completed — if so, matches should exist, don't reinitialize
       const settingsSnap = await getDoc(doc(db, 'tournamentSettings', 'settings'));
       const drawCompleted = settingsSnap.exists() && settingsSnap.data()?.draw_completed === true;
+
       if (drawCompleted) {
-        console.log('⏹️ [MATCH LOAD] Draw already completed, skipping auto-initialization to prevent duplicate matches');
-        return { femaleMatches: [], maleMatches: [] };
+        // Draw was saved but matches are missing — this is a race condition, retry once after delay
+        console.warn('⚠️ [MATCH LOAD] Draw completed but no matches found — retrying in 1s...');
+        await new Promise(r => setTimeout(r, 1000));
+        const retrySnap = await getDocs(simpleQuery);
+        if (retrySnap.empty) {
+          console.error('❌ [MATCH LOAD] Still no matches after retry. Draw may need to be re-saved.');
+          return { femaleMatches: [], maleMatches: [] };
+        }
+        // Process retrySnap normally
+        const matches = retrySnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        console.log(`✅ [MATCH LOAD] Retry successful, loaded ${matches.length} matches`);
+        return processMatches(matches);
       }
-      
+
+      // No draw yet — safe to auto-initialize
       console.log('🚀 [MATCH LOAD] Initializing matches now...');
       
       try {
@@ -294,35 +341,7 @@ export const loadMatches = async (femalePlayers?: any[], malePlayers?: any[]) =>
       
       // Continue processing matches below...
       if (matches && matches.length > 0) {
-        const femaleMatchesData = matches
-          .filter((m: any) => m.gender === 'female')
-          .map((m: any) => ({
-            id: m.id,
-            match_number: Number(m.match_number),
-            player1_id: m.player1_id,
-            player2_id: m.player2_id,
-            player3_id: m.player3_id,
-            player4_id: m.player4_id,
-            score1: m.score1 || 0,
-            score2: m.score2 || 0,
-            isSubmitted: m.is_completed || false
-          }))
-          .sort((a: any, b: any) => Number(a.match_number) - Number(b.match_number));
-
-        const maleMatchesData = matches
-          .filter((m: any) => m.gender === 'male')
-          .map((m: any) => ({
-            id: m.id,
-            match_number: Number(m.match_number),
-            player1_id: m.player1_id,
-            player2_id: m.player2_id,
-            player3_id: m.player3_id,
-            player4_id: m.player4_id,
-            score1: m.score1 || 0,
-            score2: m.score2 || 0,
-            isSubmitted: m.is_completed || false
-          }))
-          .sort((a: any, b: any) => Number(a.match_number) - Number(b.match_number));
+        const { femaleMatches: femaleMatchesData, maleMatches: maleMatchesData } = processMatches(matches);
 
         console.log('✅ [MATCH LOAD] Female matches:', femaleMatchesData.length,
           'order:', femaleMatchesData.map((m: any) => m.match_number));
@@ -362,36 +381,8 @@ export const loadMatches = async (femalePlayers?: any[], malePlayers?: any[]) =>
     console.log('✅ [MATCH LOAD] Total matches loaded:', matches.length);
 
     if (matches && matches.length > 0) {
-      // Filter by gender field (which actually exists in the database)
-      const femaleMatchesData = matches
-        .filter((m: any) => m.gender === 'female')
-        .map((m: any) => ({
-          id: m.id,
-          match_number: Number(m.match_number),
-          player1_id: m.player1_id,
-          player2_id: m.player2_id,
-          player3_id: m.player3_id,
-          player4_id: m.player4_id,
-          score1: m.score1 || 0,
-          score2: m.score2 || 0,
-          isSubmitted: m.is_completed || false
-        }))
-        .sort((a: any, b: any) => Number(a.match_number) - Number(b.match_number));
-
-      const maleMatchesData = matches
-        .filter((m: any) => m.gender === 'male')
-        .map((m: any) => ({
-          id: m.id,
-          match_number: Number(m.match_number),
-          player1_id: m.player1_id,
-          player2_id: m.player2_id,
-          player3_id: m.player3_id,
-          player4_id: m.player4_id,
-          score1: m.score1 || 0,
-          score2: m.score2 || 0,
-          isSubmitted: m.is_completed || false
-        }))
-        .sort((a: any, b: any) => Number(a.match_number) - Number(b.match_number));
+      // Use helper function for consistent processing
+      const { femaleMatches: femaleMatchesData, maleMatches: maleMatchesData } = processMatches(matches);
 
       console.log('✅ [MATCH LOAD] Female matches:', femaleMatchesData.length,
         'order:', femaleMatchesData.map((m: any) => m.match_number));

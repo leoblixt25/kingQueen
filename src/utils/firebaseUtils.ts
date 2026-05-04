@@ -240,114 +240,20 @@ export const loadMatches = async (femalePlayers?: any[], malePlayers?: any[]) =>
 
     console.log('📊 [MATCH LOAD] Collection check:', checkSnapshot.empty ? 'EMPTY' : `${checkSnapshot.size} documents`);
 
+    // SINGLE SOURCE OF TRUTH: Match existence determines initialization
+    // If no matches exist, ALWAYS create them (regardless of any flags)
     if (checkSnapshot.empty) {
-      console.log('⚠️ [MATCH LOAD] No matches found in database');
-      
-      // Check tournament settings for context
-      const settingsSnap = await getDoc(doc(db, 'tournamentSettings', 'settings'));
-      const drawCompleted = settingsSnap.exists() && settingsSnap.data()?.draw_completed === true;
-      
-      if (drawCompleted) {
-        console.log('⚠️ [MATCH LOAD] WARNING: draw_completed=true but no matches exist! Resetting flag and initializing...');
-        // Reset the draw_completed flag since no matches exist
-        try {
-          const { doc, updateDoc } = await import('firebase/firestore');
-          await updateDoc(doc(db, 'tournamentSettings', 'settings'), { 
-            draw_completed: false,
-            draw_completed_at: null 
-          });
-          console.log('✅ [MATCH LOAD] Reset draw_completed flag to false');
-        } catch (e) {
-          console.log('⚠️ [MATCH LOAD] Could not reset draw_completed flag:', e);
-        }
-      }
-      
-      console.log('🚀 [MATCH LOAD] Initializing matches now...');
+      console.log('⚠️ [MATCH LOAD] No matches found - initializing now...');
       
       try {
+        // initializeMatchesSafe handles the existence check internally
+        // It creates matches only if none exist, uses existing if they do
         await initializeMatchesSafe();
         console.log('✅ [MATCH LOAD] Matches initialized successfully');
       } catch (initError) {
         console.error('❌ [MATCH LOAD] Match initialization FAILED:', initError);
+        // Return empty but don't block - let the app show diagnostic UI
         return { femaleMatches: [], maleMatches: [] };
-      }
-      
-      console.log('🔁 [MATCH LOAD] Reloading matches after initialization...');
-      // One retry only - no infinite recursion
-      const retrySnapshot = await getDocs(simpleQuery);
-      
-      if (retrySnapshot.empty) {
-        console.error('❌ [MATCH LOAD] Still no matches after successful initialization! Database issue?');
-        return { femaleMatches: [], maleMatches: [] };
-      }
-      
-      // Process the retry snapshot below - continue to STEP 2
-      console.log('📊 [MATCH LOAD] Retry successful, proceeding with orderBy query...');
-      const orderedQuery = query(matchesRef, orderBy('match_number', 'asc'));
-      const snapshot = await getDocs(orderedQuery);
-      
-      const matches = snapshot.docs.map(doc => {
-        const data = doc.data();
-        console.log(`📄 [MATCH LOAD] Match #${data.match_number}:`, {
-          id: doc.id,
-          gender: data.gender,
-          player1_id: data.player1_id,
-          player2_id: data.player2_id,
-          is_completed: data.is_completed
-        });
-        return {
-          id: doc.id,
-          ...data
-        };
-      });
-      
-      console.log('✅ [MATCH LOAD] Total matches loaded:', matches.length);
-      
-      // Continue processing matches below...
-      if (matches && matches.length > 0) {
-        const femaleMatchesData = matches
-          .filter((m: any) => m.gender === 'female')
-          .map((m: any) => ({
-            id: m.id,
-            match_number: Number(m.match_number),
-            player1_id: m.player1_id,
-            player2_id: m.player2_id,
-            player3_id: m.player3_id,
-            player4_id: m.player4_id,
-            score1: m.score1 || 0,
-            score2: m.score2 || 0,
-            isSubmitted: m.is_completed || false
-          }))
-          .sort((a: any, b: any) => Number(a.match_number) - Number(b.match_number));
-
-        const maleMatchesData = matches
-          .filter((m: any) => m.gender === 'male')
-          .map((m: any) => ({
-            id: m.id,
-            match_number: Number(m.match_number),
-            player1_id: m.player1_id,
-            player2_id: m.player2_id,
-            player3_id: m.player3_id,
-            player4_id: m.player4_id,
-            score1: m.score1 || 0,
-            score2: m.score2 || 0,
-            isSubmitted: m.is_completed || false
-          }))
-          .sort((a: any, b: any) => Number(a.match_number) - Number(b.match_number));
-
-        console.log('✅ [MATCH LOAD] Female matches:', femaleMatchesData.length,
-          'order:', femaleMatchesData.map((m: any) => m.match_number));
-        console.log('✅ [MATCH LOAD] Male matches:', maleMatchesData.length,
-          'order:', maleMatchesData.map((m: any) => m.match_number));
-        console.log('📊 [MATCH LOAD] Expected: 14 female + 14 male = 28 total');
-
-        if (femaleMatchesData.length !== 14 || maleMatchesData.length !== 14) {
-          console.log('⚠️ [MATCH LOAD] Incorrect match count! Female:', femaleMatchesData.length, 'Male:', maleMatchesData.length);
-          console.log('💡 [MATCH LOAD] Admin can reinitialize matches from Admin Panel if needed');
-        }
-
-        console.log('✅ [MATCH LOAD] MATCHES LOADED SUCCESSFULLY');
-        return { femaleMatches: femaleMatchesData, maleMatches: maleMatchesData };
       }
     }
 

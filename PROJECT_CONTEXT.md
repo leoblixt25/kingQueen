@@ -89,6 +89,7 @@ sandy-scorekeeper/
 │   │   ├── matchSortUtils.ts   # Shared match sorting utilities (getOrderedMatches)
 │   │   ├── matchPlayerResolver.ts # Resolves player IDs to Player objects in matches
 │   │   ├── matchInitUtils.ts    # Match initialization with deterministic IDs
+│   │   ├── staticMatchups.ts    # SINGLE SOURCE OF TRUTH: 14 match combinations + generation
 │   │   ├── authUtils.ts         # Authentication and registration logic
 │   │   └── placeholderUtils.ts  # Placeholder player management
 │   ├── types/          # TypeScript type definitions
@@ -211,7 +212,45 @@ null (placeholder) → pending → approved
 * ✅ View player counts (male/female)
 * ✅ Receives resolved match data from Index.tsx (same as UI)
 
-## 12. Deployment URLs
+## 12. Match Generation System (Single Source of Truth)
+
+### Architecture Overview
+The match generation system ensures **consistent, deterministic matchups** between the draw wheel and saved tournament data.
+
+### Single Source of Truth
+* `staticMatchups.ts` → `STATIC_MATCHUPS` array contains exactly 14 match combinations
+* All match generation flows through this one definition
+* `generateMatchesFromOrder(playerOrder, gender)` creates matches from any player order
+
+### Match Generation Flow
+```
+Draw Wheel:               Reset/Init:
+├─ Shuffle players        ├─ Use default order (0-7)
+├─ Pre-generate 14        ├─ Generate 14 matches
+│  matches ONCE           │  from STATIC_MATCHUPS
+├─ Animate wheel          └─ Save to Firestore
+│  (visualization only)
+└─ Save exact matches
+   to Firestore
+```
+
+### Key Functions
+* `generateMatchesFromOrder()` - Single source of truth for match generation
+* `shuffleArray()` - Fisher-Yates shuffle for randomization
+* Both exported from `staticMatchups.ts`
+
+### Files Using Static Matchups
+* `DrawPage.tsx` - Draw wheel (pre-generates matches, then visualizes)
+* `matchInitUtils.ts` - Match initialization with deterministic IDs
+* `matchUtils.ts` - Match creation (re-exports STATIC_MATCHUPS)
+* `tournamentReset.ts` - Tournament reset
+* `firebaseMigration.ts` - Migration-safe match creation
+
+### Critical Rule
+❌ **NEVER** recompute or reshuffle matches after initial generation
+✅ Always use the pre-generated matches for display and storage
+
+## 13. Deployment URLs
 
 * **Cloudflare Pages**: https://sandy-scorekeeper.pages.dev/
 * **Firebase Hosting**: https://kingqueen-c3543.web.app

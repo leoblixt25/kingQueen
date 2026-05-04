@@ -1,22 +1,79 @@
 // Static matchup template for both male and female divisions
 // This ensures consistent match structure without regeneration
+// SINGLE SOURCE OF TRUTH for all 14 match combinations
 
 export const STATIC_MATCHUPS = [
-  [0, 1, 2, 3], // Match 1: Ylan & Alexandra vs Diana & Svetlana / Sergey & Kevin vs Yura & Artisom
-  [4, 5, 6, 7], // Match 2: Dina & Julia vs Gosia & Hiro / Roma & Igor vs Lorenz & Leo
-  [5, 6, 7, 0], // Match 3: Julia & Gosia vs Hiro & Ylan / Igor & Lorenz vs Leo & Sergey
-  [3, 4, 1, 2], // Match 4: Svetlana & Dina vs Alexandra & Diana / Artisom & Roma vs Kevin & Yura
-  [6, 3, 4, 1], // Match 5: Gosia & Svetlana vs Dina & Alexandra / Lorenz & Artisom vs Roma & Kevin
-  [0, 2, 7, 5], // Match 6: Ylan & Diana vs Hiro & Julia / Sergey & Yura vs Leo & Igor
-  [2, 4, 3, 7], // Match 7: Diana & Dina vs Svetlana & Hiro / Yura & Roma vs Artisom & Leo
-  [1, 6, 5, 0], // Match 8: Alexandra & Gosia vs Julia & Ylan / Kevin & Lorenz vs Igor & Sergey
-  [5, 3, 6, 2], // Match 9: Julia & Svetlana vs Gosia & Diana / Igor & Artisom vs Lorenz & Yura
-  [7, 1, 0, 4], // Match 10: Hiro & Alexandra vs Ylan & Dina / Leo & Kevin vs Sergey & Roma
-  [2, 7, 1, 5], // Match 11: Diana & Hiro vs Alexandra & Julia / Yura & Leo vs Kevin & Igor
-  [3, 0, 6, 4], // Match 12: Svetlana & Ylan vs Gosia & Dina / Artisom & Sergey vs Lorenz & Roma
-  [7, 4, 0, 6], // Match 13: Hiro & Dina vs Ylan & Gosia / Leo & Roma vs Sergey & Lorenz
-  [5, 2, 3, 1]  // Match 14: Julia & Diana vs Svetlana & Alexandra / Igor & Yura vs Artisom & Kevin
-];
+  [0, 1, 2, 3], // Match 1: Team A (0,1) vs Team B (2,3)
+  [4, 5, 6, 7], // Match 2: Team A (4,5) vs Team B (6,7)
+  [5, 6, 7, 0], // Match 3: Team A (5,6) vs Team B (7,0)
+  [3, 4, 1, 2], // Match 4: Team A (3,4) vs Team B (1,2)
+  [6, 3, 4, 1], // Match 5: Team A (6,3) vs Team B (4,1)
+  [0, 2, 7, 5], // Match 6: Team A (0,2) vs Team B (7,5)
+  [2, 4, 3, 7], // Match 7: Team A (2,4) vs Team B (3,7)
+  [1, 6, 5, 0], // Match 8: Team A (1,6) vs Team B (5,0)
+  [5, 3, 6, 2], // Match 9: Team A (5,3) vs Team B (6,2)
+  [7, 1, 0, 4], // Match 10: Team A (7,1) vs Team B (0,4)
+  [2, 7, 1, 5], // Match 11: Team A (2,7) vs Team B (1,5)
+  [3, 0, 6, 4], // Match 12: Team A (3,0) vs Team B (6,4)
+  [7, 4, 0, 6], // Match 13: Team A (7,4) vs Team B (0,6)
+  [5, 2, 3, 1]  // Match 14: Team A (5,2) vs Team B (3,1)
+] as const;
+
+// Export type for the matchup indices
+export type MatchupIndices = readonly [number, number, number, number];
+
+/**
+ * Generate matches from a shuffled player order
+ * This is the SINGLE source of truth for match generation used by:
+ * - Draw wheel (with shuffled player order)
+ * - Reset function (with default player order 0-7)
+ * 
+ * @param playerOrder - Array of player names in the order they should be matched
+ * @param gender - 'female' or 'male' for the match gender field
+ * @returns Array of match objects with player names and match numbers
+ */
+export interface GeneratedMatch {
+  matchNum: number;
+  p1: string;
+  p2: string;
+  p3: string;
+  p4: string;
+  gender: 'female' | 'male';
+}
+
+export function generateMatchesFromOrder(
+  playerOrder: string[],
+  gender: 'female' | 'male'
+): GeneratedMatch[] {
+  if (playerOrder.length !== 8) {
+    throw new Error(`Expected exactly 8 players, got ${playerOrder.length}`);
+  }
+
+  return STATIC_MATCHUPS.map((indices, index) => {
+    const [i1, i2, i3, i4] = indices;
+    return {
+      matchNum: index + 1,
+      p1: playerOrder[i1],
+      p2: playerOrder[i2],
+      p3: playerOrder[i3],
+      p4: playerOrder[i4],
+      gender
+    };
+  });
+}
+
+/**
+ * Shuffle array using Fisher-Yates algorithm
+ * Returns a NEW array, does not mutate input
+ */
+export function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
 
 // Female player names in order - placeholders that will be replaced when players register
 export const FEMALE_PLAYERS = [

@@ -1,13 +1,10 @@
 import { db } from '@/config/firebase';
 import { collection, getDocs, addDoc, query, where, doc, updateDoc } from 'firebase/firestore';
+import { STATIC_MATCHUPS } from './staticMatchups';
 
-// Define match combinations (exactly 14 matches)
-export const MATCH_COMBINATIONS = [
-  [0, 1, 2, 3], [4, 5, 6, 7], [5, 6, 7, 0], [3, 4, 1, 2],
-  [6, 3, 4, 1], [0, 2, 7, 5], [2, 4, 3, 7], [1, 6, 5, 0],
-  [5, 3, 6, 2], [7, 1, 0, 4], [2, 7, 1, 5], [3, 0, 4, 6],
-  [7, 4, 0, 6], [5, 2, 6, 1]
-];
+// Re-export STATIC_MATCHUPS for backward compatibility
+// This is now the SINGLE SOURCE OF TRUTH from staticMatchups.ts
+export { STATIC_MATCHUPS as MATCH_COMBINATIONS };
 
 export const initializeMatches = async () => {
   console.log('Initializing matches...');
@@ -45,8 +42,8 @@ export const initializeMatches = async () => {
   }
 
   try {
-    // Create female matches
-    const femaleMatches = MATCH_COMBINATIONS.map((combination, index) => {
+    // Create female matches using STATIC_MATCHUPS (single source of truth)
+    const femaleMatches = STATIC_MATCHUPS.map((combination, index) => {
       const [p1, p2, p3, p4] = combination;
       return {
         player1_id: femalePlayers[p1].id,
@@ -64,8 +61,8 @@ export const initializeMatches = async () => {
     // Insert female matches in parallel
     await Promise.all(femaleMatches.map(match => addDoc(matchesRef, match)));
 
-    // Create male matches
-    const maleMatches = MATCH_COMBINATIONS.map((combination, index) => {
+    // Create male matches using STATIC_MATCHUPS (single source of truth)
+    const maleMatches = STATIC_MATCHUPS.map((combination, index) => {
       const [p1, p2, p3, p4] = combination;
       return {
         player1_id: malePlayers[p1].id,

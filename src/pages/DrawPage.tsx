@@ -2,22 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '@/config/firebase';
 import { collection, getDocs, doc, writeBatch, addDoc, setDoc, getDoc } from 'firebase/firestore';
-import { MATCH_COMBINATIONS } from '@/utils/matchUtils';
+import { generateMatchesFromOrder, shuffleArray, type GeneratedMatch } from '@/utils/staticMatchups';
 
 interface Player { id: string; name: string; gender: string; status: string; }
 interface DrawnMatch { matchNum: number; p1: string; p2: string; p3: string; p4: string; }
 
 const FC = ['#FF8A65','#FFB74D','#FF7043','#FFA726','#EF6C00','#F57C00','#E64A19','#FF6D00'];
 const MC = ['#42A5F5','#26C6DA','#1E88E5','#00ACC1','#039BE5','#0288D1','#0277BD','#29B6F6'];
-
-function shuf<T>(a: T[]): T[] {
-  const b = [...a];
-  for (let i = b.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [b[i], b[j]] = [b[j], b[i]];
-  }
-  return b;
-}
 
 export default function DrawPage() {
   const navigate = useNavigate();
@@ -139,24 +130,51 @@ export default function DrawPage() {
     requestAnimationFrame(frame);
   }
 
+  /**
+   * Pre-generate all matches from the shuffled player order
+   * This is the SINGLE SOURCE OF TRUTH for match generation
+   */
+  function generateAllMatches(order: string[], gender: 'female' | 'male'): DrawnMatch[] {
+    const matches = generateMatchesFromOrder(order, gender);
+    // Convert to DrawnMatch format (without gender field)
+    return matches.map(m => ({
+      matchNum: m.matchNum,
+      p1: m.p1,
+      p2: m.p2,
+      p3: m.p3,
+      p4: m.p4
+    }));
+  }
+
+  /**
+   * Animate the wheel through the sequence of matches
+   * Uses pre-generated matches - NO RECOMPUTATION during animation
+   */
   function runSequence(
     cvRef: React.RefObject<HTMLCanvasElement>,
     angleRef: React.MutableRefObject<number>,
-    order: string[], col: string[], idx: number,
+    order: string[],
+    col: string[],
+    preGeneratedMatches: DrawnMatch[],
+    idx: number,
     setStatus: (s: string) => void,
     setMatches: React.Dispatch<React.SetStateAction<DrawnMatch[]>>,
     onComplete: () => void
   ) {
-    if (idx >= MATCH_COMBINATIONS.length) { onComplete(); return; }
-    const picks = MATCH_COMBINATIONS[idx].map((x: number) => order[x]);
-    const matchNum = idx + 1;
+    if (idx >= preGeneratedMatches.length) { onComplete(); return; }
+    
+    const match = preGeneratedMatches[idx];
+    const picks = [match.p1, match.p2, match.p3, match.p4];
+    const matchNum = match.matchNum;
     const collected: string[] = [];
     let pi = 0;
+    
     function nextPick() {
       if (pi === 4) {
-        setMatches(prev => [...prev, { matchNum, p1: collected[0], p2: collected[1], p3: collected[2], p4: collected[3] }]);
+        // Use the EXACT pre-generated match - no recomputation
+        setMatches(prev => [...prev, match]);
         setStatus(`Match ${matchNum} drawn`);
-        setTimeout(() => runSequence(cvRef, angleRef, order, col, idx + 1, setStatus, setMatches, onComplete), 300);
+        setTimeout(() => runSequence(cvRef, angleRef, order, col, preGeneratedMatches, idx + 1, setStatus, setMatches, onComplete), 300);
         return;
       }
       setStatus(`Match ${matchNum} — ${pi < 2 ? 'team A' : 'team B'} pick ${pi < 2 ? pi + 1 : pi - 1}…`);
@@ -178,12 +196,26 @@ export default function DrawPage() {
     const setStatus  = gender === 'f' ? setFStatus  : setMStatus;
     const setMatches = gender === 'f' ? setFMatches : setMMatches;
     const setStarted = gender === 'f' ? setFStarted : setMStarted;
-    const order = shuf(players.map(p => p.name));
+    const setDone    = gender === 'f' ? setFDone : setMDone;
+    
+    // STEP 1: Shuffle player order ONCE
+    const order = shuffleArray(players.map(p => p.name));
     orderRef.current = order;
-    setStarted(true); setMatches([]);
-    runSequence(cvRef, angleRef, order, col, 0, setStatus, setMatches, () => {
+    
+    // STEP 2: Generate ALL matches immediately from the shuffled order
+    // This is the SINGLE SOURCE OF TRUTH - these matches are final
+    const preGeneratedMatches = generateAllMatches(order, gender === 'f' ? 'female' : 'male');
+    
+    console.log(`🎯 [DRAW ${gender.toUpperCase()}] Generated ${preGeneratedMatches.length} matches from shuffled order:`, order);
+    console.log(`🎯 [DRAW ${gender.toUpperCase()}] Match 1: ${preGeneratedMatches[0]?.p1} & ${preGeneratedMatches[0]?.p2} vs ${preGeneratedMatches[0]?.p3} & ${preGeneratedMatches[0]?.p4}`);
+    
+    // STEP 3: Start animation (visualization only - matches already determined)
+    setStarted(true); 
+    setMatches([]);
+    runSequence(cvRef, angleRef, order, col, preGeneratedMatches, 0, setStatus, setMatches, () => {
       setStatus('Complete!');
-      if (gender === 'f') setFDone(true); else setMDone(true);
+      setDone(true);
+      console.log(`✅ [DRAW ${gender.toUpperCase()}] All matches drawn:`, preGeneratedMatches);
     });
   }
 

@@ -689,7 +689,22 @@ export default function KingQueenOfTheBeach() {
     }
   };
 
-  if (isLoading || isLoadingUserData) {
+  // Force bypass loading state after timeout
+  const [forceBypass, setForceBypass] = useState(false);
+  
+  useEffect(() => {
+    // Auto-clear loading state after 10 seconds to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      if (isLoading || isLoadingUserData) {
+        console.log('⏰ [FORCE BYPASS] Loading timeout reached, enabling bypass option');
+        setForceBypass(true);
+      }
+    }, 10000);
+    
+    return () => clearTimeout(timeoutId);
+  }, [isLoading, isLoadingUserData]);
+
+  if ((isLoading || isLoadingUserData) && !forceBypass) {
     return (
       <div className="min-h-screen bg-sand-gradient px-4 py-6 flex items-center justify-center">
         <div className="text-center animate-fade-in space-y-4">
@@ -725,27 +740,81 @@ export default function KingQueenOfTheBeach() {
 
   // Show loading state while waiting for data
   if (!matches || matches.length === 0) {
-    console.log('⚠️ [LOADING] No matches found yet, showing loading state.');
+    console.log('⚠️ [LOADING] No matches found yet, showing diagnostic state.');
+    console.log('📊 [DIAGNOSTIC] Players:', femalePlayers.length, 'female,', malePlayers.length, 'male');
+    console.log('📊 [DIAGNOSTIC] Matches:', femaleMatches.length, 'female,', maleMatches.length, 'male');
+    
+    const hasPlayers = femalePlayers.length === 8 && malePlayers.length === 8;
+    const needsDraw = hasPlayers && femaleMatches.length === 0 && maleMatches.length === 0;
     
     return (
       <div className="min-h-screen bg-sand-gradient px-4 py-6 flex items-center justify-center">
         <div className="text-center space-y-4 animate-fade-in">
           <div className="text-6xl mb-4 animate-bounce-gentle">🏐</div>
           <h2 className="text-2xl font-bold mb-3 bg-ocean-gradient bg-clip-text text-transparent">
-            Loading Tournament Data...
+            {needsDraw ? 'Waiting for Tournament Draw' : 'Loading Tournament Data...'}
           </h2>
-          <p className="text-foreground/70 font-medium mb-6">Setting up the beach volleyball tracker</p>
-          <div className="space-y-3 max-w-sm mx-auto">
-            <div className="flex items-center justify-center gap-2 text-sm text-foreground/60 mb-4">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              <span>Loading data...</span>
+          
+          {/* Diagnostic Info */}
+          <div className="bg-white/70 backdrop-blur-sm rounded-xl p-4 border border-sand-dark/20 max-w-sm mx-auto">
+            <div className="text-sm text-left space-y-2">
+              <div className="flex justify-between">
+                <span>Female Players:</span>
+                <span className={femalePlayers.length === 8 ? 'text-green-600 font-semibold' : 'text-orange-500'}>
+                  {femalePlayers.length}/8
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Male Players:</span>
+                <span className={malePlayers.length === 8 ? 'text-green-600 font-semibold' : 'text-orange-500'}>
+                  {malePlayers.length}/8
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Female Matches:</span>
+                <span className={femaleMatches.length === 14 ? 'text-green-600 font-semibold' : 'text-orange-500'}>
+                  {femaleMatches.length}/14
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Male Matches:</span>
+                <span className={maleMatches.length === 14 ? 'text-green-600 font-semibold' : 'text-orange-500'}>
+                  {maleMatches.length}/14
+                </span>
+              </div>
             </div>
+          </div>
+          
+          <p className="text-foreground/70 font-medium mb-6">
+            {needsDraw 
+              ? '8 players ready. Admin needs to run the draw to generate matches.' 
+              : 'Setting up the beach volleyball tracker'}
+          </p>
+          
+          <div className="space-y-3 max-w-sm mx-auto">
+            {needsDraw && isAdmin && (
+              <Button 
+                onClick={() => navigate('/draw')} 
+                className="w-full touch-target bg-sunset hover:bg-sunset-dark text-white font-semibold py-3 transition-all duration-300"
+              >
+                🎯 Go to Draw Page
+              </Button>
+            )}
             <Button 
               onClick={loadTournamentData} 
               className="w-full touch-target bg-ocean hover:bg-ocean-dark text-white font-semibold py-3 transition-all duration-300"
             >
-              🔄 Continue to Tournament
+              🔄 Reload Data
             </Button>
+            {isAdmin && (
+              <Button 
+                onClick={handleFullReset} 
+                variant="destructive"
+                className="w-full touch-target bg-coral hover:bg-coral-dark text-white transition-all duration-300"
+              >
+                🔄 Reset & Initialize
+              </Button>
+            )}
           </div>
         </div>
       </div>

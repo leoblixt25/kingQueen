@@ -243,12 +243,23 @@ export const loadMatches = async (femalePlayers?: any[], malePlayers?: any[]) =>
     if (checkSnapshot.empty) {
       console.log('⚠️ [MATCH LOAD] No matches found in database');
       
-      // Bug 1 Fix: Check if draw is already completed - don't auto-initialize if so
+      // Check tournament settings for context
       const settingsSnap = await getDoc(doc(db, 'tournamentSettings', 'settings'));
       const drawCompleted = settingsSnap.exists() && settingsSnap.data()?.draw_completed === true;
+      
       if (drawCompleted) {
-        console.log('⏹️ [MATCH LOAD] Draw already completed, skipping auto-initialization to prevent duplicate matches');
-        return { femaleMatches: [], maleMatches: [] };
+        console.log('⚠️ [MATCH LOAD] WARNING: draw_completed=true but no matches exist! Resetting flag and initializing...');
+        // Reset the draw_completed flag since no matches exist
+        try {
+          const { doc, updateDoc } = await import('firebase/firestore');
+          await updateDoc(doc(db, 'tournamentSettings', 'settings'), { 
+            draw_completed: false,
+            draw_completed_at: null 
+          });
+          console.log('✅ [MATCH LOAD] Reset draw_completed flag to false');
+        } catch (e) {
+          console.log('⚠️ [MATCH LOAD] Could not reset draw_completed flag:', e);
+        }
       }
       
       console.log('🚀 [MATCH LOAD] Initializing matches now...');

@@ -714,8 +714,8 @@ export default function DrawPage() {
           </Card>
 
           <div className="flex flex-col gap-3">
-            <Button 
-              onClick={() => navigate('/')} 
+            <Button
+              onClick={() => navigate('/tournament')}
               variant="outline"
               className="w-full touch-target"
             >
@@ -816,8 +816,8 @@ export default function DrawPage() {
                 </div>
                 
                 <div className="space-y-3">
-                  <Button 
-                    onClick={() => navigate('/')} 
+                  <Button
+                    onClick={() => navigate('/tournament')}
                     className="w-full touch-target font-semibold py-4 text-base rounded-xl bg-ocean hover:bg-ocean-dark text-white shadow-lg shadow-ocean/30"
                   >
                     Go to Tournament

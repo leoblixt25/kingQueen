@@ -976,19 +976,30 @@ export default function KingQueenOfTheBeach() {
               )}
               
               {/* Championship Final - available to all */}
-              <Button 
+              <Button
                 variant={showFinalMatch ? "default" : "outline"}
                 onClick={() => setShowFinalMatch(true)}
                 className={`w-full touch-target font-semibold text-lg py-4 transition-all duration-300 ${
-                  showFinalMatch 
-                    ? 'bg-beach-gradient text-white shadow-beach animate-bounce-gentle' 
+                  showFinalMatch
+                    ? 'bg-beach-gradient text-white shadow-beach animate-bounce-gentle'
                     : 'bg-white/70 hover:bg-beach-gradient hover:text-white border-primary/20 text-primary shadow-sand'
                 }`}
                 disabled={showFinalMatch}
               >
                 👑 Championship Final
               </Button>
-              
+
+              {/* Back to Admin button for admin users */}
+              {userIsAdmin && (
+                <Button
+                  variant="outline"
+                  onClick={() => navigate('/admin/control')}
+                  className="w-full touch-target font-semibold text-lg py-4 transition-all duration-300 bg-white/70 hover:bg-sunset hover:text-white border-sunset/30 text-sunset-dark shadow-sand"
+                >
+                  ← Back to Admin
+                </Button>
+              )}
+
               {/* Back to Division button for regular users when viewing Championship Final */}
               {!userIsAdmin && userGender && showFinalMatch && (
                 <Button 

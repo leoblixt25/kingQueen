@@ -1,14 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '@/config/firebase';
-import { collection, getDocs, doc, writeBatch, addDoc, setDoc, getDoc } from 'firebase/firestore';
-import { generateMatchesFromOrder, shuffleArray, type GeneratedMatch } from '@/utils/staticMatchups';
+import { collection, getDocs, doc, writeBatch, setDoc, getDoc } from 'firebase/firestore';
+import { generateMatchesFromOrder, shuffleArray } from '@/utils/staticMatchups';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { ChevronRight, RotateCcw, Target, CheckCircle2 } from 'lucide-react';
 
 interface Player { id: string; name: string; gender: string; status: string; }
 interface DrawnMatch { matchNum: number; p1: string; p2: string; p3: string; p4: string; }
 
-const FC = ['#FF8A65','#FFB74D','#FF7043','#FFA726','#EF6C00','#F57C00','#E64A19','#FF6D00'];
-const MC = ['#42A5F5','#26C6DA','#1E88E5','#00ACC1','#039BE5','#0288D1','#0277BD','#29B6F6'];
+// App theme colors - Female (warm/sunset tones), Male (cool/ocean tones)
+const FC = ['#FF7F50', '#FF6B6B', '#FF8E53', '#FF6B9D', '#FFA07A', '#FF7F7F', '#FF9F43', '#FF6B6B'];
+const MC = ['#4ECDC4', '#44A08D', '#00B4DB', '#0083B0', '#2193b0', '#6dd5ed', '#48c6ef', '#3498db'];
 
 export default function DrawPage() {
   const navigate = useNavigate();
@@ -375,49 +379,154 @@ export default function DrawPage() {
     });
   }
 
-  function renderDivision(gender: 'f' | 'm') {
-    const isFemale   = gender === 'f';
-    const started    = isFemale ? fStarted  : mStarted;
-    const status     = isFemale ? fStatus   : mStatus;
-    const matches    = isFemale ? fMatches  : mMatches;
-    const cvRef      = isFemale ? fCanvasRef : mCanvasRef;
-    const accentBg   = isFemale ? '#FFF3E0' : '#E3F2FD';
-    const accentText = isFemale ? '#BF360C'  : '#0D47A1';
-    const accentBdr  = isFemale ? '#FFCC80'  : '#90CAF9';
+  // Step-based flow: 1 = Female, 2 = Male, 3 = Complete
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
+
+  function renderWheel(gender: 'f' | 'm') {
+    const isFemale = gender === 'f';
+    const started = isFemale ? fStarted : mStarted;
+    const done = isFemale ? fDone : mDone;
+    const status = isFemale ? fStatus : mStatus;
+    const cvRef = isFemale ? fCanvasRef : mCanvasRef;
+    const colors = isFemale ? FC : MC;
+    const players = isFemale ? femalePlayers : malePlayers;
 
     return (
-      <div style={{ marginBottom: '1.5rem' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '.75rem' }}>
-          <div style={{ fontSize: 12, fontWeight: 500, padding: '3px 14px', borderRadius: 6, background: accentBg, color: accentText, marginBottom: '.6rem' }}>
-            {isFemale ? 'Female division' : 'Male division'}
+      <div className="flex flex-col items-center">
+        {/* Step indicator */}
+        <div className="flex items-center gap-2 mb-4">
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+            currentStep === 1 
+              ? 'bg-sunset text-white' 
+              : fDone 
+                ? 'bg-green-500 text-white' 
+                : 'bg-gray-200 text-gray-500'
+          }`}>
+            {fDone ? <CheckCircle2 size={16} /> : '1'}
           </div>
-          {/* Bug 5: Larger wheel size */}
-          <div style={{ position: 'relative', width: 'min(260px, 70vw)', height: 'min(260px, 70vw)', marginBottom: '.4rem' }}>
-            <div style={{ position: 'absolute', top: -7, left: '50%', transform: 'translateX(-50%)', width: 0, height: 0, borderLeft: '8px solid transparent', borderRight: '8px solid transparent', borderTop: '14px solid var(--color-text-primary)', zIndex: 10 }} />
-            <canvas ref={cvRef} style={{ borderRadius: '50%', width: '100%', height: '100%' }} />
+          <div className="w-12 h-0.5 bg-gray-200">
+            <div className={`h-full transition-all duration-500 ${fDone ? 'bg-green-500' : ''}`} style={{ width: fDone ? '100%' : '0%' }} />
           </div>
-          <p style={{ fontSize: 11, color: 'var(--color-text-secondary)', textAlign: 'center', minHeight: 15, margin: '4px 0' }}>{status}</p>
-          {!started && !saved && (
-            <button onClick={() => startDraw(gender)} style={{ padding: '7px 20px', fontSize: 13, fontWeight: 500, borderRadius: 6, border: `0.5px solid ${accentBdr}`, background: accentBg, color: accentText, cursor: 'pointer', touchAction: 'manipulation' }}>
-              Start draw
-            </button>
-          )}
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+            currentStep === 2 
+              ? 'bg-ocean text-white' 
+              : mDone 
+                ? 'bg-green-500 text-white' 
+                : 'bg-gray-200 text-gray-500'
+          }`}>
+            {mDone ? <CheckCircle2 size={16} /> : '2'}
+          </div>
         </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.35rem' }}>
-          {matches.map(m => (
-            <div key={m.matchNum} style={{ border: '0.5px solid var(--color-border-tertiary)', borderRadius: 6, overflow: 'hidden', display: 'inline-table', animation: 'fadeUp .3s ease forwards' }}>
-              <span style={{ fontSize: 8, color: 'var(--color-text-secondary)', padding: '2px 6px', background: 'var(--color-background-secondary)', display: 'block' }}>Match {m.matchNum}</span>
-              <span style={{ fontSize: 10, fontWeight: 600, color: '#1D4ED8', background: '#DBEAFE', padding: '2px 6px', display: 'block', whiteSpace: 'nowrap' }}>{m.p1} &amp; {m.p2}</span>
-              <span style={{ fontSize: 8, color: 'var(--color-text-secondary)', textAlign: 'center', padding: '1px 0', background: 'var(--color-background-primary)', display: 'block' }}>vs</span>
-              <span style={{ fontSize: 10, fontWeight: 600, color: '#B45309', background: '#FFEDD5', padding: '2px 6px', display: 'block', whiteSpace: 'nowrap' }}>{m.p3} &amp; {m.p4}</span>
-            </div>
+
+        {/* Division badge */}
+        <div className={`px-4 py-1.5 rounded-full text-sm font-semibold mb-4 ${
+          isFemale 
+            ? 'bg-gradient-to-r from-sunset/20 to-[#FF6B6B]/20 text-sunset-dark border border-sunset/30' 
+            : 'bg-gradient-to-r from-ocean/20 to-[#00B4DB]/20 text-ocean-dark border border-ocean/30'
+        }`}>
+          {isFemale ? '👩 Female Division' : '👨 Male Division'}
+        </div>
+
+        {/* Wheel container - larger for mobile recording */}
+        <div className="relative w-[300px] h-[300px] sm:w-[320px] sm:h-[320px] mb-4">
+          {/* Pointer */}
+          <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20">
+            <div className="w-0 h-0 border-l-[12px] border-r-[12px] border-t-[20px] border-l-transparent border-r-transparent border-t-foreground drop-shadow-lg" />
+          </div>
+          {/* Glow effect */}
+          <div className={`absolute inset-0 rounded-full blur-xl opacity-30 ${
+            isFemale ? 'bg-sunset' : 'bg-ocean'
+          }`} />
+          {/* Canvas */}
+          <canvas 
+            ref={cvRef} 
+            className="relative z-10 w-full h-full rounded-full shadow-2xl"
+            style={{ boxShadow: `0 8px 32px ${isFemale ? 'rgba(255,127,80,0.3)' : 'rgba(78,205,196,0.3)'}` }}
+          />
+          {/* Center hub */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-white rounded-full shadow-lg z-20 flex items-center justify-center">
+            <Target size={20} className={isFemale ? 'text-sunset' : 'text-ocean'} />
+          </div>
+        </div>
+
+        {/* Status */}
+        <p className="text-sm text-foreground/60 text-center font-medium mb-4 min-h-[20px]">
+          {status}
+        </p>
+
+        {/* Start button */}
+        {!started && !done && !saved && (
+          <Button 
+            onClick={() => startDraw(gender)}
+            className={`w-full sm:w-auto touch-target font-semibold px-8 py-4 text-base rounded-xl shadow-lg transition-all duration-300 ${
+              isFemale 
+                ? 'bg-sunset hover:bg-sunset-dark text-white shadow-sunset/30' 
+                : 'bg-ocean hover:bg-ocean-dark text-white shadow-ocean/30'
+            }`}
+          >
+            <RotateCcw className="w-5 h-5 mr-2" />
+            Start Draw
+          </Button>
+        )}
+
+        {/* Next step button */}
+        {done && currentStep === 1 && (
+          <Button 
+            onClick={() => setCurrentStep(2)}
+            className="w-full sm:w-auto touch-target font-semibold px-8 py-4 text-base rounded-xl bg-ocean hover:bg-ocean-dark text-white shadow-lg shadow-ocean/30"
+          >
+            Continue to Male Draw
+            <ChevronRight className="w-5 h-5 ml-2" />
+          </Button>
+        )}
+      </div>
+    );
+  }
+
+  function renderMatchGrid(matches: DrawnMatch[], gender: 'f' | 'm') {
+    if (matches.length === 0) return null;
+    
+    const isFemale = gender === 'f';
+    
+    return (
+      <div className="mt-6 w-full">
+        <h3 className="text-sm font-semibold text-foreground/70 mb-3 text-center">
+          {matches.length} Matches Generated
+        </h3>
+        <div className="grid grid-cols-2 gap-2">
+          {matches.map((m) => (
+            <Card key={m.matchNum} className="overflow-hidden border-0 shadow-md">
+              <div className={`text-xs font-semibold px-2 py-1 ${
+                isFemale ? 'bg-sunset/10 text-sunset-dark' : 'bg-ocean/10 text-ocean-dark'
+              }`}>
+                Match {m.matchNum}
+              </div>
+              <CardContent className="p-2 space-y-1">
+                <div className={`text-xs font-bold ${isFemale ? 'text-sunset' : 'text-ocean'}`}>
+                  {m.p1} & {m.p2}
+                </div>
+                <div className="text-[10px] text-foreground/40 font-medium text-center">vs</div>
+                <div className={`text-xs font-bold ${isFemale ? 'text-[#FF6B6B]' : 'text-[#00B4DB]'}`}>
+                  {m.p3} & {m.p4}
+                </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
       </div>
     );
   }
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-secondary)' }}>Loading players…</div>;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-sand-gradient flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="text-4xl animate-bounce">🏐</div>
+          <p className="text-foreground/60">Loading players…</p>
+        </div>
+      </div>
+    );
+  }
 
   async function loadTestPlayers() {
     setLoadingTestPlayers(true);
@@ -468,65 +577,165 @@ export default function DrawPage() {
     setLoadingTestPlayers(false);
   }
 
-  if (femalePlayers.length !== 8 || malePlayers.length !== 8) return (
-    <div style={{ textAlign: 'center', padding: '3rem' }}>
-      <p style={{ color: 'var(--color-text-secondary)', fontSize: 14 }}>Need exactly 8 approved players per division to start the draw.</p>
-      <p style={{ color: 'var(--color-text-secondary)', fontSize: 13, marginTop: 8 }}>Female: {femalePlayers.length}/8 &nbsp;|&nbsp; Male: {malePlayers.length}/8</p>
-      <div style={{ marginTop: 16, display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
-        <button onClick={() => navigate('/')} style={{ padding: '8px 16px', fontSize: 13, cursor: 'pointer' }}>← Back</button>
-        <button 
-          onClick={loadTestPlayers} 
-          disabled={loadingTestPlayers}
-          style={{ padding: '8px 16px', fontSize: 13, cursor: loadingTestPlayers ? 'not-allowed' : 'pointer', background: '#7C3AED', color: 'white', border: 'none', borderRadius: '4px', opacity: loadingTestPlayers ? 0.7 : 1 }}
-        >
-          {loadingTestPlayers ? 'Loading…' : '⚡ Load Test Players'}
-        </button>
+  if (femalePlayers.length !== 8 || malePlayers.length !== 8) {
+    return (
+      <div className="min-h-screen bg-sand-gradient px-4 py-8">
+        <div className="max-w-md mx-auto text-center space-y-6">
+          <div className="text-5xl">🏐</div>
+          <div>
+            <h1 className="text-xl font-bold text-foreground mb-2">Tournament Draw</h1>
+            <p className="text-foreground/60">Need exactly 8 approved players per division to start the draw.</p>
+          </div>
+          
+          <Card className="bg-white/70 backdrop-blur-sm">
+            <CardContent className="p-6 space-y-4">
+              <div className="flex justify-center gap-8">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-sunset">{femalePlayers.length}<span className="text-foreground/40">/8</span></div>
+                  <div className="text-xs text-foreground/60 font-medium">Female</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-ocean">{malePlayers.length}<span className="text-foreground/40">/8</span></div>
+                  <div className="text-xs text-foreground/60 font-medium">Male</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="flex flex-col gap-3">
+            <Button 
+              onClick={() => navigate('/')} 
+              variant="outline"
+              className="w-full touch-target"
+            >
+              ← Back to Tournament
+            </Button>
+            <Button 
+              onClick={loadTestPlayers}
+              disabled={loadingTestPlayers}
+              className="w-full touch-target bg-purple-600 hover:bg-purple-700 text-white"
+            >
+              {loadingTestPlayers ? 'Loading…' : '⚡ Load Test Players'}
+            </Button>
+          </div>
+          
+          <p className="text-xs text-foreground/40 max-w-xs mx-auto">
+            Test players will be created as approved placeholders and can be replaced when real players register.
+          </p>
+        </div>
       </div>
-      <p style={{ color: 'var(--color-text-secondary)', fontSize: 11, marginTop: 12, maxWidth: 300, margin: '12px auto 0' }}>
-        Test players will be created as approved placeholders and can be replaced when real players register.
-      </p>
-    </div>
-  );
+    );
+  }
 
   return (
-    <div style={{ maxWidth: 680, margin: '0 auto', padding: '1rem', fontFamily: 'var(--font-sans)' }}>
-      <style>{`@keyframes fadeUp { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }`}</style>
-      <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
-        <h1 style={{ fontSize: 'clamp(16px,4vw,20px)', fontWeight: 500, color: 'var(--color-text-primary)' }}>Tournament draw</h1>
-      </div>
-
-      {renderDivision('f')}
-      <hr style={{ border: 'none', borderTop: '0.5px solid var(--color-border-tertiary)', margin: '1rem 0' }} />
-      {renderDivision('m')}
-
-      {fDone && mDone && !saved && (
-        <div style={{ display: 'flex', gap: '.5rem', justifyContent: 'center', flexWrap: 'wrap', marginTop: '.75rem' }}>
-          <button onClick={saveDraw} disabled={saving} style={{ padding: '9px 22px', fontSize: 13, fontWeight: 500, borderRadius: 6, background: saving ? '#ccc' : '#1B5E20', color: '#fff', border: 'none', cursor: saving ? 'not-allowed' : 'pointer', touchAction: 'manipulation' }}>
-            {saving ? 'Saving…' : 'Save draw to tournament'}
-          </button>
-          <button onClick={resetDraw} style={{ padding: '9px 14px', fontSize: 13, borderRadius: 6, border: '0.5px solid var(--color-border-secondary)', background: 'transparent', color: 'var(--color-text-secondary)', cursor: 'pointer', touchAction: 'manipulation' }}>
-            Reset
-          </button>
-        </div>
-      )}
-
-      {saved && (
-        <div style={{ textAlign: 'center', marginTop: '1rem' }}>
-          <p style={{ color: 'var(--color-text-success)', fontWeight: 500, fontSize: 14 }}>✓ Draw saved — tournament is now open to players</p>
-          <div style={{ display: 'flex', gap: '.5rem', justifyContent: 'center', flexWrap: 'wrap', marginTop: 10 }}>
-            <button onClick={() => navigate('/')} style={{ padding: '8px 20px', fontSize: 13, borderRadius: 6, border: '0.5px solid var(--color-border-secondary)', background: 'transparent', color: 'var(--color-text-primary)', cursor: 'pointer' }}>
-              Go to tournament →
-            </button>
-            {/* Bug 4: Restart draw button */}
-            <button 
-              onClick={restartDraw} 
-              style={{ padding: '8px 16px', fontSize: 13, borderRadius: 6, border: '0.5px solid #DC2626', background: 'transparent', color: '#DC2626', cursor: 'pointer' }}
-            >
-              ↺ Restart draw
-            </button>
+    <div className="min-h-screen bg-sand-gradient">
+      {/* Mobile-first centered container */}
+      <div className="max-w-md mx-auto px-4 py-6 sm:py-8">
+        
+        {/* Header */}
+        <div className="text-center mb-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/60 text-xs font-semibold text-foreground/60 mb-3">
+            <Target size={14} />
+            Live Draw
           </div>
+          <h1 className="text-2xl sm:text-3xl font-bold bg-ocean-gradient bg-clip-text text-transparent">
+            Tournament Draw
+          </h1>
+          <p className="text-sm text-foreground/60 mt-1">
+            {saved ? 'Draw completed' : currentStep === 1 ? 'Step 1: Female Division' : 'Step 2: Male Division'}
+          </p>
         </div>
-      )}
+
+        {/* Main content - Step based */}
+        <Card className="bg-white/80 backdrop-blur-sm shadow-beach border-sand-dark/20 overflow-hidden">
+          <CardContent className="p-4 sm:p-6">
+            
+            {/* Show Female Draw (Step 1) */}
+            {(currentStep === 1 || saved) && (
+              <div className={currentStep === 2 && !saved ? 'opacity-50' : ''}>
+                {renderWheel('f')}
+                {renderMatchGrid(fMatches, 'f')}
+              </div>
+            )}
+
+            {/* Show Male Draw (Step 2) */}
+            {(currentStep === 2 || saved) && fDone && (
+              <div className={currentStep === 1 ? 'hidden' : 'mt-6 pt-6 border-t border-sand-dark/10'}>
+                {renderWheel('m')}
+                {renderMatchGrid(mMatches, 'm')}
+              </div>
+            )}
+
+            {/* Save buttons - when both done but not saved */}
+            {fDone && mDone && !saved && (
+              <div className="mt-8 pt-6 border-t border-sand-dark/10 space-y-3">
+                <Button 
+                  onClick={saveDraw} 
+                  disabled={saving}
+                  className="w-full touch-target font-semibold py-4 text-base rounded-xl bg-green-600 hover:bg-green-700 text-white shadow-lg"
+                >
+                  {saving ? (
+                    <><RotateCcw className="w-5 h-5 mr-2 animate-spin" /> Saving…</>
+                  ) : (
+                    <><CheckCircle2 className="w-5 h-5 mr-2" /> Save Draw to Tournament</>
+                  )}
+                </Button>
+                <Button 
+                  onClick={resetDraw}
+                  variant="outline"
+                  className="w-full touch-target py-4 text-base"
+                >
+                  <RotateCcw className="w-5 h-5 mr-2" />
+                  Reset Draw
+                </Button>
+              </div>
+            )}
+
+            {/* Success state - saved */}
+            {saved && (
+              <div className="mt-8 pt-6 border-t border-sand-dark/10 space-y-4">
+                <div className="text-center">
+                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-100 text-green-700 text-sm font-semibold">
+                    <CheckCircle2 size={16} />
+                    Draw Saved — Tournament Open
+                  </div>
+                  <p className="text-xs text-foreground/50 mt-2">
+                    {new Date().toLocaleTimeString()} • All matches assigned
+                  </p>
+                </div>
+                
+                <div className="space-y-3">
+                  <Button 
+                    onClick={() => navigate('/')} 
+                    className="w-full touch-target font-semibold py-4 text-base rounded-xl bg-ocean hover:bg-ocean-dark text-white shadow-lg shadow-ocean/30"
+                  >
+                    Go to Tournament
+                    <ChevronRight className="w-5 h-5 ml-2" />
+                  </Button>
+                  
+                  <Button 
+                    onClick={restartDraw}
+                    variant="outline"
+                    className="w-full touch-target py-4 text-base border-coral text-coral hover:bg-coral/10"
+                  >
+                    <RotateCcw className="w-5 h-5 mr-2" />
+                    Restart Draw
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Footer info */}
+        {!saved && (
+          <div className="text-center mt-4">
+            <p className="text-xs text-foreground/40">
+              Draw is randomly generated using Fisher-Yates shuffle
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

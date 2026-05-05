@@ -1,4 +1,4 @@
-import { Player, ResolvedMatch } from '@/types';
+import { Player, Match, ResolvedMatch } from '@/types';
 
 /**
  * Deterministic tiebreaker system for player rankings
@@ -21,15 +21,18 @@ interface PlayerStats {
   strengthOfOpponents: number;
 }
 
-// Helper to get player ID safely
-const getPlayerId = (player: Player | null): string => player?.id || '';
+// Helper to get player ID safely - works with both Player objects and string IDs
+const getPlayerId = (player: Player | string | null): string => {
+  if (typeof player === 'string') return player;
+  return player?.id || '';
+};
 
 /**
  * Calculate point differential for a player
  */
 const calculatePointDifferential = (
   playerId: string,
-  matches: ResolvedMatch[]
+  matches: Match[] | ResolvedMatch[]
 ): number => {
   let scored = 0;
   let conceded = 0;
@@ -59,7 +62,7 @@ const calculatePointDifferential = (
 const getHeadToHeadStats = (
   player1Id: string,
   player2Id: string,
-  matches: ResolvedMatch[]
+  matches: Match[] | ResolvedMatch[]
 ): { wins: number; scoreDiff: number } => {
   let wins = 0;
   let scoreDiff = 0;
@@ -93,7 +96,7 @@ const getHeadToHeadStats = (
  */
 const calculateStrengthOfOpponents = (
   playerId: string,
-  matches: ResolvedMatch[],
+  matches: Match[] | ResolvedMatch[],
   playerPointsMap: Map<string, number>
 ): number => {
   const opponentIds = new Set<string>();
@@ -133,7 +136,7 @@ const calculateStrengthOfOpponents = (
 export const getTiebreakerLevel = (
   a: Player,
   b: Player,
-  matches: ResolvedMatch[],
+  matches: Match[] | ResolvedMatch[],
   playerPointsMap: Map<string, number>
 ): string | null => {
   // If points are different, no tiebreaker needed
@@ -181,7 +184,7 @@ export const getTiebreakerLevel = (
 export const comparePlayers = (
   a: Player,
   b: Player,
-  matches: ResolvedMatch[],
+  matches: Match[] | ResolvedMatch[],
   playerPointsMap: Map<string, number>
 ): number => {
   // 1. Total points (highest first)
@@ -232,7 +235,7 @@ export const comparePlayers = (
  */
 export const sortPlayersWithTiebreakers = (
   players: Player[],
-  matches: ResolvedMatch[]
+  matches: Match[] | ResolvedMatch[]
 ): Player[] => {
   // Build a map of player points for strength of opponents calculation
   const playerPointsMap = new Map<string, number>();

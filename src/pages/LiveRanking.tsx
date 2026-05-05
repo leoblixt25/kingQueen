@@ -485,22 +485,22 @@ export default function LiveRanking() {
     const matchesRef = collection(db, 'matches');
     const unsubscribeMatches = onSnapshot(matchesRef, (snapshot) => {
       console.log('🔁 [LIVE RANKING] Matches data updated:', snapshot.docs.length, 'matches');
-      
+
       const allMatches = snapshot.docs.map(doc => {
         const data = doc.data();
+        // Map Firestore playerX_id fields to teamA/teamB structure
         return {
           id: doc.id,
-          gender: data.gender || 'female' as any,
-          player1: { id: data.player1_id || '', name: data.player1_name || '', points: 0, totalScores: 0, gender: data.gender || 'female' as any },
-          player2: { id: data.player2_id || '', name: data.player2_name || '', points: 0, totalScores: 0, gender: data.gender || 'female' as any },
-          player3: { id: data.player3_id || '', name: data.player3_name || '', points: 0, totalScores: 0, gender: data.gender || 'female' as any },
-          player4: { id: data.player4_id || '', name: data.player4_name || '', points: 0, totalScores: 0, gender: data.gender || 'female' as any },
+          match_number: data.match_number || 0,
+          gender: data.gender || 'female',
+          teamA: [data.player1_id || '', data.player2_id || ''] as [string, string],
+          teamB: [data.player3_id || '', data.player4_id || ''] as [string, string],
           score1: data.score1 || 0,
           score2: data.score2 || 0,
           isSubmitted: data.is_completed || data.is_submitted || false
         } as Match;
       });
-      
+
       setMatches(allMatches);
       console.log('✅ [LIVE RANKING] Matches loaded:', allMatches.length);
     }, (error) => {

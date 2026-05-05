@@ -14,6 +14,8 @@ import { resetScoresOnly } from "@/utils/resetUtils";
 import { PlayerReplacer } from "@/components/PlayerReplacer";
 import { AdminPanel } from "@/components/AdminPanel";
 import { loadMatches } from "@/utils/firebaseUtils";
+import { buildPlayersMap, resolveMatchPlayers } from "@/utils/matchPlayerResolver";
+import { Player } from "@/types";
 
 interface TournamentSettings {
   id?: string;
@@ -127,9 +129,24 @@ export default function AdminControl() {
 
   const loadMatchesData = async () => {
     try {
+      // Get fresh player data first for resolving
+      const playersRef = collection(db, 'players');
+      const snapshot = await getDocs(query(playersRef, where('status', '==', 'approved')));
+      const players = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Player));
+
+      const female = players.filter((p: any) => p.gender === 'female');
+      const male = players.filter((p: any) => p.gender === 'male');
+
+      // Build players map for resolving match player IDs
+      const playersMap = buildPlayersMap(female, male);
+
+      // Load matches and resolve player IDs to Player objects
       const { femaleMatches, maleMatches } = await loadMatches();
-      setFemaleMatches(femaleMatches);
-      setMaleMatches(maleMatches);
+      const resolvedFemale = resolveMatchPlayers(femaleMatches, playersMap);
+      const resolvedMale = resolveMatchPlayers(maleMatches, playersMap);
+
+      setFemaleMatches(resolvedFemale);
+      setMaleMatches(resolvedMale);
     } catch (error) {
       console.error('Error loading matches:', error);
     }

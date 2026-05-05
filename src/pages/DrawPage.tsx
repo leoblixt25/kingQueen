@@ -562,36 +562,32 @@ export default function DrawPage() {
   }
 
   function renderMatchGrid(matches: DrawnMatch[], gender: 'f' | 'm') {
-    if (matches.length === 0) return null;
-    
-    const isFemale = gender === 'f';
-    
-    return (
-      <div className="mt-6 w-full">
-        <h3 className="text-sm font-semibold text-foreground/70 mb-3 text-center">
-          {matches.length} Matches Generated
-        </h3>
-        <div className="grid grid-cols-2 gap-1">
-          {matches.map((m) => (
-            <Card key={m.matchNum} className={`border-2 ${isFemale ? 'border-sunset/20' : 'border-ocean/20'} bg-white/80 backdrop-blur-sm shadow-beach`}>
-              <CardHeader className="pb-2">
-                <CardTitle className={`text-center text-sm font-bold ${isFemale ? 'text-sunset' : 'text-ocean'}`}>Match {m.matchNum}</CardTitle>
-              </CardHeader>
-              <CardContent className="p-2 space-y-1">
-                <div className={`text-center text-xs font-bold ${isFemale ? 'text-sunset' : 'text-ocean'}`}>
-                  {m.p1} & {m.p2}
-                </div>
-                <div className="text-[10px] text-foreground/40 font-medium text-center">vs</div>
-                <div className={`text-center text-xs font-bold ${isFemale ? 'text-[#FF6B6B]' : 'text-[#00B4DB]'}`}>
-                  {m.p3} & {m.p4}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+  if (matches.length === 0) return null;
+
+  const isFemale = gender === 'f';
+  const teamAColor = isFemale ? 'bg-sunset/20 text-sunset' : 'bg-ocean/20 text-ocean';
+  const teamBColor = isFemale ? 'bg-[#FF6B6B]/20 text-[#FF6B6B]' : 'bg-[#00B4DB]/20 text-[#00B4DB]';
+
+  return (
+    <div className="mt-6 w-full">
+      <h3 className="text-sm font-semibold text-foreground/70 mb-3 text-center">
+        {matches.length} Matches Generated
+      </h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+        {matches.map((m) => (
+          <div key={m.matchNum} className="bg-white/80 backdrop-blur-sm shadow-sm rounded-xl overflow-hidden flex flex-col">
+            <div className="bg-gray-100 text-gray-600 text-xs font-medium text-center py-1">Match {m.matchNum}</div>
+            <div className="p-2 flex flex-col space-y-1">
+              <div className={`flex items-center justify-center ${teamAColor} rounded py-0.5 text-xs font-bold`}>{m.p1} & {m.p2}</div>
+              <div className="text-[9px] text-foreground/40 font-medium text-center">vs</div>
+              <div className={`flex items-center justify-center ${teamBColor} rounded py-0.5 text-xs font-bold`}>{m.p3} & {m.p4}</div>
+            </div>
+          </div>
+        ))}
       </div>
-    );
-  }
+    </div>
+  );
+}
 
   if (loading) {
     return (

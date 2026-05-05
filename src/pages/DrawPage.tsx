@@ -573,11 +573,11 @@ export default function DrawPage() {
       <h3 className="text-sm font-semibold text-foreground/70 mb-3 text-center">
         {matches.length} Matches Generated
       </h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1">
         {matches.map((m) => (
-          <div key={m.matchNum} className="bg-white/80 backdrop-blur-sm shadow-sm rounded-xl overflow-hidden flex flex-col">
+          <div key={m.matchNum} className="bg-white/90 backdrop-blur-sm shadow-sm rounded-lg overflow-hidden flex flex-col transition-colors duration-200 hover:bg-white/95">
             <div className="bg-gray-100 text-gray-600 text-xs font-medium text-center py-1">Match {m.matchNum}</div>
-            <div className="p-2 flex flex-col space-y-1">
+            <div className="p-1 flex flex-col space-y-0.5">
               <div className={`flex items-center justify-center ${teamAColor} rounded py-0.5 text-xs font-bold`}>{m.p1} & {m.p2}</div>
               <div className="text-[9px] text-foreground/40 font-medium text-center">vs</div>
               <div className={`flex items-center justify-center ${teamBColor} rounded py-0.5 text-xs font-bold`}>{m.p3} & {m.p4}</div>

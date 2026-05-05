@@ -13,6 +13,7 @@ import { ResetConfirmationModal } from "@/components/ResetConfirmationModal";
 import { resetScoresOnly } from "@/utils/resetUtils";
 import { PlayerReplacer } from "@/components/PlayerReplacer";
 import { AdminPanel } from "@/components/AdminPanel";
+import { loadMatches } from "@/utils/firebaseUtils";
 
 interface TournamentSettings {
   id?: string;
@@ -41,10 +42,13 @@ export default function AdminControl() {
   const [showPlayerReplacer, setShowPlayerReplacer] = useState(false);
   const [femalePlayers, setFemalePlayers] = useState<any[]>([]);
   const [malePlayers, setMalePlayers] = useState<any[]>([]);
+  const [femaleMatches, setFemaleMatches] = useState<any[]>([]);
+  const [maleMatches, setMaleMatches] = useState<any[]>([]);
 
   useEffect(() => {
     loadTournamentSettings();
     loadPlayers();
+    loadMatchesData();
   }, []);
 
   const loadTournamentSettings = async () => {
@@ -110,14 +114,24 @@ export default function AdminControl() {
       const playersRef = collection(db, 'players');
       const snapshot = await getDocs(query(playersRef, where('status', '==', 'approved')));
       const players = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      
+
       const female = players.filter((p: any) => p.gender === 'female');
       const male = players.filter((p: any) => p.gender === 'male');
-      
+
       setFemalePlayers(female);
       setMalePlayers(male);
     } catch (error) {
       console.error('Error loading players:', error);
+    }
+  };
+
+  const loadMatchesData = async () => {
+    try {
+      const { femaleMatches, maleMatches } = await loadMatches();
+      setFemaleMatches(femaleMatches);
+      setMaleMatches(maleMatches);
+    } catch (error) {
+      console.error('Error loading matches:', error);
     }
   };
 
@@ -504,8 +518,8 @@ export default function AdminControl() {
               ...femalePlayers.map(p => ({ ...p, gender: 'female' })),
               ...malePlayers.map(p => ({ ...p, gender: 'male' }))
             ]}
-            femaleMatches={[]}
-            maleMatches={[]}
+            femaleMatches={femaleMatches}
+            maleMatches={maleMatches}
             tournamentDate={tournamentDate}
           />
         )}

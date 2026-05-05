@@ -8,12 +8,13 @@ export type Player = {
 };
 
 // Raw match from Firestore - uses player ID arrays
+// STRICT: Every match MUST have exactly 4 valid player IDs
 export type Match = {
   id?: string;
   gender?: 'male' | 'female';
   match_number: number;
-  teamA: [string, string]; // [playerId1, playerId2]
-  teamB: [string, string]; // [playerId3, playerId4]
+  teamA: [string, string]; // [playerId1, playerId2] - MUST be valid IDs
+  teamB: [string, string]; // [playerId3, playerId4] - MUST be valid IDs
   score1: number;
   score2: number;
   isSubmitted: boolean;
@@ -21,12 +22,13 @@ export type Match = {
 };
 
 // Resolved match with full player objects
+// STRICT: Every match MUST have exactly 4 valid Player objects
 export type ResolvedMatch = {
   id?: string;
   gender?: 'male' | 'female';
   match_number: number;
-  teamA: [Player, Player];
-  teamB: [Player, Player];
+  teamA: [Player, Player]; // MUST be valid Player objects
+  teamB: [Player, Player]; // MUST be valid Player objects
   score1: number;
   score2: number;
   isSubmitted: boolean;

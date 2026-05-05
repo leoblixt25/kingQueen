@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Check } from "lucide-react";
-import { ResolvedMatch, Player } from "@/types";
+import { ResolvedMatch } from "@/types";
 
 interface MatchDisplayProps {
   match: ResolvedMatch;
@@ -15,12 +15,6 @@ interface MatchDisplayProps {
   onSubmit: () => void;
 }
 
-// Helper to safely get player name - NO FALLBACKS, shows error if missing
-const getPlayerName = (player: Player | null): string => {
-  if (!player) return '❌ MISSING';
-  return player.name;
-};
-
 export function MatchDisplay({
   match,
   matchIndex,
@@ -32,6 +26,7 @@ export function MatchDisplay({
   onSubmit,
 }: MatchDisplayProps) {
   // Extract teams from standardized structure
+  // STRICT: These MUST be valid Player objects - validation happens upstream
   const [teamA1, teamA2] = match.teamA;
   const [teamB1, teamB2] = match.teamB;
 
@@ -43,7 +38,7 @@ export function MatchDisplay({
       <CardContent className="space-y-4">
         <div className="flex items-center space-x-4">
           <p className="text-lg font-semibold">
-            {getPlayerName(teamA1)} & {getPlayerName(teamA2)}
+            {teamA1.name} & {teamA2.name}
           </p>
           {!match.isSubmitted || isAdmin ? (
             <Input
@@ -59,7 +54,7 @@ export function MatchDisplay({
         </div>
         <div className="flex items-center space-x-4">
           <p className="text-lg font-semibold">
-            {getPlayerName(teamB1)} & {getPlayerName(teamB2)}
+            {teamB1.name} & {teamB2.name}
           </p>
           {!match.isSubmitted || isAdmin ? (
             <Input

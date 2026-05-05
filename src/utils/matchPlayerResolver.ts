@@ -1,4 +1,5 @@
 import { Player, Match, ResolvedMatch } from '@/types';
+import { validateMatches, buildValidationMap } from './matchValidation';
 
 /**
  * Build a players map for quick lookup by ID
@@ -6,72 +7,50 @@ import { Player, Match, ResolvedMatch } from '@/types';
  */
 export const buildPlayersMap = (femalePlayers: Player[], malePlayers: Player[]): Map<string, Player> => {
   console.log('🗺️ [PLAYER MAP] Building players map...');
-  console.log('📊 [PLAYER MAP] Female players:', femalePlayers?.length || 0);
-  console.log('📊 [PLAYER MAP] Male players:', malePlayers?.length || 0);
 
   const playersMap = new Map<string, Player>();
 
-  // Add female players to map
-  if (femalePlayers && femalePlayers.length > 0) {
-    femalePlayers.forEach(player => {
-      if (player.id) {
-        playersMap.set(player.id, player);
-      } else {
-        console.warn('⚠️ [PLAYER MAP] Female player missing ID:', player);
-      }
-    });
-  }
-
-  // Add male players to map
-  if (malePlayers && malePlayers.length > 0) {
-    malePlayers.forEach(player => {
-      if (player.id) {
-        playersMap.set(player.id, player);
-      } else {
-        console.warn('⚠️ [PLAYER MAP] Male player missing ID:', player);
-      }
-    });
-  }
+  const allPlayers = [...(femalePlayers || []), ...(malePlayers || [])];
+  allPlayers.forEach(player => {
+    if (player.id) {
+      playersMap.set(player.id, player);
+    } else {
+      console.warn('⚠️ [PLAYER MAP] Player missing ID:', player);
+    }
+  });
 
   console.log('✅ [PLAYER MAP] Total players in map:', playersMap.size);
   return playersMap;
 };
 
 /**
- * Resolve a player ID to player data using the players map
- * CRITICAL: Returns null if player not found - NO FALLBACK PLACEHOLDERS
- *
- * @param playerId - The player ID from match data
- * @param playersMap - Map of player IDs to Player objects (SINGLE SOURCE OF TRUTH)
- * @returns Player object or null if not found
+ * STRICT: Resolve a player ID to player data
+ * FAIL-FAST: Throws if player not found - NEVER returns null
  */
-export const resolvePlayer = (
-  playerId: string | null | undefined,
-  playersMap: Map<string, Player>
-): Player | null => {
-  // Validate playerId exists
-  if (!playerId) {
-    console.warn(`⚠️ [PLAYER RESOLVE] Missing player ID`);
-    return null;
+export const resolvePlayerStrict = (
+  playerId: string,
+  playersMap: Map<string, Player>,
+  context: string
+): Player => {
+  if (!playerId || typeof playerId !== 'string' || playerId.trim() === '') {
+    throw new Error(`[PLAYER RESOLVE] Invalid player ID in ${context}: "${playerId}"`);
   }
 
-  // CRITICAL: Only use map lookup, never array index
   const player = playersMap.get(playerId);
-
-  if (player) {
-    return player;
+  if (!player) {
+    const availableIds = Array.from(playersMap.keys()).slice(0, 5).join(', ') + '...';
+    throw new Error(
+      `[PLAYER RESOLVE] Player ID "${playerId}" NOT FOUND in ${context}. ` +
+      `Map has ${playersMap.size} players. Sample IDs: ${availableIds}`
+    );
   }
 
-  // ID not found - this is a DATA INCONSISTENCY
-  console.error(`❌ [PLAYER RESOLVE] Player ID "${playerId}" NOT FOUND in player map`);
-  console.error(`📊 [PLAYER RESOLVE] Map size: ${playersMap.size}`);
-
-  return null;
+  return player;
 };
 
 /**
- * Convert matches with player ID arrays to matches with full player data
- * CRITICAL: Uses playerMap for ALL lookups - NO FALLBACK PLACEHOLDERS EVER
+ * STRICT: Convert matches with player ID arrays to matches with full player data
+ * FAIL-FAST: Validates ALL matches first, throws if any invalid
  *
  * Standard match format:
  * {
@@ -95,46 +74,30 @@ export const resolveMatchPlayers = (
     return [];
   }
 
-  // Track missing IDs for summary
-  const missingIds = new Set<string>();
-  const problematicMatches: number[] = [];
+  // STEP 1: STRICT VALIDATION - validate ALL matches before processing
+  // This ensures we NEVER process invalid data
+  const allPlayers = Array.from(playersMap.values());
+  try {
+    validateMatches(matches, buildValidationMap(allPlayers));
+  } catch (validationError) {
+    console.error('❌ [MATCH RESOLVE] Validation failed - aborting resolution');
+    throw validationError;
+  }
 
+  // STEP 2: Resolve player IDs to full player objects
+  // At this point we KNOW all IDs are valid, so resolvePlayerStrict will never throw
   const resolvedMatches = matches.map((match, matchIndex) => {
     const matchNum = match.match_number || (matchIndex + 1);
+    const context = `match #${matchNum}`;
 
-    // Extract player IDs from team arrays
-    const [teamA1_id, teamA2_id] = match.teamA || [null, null];
-    const [teamB1_id, teamB2_id] = match.teamB || [null, null];
+    const [teamA1_id, teamA2_id] = match.teamA;
+    const [teamB1_id, teamB2_id] = match.teamB;
 
-    // Resolve each player ID - NO PLACEHOLDERS, returns null if not found
-    const teamA1 = resolvePlayer(teamA1_id, playersMap);
-    const teamA2 = resolvePlayer(teamA2_id, playersMap);
-    const teamB1 = resolvePlayer(teamB1_id, playersMap);
-    const teamB2 = resolvePlayer(teamB2_id, playersMap);
+    const teamA1 = resolvePlayerStrict(teamA1_id, playersMap, context);
+    const teamA2 = resolvePlayerStrict(teamA2_id, playersMap, context);
+    const teamB1 = resolvePlayerStrict(teamB1_id, playersMap, context);
+    const teamB2 = resolvePlayerStrict(teamB2_id, playersMap, context);
 
-    // Track any missing players
-    const missingInMatch: string[] = [];
-    if (!teamA1) missingInMatch.push(teamA1_id || 'null');
-    if (!teamA2) missingInMatch.push(teamA2_id || 'null');
-    if (!teamB1) missingInMatch.push(teamB1_id || 'null');
-    if (!teamB2) missingInMatch.push(teamB2_id || 'null');
-
-    if (missingInMatch.length > 0) {
-      missingInMatch.forEach(id => missingIds.add(id));
-      problematicMatches.push(matchNum);
-      console.error(`❌ [MATCH RESOLVE] Match #${matchNum} has ${missingInMatch.length} unresolved players:`, missingInMatch);
-    }
-
-    // Only log first match and any problematic matches
-    if (matchIndex === 0 || missingInMatch.length > 0) {
-      console.log(`📄 [MATCH RESOLVE] Match #${matchNum}:`, {
-        teamA: `${teamA1?.name || '❌'} & ${teamA2?.name || '❌'}`,
-        teamB: `${teamB1?.name || '❌'} & ${teamB2?.name || '❌'}`
-      });
-    }
-
-    // Build resolved match - if any player is null, the match data is incomplete
-    // This ensures we NEVER show placeholder names
     return {
       id: match.id,
       match_number: matchNum,
@@ -147,43 +110,6 @@ export const resolveMatchPlayers = (
     };
   });
 
-  // Report missing IDs summary
-  if (missingIds.size > 0) {
-    console.error(`❌ [MATCH RESOLVE] ${missingIds.size} player IDs not found in map:`);
-    console.error(`📋 [MATCH RESOLVE] Missing IDs:`, Array.from(missingIds).slice(0, 10));
-    console.error(`💡 [MATCH RESOLVE] This indicates stale match data - matches have old player IDs`);
-    console.error(`⚠️ [MATCH RESOLVE] Problematic matches:`, problematicMatches);
-  }
-
   console.log('✅ [MATCH RESOLVE] Successfully resolved', resolvedMatches.length, 'matches');
   return resolvedMatches;
-};
-
-/**
- * Convert old format matches (player1_id, player2_id, etc.) to new teamA/teamB format
- * This is a migration helper for backward compatibility
- */
-export const migrateMatchFormat = (oldMatch: any): Match | null => {
-  if (!oldMatch) return null;
-
-  // Already in new format
-  if (oldMatch.teamA && oldMatch.teamB) {
-    return oldMatch as Match;
-  }
-
-  // Convert from old format
-  if (oldMatch.player1_id || oldMatch.player2_id || oldMatch.player3_id || oldMatch.player4_id) {
-    return {
-      id: oldMatch.id,
-      match_number: oldMatch.match_number || 0,
-      gender: oldMatch.gender,
-      teamA: [oldMatch.player1_id, oldMatch.player2_id] as [string, string],
-      teamB: [oldMatch.player3_id, oldMatch.player4_id] as [string, string],
-      score1: oldMatch.score1 || 0,
-      score2: oldMatch.score2 || 0,
-      isSubmitted: oldMatch.isSubmitted || oldMatch.is_completed || false
-    };
-  }
-
-  return null;
 };

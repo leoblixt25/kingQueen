@@ -12,14 +12,8 @@ interface Match {
   id?: string;
   gender?: 'male' | 'female';
   match_number?: number;
-  player1?: Player;
-  player2?: Player;
-  player3?: Player;
-  player4?: Player;
-  player1_id?: string;
-  player2_id?: string;
-  player3_id?: string;
-  player4_id?: string;
+  teamA: [Player, Player];
+  teamB: [Player, Player];
   score1: number;
   score2: number;
   is_completed?: boolean;
@@ -68,15 +62,11 @@ export const exportMatchupsToPDF = async (data: PDFExportData) => {
 
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
 
-    const getName = (match: Match, key: 'player1' | 'player2' | 'player3' | 'player4'): string => {
-      const p = match[key];
-      if (p?.name) return p.name;
-      const id = match[`${key}_id` as keyof Match] as string;
-      if (id) {
-        const found = players.find(pl => pl.id === id);
-        if (found?.name) return found.name;
-      }
-      return 'TBD';
+    const getTeamAName = (match: Match, index: 0 | 1): string => {
+      return match.teamA[index]?.name || 'UNKNOWN';
+    };
+    const getTeamBName = (match: Match, index: 0 | 1): string => {
+      return match.teamB[index]?.name || 'UNKNOWN';
     };
 
     // STRICT ORDERING: Sort female and male matches separately by match_number
@@ -110,12 +100,12 @@ export const exportMatchupsToPDF = async (data: PDFExportData) => {
     // ===== Page 2: Female Division Matches =====
     doc.addPage();
     drawPageHeader();
-    renderDivision(doc, sortedFemale, 'Female Division', ORANGE, getName, drawPageHeader);
+    renderDivision(doc, sortedFemale, 'Female Division', ORANGE, getTeamAName, getTeamBName, drawPageHeader);
 
     // ===== Page 3: Male Division Matches =====
     doc.addPage();
     drawPageHeader();
-    renderDivision(doc, sortedMale, 'Male Division', BLUE, getName, drawPageHeader);
+    renderDivision(doc, sortedMale, 'Male Division', BLUE, getTeamAName, getTeamBName, drawPageHeader);
 
     // Footer on all pages
     const total = doc.getNumberOfPages();
@@ -229,7 +219,8 @@ const renderDivision = (
   matches: Match[],
   title: string,
   accent: [number, number, number],
-  getName: (m: Match, k: 'player1' | 'player2' | 'player3' | 'player4') => string,
+  getTeamAName: (m: Match, i: 0 | 1) => string,
+  getTeamBName: (m: Match, i: 0 | 1) => string,
   drawPageHeader: () => void
 ) => {
   if (!matches.length) {
@@ -268,9 +259,9 @@ const renderDivision = (
       y = drawTitle(36, true);
     }
 
-    drawMatchCard(doc, matches[i],     COL1_X, y, CARD_W, CARD_H, accent, getName);
+    drawMatchCard(doc, matches[i],     COL1_X, y, CARD_W, CARD_H, accent, getTeamAName, getTeamBName);
     if (matches[i + 1]) {
-      drawMatchCard(doc, matches[i + 1], COL2_X, y, CARD_W, CARD_H, accent, getName);
+      drawMatchCard(doc, matches[i + 1], COL2_X, y, CARD_W, CARD_H, accent, getTeamAName, getTeamBName);
     }
     y += CARD_H + ROW_GAP;
   }
@@ -284,14 +275,15 @@ const drawMatchCard = (
   w: number,
   h: number,
   accent: [number, number, number],
-  getName: (m: Match, k: 'player1' | 'player2' | 'player3' | 'player4') => string
+  getTeamAName: (m: Match, i: 0 | 1) => string,
+  getTeamBName: (m: Match, i: 0 | 1) => string
 ) => {
   const matchNum = match.match_number ?? '?';
   const completed = !!(match.is_completed || match.isSubmitted)
     && match.score1 !== undefined && match.score2 !== undefined;
 
-  const teamA = `${getName(match, 'player1')} & ${getName(match, 'player2')}`;
-  const teamB = `${getName(match, 'player3')} & ${getName(match, 'player4')}`;
+  const teamA = `${getTeamAName(match, 0)} & ${getTeamAName(match, 1)}`;
+  const teamB = `${getTeamBName(match, 0)} & ${getTeamBName(match, 1)}`;
 
   // Card background
   doc.setFillColor(255, 255, 255);

@@ -1407,7 +1407,7 @@ export default function KingQueenOfTheBeach() {
                         <div className="text-center space-y-3">
                           <div className="bg-ocean text-white rounded-xl py-4 px-4 shadow-beach">
                             <p className="text-xl font-bold">
-                              {currentMatch.teamA[0]?.name || '❌'} & {currentMatch.teamA[1]?.name || '❌'}
+                              {currentMatch.teamA[0].name} & {currentMatch.teamA[1].name}
                             </p>
                           </div>
                           {!currentMatch.isSubmitted || editingMatchId === currentMatch.id ? (
@@ -1441,7 +1441,7 @@ export default function KingQueenOfTheBeach() {
                         <div className="text-center space-y-3">
                           <div className="bg-sunset text-white rounded-xl py-4 px-4 shadow-beach">
                             <p className="text-xl font-bold">
-                              {currentMatch.teamB[0]?.name || '❌'} & {currentMatch.teamB[1]?.name || '❌'}
+                              {currentMatch.teamB[0].name} & {currentMatch.teamB[1].name}
                             </p>
                           </div>
                           {!currentMatch.isSubmitted || editingMatchId === currentMatch.id ? (

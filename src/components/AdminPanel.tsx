@@ -13,7 +13,7 @@ import { resetPlayersToPlaceholders } from "@/utils/placeholderUtils";
 import { initializePlayers } from "@/utils/playerInitUtils";
 import { initializeMatches } from "@/utils/matchInitUtils";
 import { exportMatchupsToPDF } from "@/utils/pdfExport";
-import { Player, Match } from "@/types";
+import { Player, ResolvedMatch } from "@/types";
 
 interface ConfirmedPlayer {
   id: string;
@@ -43,8 +43,8 @@ interface TournamentSettings {
 interface AdminPanelProps {
   onClose: () => void;
   players?: (Player & { gender: string })[];
-  femaleMatches?: Match[];
-  maleMatches?: Match[];
+  femaleMatches?: ResolvedMatch[];
+  maleMatches?: ResolvedMatch[];
   tournamentDate?: string;
 }
 

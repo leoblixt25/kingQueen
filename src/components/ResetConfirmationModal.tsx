@@ -7,9 +7,20 @@ interface ResetConfirmationModalProps {
   onClose: () => void;
   onConfirm: () => Promise<void>;
   isResetting: boolean;
+  title?: string;
+  description?: string;
+  confirmText?: string;
 }
 
-export const ResetConfirmationModal = ({ isOpen, onClose, onConfirm, isResetting }: ResetConfirmationModalProps) => {
+export const ResetConfirmationModal = ({ 
+  isOpen, 
+  onClose, 
+  onConfirm, 
+  isResetting,
+  title = "Reset Tournament",
+  description = "This will delete all players and scores. This action cannot be undone.",
+  confirmText = "Confirm Reset"
+}: ResetConfirmationModalProps) => {
   const handleConfirm = async () => {
     await onConfirm();
   };
@@ -22,10 +33,10 @@ export const ResetConfirmationModal = ({ isOpen, onClose, onConfirm, isResetting
             <AlertTriangle className="w-8 h-8 text-coral" />
           </div>
           <DialogTitle className="text-2xl font-bold text-center text-foreground">
-            Reset Tournament
+            {title}
           </DialogTitle>
           <DialogDescription className="text-center text-base leading-relaxed">
-            This will delete all players and scores. This action cannot be undone.
+            {description}
           </DialogDescription>
         </DialogHeader>
         
@@ -52,7 +63,7 @@ export const ResetConfirmationModal = ({ isOpen, onClose, onConfirm, isResetting
             ) : (
               <>
                 <AlertTriangle className="w-4 h-4 mr-2" />
-                Confirm Reset
+                {confirmText}
               </>
             )}
           </Button>

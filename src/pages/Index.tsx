@@ -8,8 +8,6 @@ import { Check, Edit, Trash, Crown, ChevronLeft, ChevronRight, Home, Users, Rota
 import { Gender, FinalMatchScores, ResolvedMatch } from "@/types";
 import { useTournamentData } from "@/hooks/useTournamentData";
 import { useTournamentRealtimeSubscriptions } from "@/hooks/useTournamentRealtimeSubscriptions";
-import { PlayerReplacer } from "@/components/PlayerReplacer";
-import { AdminPanel } from "@/components/AdminPanel";
 import { PlayerUnregistration } from "@/components/PlayerUnregistration";
 import { ResetConfirmationModal } from "@/components/ResetConfirmationModal";
 import { ScoreResetConfirmationModal } from "@/components/ScoreResetConfirmationModal";
@@ -42,8 +40,6 @@ export default function KingQueenOfTheBeach() {
   const [score2, setScore2] = useState("");
   const [showFinalMatch, setShowFinalMatch] = useState(false);
   const [isEditingFinalMatch, setIsEditingFinalMatch] = useState(false);
-  const [showPlayerReplacer, setShowPlayerReplacer] = useState(false);
-  const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [showUnregistration, setShowUnregistration] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [userIsAdmin, setUserIsAdmin] = useState(false);
@@ -991,77 +987,8 @@ export default function KingQueenOfTheBeach() {
               )}
             </div>
             
-            {userIsAdmin && (
-              <div className="w-full max-w-sm space-y-3 p-4 bg-white/60 backdrop-blur-sm rounded-2xl border border-sand-dark/20 shadow-sand">
-                <div className="text-center mb-2">
-                  <p className="text-sm font-semibold text-foreground/70">🔧 Admin Controls</p>
-                </div>
-                <Button 
-                  variant="outline" 
-                  onClick={() => navigate('/admin/control')} 
-                  className="w-full touch-target bg-white/70 hover:bg-ocean hover:text-white border-ocean/30 text-ocean-dark transition-all duration-300"
-                >
-                  <Settings className="w-4 h-4 mr-2" />
-                  Configure Tournament
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={() => setShowAdminPanel(true)} 
-                  className="w-full touch-target bg-white/70 hover:bg-sunset hover:text-white border-sunset/30 text-sunset-dark transition-all duration-300"
-                >
-                  <Users className="w-4 h-4 mr-2" />
-                  Registration Panel
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={() => setShowPlayerReplacer(true)} 
-                  className="w-full touch-target bg-white/70 hover:bg-palm hover:text-white border-palm/30 text-palm-dark transition-all duration-300"
-                >
-                  <Users className="w-4 h-4 mr-2" />
-                  Replace Players
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={handleResetScores} 
-                  className="w-full touch-target bg-white/70 hover:bg-sunset hover:text-white border-sunset/30 text-sunset-dark transition-all duration-300"
-                >
-                  <RotateCcw className="w-4 h-4 mr-2" />
-                  Reset Scores Only
-                </Button>
-                <Button 
-                  variant="destructive" 
-                  onClick={handleFullReset} 
-                  className="w-full touch-target bg-coral hover:bg-coral-dark text-white transition-all duration-300"
-                >
-                  <Trash className="w-4 h-4 mr-2" />
-                  Reset Everything
-                </Button>
-              </div>
-            )}
           </div>
         </header>
-
-        {showPlayerReplacer && userIsAdmin && (
-          <PlayerReplacer 
-            femalePlayers={femalePlayers}
-            malePlayers={malePlayers}
-            onClose={() => setShowPlayerReplacer(false)}
-            onSuccess={() => {}}
-          />
-        )}
-
-        {showAdminPanel && userIsAdmin && (
-          <AdminPanel
-            onClose={() => setShowAdminPanel(false)}
-            players={[
-              ...femalePlayers.map(p => ({ ...p, gender: 'female' })),
-              ...malePlayers.map(p => ({ ...p, gender: 'male' }))
-            ]}
-            femaleMatches={resolvedFemaleMatches}
-            maleMatches={resolvedMaleMatches}
-            tournamentDate={tournamentSettings?.tournament_date}
-          />
-        )}
 
         {showUnregistration && (
           <PlayerUnregistration 
@@ -1084,8 +1011,7 @@ export default function KingQueenOfTheBeach() {
           isResetting={isResettingScores}
         />
 
-        {!showPlayerReplacer && (
-          <main>
+        <main>
             {showFinalMatch ? (
               <div className="space-y-6">
                 <div className="text-center">
@@ -1568,7 +1494,6 @@ export default function KingQueenOfTheBeach() {
               </>
             )}
           </main>
-        )}
 
         {/* Cancel Registration button for non-admin users */}
         {!userIsAdmin && (

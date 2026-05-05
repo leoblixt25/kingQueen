@@ -8,8 +8,11 @@ import { toast } from "@/hooks/use-toast";
 import { db } from "@/config/firebase";
 import { collection, getDocs, query, orderBy, limit, doc, setDoc, getDoc, updateDoc, where } from "firebase/firestore";
 import { signOut } from "@/utils/authUtils";
-import { LogOut, Save, Crown, Users, AlertTriangle } from "lucide-react";
+import { LogOut, Save, Crown, Users, AlertTriangle, Settings, RotateCcw, Trash } from "lucide-react";
 import { ResetConfirmationModal } from "@/components/ResetConfirmationModal";
+import { resetScoresOnly } from "@/utils/resetUtils";
+import { PlayerReplacer } from "@/components/PlayerReplacer";
+import { AdminPanel } from "@/components/AdminPanel";
 
 interface TournamentSettings {
   id?: string;
@@ -32,9 +35,16 @@ export default function AdminControl() {
   const [showTournamentConfig, setShowTournamentConfig] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  const [showScoreResetModal, setShowScoreResetModal] = useState(false);
+  const [isResettingScores, setIsResettingScores] = useState(false);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [showPlayerReplacer, setShowPlayerReplacer] = useState(false);
+  const [femalePlayers, setFemalePlayers] = useState<any[]>([]);
+  const [malePlayers, setMalePlayers] = useState<any[]>([]);
 
   useEffect(() => {
     loadTournamentSettings();
+    loadPlayers();
   }, []);
 
   const loadTournamentSettings = async () => {
@@ -92,6 +102,22 @@ export default function AdminControl() {
       }
     } catch (error) {
       console.error('Error loading player counts:', error);
+    }
+  };
+
+  const loadPlayers = async () => {
+    try {
+      const playersRef = collection(db, 'players');
+      const snapshot = await getDocs(query(playersRef, where('status', '==', 'approved')));
+      const players = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      
+      const female = players.filter((p: any) => p.gender === 'female');
+      const male = players.filter((p: any) => p.gender === 'male');
+      
+      setFemalePlayers(female);
+      setMalePlayers(male);
+    } catch (error) {
+      console.error('Error loading players:', error);
     }
   };
 
@@ -198,6 +224,44 @@ export default function AdminControl() {
   const handleCloseResetModal = () => {
     if (!isResetting) {
       setShowResetModal(false);
+    }
+  };
+
+  const handleResetScores = async () => {
+    console.log('🔄 [SCORE RESET] User clicked reset scores button, showing modal');
+    setShowScoreResetModal(true);
+  };
+
+  const handleConfirmScoreReset = async () => {
+    console.log('🔄 [SCORE RESET] User confirmed score reset via modal');
+    setIsResettingScores(true);
+    
+    try {
+      console.log('🔄 [SCORE RESET] Starting score reset...');
+      await resetScoresOnly();
+      console.log('✅ [SCORE RESET] Scores reset completed');
+      
+      setShowScoreResetModal(false);
+      setIsResettingScores(false);
+      
+      toast({
+        title: "Scores Reset ✓",
+        description: "All scores have been reset successfully",
+      });
+    } catch (error) {
+      console.error('❌ [SCORE RESET] Score reset failed:', error);
+      setIsResettingScores(false);
+      toast({
+        title: "Score Reset Failed",
+        description: "Failed to reset scores. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCloseScoreResetModal = () => {
+    if (!isResettingScores) {
+      setShowScoreResetModal(false);
     }
   };
 
@@ -345,6 +409,77 @@ export default function AdminControl() {
         </Card>
         )}
 
+        {/* Admin Controls Section */}
+        <Card className="bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-foreground">
+              <Settings className="w-5 h-5" />
+              🔧 Admin Controls
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Button
+              variant="outline"
+              onClick={() => setShowTournamentConfig(!showTournamentConfig)}
+              className="w-full touch-target bg-white/70 hover:bg-ocean hover:text-white border-ocean/30 text-ocean-dark transition-all duration-300"
+            >
+              <Settings className="w-4 h-4 mr-2" />
+              {showTournamentConfig ? 'Hide Configuration' : 'Configure Tournament'}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setShowAdminPanel(true)}
+              className="w-full touch-target bg-white/70 hover:bg-sunset hover:text-white border-sunset/30 text-sunset-dark transition-all duration-300"
+            >
+              <Users className="w-4 h-4 mr-2" />
+              Registration Panel
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setShowPlayerReplacer(true)}
+              className="w-full touch-target bg-white/70 hover:bg-palm hover:text-white border-palm/30 text-palm-dark transition-all duration-300"
+            >
+              <Users className="w-4 h-4 mr-2" />
+              Replace Players
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleResetScores}
+              className="w-full touch-target bg-white/70 hover:bg-sunset hover:text-white border-sunset/30 text-sunset-dark transition-all duration-300"
+            >
+              <RotateCcw className="w-4 h-4 mr-2" />
+              Reset Scores Only
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleResetEverything}
+              disabled={isResetting}
+              className="w-full touch-target bg-coral hover:bg-coral-dark text-white transition-all duration-300"
+            >
+              {isResetting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+                  Resetting...
+                </>
+              ) : (
+                <>
+                  <Trash className="w-4 h-4 mr-2" />
+                  Reset Everything
+                </>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Button
+          onClick={() => navigate('/tournament')}
+          className="w-full bg-ocean hover:bg-ocean-dark text-white font-semibold py-3 transition-all duration-300 flex items-center justify-center gap-2"
+        >
+          <Users className="w-4 h-4" />
+          View Tournament
+        </Button>
+
+        {/* Modals */}
         <ResetConfirmationModal
           isOpen={showResetModal}
           onClose={handleCloseResetModal}
@@ -352,41 +487,40 @@ export default function AdminControl() {
           isResetting={isResetting}
         />
 
-        <div className="flex flex-col sm:flex-row gap-4">
-          <Button
-            onClick={() => setShowTournamentConfig(!showTournamentConfig)}
-            className="flex-1 bg-sunset hover:bg-sunset-dark text-white font-semibold py-3 transition-all duration-300 flex items-center justify-center gap-2"
-          >
-            <Crown className="w-4 h-4" />
-            {showTournamentConfig ? 'Hide Configuration' : 'Configure Tournament'}
-          </Button>
-          <Button
-            onClick={() => navigate('/tournament')}
-            className="flex-1 bg-ocean hover:bg-ocean-dark text-white font-semibold py-3 transition-all duration-300 flex items-center justify-center gap-2"
-          >
-            <Users className="w-4 h-4" />
-            View Tournament
-          </Button>
-        </div>
+        <ResetConfirmationModal
+          isOpen={showScoreResetModal}
+          onClose={handleCloseScoreResetModal}
+          onConfirm={handleConfirmScoreReset}
+          isResetting={isResettingScores}
+          title="Reset All Scores?"
+          description="This will reset all match scores to 0. Players and match structure will be preserved. This action cannot be undone."
+          confirmText="Reset Scores"
+        />
 
-        <Button
-          onClick={handleResetEverything}
-          disabled={isResetting}
-          variant="destructive"
-          className="w-full bg-coral hover:bg-coral-dark text-white font-semibold py-3 transition-all duration-300 flex items-center justify-center gap-2"
-        >
-          {isResetting ? (
-            <>
-              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              Resetting...
-            </>
-          ) : (
-            <>
-              <AlertTriangle className="w-4 h-4" />
-              Reset Everything
-            </>
-          )}
-        </Button>
+        {showAdminPanel && (
+          <AdminPanel
+            onClose={() => setShowAdminPanel(false)}
+            players={[
+              ...femalePlayers.map(p => ({ ...p, gender: 'female' })),
+              ...malePlayers.map(p => ({ ...p, gender: 'male' }))
+            ]}
+            femaleMatches={[]}
+            maleMatches={[]}
+            tournamentDate={tournamentDate}
+          />
+        )}
+
+        {showPlayerReplacer && (
+          <PlayerReplacer
+            femalePlayers={femalePlayers}
+            malePlayers={malePlayers}
+            onClose={() => setShowPlayerReplacer(false)}
+            onSuccess={() => {
+              loadPlayers();
+              loadPlayerCounts();
+            }}
+          />
+        )}
 
 
 

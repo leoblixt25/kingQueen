@@ -610,8 +610,30 @@ export default function DrawPage() {
     setLoadingTestPlayers(true);
     try {
       const batch = writeBatch(db);
+
+      // 1. Delete ALL matches first (CRITICAL: prevents ID mismatch)
+      const matchesSnap = await getDocs(collection(db, 'matches'));
+      matchesSnap.docs.forEach(d => batch.delete(d.ref));
+      console.log(`🗑️ Deleted ${matchesSnap.docs.length} old matches`);
+
+      // 2. Delete ALL players
+      const playersSnap = await getDocs(collection(db, 'players'));
+      playersSnap.docs.forEach(d => batch.delete(d.ref));
+      console.log(`🗑️ Deleted ${playersSnap.docs.length} old players`);
+
+      // 3. Reset tournament settings (draw state)
+      batch.set(doc(db, 'tournamentSettings', 'settings'), {
+        draw_completed: false,
+        drawn_female_matches: [],
+        drawn_male_matches: [],
+        saved_female_matches: [],
+        saved_male_matches: []
+      }, { merge: true });
+      console.log('🔄 Reset tournament settings');
+
+      // 4. Create fresh players with NEW IDs
       const playersRef = collection(db, 'players');
-      
+
       // Create 8 female test players
       for (let i = 1; i <= 8; i++) {
         const playerData = {
@@ -628,7 +650,7 @@ export default function DrawPage() {
         const newDocRef = doc(playersRef);
         batch.set(newDocRef, playerData);
       }
-      
+
       // Create 8 male test players
       for (let i = 1; i <= 8; i++) {
         const playerData = {
@@ -645,8 +667,19 @@ export default function DrawPage() {
         const newDocRef = doc(playersRef);
         batch.set(newDocRef, playerData);
       }
-      
+
       await batch.commit();
+      console.log('✅ Test players loaded - fresh start');
+
+      // Clear local draw state
+      setFMatches([]);
+      setMMatches([]);
+      setFDone(false);
+      setMDone(false);
+      setFStarted(false);
+      setMStarted(false);
+      setSaved(false);
+
       await loadPlayers(); // Reload to show the new players
     } catch (e) {
       console.error('Failed to load test players:', e);

@@ -125,7 +125,21 @@ export default function KingQueenOfTheBeach() {
   const resolvedFemaleMatches = resolveMatchPlayers(femaleMatches, playersMap);
   const resolvedMaleMatches = resolveMatchPlayers(maleMatches, playersMap);
   const matches = gender === 'female' ? resolvedFemaleMatches : resolvedMaleMatches
-  
+
+  // HARD SAFETY CHECK: If draw is completed but no matches exist, CRITICAL ERROR
+  // This prevents silent empty states and forces investigation
+  const totalMatchCount = resolvedFemaleMatches.length + resolvedMaleMatches.length;
+  if (drawCompleted && totalMatchCount === 0) {
+    console.error('❌❌❌ CRITICAL ERROR ❌❌❌');
+    console.error('Draw is marked as completed but NO MATCHES exist in Firestore!');
+    console.error('This indicates a data integrity failure.');
+    console.error('Possible causes:');
+    console.error('  1. Matches were deleted after draw completion');
+    console.error('  2. Match generation failed silently');
+    console.error('  3. Player IDs changed (e.g., new test players loaded)');
+    throw new Error('CRITICAL: Draw completed but no matches found. Data integrity violation.');
+  }
+
   // Use deterministic tiebreaker system for final rankings
   const rankedPlayers = sortPlayersWithTiebreakers(players, matches);
 

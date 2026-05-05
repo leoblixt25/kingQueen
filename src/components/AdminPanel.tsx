@@ -170,7 +170,11 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
       console.log('Male matches from props:', maleMatchesData.length, maleMatchesData);
       console.log('Tournament date:', tournamentDate || settings?.tournament_date || '');
       
-      if (playersData.length === 0 && femaleMatchesData.length === 0 && maleMatchesData.length === 0) {
+      // Allow export if there's ANY data (players or matches)
+      const hasPlayers = playersData.length > 0;
+      const hasMatches = femaleMatchesData.length > 0 || maleMatchesData.length > 0;
+
+      if (!hasPlayers && !hasMatches) {
         toast({
           title: "No Data",
           description: "No tournament data available to export.",

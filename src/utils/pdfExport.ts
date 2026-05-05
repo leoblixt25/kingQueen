@@ -45,7 +45,11 @@ export const exportMatchupsToPDF = async (data: PDFExportData) => {
   try {
     const { players, femaleMatches, maleMatches, tournamentDate } = data;
 
-    if (!players || (!femaleMatches?.length && !maleMatches?.length)) {
+    // Allow export if there's ANY data (players or matches)
+    const hasPlayers = players && players.length > 0;
+    const hasMatches = (femaleMatches?.length || 0) > 0 || (maleMatches?.length || 0) > 0;
+
+    if (!hasPlayers && !hasMatches) {
       alert('No tournament data available to export.');
       return;
     }
@@ -93,19 +97,25 @@ export const exportMatchupsToPDF = async (data: PDFExportData) => {
       }
     };
 
-    // ===== Page 1: Registered Players =====
-    drawPageHeader();
-    renderPlayersRoster(doc, players, drawPageHeader);
+    // ===== Page 1: Registered Players (if any) =====
+    if (hasPlayers) {
+      drawPageHeader();
+      renderPlayersRoster(doc, players, drawPageHeader);
+    }
 
-    // ===== Page 2: Female Division Matches =====
-    doc.addPage();
-    drawPageHeader();
-    renderDivision(doc, sortedFemale, 'Female Division', ORANGE, getTeamAName, getTeamBName, drawPageHeader);
+    // ===== Page 2: Female Division Matches (if any) =====
+    if (sortedFemale.length > 0) {
+      if (doc.getNumberOfPages() > 0) doc.addPage();
+      drawPageHeader();
+      renderDivision(doc, sortedFemale, 'Female Division', ORANGE, getTeamAName, getTeamBName, drawPageHeader);
+    }
 
-    // ===== Page 3: Male Division Matches =====
-    doc.addPage();
-    drawPageHeader();
-    renderDivision(doc, sortedMale, 'Male Division', BLUE, getTeamAName, getTeamBName, drawPageHeader);
+    // ===== Page 3: Male Division Matches (if any) =====
+    if (sortedMale.length > 0) {
+      if (doc.getNumberOfPages() > 0) doc.addPage();
+      drawPageHeader();
+      renderDivision(doc, sortedMale, 'Male Division', BLUE, getTeamAName, getTeamBName, drawPageHeader);
+    }
 
     // Footer on all pages
     const total = doc.getNumberOfPages();

@@ -506,7 +506,7 @@ export default function DrawPage() {
         </div>
 
         {/* Wheel container - larger for mobile recording */}
-        <div className="relative w-[300px] h-[300px] sm:w-[320px] sm:h-[320px] mb-4">
+        <div className="relative w-[240px] h-[240px] sm:w-[260px] sm:h-[260px] mb-4">
           {/* Pointer */}
           <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20">
             <div className="w-0 h-0 border-l-[12px] border-r-[12px] border-t-[20px] border-l-transparent border-r-transparent border-t-foreground drop-shadow-lg" />
@@ -571,7 +571,7 @@ export default function DrawPage() {
         <h3 className="text-sm font-semibold text-foreground/70 mb-3 text-center">
           {matches.length} Matches Generated
         </h3>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-1">
           {matches.map((m) => (
             <Card key={m.matchNum} className="overflow-hidden border-0 shadow-md">
               <div className={`text-xs font-semibold px-2 py-1 ${
@@ -579,7 +579,7 @@ export default function DrawPage() {
               }`}>
                 Match {m.matchNum}
               </div>
-              <CardContent className="p-2 space-y-1">
+              <CardContent className="p-1 space-y-0">
                 <div className={`text-xs font-bold ${isFemale ? 'text-sunset' : 'text-ocean'}`}>
                   {m.p1} & {m.p2}
                 </div>

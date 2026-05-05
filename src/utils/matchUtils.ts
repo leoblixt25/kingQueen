@@ -1,91 +1,10 @@
 import { db } from '@/config/firebase';
-import { collection, getDocs, addDoc, query, where, doc, updateDoc } from 'firebase/firestore';
-import { STATIC_MATCHUPS } from './staticMatchups';
+import { collection, getDocs, query, where, doc, updateDoc } from 'firebase/firestore';
 
-// Re-export STATIC_MATCHUPS for backward compatibility
-// This is now the SINGLE SOURCE OF TRUTH from staticMatchups.ts
-export { STATIC_MATCHUPS as MATCH_COMBINATIONS };
-
-export const initializeMatches = async () => {
-  console.log('Initializing matches...');
-  
-  // Get players to create matches
-  const playersRef = collection(db, 'players');
-  const snapshot = await getDocs(playersRef);
-  const players = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  
-  if (!players || players.length === 0) {
-    console.error('Error fetching players for match initialization');
-    return;
-  }
-
-  console.log('Players for match initialization:', players);
-
-  const femalePlayers = players.filter((p: any) => p.gender === 'female');
-  const malePlayers = players.filter((p: any) => p.gender === 'male');
-
-  console.log('Female players for matches:', femalePlayers.length);
-  console.log('Male players for matches:', malePlayers.length);
-
-  if (femalePlayers.length !== 8 || malePlayers.length !== 8) {
-    console.error('Incorrect number of players for match creation. Female:', femalePlayers.length, 'Male:', malePlayers.length);
-    return;
-  }
-
-  // Check if matches already exist to prevent duplicates
-  const matchesRef = collection(db, 'matches');
-  const matchesSnap = await getDocs(matchesRef);
-
-  if (!matchesSnap.empty) {
-    console.log('Matches already exist, skipping initialization');
-    return;
-  }
-
-  try {
-    // Create female matches using STATIC_MATCHUPS (single source of truth)
-    const femaleMatches = STATIC_MATCHUPS.map((combination, index) => {
-      const [p1, p2, p3, p4] = combination;
-      return {
-        player1_id: femalePlayers[p1].id,
-        player2_id: femalePlayers[p2].id,
-        player3_id: femalePlayers[p3].id,
-        player4_id: femalePlayers[p4].id,
-        gender: 'female',
-        match_number: index + 1,
-        score1: 0,
-        score2: 0,
-        is_completed: false
-      };
-    });
-
-    // Insert female matches in parallel
-    await Promise.all(femaleMatches.map(match => addDoc(matchesRef, match)));
-
-    // Create male matches using STATIC_MATCHUPS (single source of truth)
-    const maleMatches = STATIC_MATCHUPS.map((combination, index) => {
-      const [p1, p2, p3, p4] = combination;
-      return {
-        player1_id: malePlayers[p1].id,
-        player2_id: malePlayers[p2].id,
-        player3_id: malePlayers[p3].id,
-        player4_id: malePlayers[p4].id,
-        gender: 'male',
-        match_number: index + 1,
-        score1: 0,
-        score2: 0,
-        is_completed: false
-      };
-    });
-
-    // Insert male matches in parallel
-    await Promise.all(maleMatches.map(match => addDoc(matchesRef, match)));
-
-    console.log('Matches initialized successfully - 14 female and 14 male matches');
-    
-  } catch (error) {
-    console.error('Error in initializeMatches:', error);
-  }
-};
+/**
+ * CRITICAL: Matches are ONLY created in DrawPage.tsx when user clicks "Start Draw"
+ * This file contains NO match generation logic - only match updates
+ */
 
 export const updateMatchScore = async (matchIndex: number, score1: number, score2: number, gender: 'male' | 'female', isEdit: boolean = false) => {
   console.log(`🏐 [SCORE UPDATE] Starting... match=${matchIndex}, scores=${score1}-${score2}, gender=${gender}, isEdit=${isEdit}`);

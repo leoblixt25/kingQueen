@@ -1,10 +1,7 @@
 import { db } from '@/config/firebase';
-import { collection, getDocs, query, orderBy, doc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, query, doc, getDoc } from 'firebase/firestore';
 import { initializePlayersSafe } from './firebaseMigration';
-import { initializeMatchesSafe } from './firebaseMigration';
 import { validateMatches, buildValidationMap } from './matchValidation';
-import { Match } from '@/types';
-import { generateMatchesFromOrder } from './staticMatchups';
 
 export const loadPlayers = async () => {
   console.log('🔄 [LOAD] loadPlayers() called');
@@ -230,277 +227,77 @@ export const loadPlayers = async () => {
 };
 
 /**
- * Load saved draw results from tournamentSettings
- * Returns saved matches if draw was completed and matches exist
+ * Load matches from Firestore
+ * CRITICAL: This function ONLY loads matches, NEVER generates them
+ * Match generation happens ONLY in DrawPage when user clicks "Start Draw"
  */
-async function loadSavedDrawResults(): Promise<{ femaleMatches?: Match[]; maleMatches?: Match[]; drawCompleted?: boolean } | null> {
-  try {
-    const settingsRef = doc(db, 'tournamentSettings', 'settings');
-    const settingsSnap = await getDoc(settingsRef);
-
-    if (!settingsSnap.exists()) {
-      return null;
-    }
-
-    const data = settingsSnap.data();
-    if (!data.draw_completed) {
-      return null;
-    }
-
-    // Check for saved draw results in new format (teamA/teamB)
-    if (data.saved_female_matches && data.saved_male_matches) {
-      return {
-        femaleMatches: data.saved_female_matches as Match[],
-        maleMatches: data.saved_male_matches as Match[],
-        drawCompleted: true
-      };
-    }
-
-    return { drawCompleted: true };
-  } catch (e) {
-    console.warn('⚠️ [LOAD SAVED DRAW] Failed to load saved draw:', e);
-    return null;
-  }
-}
-
-/**
- * Regenerate matches from player order using static matchups
- * This ensures deterministic, consistent match generation
- */
-function regenerateMatchesFromPlayers(
-  femalePlayers: { id: string; name: string }[],
-  malePlayers: { id: string; name: string }[]
-): { femaleMatches: Match[]; maleMatches: Match[] } {
-  console.log('🔄 [REGENERATE] Regenerating matches from player order...');
-
-  // Build player order arrays (names for generateMatchesFromOrder)
-  const femaleOrder = femalePlayers.map(p => p.name);
-  const maleOrder = malePlayers.map(p => p.name);
-
-  // Generate matches using SINGLE SOURCE OF TRUTH static matchups
-  const femaleGen = generateMatchesFromOrder(femaleOrder, 'female');
-  const maleGen = generateMatchesFromOrder(maleOrder, 'male');
-
-  // Convert to Match format with player IDs
-  const femaleMatches: Match[] = femaleGen.map((m, i) => ({
-    id: `female_match_${i + 1}`,
-    match_number: m.matchNum,
-    gender: 'female' as const,
-    teamA: [femalePlayers.find(p => p.name === m.p1)?.id!, femalePlayers.find(p => p.name === m.p2)?.id!] as [string, string],
-    teamB: [femalePlayers.find(p => p.name === m.p3)?.id!, femalePlayers.find(p => p.name === m.p4)?.id!] as [string, string],
-    score1: 0,
-    score2: 0,
-    isSubmitted: false
-  }));
-
-  const maleMatches: Match[] = maleGen.map((m, i) => ({
-    id: `male_match_${i + 1}`,
-    match_number: m.matchNum,
-    gender: 'male' as const,
-    teamA: [malePlayers.find(p => p.name === m.p1)?.id!, malePlayers.find(p => p.name === m.p2)?.id!] as [string, string],
-    teamB: [malePlayers.find(p => p.name === m.p3)?.id!, malePlayers.find(p => p.name === m.p4)?.id!] as [string, string],
-    score1: 0,
-    score2: 0,
-    isSubmitted: false
-  }));
-
-  console.log('✅ [REGENERATE] Generated', femaleMatches.length, 'female and', maleMatches.length, 'male matches');
-  return { femaleMatches, maleMatches };
-}
-
 export const loadMatches = async (femalePlayers?: any[], malePlayers?: any[]) => {
   console.log('🔄 [MATCH LOAD] loadMatches() called');
-  console.log('📊 [MATCH LOAD] Available players - Female:', femalePlayers?.length || 0, 'Male:', malePlayers?.length || 0);
-  
+
   try {
     const matchesRef = collection(db, 'matches');
-    
-    // STEP 1: Check if collection is empty using simple query (no orderBy)
-    console.log('📊 [MATCH LOAD] Checking if matches collection exists...');
     const simpleQuery = query(matchesRef);
-    const checkSnapshot = await getDocs(simpleQuery);
-
-    console.log('📊 [MATCH LOAD] Collection check:', checkSnapshot.empty ? 'EMPTY' : `${checkSnapshot.size} documents`);
-
-    // SINGLE SOURCE OF TRUTH: Match existence determines initialization
-    // If no matches exist, ALWAYS create them (regardless of any flags)
-    if (checkSnapshot.empty) {
-      console.log('⚠️ [MATCH LOAD] No matches found - initializing now...');
-      
-      try {
-        // initializeMatchesSafe handles the existence check internally
-        // It creates matches only if none exist, uses existing if they do
-        await initializeMatchesSafe();
-        console.log('✅ [MATCH LOAD] Matches initialized successfully');
-      } catch (initError) {
-        console.error('❌ [MATCH LOAD] Match initialization FAILED:', initError);
-        // Return empty but don't block - let the app show diagnostic UI
-        return { femaleMatches: [], maleMatches: [] };
-      }
-    }
-
-    // STEP 2: Collection has data - load without orderBy first (avoid index issues)
-    console.log('📊 [MATCH LOAD] Matches exist, loading with simple query...');
     const snapshot = await getDocs(simpleQuery);
 
+    if (snapshot.empty) {
+      console.log('ℹ️ [MATCH LOAD] No matches in collection');
+      return { femaleMatches: [], maleMatches: [] };
+    }
+
+    // Convert Firestore data to Match format with teamA/teamB
     const matches = snapshot.docs.map(doc => {
       const data = doc.data();
-      console.log(`📄 [MATCH LOAD] Match #${data.match_number}:`, {
-        id: doc.id,
-        gender: data.gender,
-        player1_id: data.player1_id,
-        player2_id: data.player2_id,
-        is_completed: data.is_completed
-      });
       return {
         id: doc.id,
         ...data
       };
     });
 
-    console.log('✅ [MATCH LOAD] Total matches loaded:', matches.length);
+    // Filter and map to teamA/teamB structure
+    const femaleMatchesData = matches
+      .filter((m: any) => m.gender === 'female')
+      .map((m: any) => ({
+        id: m.id,
+        match_number: Number(m.match_number),
+        gender: 'female' as const,
+        teamA: [m.player1_id, m.player2_id] as [string, string],
+        teamB: [m.player3_id, m.player4_id] as [string, string],
+        score1: m.score1 || 0,
+        score2: m.score2 || 0,
+        isSubmitted: m.is_completed || false
+      }))
+      .sort((a: any, b: any) => Number(a.match_number) - Number(b.match_number));
 
-    if (matches && matches.length > 0) {
-      // Filter by gender field and convert to new teamA/teamB format
-      // CRITICAL: Standardized match structure for consistency across app
-      const femaleMatchesData = matches
-        .filter((m: any) => m.gender === 'female')
-        .map((m: any) => ({
-          id: m.id,
-          match_number: Number(m.match_number),
-          gender: 'female' as const,
-          // Standardized format: teamA = [player1, player2], teamB = [player3, player4]
-          teamA: [m.player1_id, m.player2_id] as [string, string],
-          teamB: [m.player3_id, m.player4_id] as [string, string],
-          score1: m.score1 || 0,
-          score2: m.score2 || 0,
-          isSubmitted: m.is_completed || false
-        }))
-        .sort((a: any, b: any) => Number(a.match_number) - Number(b.match_number));
+    const maleMatchesData = matches
+      .filter((m: any) => m.gender === 'male')
+      .map((m: any) => ({
+        id: m.id,
+        match_number: Number(m.match_number),
+        gender: 'male' as const,
+        teamA: [m.player1_id, m.player2_id] as [string, string],
+        teamB: [m.player3_id, m.player4_id] as [string, string],
+        score1: m.score1 || 0,
+        score2: m.score2 || 0,
+        isSubmitted: m.is_completed || false
+      }))
+      .sort((a: any, b: any) => Number(a.match_number) - Number(b.match_number));
 
-      const maleMatchesData = matches
-        .filter((m: any) => m.gender === 'male')
-        .map((m: any) => ({
-          id: m.id,
-          match_number: Number(m.match_number),
-          gender: 'male' as const,
-          // Standardized format: teamA = [player1, player2], teamB = [player3, player4]
-          teamA: [m.player1_id, m.player2_id] as [string, string],
-          teamB: [m.player3_id, m.player4_id] as [string, string],
-          score1: m.score1 || 0,
-          score2: m.score2 || 0,
-          isSubmitted: m.is_completed || false
-        }))
-        .sort((a: any, b: any) => Number(a.match_number) - Number(b.match_number));
+    console.log('✅ [MATCH LOAD] Loaded', femaleMatchesData.length, 'female +', maleMatchesData.length, 'male matches');
 
-      console.log('✅ [MATCH LOAD] Female matches:', femaleMatchesData.length,
-        'order:', femaleMatchesData.map((m: any) => m.match_number));
-      console.log('✅ [MATCH LOAD] Male matches:', maleMatchesData.length,
-        'order:', maleMatchesData.map((m: any) => m.match_number));
-      console.log('📊 [MATCH LOAD] Expected: 14 female + 14 male = 28 total');
-
-      // Check if we have the wrong number of matches
-      if (femaleMatchesData.length !== 14 || maleMatchesData.length !== 14) {
-        console.log('⚠️ [MATCH LOAD] Incorrect match count! Female:', femaleMatchesData.length, 'Male:', maleMatchesData.length);
-        console.log('💡 [MATCH LOAD] Admin can reinitialize matches from Admin Panel if needed');
-        // Don't auto-reinitialize - this can cause loops. Let admin handle it.
-      }
-
-      // STEP 3: STRICT VALIDATION after conversion
-      // Load players for validation if not provided
-      let validationPlayers: { id?: string }[] = [];
-      if (femalePlayers && malePlayers) {
-        validationPlayers = [...femalePlayers, ...malePlayers];
-      } else {
-        try {
-          const playersSnap = await getDocs(collection(db, 'players'));
-          validationPlayers = playersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        } catch (e) {
-          console.warn('⚠️ [MATCH LOAD] Could not load players for validation');
-        }
-      }
-
-      if (validationPlayers.length > 0) {
-        const playerMap = buildValidationMap(validationPlayers);
-        let femaleValid = false;
-        let maleValid = false;
-
-        try {
-          validateMatches(femaleMatchesData, playerMap);
-          femaleValid = true;
-          console.log('✅ [MATCH LOAD] Female matches validated');
-        } catch (fErr) {
-          console.error('❌ [MATCH LOAD] Female matches INVALID:', fErr);
-        }
-
-        try {
-          validateMatches(maleMatchesData, playerMap);
-          maleValid = true;
-          console.log('✅ [MATCH LOAD] Male matches validated');
-        } catch (mErr) {
-          console.error('❌ [MATCH LOAD] Male matches INVALID:', mErr);
-        }
-
-        // Return valid matches
-        if (femaleValid && maleValid) {
-          console.log('✅ [MATCH LOAD] All matches from collection validated');
-          return { femaleMatches: femaleMatchesData, maleMatches: maleMatchesData };
-        }
-      }
-
-      // STEP 4: REGENERATE if validation failed and we have players
-      const hasFemalePlayers = femalePlayers?.length === 8;
-      const hasMalePlayers = malePlayers?.length === 8;
-
-      if (hasFemalePlayers && hasMalePlayers) {
-        console.warn('⚠️ [MATCH LOAD] Collection matches invalid - REGENERATING...');
-        const regenerated = regenerateMatchesFromPlayers(femalePlayers!, malePlayers!);
-        const playerMap = buildValidationMap([...femalePlayers!, ...malePlayers!]);
-        validateMatches(regenerated.femaleMatches, playerMap);
-        validateMatches(regenerated.maleMatches, playerMap);
-        console.log('✅ [MATCH LOAD] Matches REGENERATED and validated');
-        return regenerated;
-      }
-
-      console.log('✅ [MATCH LOAD] MATCHES LOADED (validation skipped - no players provided)');
-      return { femaleMatches: femaleMatchesData, maleMatches: maleMatchesData };
+    // STRICT VALIDATION: If players provided, validate matches
+    if (femalePlayers?.length === 8 && malePlayers?.length === 8) {
+      const playerMap = buildValidationMap([...femalePlayers, ...malePlayers]);
+      validateMatches(femaleMatchesData, playerMap);
+      validateMatches(maleMatchesData, playerMap);
+      console.log('✅ [MATCH LOAD] All matches validated');
     }
 
-    // STEP 5: No matches in collection - try REGENERATION if we have players
-    const hasFemalePlayers = femalePlayers?.length === 8;
-    const hasMalePlayers = malePlayers?.length === 8;
-
-    if (hasFemalePlayers && hasMalePlayers) {
-      console.warn('⚠️ [MATCH LOAD] No matches in collection - REGENERATING from players...');
-      const regenerated = regenerateMatchesFromPlayers(femalePlayers!, malePlayers!);
-      const playerMap = buildValidationMap([...femalePlayers!, ...malePlayers!]);
-      validateMatches(regenerated.femaleMatches, playerMap);
-      validateMatches(regenerated.maleMatches, playerMap);
-      console.log('✅ [MATCH LOAD] Matches REGENERATED and validated');
-      return regenerated;
-    }
+    return { femaleMatches: femaleMatchesData, maleMatches: maleMatchesData };
 
   } catch (error) {
-    console.error('❌ [MATCH LOAD] loadMatches() FAILED:', error);
-
-    // FINAL RECOVERY: Try regeneration on error
-    if (femalePlayers?.length === 8 && malePlayers?.length === 8) {
-      try {
-        console.warn('⚠️ [MATCH LOAD] Attempting emergency regeneration...');
-        const regenerated = regenerateMatchesFromPlayers(femalePlayers, malePlayers);
-        const playerMap = buildValidationMap([...femalePlayers, ...malePlayers]);
-        validateMatches(regenerated.femaleMatches, playerMap);
-        validateMatches(regenerated.maleMatches, playerMap);
-        console.log('✅ [MATCH LOAD] Emergency regeneration successful');
-        return regenerated;
-      } catch (regenErr) {
-        console.error('❌ [MATCH LOAD] Emergency regeneration failed:', regenErr);
-      }
-    }
+    console.error('❌ [MATCH LOAD] Failed:', error);
+    throw error; // Fail fast - let caller handle the error
   }
-
-  console.log('⚠️ [MATCH LOAD] Returning empty - no valid matches and cannot regenerate');
-  return { femaleMatches: [], maleMatches: [] };
 };
 
 export const loadFinalMatch = async () => {

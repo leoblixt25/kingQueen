@@ -3,11 +3,16 @@ import { collection, getDocs, query, where, doc, setDoc } from 'firebase/firesto
 import { STATIC_MATCHUPS, FEMALE_PLAYERS, MALE_PLAYERS } from './staticMatchups';
 
 /**
+ * ⚠️ DEPRECATED: Matches should ONLY be created via DrawPage.tsx
+ * This function creates matches deterministically from player order.
+ * For random tournament draws, use the DrawPage wheel instead.
+ *
  * Initialize matches using DETERMINISTIC IDs
  * Runs ONLY ONCE - checks if matches already exist
  * Prevents duplicate generation on reload
  */
 export const initializeMatches = async () => {
+  console.warn('⚠️ [MATCH INIT] DEPRECATED: Use DrawPage.tsx for match generation');
   console.log('🚀 [MATCH INIT] Starting match initialization...');
   
   try {

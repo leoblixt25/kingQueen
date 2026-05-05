@@ -114,9 +114,14 @@ const createDefaultPlayers = async () => {
 };
 
 /**
+ * ⚠️ DEPRECATED: Matches should ONLY be created via DrawPage.tsx
+ * This function creates matches deterministically from player order.
+ * For random tournament draws, use the DrawPage wheel instead.
+ *
  * Migration-safe match initialization
  */
 export const initializeMatchesSafe = async () => {
+  console.warn('⚠️ [MIGRATION] DEPRECATED: Use DrawPage.tsx for match generation');
   console.log('🚀 [MIGRATION] Starting safe match initialization...');
   
   try {

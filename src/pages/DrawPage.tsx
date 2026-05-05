@@ -565,22 +565,21 @@ export default function DrawPage() {
   if (matches.length === 0) return null;
 
   const isFemale = gender === 'f';
-  const teamAColor = isFemale ? 'bg-sunset/20 text-sunset' : 'bg-ocean/20 text-ocean';
-  const teamBColor = isFemale ? 'bg-[#FF6B6B]/20 text-[#FF6B6B]' : 'bg-[#00B4DB]/20 text-[#00B4DB]';
+  const teamColor = isFemale ? 'bg-sunset text-white' : 'bg-ocean text-white';
 
   return (
     <div className="mt-6 w-full">
       <h3 className="text-sm font-semibold text-foreground/70 mb-3 text-center">
         {matches.length} Matches Generated
       </h3>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-1">
         {matches.map((m) => (
           <div key={m.matchNum} className="bg-white/90 backdrop-blur-sm shadow-sm rounded-lg overflow-hidden flex flex-col transition-colors duration-200 hover:bg-white/95">
             <div className="bg-gray-100 text-gray-600 text-xs font-medium text-center py-1">Match {m.matchNum}</div>
             <div className="p-1 flex flex-col space-y-0.5">
-              <div className={`flex items-center justify-center ${teamAColor} rounded py-0.5 text-xs font-bold`}>{m.p1} & {m.p2}</div>
+              <div className={`flex items-center justify-center ${teamColor} rounded py-0.5 text-xs font-bold`}>{m.p1} & {m.p2}</div>
               <div className="text-[9px] text-foreground/40 font-medium text-center">vs</div>
-              <div className={`flex items-center justify-center ${teamBColor} rounded py-0.5 text-xs font-bold`}>{m.p3} & {m.p4}</div>
+              <div className={`flex items-center justify-center ${teamColor} rounded py-0.5 text-xs font-bold`}>{m.p3} & {m.p4}</div>
             </div>
           </div>
         ))}

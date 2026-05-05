@@ -5,7 +5,7 @@ import { collection, getDocs, doc, writeBatch, setDoc, getDoc } from 'firebase/f
 import { generateMatchesFromOrder, shuffleArray } from '@/utils/staticMatchups';
 import { validateMatches, buildValidationMap } from '@/utils/matchValidation';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChevronRight, RotateCcw, Target, CheckCircle2 } from 'lucide-react';
 
 interface Player { id: string; name: string; gender: string; status: string; }
@@ -506,7 +506,7 @@ export default function DrawPage() {
         </div>
 
         {/* Wheel container - larger for mobile recording */}
-        <div className="relative w-[240px] h-[240px] sm:w-[260px] sm:h-[260px] mb-4">
+        <div className="relative w-[300px] h-[300px] sm:w-[320px] sm:h-[320px] mb-4">
           {/* Pointer */}
           <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20">
             <div className="w-0 h-0 border-l-[12px] border-r-[12px] border-t-[20px] border-l-transparent border-r-transparent border-t-foreground drop-shadow-lg" />
@@ -573,18 +573,16 @@ export default function DrawPage() {
         </h3>
         <div className="grid grid-cols-2 gap-1">
           {matches.map((m) => (
-            <Card key={m.matchNum} className="overflow-hidden border-0 shadow-md">
-              <div className={`text-xs font-semibold px-2 py-1 ${
-                isFemale ? 'bg-sunset/10 text-sunset-dark' : 'bg-ocean/10 text-ocean-dark'
-              }`}>
-                Match {m.matchNum}
-              </div>
-              <CardContent className="p-1 space-y-0">
-                <div className={`text-xs font-bold ${isFemale ? 'text-sunset' : 'text-ocean'}`}>
+            <Card key={m.matchNum} className={`border-2 ${isFemale ? 'border-sunset/20' : 'border-ocean/20'} bg-white/80 backdrop-blur-sm shadow-beach`}>
+              <CardHeader className="pb-2">
+                <CardTitle className={`text-center text-sm font-bold ${isFemale ? 'text-sunset' : 'text-ocean'}`}>Match {m.matchNum}</CardTitle>
+              </CardHeader>
+              <CardContent className="p-2 space-y-1">
+                <div className={`text-center text-xs font-bold ${isFemale ? 'text-sunset' : 'text-ocean'}`}>
                   {m.p1} & {m.p2}
                 </div>
                 <div className="text-[10px] text-foreground/40 font-medium text-center">vs</div>
-                <div className={`text-xs font-bold ${isFemale ? 'text-[#FF6B6B]' : 'text-[#00B4DB]'}`}>
+                <div className={`text-center text-xs font-bold ${isFemale ? 'text-[#FF6B6B]' : 'text-[#00B4DB]'}`}>
                   {m.p3} & {m.p4}
                 </div>
               </CardContent>

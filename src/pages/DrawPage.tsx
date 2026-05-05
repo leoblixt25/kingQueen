@@ -5,7 +5,7 @@ import { collection, getDocs, doc, writeBatch, setDoc, getDoc } from 'firebase/f
 import { generateMatchesFromOrder, shuffleArray } from '@/utils/staticMatchups';
 import { validateMatches, buildValidationMap } from '@/utils/matchValidation';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChevronRight, RotateCcw, Target, CheckCircle2 } from 'lucide-react';
 
 interface Player { id: string; name: string; gender: string; status: string; }
@@ -562,38 +562,32 @@ export default function DrawPage() {
   }
 
   function renderMatchGrid(matches: DrawnMatch[], gender: 'f' | 'm') {
-    if (matches.length === 0) return null;
-    
-    const isFemale = gender === 'f';
-    
-    return (
-      <div className="mt-6 w-full">
-        <h3 className="text-sm font-semibold text-foreground/70 mb-3 text-center">
-          {matches.length} Matches Generated
-        </h3>
-        <div className="grid grid-cols-2 gap-2">
-          {matches.map((m) => (
-            <Card key={m.matchNum} className="overflow-hidden border-0 shadow-md">
-              <div className={`text-xs font-semibold px-2 py-1 ${
-                isFemale ? 'bg-sunset/10 text-sunset-dark' : 'bg-ocean/10 text-ocean-dark'
-              }`}>
-                Match {m.matchNum}
-              </div>
-              <CardContent className="p-2 space-y-1">
-                <div className={`text-xs font-bold ${isFemale ? 'text-sunset' : 'text-ocean'}`}>
-                  {m.p1} & {m.p2}
-                </div>
-                <div className="text-[10px] text-foreground/40 font-medium text-center">vs</div>
-                <div className={`text-xs font-bold ${isFemale ? 'text-[#FF6B6B]' : 'text-[#00B4DB]'}`}>
-                  {m.p3} & {m.p4}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+  if (matches.length === 0) return null;
+
+  const isFemale = gender === 'f';
+  const teamAColor = isFemale ? 'bg-sunset/20 text-sunset' : 'bg-ocean/20 text-ocean';
+  const teamBColor = isFemale ? 'bg-[#FF6B6B]/20 text-[#FF6B6B]' : 'bg-[#00B4DB]/20 text-[#00B4DB]';
+
+  return (
+    <div className="mt-6 w-full">
+      <h3 className="text-sm font-semibold text-foreground/70 mb-3 text-center">
+        {matches.length} Matches Generated
+      </h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+        {matches.map((m) => (
+          <div key={m.matchNum} className="bg-white/80 backdrop-blur-sm shadow-sm rounded-xl overflow-hidden flex flex-col">
+            <div className="bg-gray-100 text-gray-600 text-xs font-medium text-center py-1">Match {m.matchNum}</div>
+            <div className="p-2 flex flex-col space-y-1">
+              <div className={`flex items-center justify-center ${teamAColor} rounded py-0.5 text-xs font-bold`}>{m.p1} & {m.p2}</div>
+              <div className="text-[9px] text-foreground/40 font-medium text-center">vs</div>
+              <div className={`flex items-center justify-center ${teamBColor} rounded py-0.5 text-xs font-bold`}>{m.p3} & {m.p4}</div>
+            </div>
+          </div>
+        ))}
       </div>
-    );
-  }
+    </div>
+  );
+}
 
   if (loading) {
     return (

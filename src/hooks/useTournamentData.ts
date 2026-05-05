@@ -30,9 +30,17 @@ export const useTournamentData = () => {
     console.log('🔄 [LOAD MATCHES] Starting to fetch matches...');
     try {
       const result = await loadMatches() as any;
+
+      // INVARIANT CHECK: Never allow empty matches if they were returned
+      // If loadMatches returns empty, it means regeneration failed or players don't exist
+      const totalMatches = result.femaleMatches.length + result.maleMatches.length;
+      if (totalMatches === 0) {
+        console.warn('⚠️ [LOAD MATCHES] No matches returned - check if players exist and draw is complete');
+      }
+
       state.setFemaleMatches(result.femaleMatches);
       state.setMaleMatches(result.maleMatches);
-      console.log('✅ [LOAD MATCHES] Success:', result.femaleMatches.length + result.maleMatches.length, 'matches');
+      console.log('✅ [LOAD MATCHES] Success:', totalMatches, 'matches');
     } catch (error) {
       console.error('❌ [LOAD MATCHES] Failed:', error);
       throw error;

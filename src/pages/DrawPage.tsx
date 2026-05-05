@@ -361,20 +361,48 @@ export default function DrawPage() {
             is_completed: false
           });
         });
+
+        // Persist draw results in NEW format (teamA/teamB) for deterministic restoration
+        // CRITICAL: This saved state is used for recovery if matches collection is corrupted
+        const savedFemaleMatches = femaleMatchStructs.map((m, i) => ({
+          id: `female_match_${i + 1}`,
+          match_number: m.match_number,
+          gender: 'female' as const,
+          teamA: m.teamA,
+          teamB: m.teamB,
+          score1: 0,
+          score2: 0,
+          isSubmitted: false
+        }));
+
+        const savedMaleMatches = maleMatchStructs.map((m, i) => ({
+          id: `male_match_${i + 1}`,
+          match_number: m.match_number,
+          gender: 'male' as const,
+          teamA: m.teamA,
+          teamB: m.teamB,
+          score1: 0,
+          score2: 0,
+          isSubmitted: false
+        }));
+
+        wb.set(doc(db, 'tournamentSettings', 'settings'), {
+          draw_completed: true,
+          // Old format for backward compatibility (display)
+          drawn_female_matches: fMatches,
+          drawn_male_matches: mMatches,
+          // NEW format for deterministic restoration (recovery)
+          saved_female_matches: savedFemaleMatches,
+          saved_male_matches: savedMaleMatches
+        }, { merge: true });
+
       } catch (nameError) {
         console.error('❌ [SAVE] Name lookup error:', nameError);
         alert(String(nameError));
         setSaving(false);
         return;
       }
-      
-      // Bug 3: Also persist draw results for display
-      wb.set(doc(db, 'tournamentSettings', 'settings'), { 
-        draw_completed: true,
-        drawn_female_matches: fMatches,
-        drawn_male_matches: mMatches
-      }, { merge: true });
-      
+
       await wb.commit();
       console.log('✅ [SAVE] Draw saved successfully!');
       setSaved(true);
@@ -391,11 +419,13 @@ export default function DrawPage() {
     try {
       console.log('🔄 [RESTART] Clearing draw data...');
       
-      // Clear settings
+      // Clear settings - both old and new format
       await setDoc(doc(db, 'tournamentSettings', 'settings'), {
         draw_completed: false,
         drawn_female_matches: [],
-        drawn_male_matches: []
+        drawn_male_matches: [],
+        saved_female_matches: [],
+        saved_male_matches: []
       }, { merge: true });
 
       // Delete all matches

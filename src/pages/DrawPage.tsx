@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { db } from '@/config/firebase';
 import { collection, getDocs, doc, writeBatch, setDoc, getDoc } from 'firebase/firestore';
 import { generateMatchesFromOrder, shuffleArray } from '@/utils/staticMatchups';
+import { validateMatches, buildValidationMap } from '@/utils/matchValidation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ChevronRight, RotateCcw, Target, CheckCircle2 } from 'lucide-react';
@@ -275,42 +276,89 @@ export default function DrawPage() {
       
       // Bug 2: Wrap in try/catch for name errors
       try {
-        // Bug 1: STEP 4 - Write exactly 14 female + 14 male = 28 total matches
-        fMatches.forEach(m => {
+        // STEP 1: Convert names to IDs and build temporary Match structures for validation
+        const femaleMatchStructs = fMatches.map(m => {
           const p1id = byName(m.p1);
           const p2id = byName(m.p2);
           const p3id = byName(m.p3);
           const p4id = byName(m.p4);
           console.log(`✅ [SAVE] Female match ${m.matchNum}: ${m.p1}(${p1id}) & ${m.p2}(${p2id}) vs ${m.p3}(${p3id}) & ${m.p4}(${p4id})`);
-          wb.set(doc(matchesRef), { 
-            match_number: m.matchNum, 
-            gender: 'female', 
-            player1_id: p1id, 
-            player2_id: p2id, 
-            player3_id: p3id, 
-            player4_id: p4id, 
-            score1: 0, 
-            score2: 0, 
-            is_completed: false 
-          });
+          return {
+            match_number: m.matchNum,
+            gender: 'female' as const,
+            teamA: [p1id, p2id] as [string, string],
+            teamB: [p3id, p4id] as [string, string],
+            score1: 0,
+            score2: 0,
+            isSubmitted: false
+          };
         });
-        
-        mMatches.forEach(m => {
+
+        const maleMatchStructs = mMatches.map(m => {
           const p1id = byName(m.p1);
           const p2id = byName(m.p2);
           const p3id = byName(m.p3);
           const p4id = byName(m.p4);
           console.log(`✅ [SAVE] Male match ${m.matchNum}: ${m.p1}(${p1id}) & ${m.p2}(${p2id}) vs ${m.p3}(${p3id}) & ${m.p4}(${p4id})`);
-          wb.set(doc(matchesRef), { 
-            match_number: m.matchNum, 
-            gender: 'male', 
-            player1_id: p1id, 
-            player2_id: p2id, 
-            player3_id: p3id, 
-            player4_id: p4id, 
-            score1: 0, 
-            score2: 0, 
-            is_completed: false 
+          return {
+            match_number: m.matchNum,
+            gender: 'male' as const,
+            teamA: [p1id, p2id] as [string, string],
+            teamB: [p3id, p4id] as [string, string],
+            score1: 0,
+            score2: 0,
+            isSubmitted: false
+          };
+        });
+
+        // STEP 2: STRICT VALIDATION before writing to Firestore
+        const playerMap = buildValidationMap(allPlayers);
+        try {
+          validateMatches(femaleMatchStructs, playerMap);
+          console.log('✅ [SAVE] Female matches validated');
+        } catch (fErr) {
+          console.error('❌ [SAVE] Female match validation FAILED:', fErr);
+          alert('Draw validation failed: Female matches contain invalid player data. Please regenerate the draw.');
+          setSaving(false);
+          return;
+        }
+        try {
+          validateMatches(maleMatchStructs, playerMap);
+          console.log('✅ [SAVE] Male matches validated');
+        } catch (mErr) {
+          console.error('❌ [SAVE] Male match validation FAILED:', mErr);
+          alert('Draw validation failed: Male matches contain invalid player data. Please regenerate the draw.');
+          setSaving(false);
+          return;
+        }
+
+        // STEP 3: Write exactly 14 female + 14 male = 28 total matches
+        // Already validated - these IDs are guaranteed valid
+        femaleMatchStructs.forEach(match => {
+          wb.set(doc(matchesRef), {
+            match_number: match.match_number,
+            gender: match.gender,
+            player1_id: match.teamA[0],
+            player2_id: match.teamA[1],
+            player3_id: match.teamB[0],
+            player4_id: match.teamB[1],
+            score1: 0,
+            score2: 0,
+            is_completed: false
+          });
+        });
+
+        maleMatchStructs.forEach(match => {
+          wb.set(doc(matchesRef), {
+            match_number: match.match_number,
+            gender: match.gender,
+            player1_id: match.teamA[0],
+            player2_id: match.teamA[1],
+            player3_id: match.teamB[0],
+            player4_id: match.teamB[1],
+            score1: 0,
+            score2: 0,
+            is_completed: false
           });
         });
       } catch (nameError) {

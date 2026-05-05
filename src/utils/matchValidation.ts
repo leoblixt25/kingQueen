@@ -126,3 +126,47 @@ export function enforceValidMatches(matches: Match[], players: { id?: string }[]
   validateMatches(matches, playerMap);
   return matches;
 }
+
+/**
+ * SAFE RECOVERY: Regenerate matches from player order using static matchups
+ * Only called when loaded/saved match data is corrupt or stale
+ */
+export function regenerateMatches(
+  playerOrder: string[],
+  gender: 'female' | 'male',
+  generateFn: (order: string[], g: 'female' | 'male') => Match[]
+): Match[] {
+  console.log(`🔄 [RECOVERY] Regenerating ${gender} matches from player order...`);
+  const regenerated = generateFn(playerOrder, gender);
+  console.log(`✅ [RECOVERY] Regenerated ${regenerated.length} ${gender} matches`);
+  return regenerated;
+}
+
+/**
+ * VALIDATE OR RECOVER: Try to validate matches, regenerate if invalid
+ * SAFE: Never returns invalid data. Either returns valid matches or regenerates.
+ */
+export function validateOrRegenerate(
+  matches: Match[],
+  players: { id?: string }[],
+  playerOrder: string[],
+  gender: 'female' | 'male',
+  generateFn: (order: string[], g: 'female' | 'male') => Match[]
+): Match[] {
+  const playerMap = buildValidationMap(players);
+
+  try {
+    validateMatches(matches, playerMap);
+    console.log(`✅ [VALIDATE+RECOVER] ${gender} matches are valid`);
+    return matches;
+  } catch (error) {
+    console.error(`❌ [VALIDATE+RECOVER] ${gender} matches invalid:`, error);
+    console.warn(`⚠️ [VALIDATE+RECOVER] Regenerating ${gender} matches...`);
+
+    const regenerated = regenerateMatches(playerOrder, gender, generateFn);
+    validateMatches(regenerated, playerMap);
+    console.warn(`⚠️ [VALIDATE+RECOVER] Matches were regenerated due to invalid data`);
+
+    return regenerated;
+  }
+}

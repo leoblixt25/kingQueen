@@ -2,6 +2,7 @@ import { db } from '@/config/firebase';
 import { collection, getDocs, query, orderBy, doc, getDoc } from 'firebase/firestore';
 import { initializePlayersSafe } from './firebaseMigration';
 import { initializeMatchesSafe } from './firebaseMigration';
+import { validateMatches, buildValidationMap } from './matchValidation';
 
 export const loadPlayers = async () => {
   console.log('🔄 [LOAD] loadPlayers() called');
@@ -324,14 +325,49 @@ export const loadMatches = async (femalePlayers?: any[], malePlayers?: any[]) =>
         // Don't auto-reinitialize - this can cause loops. Let admin handle it.
       }
 
-      console.log('✅ [MATCH LOAD] MATCHES LOADED SUCCESSFULLY');
+      // STEP 3: STRICT VALIDATION after conversion
+      // Load players for validation if not provided
+      let validationPlayers: { id?: string }[] = [];
+      if (femalePlayers && malePlayers) {
+        validationPlayers = [...femalePlayers, ...malePlayers];
+      } else {
+        // Load players from Firestore for validation
+        try {
+          const playersSnap = await getDocs(collection(db, 'players'));
+          validationPlayers = playersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        } catch (e) {
+          console.warn('⚠️ [MATCH LOAD] Could not load players for validation');
+        }
+      }
+
+      if (validationPlayers.length > 0) {
+        const playerMap = buildValidationMap(validationPlayers);
+        try {
+          validateMatches(femaleMatchesData, playerMap);
+          console.log('✅ [MATCH LOAD] Female matches validated');
+        } catch (fErr) {
+          console.error('❌ [MATCH LOAD] Female matches INVALID:', fErr);
+          console.warn('⚠️ [MATCH LOAD] Returning empty female matches - caller must recover');
+          return { femaleMatches: [], maleMatches: [] };
+        }
+        try {
+          validateMatches(maleMatchesData, playerMap);
+          console.log('✅ [MATCH LOAD] Male matches validated');
+        } catch (mErr) {
+          console.error('❌ [MATCH LOAD] Male matches INVALID:', mErr);
+          console.warn('⚠️ [MATCH LOAD] Returning empty male matches - caller must recover');
+          return { femaleMatches: [], maleMatches: [] };
+        }
+      }
+
+      console.log('✅ [MATCH LOAD] MATCHES LOADED AND VALIDATED SUCCESSFULLY');
       return { femaleMatches: femaleMatchesData, maleMatches: maleMatchesData };
     }
   } catch (error) {
     console.error('❌ [MATCH LOAD] loadMatches() FAILED:', error);
     return { femaleMatches: [], maleMatches: [] };
   }
-  
+
   console.log('⚠️ [MATCH LOAD] loadMatches() returned empty arrays');
   return { femaleMatches: [], maleMatches: [] };
 };

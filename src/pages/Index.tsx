@@ -734,7 +734,8 @@ export default function KingQueenOfTheBeach() {
   }
 
   // Gate: Show waiting screen for approved non-admin users until draw is complete
-  if (!userIsAdmin && !drawCompleted) {
+  // CRITICAL: Also gate if draw says complete but matches are empty (invalid state)
+  if (!userIsAdmin && (!drawCompleted || !matches || matches.length === 0)) {
     return <WaitingForDraw onDrawComplete={() => setDrawCompleted(true)} />;
   }
 

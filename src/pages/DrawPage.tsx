@@ -11,9 +11,9 @@ import { ChevronRight, RotateCcw, Target, CheckCircle2 } from 'lucide-react';
 interface Player { id: string; name: string; gender: string; status: string; }
 interface DrawnMatch { matchNum: number; p1: string; p2: string; p3: string; p4: string; }
 
-// App theme colors - Female (warm/sunset tones), Male (cool/ocean tones)
+// App theme colors - Female (warm/sunset tones), Male (cool/ocean blues)
 const FC = ['#FF7F50', '#FF6B6B', '#FF8E53', '#FF6B9D', '#FFA07A', '#FF7F7F', '#FF9F43', '#FF6B6B'];
-const MC = ['#4ECDC4', '#44A08D', '#00B4DB', '#0083B0', '#2193b0', '#6dd5ed', '#48c6ef', '#3498db'];
+const MC = ['#00B4DB', '#0083B0', '#2193b0', '#3498db', '#4ECDC4', '#44A08D', '#6dd5ed', '#48c6ef'];
 
 export default function DrawPage() {
   const navigate = useNavigate();

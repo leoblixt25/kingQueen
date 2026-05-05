@@ -279,16 +279,17 @@ export const loadMatches = async (femalePlayers?: any[], malePlayers?: any[]) =>
     console.log('✅ [MATCH LOAD] Total matches loaded:', matches.length);
 
     if (matches && matches.length > 0) {
-      // Filter by gender field (which actually exists in the database)
+      // Filter by gender field and convert to new teamA/teamB format
+      // CRITICAL: Standardized match structure for consistency across app
       const femaleMatchesData = matches
         .filter((m: any) => m.gender === 'female')
         .map((m: any) => ({
           id: m.id,
           match_number: Number(m.match_number),
-          player1_id: m.player1_id,
-          player2_id: m.player2_id,
-          player3_id: m.player3_id,
-          player4_id: m.player4_id,
+          gender: 'female' as const,
+          // Standardized format: teamA = [player1, player2], teamB = [player3, player4]
+          teamA: [m.player1_id, m.player2_id] as [string, string],
+          teamB: [m.player3_id, m.player4_id] as [string, string],
           score1: m.score1 || 0,
           score2: m.score2 || 0,
           isSubmitted: m.is_completed || false
@@ -300,10 +301,10 @@ export const loadMatches = async (femalePlayers?: any[], malePlayers?: any[]) =>
         .map((m: any) => ({
           id: m.id,
           match_number: Number(m.match_number),
-          player1_id: m.player1_id,
-          player2_id: m.player2_id,
-          player3_id: m.player3_id,
-          player4_id: m.player4_id,
+          gender: 'male' as const,
+          // Standardized format: teamA = [player1, player2], teamB = [player3, player4]
+          teamA: [m.player1_id, m.player2_id] as [string, string],
+          teamB: [m.player3_id, m.player4_id] as [string, string],
           score1: m.score1 || 0,
           score2: m.score2 || 0,
           isSubmitted: m.is_completed || false

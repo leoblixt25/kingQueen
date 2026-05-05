@@ -7,13 +7,26 @@ export type Player = {
   totalScores: number;
 };
 
+// Raw match from Firestore - uses player ID arrays
 export type Match = {
-  id?: string; // Optional for backwards compatibility
+  id?: string;
   gender?: 'male' | 'female';
-  player1: Player;
-  player2: Player;
-  player3: Player;
-  player4: Player;
+  match_number: number;
+  teamA: [string, string]; // [playerId1, playerId2]
+  teamB: [string, string]; // [playerId3, playerId4]
+  score1: number;
+  score2: number;
+  isSubmitted: boolean;
+  is_completed?: boolean;
+};
+
+// Resolved match with full player objects
+export type ResolvedMatch = {
+  id?: string;
+  gender?: 'male' | 'female';
+  match_number: number;
+  teamA: [Player, Player];
+  teamB: [Player, Player];
   score1: number;
   score2: number;
   isSubmitted: boolean;

@@ -1,9 +1,9 @@
-import { Player, Match } from '@/types';
+import { Player, ResolvedMatch } from '@/types';
 
 /**
  * Deterministic tiebreaker system for player rankings
  * Ensures unique ranking order with no shared positions
- * 
+ *
  * Tiebreaker order:
  * 1. Total points (highest first)
  * 2. Total score (highest first)
@@ -21,24 +21,30 @@ interface PlayerStats {
   strengthOfOpponents: number;
 }
 
+// Helper to get player ID safely
+const getPlayerId = (player: Player | null): string => player?.id || '';
+
 /**
  * Calculate point differential for a player
  */
 const calculatePointDifferential = (
   playerId: string,
-  matches: Match[]
+  matches: ResolvedMatch[]
 ): number => {
   let scored = 0;
   let conceded = 0;
 
   matches.forEach(match => {
-    const isTeam1 = match.player1.id === playerId || match.player2.id === playerId;
-    const isTeam2 = match.player3.id === playerId || match.player4.id === playerId;
+    const [teamA1, teamA2] = match.teamA;
+    const [teamB1, teamB2] = match.teamB;
 
-    if (isTeam1) {
+    const isTeamA = getPlayerId(teamA1) === playerId || getPlayerId(teamA2) === playerId;
+    const isTeamB = getPlayerId(teamB1) === playerId || getPlayerId(teamB2) === playerId;
+
+    if (isTeamA) {
       scored += match.score1;
       conceded += match.score2;
-    } else if (isTeam2) {
+    } else if (isTeamB) {
       scored += match.score2;
       conceded += match.score1;
     }
@@ -53,21 +59,24 @@ const calculatePointDifferential = (
 const getHeadToHeadStats = (
   player1Id: string,
   player2Id: string,
-  matches: Match[]
+  matches: ResolvedMatch[]
 ): { wins: number; scoreDiff: number } => {
   let wins = 0;
   let scoreDiff = 0;
 
   matches.forEach(match => {
-    const p1InTeam1 = match.player1.id === player1Id || match.player2.id === player1Id;
-    const p2InTeam1 = match.player1.id === player2Id || match.player2.id === player2Id;
-    const p1InTeam2 = match.player3.id === player1Id || match.player4.id === player1Id;
-    const p2InTeam2 = match.player3.id === player2Id || match.player4.id === player2Id;
+    const [teamA1, teamA2] = match.teamA;
+    const [teamB1, teamB2] = match.teamB;
+
+    const p1InTeamA = getPlayerId(teamA1) === player1Id || getPlayerId(teamA2) === player1Id;
+    const p2InTeamA = getPlayerId(teamA1) === player2Id || getPlayerId(teamA2) === player2Id;
+    const p1InTeamB = getPlayerId(teamB1) === player1Id || getPlayerId(teamB2) === player1Id;
+    const p2InTeamB = getPlayerId(teamB1) === player2Id || getPlayerId(teamB2) === player2Id;
 
     // Only consider matches where they faced each other
-    if ((p1InTeam1 && p2InTeam2) || (p1InTeam2 && p2InTeam1)) {
-      const p1Score = p1InTeam1 ? match.score1 : match.score2;
-      const p2Score = p2InTeam1 ? match.score1 : match.score2;
+    if ((p1InTeamA && p2InTeamB) || (p1InTeamB && p2InTeamA)) {
+      const p1Score = p1InTeamA ? match.score1 : match.score2;
+      const p2Score = p2InTeamA ? match.score1 : match.score2;
 
       if (p1Score > p2Score) {
         wins += 1;
@@ -84,21 +93,24 @@ const getHeadToHeadStats = (
  */
 const calculateStrengthOfOpponents = (
   playerId: string,
-  matches: Match[],
+  matches: ResolvedMatch[],
   playerPointsMap: Map<string, number>
 ): number => {
   const opponentIds = new Set<string>();
 
   matches.forEach(match => {
-    const isTeam1 = match.player1.id === playerId || match.player2.id === playerId;
-    const isTeam2 = match.player3.id === playerId || match.player4.id === playerId;
+    const [teamA1, teamA2] = match.teamA;
+    const [teamB1, teamB2] = match.teamB;
 
-    if (isTeam1) {
-      opponentIds.add(match.player3.id || '');
-      opponentIds.add(match.player4.id || '');
-    } else if (isTeam2) {
-      opponentIds.add(match.player1.id || '');
-      opponentIds.add(match.player2.id || '');
+    const isTeamA = getPlayerId(teamA1) === playerId || getPlayerId(teamA2) === playerId;
+    const isTeamB = getPlayerId(teamB1) === playerId || getPlayerId(teamB2) === playerId;
+
+    if (isTeamA) {
+      opponentIds.add(getPlayerId(teamB1));
+      opponentIds.add(getPlayerId(teamB2));
+    } else if (isTeamB) {
+      opponentIds.add(getPlayerId(teamA1));
+      opponentIds.add(getPlayerId(teamA2));
     }
   });
 
@@ -121,7 +133,7 @@ const calculateStrengthOfOpponents = (
 export const getTiebreakerLevel = (
   a: Player,
   b: Player,
-  matches: Match[],
+  matches: ResolvedMatch[],
   playerPointsMap: Map<string, number>
 ): string | null => {
   // If points are different, no tiebreaker needed
@@ -169,7 +181,7 @@ export const getTiebreakerLevel = (
 export const comparePlayers = (
   a: Player,
   b: Player,
-  matches: Match[],
+  matches: ResolvedMatch[],
   playerPointsMap: Map<string, number>
 ): number => {
   // 1. Total points (highest first)
@@ -220,7 +232,7 @@ export const comparePlayers = (
  */
 export const sortPlayersWithTiebreakers = (
   players: Player[],
-  matches: Match[]
+  matches: ResolvedMatch[]
 ): Player[] => {
   // Build a map of player points for strength of opponents calculation
   const playerPointsMap = new Map<string, number>();

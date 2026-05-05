@@ -1,24 +1,16 @@
-import { Player, Match } from '@/types';
+import { Player, Match, ResolvedMatch } from '@/types';
 
 /**
  * Build a players map for quick lookup by ID
  * CRITICAL: This is the SINGLE SOURCE OF TRUTH for player lookups
  */
-export const buildPlayersMap = (femalePlayers: Player[], malePlayers: Player[]) => {
+export const buildPlayersMap = (femalePlayers: Player[], malePlayers: Player[]): Map<string, Player> => {
   console.log('🗺️ [PLAYER MAP] Building players map...');
   console.log('📊 [PLAYER MAP] Female players:', femalePlayers?.length || 0);
   console.log('📊 [PLAYER MAP] Male players:', malePlayers?.length || 0);
-  
-  // Log all player IDs for debugging
-  if (femalePlayers?.length > 0) {
-    console.log('📋 [PLAYER MAP] Female player IDs:', femalePlayers.map(p => p.id).join(', '));
-  }
-  if (malePlayers?.length > 0) {
-    console.log('📋 [PLAYER MAP] Male player IDs:', malePlayers.map(p => p.id).join(', '));
-  }
-  
+
   const playersMap = new Map<string, Player>();
-  
+
   // Add female players to map
   if (femalePlayers && femalePlayers.length > 0) {
     femalePlayers.forEach(player => {
@@ -29,7 +21,7 @@ export const buildPlayersMap = (femalePlayers: Player[], malePlayers: Player[]) 
       }
     });
   }
-  
+
   // Add male players to map
   if (malePlayers && malePlayers.length > 0) {
     malePlayers.forEach(player => {
@@ -40,161 +32,158 @@ export const buildPlayersMap = (femalePlayers: Player[], malePlayers: Player[]) 
       }
     });
   }
-  
+
   console.log('✅ [PLAYER MAP] Total players in map:', playersMap.size);
   return playersMap;
 };
 
 /**
  * Resolve a player ID to player data using the players map
- * CRITICAL: Must only use playerMap lookup, never array index
- * 
+ * CRITICAL: Returns null if player not found - NO FALLBACK PLACEHOLDERS
+ *
  * @param playerId - The player ID from match data
  * @param playersMap - Map of player IDs to Player objects (SINGLE SOURCE OF TRUTH)
- * @param defaultName - Fallback name if player not found (should be descriptive like "TBD" or position)
- * @returns Player object
+ * @returns Player object or null if not found
  */
 export const resolvePlayer = (
-  playerId: string | null | undefined, 
-  playersMap: Map<string, Player>, 
-  defaultName: string = 'TBD'
-): Player => {
+  playerId: string | null | undefined,
+  playersMap: Map<string, Player>
+): Player | null => {
   // Validate playerId exists
   if (!playerId) {
-    console.warn(`⚠️ [PLAYER RESOLVE] Missing player ID, using default "${defaultName}"`);
-    return {
-      id: `missing-${Date.now()}`,
-      name: defaultName,
-      points: 0,
-      totalScores: 0
-    };
+    console.warn(`⚠️ [PLAYER RESOLVE] Missing player ID`);
+    return null;
   }
-  
+
   // CRITICAL: Only use map lookup, never array index
   const player = playersMap.get(playerId);
-  
+
   if (player) {
     return player;
   }
-  
+
   // ID not found - this is a DATA INCONSISTENCY
-  // Log available IDs to help diagnose
-  const availableIds = Array.from(playersMap.keys()).slice(0, 5).join(', ') + '...';
   console.error(`❌ [PLAYER RESOLVE] Player ID "${playerId}" NOT FOUND in player map`);
-  console.error(`📋 [PLAYER RESOLVE] Available IDs (first 5): ${availableIds}`);
   console.error(`📊 [PLAYER RESOLVE] Map size: ${playersMap.size}`);
-  
-  return {
-    id: playerId,
-    name: defaultName,
-    points: 0,
-    totalScores: 0
-  };
+
+  return null;
 };
 
 /**
- * Convert matches with player IDs to matches with full player data
- * CRITICAL: Uses playerMap for ALL lookups - never uses array index
+ * Convert matches with player ID arrays to matches with full player data
+ * CRITICAL: Uses playerMap for ALL lookups - NO FALLBACK PLACEHOLDERS EVER
+ *
+ * Standard match format:
+ * {
+ *   id,
+ *   match_number,
+ *   teamA: [playerId1, playerId2],
+ *   teamB: [playerId3, playerId4],
+ *   score1,
+ *   score2,
+ *   isSubmitted
+ * }
  */
 export const resolveMatchPlayers = (
-  matches: any[], 
+  matches: Match[],
   playersMap: Map<string, Player>
-): Match[] => {
+): ResolvedMatch[] => {
   console.log('🔄 [MATCH RESOLVE] Resolving player IDs for', matches.length, 'matches...');
-  
+
   if (!matches || matches.length === 0) {
     console.log('ℹ️ [MATCH RESOLVE] No matches to resolve');
     return [];
   }
-  
+
   // Track missing IDs for summary
   const missingIds = new Set<string>();
-  
+  const problematicMatches: number[] = [];
+
   const resolvedMatches = matches.map((match, matchIndex) => {
-    // Extract player IDs from match data
-    const player1_id = match.player1_id;
-    const player2_id = match.player2_id;
-    const player3_id = match.player3_id;
-    const player4_id = match.player4_id;
-    
     const matchNum = match.match_number || (matchIndex + 1);
-    
-    // Validate all player IDs exist in map BEFORE resolving
-    [player1_id, player2_id, player3_id, player4_id].forEach((id, idx) => {
-      if (id && !playersMap.has(id)) {
-        missingIds.add(id);
-      }
-    });
-    
-    // Resolve each player ID to player data using ONLY map lookup
-    const player1 = resolvePlayer(player1_id, playersMap, 'Team A P1');
-    const player2 = resolvePlayer(player2_id, playersMap, 'Team A P2');
-    const player3 = resolvePlayer(player3_id, playersMap, 'Team B P1');
-    const player4 = resolvePlayer(player4_id, playersMap, 'Team B P2');
-    
+
+    // Extract player IDs from team arrays
+    const [teamA1_id, teamA2_id] = match.teamA || [null, null];
+    const [teamB1_id, teamB2_id] = match.teamB || [null, null];
+
+    // Resolve each player ID - NO PLACEHOLDERS, returns null if not found
+    const teamA1 = resolvePlayer(teamA1_id, playersMap);
+    const teamA2 = resolvePlayer(teamA2_id, playersMap);
+    const teamB1 = resolvePlayer(teamB1_id, playersMap);
+    const teamB2 = resolvePlayer(teamB2_id, playersMap);
+
+    // Track any missing players
+    const missingInMatch: string[] = [];
+    if (!teamA1) missingInMatch.push(teamA1_id || 'null');
+    if (!teamA2) missingInMatch.push(teamA2_id || 'null');
+    if (!teamB1) missingInMatch.push(teamB1_id || 'null');
+    if (!teamB2) missingInMatch.push(teamB2_id || 'null');
+
+    if (missingInMatch.length > 0) {
+      missingInMatch.forEach(id => missingIds.add(id));
+      problematicMatches.push(matchNum);
+      console.error(`❌ [MATCH RESOLVE] Match #${matchNum} has ${missingInMatch.length} unresolved players:`, missingInMatch);
+    }
+
     // Only log first match and any problematic matches
-    if (matchIndex === 0 || missingIds.has(player1_id) || missingIds.has(player2_id) || 
-        missingIds.has(player3_id) || missingIds.has(player4_id)) {
+    if (matchIndex === 0 || missingInMatch.length > 0) {
       console.log(`📄 [MATCH RESOLVE] Match #${matchNum}:`, {
-        player1: `${player1_id?.substring(0, 8) || 'null'}... → ${player1.name}`,
-        player2: `${player2_id?.substring(0, 8) || 'null'}... → ${player2.name}`,
-        player3: `${player3_id?.substring(0, 8) || 'null'}... → ${player3.name}`,
-        player4: `${player4_id?.substring(0, 8) || 'null'}... → ${player4.name}`
+        teamA: `${teamA1?.name || '❌'} & ${teamA2?.name || '❌'}`,
+        teamB: `${teamB1?.name || '❌'} & ${teamB2?.name || '❌'}`
       });
     }
-    
+
+    // Build resolved match - if any player is null, the match data is incomplete
+    // This ensures we NEVER show placeholder names
     return {
       id: match.id,
       match_number: matchNum,
-      player1,
-      player2,
-      player3,
-      player4,
+      teamA: [teamA1, teamA2] as [Player, Player],
+      teamB: [teamB1, teamB2] as [Player, Player],
       score1: match.score1 || 0,
       score2: match.score2 || 0,
       isSubmitted: match.isSubmitted || false,
       gender: match.gender
     };
   });
-  
+
   // Report missing IDs summary
   if (missingIds.size > 0) {
     console.error(`❌ [MATCH RESOLVE] ${missingIds.size} player IDs not found in map:`);
     console.error(`📋 [MATCH RESOLVE] Missing IDs:`, Array.from(missingIds).slice(0, 10));
     console.error(`💡 [MATCH RESOLVE] This indicates stale match data - matches have old player IDs`);
+    console.error(`⚠️ [MATCH RESOLVE] Problematic matches:`, problematicMatches);
   }
-  
+
   console.log('✅ [MATCH RESOLVE] Successfully resolved', resolvedMatches.length, 'matches');
   return resolvedMatches;
 };
 
 /**
- * Complete function to load and resolve matches with player data
+ * Convert old format matches (player1_id, player2_id, etc.) to new teamA/teamB format
+ * This is a migration helper for backward compatibility
  */
-export const loadAndResolveMatches = async (
-  loadMatchesFn: () => Promise<{ femaleMatches: any[]; maleMatches: any[] }>,
-  femalePlayers: Player[],
-  malePlayers: Player[]
-) => {
-  console.log('🚀 [MATCH LOAD+] Loading and resolving matches...');
-  
-  // Step 1: Load raw matches (with IDs only)
-  const rawMatches = await loadMatchesFn();
-  console.log('📊 [MATCH LOAD+] Raw matches loaded - Female:', rawMatches.femaleMatches.length, 'Male:', rawMatches.maleMatches.length);
-  
-  // Step 2: Build players map
-  const playersMap = buildPlayersMap(femalePlayers, malePlayers);
-  
-  // Step 3: Resolve female matches
-  const resolvedFemaleMatches = resolveMatchPlayers(rawMatches.femaleMatches, playersMap);
-  console.log('✅ [MATCH LOAD+] Female matches resolved:', resolvedFemaleMatches.length);
-  
-  // Step 4: Resolve male matches
-  const resolvedMaleMatches = resolveMatchPlayers(rawMatches.maleMatches, playersMap);
-  console.log('✅ [MATCH LOAD+] Male matches resolved:', resolvedMaleMatches.length);
-  
-  return {
-    femaleMatches: resolvedFemaleMatches,
-    maleMatches: resolvedMaleMatches
-  };
+export const migrateMatchFormat = (oldMatch: any): Match | null => {
+  if (!oldMatch) return null;
+
+  // Already in new format
+  if (oldMatch.teamA && oldMatch.teamB) {
+    return oldMatch as Match;
+  }
+
+  // Convert from old format
+  if (oldMatch.player1_id || oldMatch.player2_id || oldMatch.player3_id || oldMatch.player4_id) {
+    return {
+      id: oldMatch.id,
+      match_number: oldMatch.match_number || 0,
+      gender: oldMatch.gender,
+      teamA: [oldMatch.player1_id, oldMatch.player2_id] as [string, string],
+      teamB: [oldMatch.player3_id, oldMatch.player4_id] as [string, string],
+      score1: oldMatch.score1 || 0,
+      score2: oldMatch.score2 || 0,
+      isSubmitted: oldMatch.isSubmitted || oldMatch.is_completed || false
+    };
+  }
+
+  return null;
 };

@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Check, Edit, Trash, Crown, ChevronLeft, ChevronRight, Home, Users, RotateCcw, UserPlus, LogOut, Loader2, Settings } from "lucide-react";
-import { Gender, FinalMatchScores } from "@/types";
+import { Gender, FinalMatchScores, ResolvedMatch } from "@/types";
 import { useTournamentData } from "@/hooks/useTournamentData";
 import { useTournamentRealtimeSubscriptions } from "@/hooks/useTournamentRealtimeSubscriptions";
 import { PlayerReplacer } from "@/components/PlayerReplacer";
@@ -821,7 +821,9 @@ export default function KingQueenOfTheBeach() {
     );
   }
 
-  const currentMatch = matches[currentMatchIndex];
+  // Type assertion to ResolvedMatch since resolveMatchPlayers returns ResolvedMatch[]
+  const typedMatches = matches as ResolvedMatch[];
+  const currentMatch = typedMatches[currentMatchIndex];
 
   if (!currentMatch || matches.length === 0) {
     return (
@@ -1405,7 +1407,7 @@ export default function KingQueenOfTheBeach() {
                         <div className="text-center space-y-3">
                           <div className="bg-ocean text-white rounded-xl py-4 px-4 shadow-beach">
                             <p className="text-xl font-bold">
-                              {currentMatch.player1.name} & {currentMatch.player2.name}
+                              {currentMatch.teamA[0]?.name || '❌'} & {currentMatch.teamA[1]?.name || '❌'}
                             </p>
                           </div>
                           {!currentMatch.isSubmitted || editingMatchId === currentMatch.id ? (
@@ -1439,7 +1441,7 @@ export default function KingQueenOfTheBeach() {
                         <div className="text-center space-y-3">
                           <div className="bg-sunset text-white rounded-xl py-4 px-4 shadow-beach">
                             <p className="text-xl font-bold">
-                              {currentMatch.player3.name} & {currentMatch.player4.name}
+                              {currentMatch.teamB[0]?.name || '❌'} & {currentMatch.teamB[1]?.name || '❌'}
                             </p>
                           </div>
                           {!currentMatch.isSubmitted || editingMatchId === currentMatch.id ? (

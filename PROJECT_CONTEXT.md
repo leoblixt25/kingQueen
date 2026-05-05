@@ -78,21 +78,38 @@
 sandy-scorekeeper/
 ├── src/
 │   ├── components/     # React components
-│   │   └── AdminPanel.tsx      # Admin controls (approval, PDF export, settings)
+│   │   ├── AdminPanel.tsx       # Admin controls (approval, PDF export, settings)
+│   │   ├── AdminControls.tsx    # Admin control buttons component
+│   │   ├── PlayerReplacer.tsx   # Replace players functionality
+│   │   ├── PlayerUnregistration.tsx # Player cancellation
+│   │   ├── ResetConfirmationModal.tsx # Reset confirmation dialog
+│   │   └── ScoreResetConfirmationModal.tsx # Score reset dialog
 │   ├── hooks/          # Custom React hooks
+│   │   ├── useTournamentData.ts     # Tournament data loading
+│   │   ├── useTournamentActions.ts   # Tournament actions (reset, etc.)
+│   │   └── useTournamentState.ts     # Tournament state management
 │   ├── pages/          # Route pages
+│   │   ├── Index.tsx            # Main tournament page
+│   │   ├── AdminControl.tsx     # Admin configuration & controls
+│   │   ├── DrawPage.tsx         # Tournament draw wheel
+│   │   ├── LiveRanking.tsx      # Live rankings display
+│   │   ├── Landing.tsx          # Landing/home page
 │   │   ├── PendingApproval.tsx  # Pending registration approval page
-│   │   └── Index.tsx            # Main tournament page
+│   │   └── WaitingForDraw.tsx   # Waiting screen before draw
 │   ├── utils/          # Utility functions (Firebase operations)
 │   │   ├── pdfExport.ts         # PDF generation with football-style layout
 │   │   ├── firebaseUtils.ts    # Firebase Firestore data loading (matches, players)
+│   │   ├── resetUtils.ts       # Tournament reset functions
 │   │   ├── matchSortUtils.ts   # Shared match sorting utilities (getOrderedMatches)
 │   │   ├── matchPlayerResolver.ts # Resolves player IDs to Player objects in matches
+│   │   ├── matchValidation.ts  # Match validation utilities
 │   │   ├── matchInitUtils.ts    # Match initialization with deterministic IDs
-│   │   ├── staticMatchups.ts    # SINGLE SOURCE OF TRUTH: 14 match combinations + generation
+│   │   ├── staticMatchups.ts    # SINGLE SOURCE OF TRUTH: 14 match combinations
+│   │   ├── rankingTiebreaker.ts # Tiebreaker calculation for rankings
 │   │   ├── authUtils.ts         # Authentication and registration logic
 │   │   └── placeholderUtils.ts  # Placeholder player management
 │   ├── types/          # TypeScript type definitions
+│   │   └── index.ts     # Match, Player, ResolvedMatch types
 │   └── config/         # Firebase configuration
 ├── public/             # Static assets
 ├── supabase/           # Database migrations (for reference)
@@ -199,18 +216,30 @@ null (placeholder) → pending → approved
 
 ## 11. Admin Panel Features
 
+### Location
+Admin Controls moved from Tournament page (Index.tsx) to AdminControl.tsx.
+Admins now see all controls immediately after login.
+
 ### Removed Features
 * ❌ Tournament Date Update (moved to Tournament Configuration page)
 * ❌ `window.confirm()` popups (replaced with inline confirmation UI)
+* ❌ Admin Controls section from Tournament page (moved to Admin page)
 
-### Active Features
-* ✅ Approve pending player registrations (inline confirmation buttons)
+### Active Features (AdminControl.tsx)
+* ✅ Configure Tournament (toggle settings panel)
+* ✅ Registration Panel (open AdminPanel modal)
+* ✅ Replace Players (open PlayerReplacer modal)
+* ✅ Reset Scores Only (with confirmation modal)
+* ✅ Reset Everything (with confirmation modal)
+* ✅ Approve pending player registrations (inline confirmation)
 * ✅ Export tournament PDF (football-style layout)
-* ✅ Initialize tournament database
-* ✅ Reset players to placeholders (inline confirmation)
-* ✅ Remove players from tournament (inline confirmation)
 * ✅ View player counts (male/female)
-* ✅ Receives resolved match data from Index.tsx (same as UI)
+* ✅ Navigate to Tournament page
+
+### Navigation
+* Tournament page shows "← Back to Admin" button for admin users
+* Draw page buttons navigate to /tournament (not /)
+* Admin page has "View Tournament" button
 
 ## 12. Match Generation System (Single Source of Truth)
 
@@ -221,14 +250,31 @@ The match generation system ensures **consistent, deterministic matchups** betwe
 * `staticMatchups.ts` → `STATIC_MATCHUPS` array contains exactly 14 match combinations
 * All match generation flows through this one definition
 * `generateMatchesFromOrder(playerOrder, gender)` creates matches from any player order
+* Matches are generated ONCE in DrawPage, saved ONCE to Firestore, then ONLY read
+
+### Match Data Format (Firestore)
+```typescript
+{
+  id: string,
+  match_number: number,
+  gender: 'female' | 'male',
+  player1_id: string,  // teamA[0]
+  player2_id: string,  // teamA[1]
+  player3_id: string,  // teamB[0]
+  player4_id: string,  // teamB[1]
+  score1: number,
+  score2: number,
+  is_completed: boolean
+}
+```
 
 ### Match Generation Flow
 ```
-Draw Wheel:               Reset/Init:
-├─ Shuffle players        ├─ Use default order (0-7)
-├─ Pre-generate 14        ├─ Generate 14 matches
-│  matches ONCE           │  from STATIC_MATCHUPS
-├─ Animate wheel          └─ Save to Firestore
+Draw Wheel:               Data Loading:
+├─ Shuffle players        ├─ Load from collection(db, 'matches')
+├─ Pre-generate 14        ├─ Map to teamA/teamB structure
+│  matches ONCE           ├─ Validate all player IDs exist
+├─ Animate wheel          └─ Return to UI (no regeneration)
 │  (visualization only)
 └─ Save exact matches
    to Firestore
@@ -237,20 +283,51 @@ Draw Wheel:               Reset/Init:
 ### Key Functions
 * `generateMatchesFromOrder()` - Single source of truth for match generation
 * `shuffleArray()` - Fisher-Yates shuffle for randomization
-* Both exported from `staticMatchups.ts`
+* `loadMatches()` - ONLY loads matches from Firestore, NEVER generates
+* `validateMatches()` - Strict validation of match data integrity
 
 ### Files Using Static Matchups
 * `DrawPage.tsx` - Draw wheel (pre-generates matches, then visualizes)
-* `matchInitUtils.ts` - Match initialization with deterministic IDs
-* `matchUtils.ts` - Match creation (re-exports STATIC_MATCHUPS)
-* `tournamentReset.ts` - Tournament reset
-* `firebaseMigration.ts` - Migration-safe match creation
+* `staticMatchups.ts` - Match generation logic
 
-### Critical Rule
+### Critical Rules
 ❌ **NEVER** recompute or reshuffle matches after initial generation
+❌ **NEVER** use drawn_*_matches or saved_*_matches for rendering
+❌ **NEVER** silently fallback to generated matches if load fails
 ✅ Always use the pre-generated matches for display and storage
+✅ Throw error if validation fails (no silent data loss)
 
-## 13. Deployment URLs
+## 13. Recent Changes (May 2026)
+
+### Data Integrity & Empty Tournament Fix
+* `loadTestPlayers()` now does FULL RESET before creating players
+  - Deletes ALL matches (prevents ID mismatch)
+  - Deletes ALL players
+  - Resets tournamentSettings (draw_completed: false)
+  - Creates fresh players with NEW IDs
+* Added HARD SAFETY CHECK in Index.tsx
+  - Throws CRITICAL ERROR if drawCompleted=true but no matches exist
+  - Prevents silent empty states
+* `loadMatches()` strictly loads from Firestore matches collection only
+  - NO fallback to drawn_*_matches or saved_*_matches
+  - STRICT validation with validateMatches()
+  - Throws on validation failure
+
+### Live Ranking Page Fix
+* Fixed match structure mismatch
+  - Changed from player1/player2/player3/player4 objects
+  - To teamA[ids]/teamB[ids] structure (consistent with Match type)
+* Updated rankingTiebreaker.ts to accept both Match[] and ResolvedMatch[]
+
+### Navigation Fixes
+* DrawPage.tsx: "Go to Tournament" and "Back to Tournament" buttons now navigate to /tournament (not /)
+* Index.tsx (Tournament): Added "← Back to Admin" button for admin users
+
+### UI Updates
+* Male draw wheel colors updated to consistent ocean blues
+* ResetConfirmationModal now accepts optional title/description/confirmText props
+
+## 14. Deployment URLs
 
 * **Cloudflare Pages**: https://sandy-scorekeeper.pages.dev/
 * **Firebase Hosting**: https://kingqueen-c3543.web.app

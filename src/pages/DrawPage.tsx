@@ -5,7 +5,7 @@ import { collection, getDocs, doc, writeBatch, setDoc, getDoc } from 'firebase/f
 import { generateMatchesFromOrder, shuffleArray } from '@/utils/staticMatchups';
 import { validateMatches, buildValidationMap } from '@/utils/matchValidation';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { ChevronRight, RotateCcw, Target, CheckCircle2 } from 'lucide-react';
 
 interface Player { id: string; name: string; gender: string; status: string; }
@@ -561,33 +561,59 @@ export default function DrawPage() {
     );
   }
 
+  // PDF colors
+  const PDF_BLUE = 'bg-[#0077B6]';
+  const PDF_ORANGE = 'bg-[#FF7F50]';
+
   function renderMatchGrid(matches: DrawnMatch[], gender: 'f' | 'm') {
-  if (matches.length === 0) return null;
+    if (matches.length === 0) return null;
 
-  const isFemale = gender === 'f';
-  const teamAColor = isFemale ? 'bg-sunset/20 text-sunset' : 'bg-ocean/20 text-ocean';
-  const teamBColor = isFemale ? 'bg-[#FF6B6B]/20 text-[#FF6B6B]' : 'bg-[#00B4DB]/20 text-[#00B4DB]';
+    return (
+      <div className="mt-8 w-full">
+        <h3 className="text-sm font-semibold text-foreground/70 mb-4 text-center">
+          {matches.length} Matches Generated
+        </h3>
+        {/* Grid: Mobile 2, Tablet 2-3, Desktop 4 */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          {matches.map((m) => (
+            <div
+              key={m.matchNum}
+              className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden flex flex-col"
+            >
+              {/* Header - MATCH X */}
+              <div className="bg-gray-100 px-3 py-1.5 border-b border-gray-200">
+                <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">
+                  Match {m.matchNum}
+                </span>
+              </div>
 
-  return (
-    <div className="mt-6 w-full">
-      <h3 className="text-sm font-semibold text-foreground/70 mb-3 text-center">
-        {matches.length} Matches Generated
-      </h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-        {matches.map((m) => (
-          <div key={m.matchNum} className="bg-white/80 backdrop-blur-sm shadow-sm rounded-xl overflow-hidden flex flex-col">
-            <div className="bg-gray-100 text-gray-600 text-xs font-medium text-center py-1">Match {m.matchNum}</div>
-            <div className="p-2 flex flex-col space-y-1">
-              <div className={`flex items-center justify-center ${teamAColor} rounded py-0.5 text-xs font-bold`}>{m.p1} & {m.p2}</div>
-              <div className="text-[9px] text-foreground/40 font-medium text-center">vs</div>
-              <div className={`flex items-center justify-center ${teamBColor} rounded py-0.5 text-xs font-bold`}>{m.p3} & {m.p4}</div>
+              {/* Card Body */}
+              <div className="p-2.5 flex flex-col gap-1.5">
+                {/* Team A - Blue */}
+                <div className={`${PDF_BLUE} text-white rounded-md py-1.5 px-2`}>
+                  <div className="text-[10px] font-medium leading-tight truncate">
+                    {m.p1} & {m.p2}
+                  </div>
+                </div>
+
+                {/* VS */}
+                <div className="text-[10px] font-bold text-gray-400 text-center py-0.5">
+                  VS
+                </div>
+
+                {/* Team B - Orange */}
+                <div className={`${PDF_ORANGE} text-white rounded-md py-1.5 px-2`}>
+                  <div className="text-[10px] font-medium leading-tight truncate">
+                    {m.p3} & {m.p4}
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
   if (loading) {
     return (
@@ -752,85 +778,82 @@ export default function DrawPage() {
         </div>
 
         {/* Main content - Step based */}
-        <Card className="bg-white/80 backdrop-blur-sm shadow-beach border-sand-dark/20 overflow-hidden">
-          <CardContent className="p-4 sm:p-6">
-            
-            {/* Show Female Draw (Step 1) */}
-            {(currentStep === 1 || saved) && (
-              <div className={currentStep === 2 && !saved ? 'opacity-50' : ''}>
-                {renderWheel('f')}
-                {renderMatchGrid(fMatches, 'f')}
-              </div>
-            )}
+        <div className="w-full">
+          {/* Show Female Draw (Step 1) */}
+          {(currentStep === 1 || saved) && (
+            <div className={currentStep === 2 && !saved ? 'opacity-50' : ''}>
+              {renderWheel('f')}
+              {renderMatchGrid(fMatches, 'f')}
+            </div>
+          )}
 
-            {/* Show Male Draw (Step 2) */}
-            {(currentStep === 2 || saved) && fDone && (
-              <div className={currentStep === 1 ? 'hidden' : 'mt-6 pt-6 border-t border-sand-dark/10'}>
-                {renderWheel('m')}
-                {renderMatchGrid(mMatches, 'm')}
-              </div>
-            )}
+          {/* Show Male Draw (Step 2) */}
+          {(currentStep === 2 || saved) && fDone && (
+            <div className={currentStep === 1 ? 'hidden' : 'mt-8 pt-6 border-t border-sand-dark/10'}>
+              {renderWheel('m')}
+              {renderMatchGrid(mMatches, 'm')}
+            </div>
+          )}
 
-            {/* Save buttons - when both done but not saved */}
-            {fDone && mDone && !saved && (
-              <div className="mt-8 pt-6 border-t border-sand-dark/10 space-y-3">
-                <Button 
-                  onClick={saveDraw} 
-                  disabled={saving}
-                  className="w-full touch-target font-semibold py-4 text-base rounded-xl bg-green-600 hover:bg-green-700 text-white shadow-lg"
+          {/* Save buttons - when both done but not saved */}
+          {fDone && mDone && !saved && (
+            <div className="mt-8 pt-6 border-t border-sand-dark/10 space-y-3 max-w-md mx-auto">
+              <Button
+                onClick={saveDraw}
+                disabled={saving}
+                className="w-full touch-target font-semibold py-4 text-base rounded-xl bg-green-600 hover:bg-green-700 text-white shadow-lg"
+              >
+                {saving ? (
+                  <><RotateCcw className="w-5 h-5 mr-2 animate-spin" /> Saving…</>
+                ) : (
+                  <><CheckCircle2 className="w-5 h-5 mr-2" /> Save Draw to Tournament</>
+                )}
+              </Button>
+              <Button
+                onClick={resetDraw}
+                variant="outline"
+                className="w-full touch-target py-4 text-base"
+              >
+                <RotateCcw className="w-5 h-5 mr-2" />
+                Reset Draw
+              </Button>
+            </div>
+          )}
+
+          {/* Success state - saved */}
+          {saved && (
+            <div className="mt-8 pt-6 border-t border-sand-dark/10 space-y-4 max-w-md mx-auto">
+              <div className="text-center">
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-100 text-green-700 text-sm font-semibold">
+                  <CheckCircle2 size={16} />
+                  Draw Saved — Tournament Open
+                </div>
+                <p className="text-xs text-foreground/50 mt-2">
+                  {new Date().toLocaleTimeString()} • All matches assigned
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <Button
+                  onClick={() => navigate('/tournament')}
+                  className="w-full touch-target font-semibold py-4 text-base rounded-xl bg-ocean hover:bg-ocean-dark text-white shadow-lg shadow-ocean/30"
                 >
-                  {saving ? (
-                    <><RotateCcw className="w-5 h-5 mr-2 animate-spin" /> Saving…</>
-                  ) : (
-                    <><CheckCircle2 className="w-5 h-5 mr-2" /> Save Draw to Tournament</>
-                  )}
+                  Go to Tournament
+                  <ChevronRight className="w-5 h-5 ml-2" />
                 </Button>
-                <Button 
-                  onClick={resetDraw}
+
+                <Button
+                  onClick={restartDraw}
                   variant="outline"
-                  className="w-full touch-target py-4 text-base"
+                  className="w-full touch-target py-4 text-base border-coral text-coral hover:bg-coral/10"
                 >
                   <RotateCcw className="w-5 h-5 mr-2" />
-                  Reset Draw
+                  Restart Draw
                 </Button>
               </div>
-            )}
-
-            {/* Success state - saved */}
-            {saved && (
-              <div className="mt-8 pt-6 border-t border-sand-dark/10 space-y-4">
-                <div className="text-center">
-                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-100 text-green-700 text-sm font-semibold">
-                    <CheckCircle2 size={16} />
-                    Draw Saved — Tournament Open
-                  </div>
-                  <p className="text-xs text-foreground/50 mt-2">
-                    {new Date().toLocaleTimeString()} • All matches assigned
-                  </p>
-                </div>
-                
-                <div className="space-y-3">
-                  <Button
-                    onClick={() => navigate('/tournament')}
-                    className="w-full touch-target font-semibold py-4 text-base rounded-xl bg-ocean hover:bg-ocean-dark text-white shadow-lg shadow-ocean/30"
-                  >
-                    Go to Tournament
-                    <ChevronRight className="w-5 h-5 ml-2" />
-                  </Button>
-                  
-                  <Button 
-                    onClick={restartDraw}
-                    variant="outline"
-                    className="w-full touch-target py-4 text-base border-coral text-coral hover:bg-coral/10"
-                  >
-                    <RotateCcw className="w-5 h-5 mr-2" />
-                    Restart Draw
-                  </Button>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+            </div>
+          )}
+        </div>
 
         {/* Footer info */}
         {!saved && (

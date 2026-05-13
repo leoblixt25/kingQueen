@@ -573,8 +573,8 @@ export default function DrawPage() {
         <h3 className="text-sm font-semibold text-foreground/70 mb-4 text-center">
           {matches.length} Matches Generated
         </h3>
-        {/* Grid: Mobile 2, Tablet 3, Desktop 7 with equal widths */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-2 lg:gap-3" style={{ gridTemplateColumns: 'repeat(7, minmax(0, 1fr))' }}>
+        {/* Grid: Mobile 2, Tablet 4, Desktop 7 with equal widths */}
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 lg:gap-3" style={{ gridTemplateColumns: 'repeat(7, minmax(0, 1fr))' }}>
           {matches.map((m) => (
             <div
               key={m.matchNum}
@@ -591,19 +591,19 @@ export default function DrawPage() {
               <div className="p-2 flex flex-col gap-1">
                 {/* Team A - Blue */}
                 <div className={`${PDF_BLUE} text-white rounded-md py-1 px-1.5`}>
-                  <div className="text-[10px] font-medium leading-tight text-center" style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.15' }}>
+                  <div className="text-[12px] font-medium leading-tight text-center" style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.15' }}>
                     {m.p1} & {m.p2}
                   </div>
                 </div>
 
                 {/* VS */}
-                <div className="text-[9px] font-bold text-gray-400 text-center py-0.5">
+                <div className="text-[10px] font-bold text-gray-400 text-center py-0.5">
                   VS
                 </div>
 
                 {/* Team B - Orange */}
                 <div className={`${PDF_ORANGE} text-white rounded-md py-1 px-1.5`}>
-                  <div className="text-[10px] font-medium leading-tight text-center" style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.15' }}>
+                  <div className="text-[12px] font-medium leading-tight text-center" style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.15' }}>
                     {m.p3} & {m.p4}
                   </div>
                 </div>

@@ -574,7 +574,7 @@ export default function DrawPage() {
           {matches.length} Matches Generated
         </h3>
         {/* Grid: Mobile 2, Tablet 4, Desktop 7 with equal widths */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 lg:gap-3" style={{ gridTemplateColumns: 'repeat(7, minmax(0, 1fr))' }}>
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 lg:gap-3">
           {matches.map((m) => (
             <div
               key={m.matchNum}

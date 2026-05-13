@@ -299,6 +299,33 @@ Draw Wheel:               Data Loading:
 
 ## 13. Recent Changes (May 2026)
 
+### PDF Export Fix for Test Players
+* AdminControl.tsx now loads and resolves match data for PDF export
+  - Added `loadMatchesData()` function to fetch matches from Firestore
+  - Uses `buildPlayersMap()` and `resolveMatchPlayers()` to convert player IDs to Player objects
+  - Passes resolved matches (with full player names) to AdminPanel
+  - Fixes "UNKNOWN" player names in exported PDF when using test players
+
+### DrawPage Redesign
+* Removed large outer container box for full-width native app feel
+* Match cards redesigned to match PDF export style exactly
+  - Card header with "MATCH X" left-aligned
+  - Two team rows (top blue #0077B6, bottom orange #FF7F50)
+  - "VS" centered between teams
+  - Solid backgrounds with white text
+  - Rounded corners, subtle border, light shadow
+* Responsive grid: Mobile 2, Tablet 3, Desktop 7 cards per row
+* Wheel component unchanged
+
+### DrawPage UI Refinements
+* Wheel text positioning moved inward (r - 15) for better spacing from outer edge
+* Match card player names center-aligned with increased font size (11px → 10px)
+* Desktop layout: 7 cards per row with equal width distribution
+* Reduced vertical spacing between wheel and matches (mt-8 → mt-4)
+* Player names support wrapping instead of aggressive truncation
+* Wider container (max-w-md → max-w-7xl) for better desktop readability
+* Reduced card padding and internal spacing to maximize usable width
+
 ### Data Integrity & Empty Tournament Fix
 * `loadTestPlayers()` now does FULL RESET before creating players
   - Deletes ALL matches (prevents ID mismatch)

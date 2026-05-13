@@ -106,7 +106,7 @@ export default function DrawPage() {
       // Bug 5: Larger font size and bold
       const fs = Math.max(10, sz * 0.065);
       ctx.font = `700 ${fs}px sans-serif`;
-      ctx.fillText(pool[i].length > 10 ? pool[i].slice(0, 9) + '…' : pool[i], r - 5, fs * 0.35);
+      ctx.fillText(pool[i].length > 10 ? pool[i].slice(0, 9) + '…' : pool[i], r - 15, fs * 0.35);
       ctx.restore();
     }
     // Bug 5: Slightly larger center circle
@@ -569,12 +569,12 @@ export default function DrawPage() {
     if (matches.length === 0) return null;
 
     return (
-      <div className="mt-8 w-full">
+      <div className="mt-4 w-full">
         <h3 className="text-sm font-semibold text-foreground/70 mb-4 text-center">
           {matches.length} Matches Generated
         </h3>
-        {/* Grid: Mobile 2, Tablet 2-3, Desktop 4 */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        {/* Grid: Mobile 2, Tablet 2-3, Desktop 7 */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3">
           {matches.map((m) => (
             <div
               key={m.matchNum}
@@ -590,8 +590,8 @@ export default function DrawPage() {
               {/* Card Body */}
               <div className="p-2.5 flex flex-col gap-1.5">
                 {/* Team A - Blue */}
-                <div className={`${PDF_BLUE} text-white rounded-md py-1.5 px-2`}>
-                  <div className="text-[10px] font-medium leading-tight truncate">
+                <div className={`${PDF_BLUE} text-white rounded-md py-1.5 px-1.5`}>
+                  <div className="text-[11px] font-medium leading-tight text-center truncate">
                     {m.p1} & {m.p2}
                   </div>
                 </div>
@@ -602,8 +602,8 @@ export default function DrawPage() {
                 </div>
 
                 {/* Team B - Orange */}
-                <div className={`${PDF_ORANGE} text-white rounded-md py-1.5 px-2`}>
-                  <div className="text-[10px] font-medium leading-tight truncate">
+                <div className={`${PDF_ORANGE} text-white rounded-md py-1.5 px-1.5`}>
+                  <div className="text-[11px] font-medium leading-tight text-center truncate">
                     {m.p3} & {m.p4}
                   </div>
                 </div>

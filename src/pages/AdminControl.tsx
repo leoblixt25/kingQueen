@@ -50,8 +50,14 @@ export default function AdminControl() {
   useEffect(() => {
     loadTournamentSettings();
     loadPlayers();
-    loadMatchesData();
   }, []);
+
+  // Load matches only when AdminPanel opens (lazy loading)
+  useEffect(() => {
+    if (showAdminPanel) {
+      loadMatchesData();
+    }
+  }, [showAdminPanel]);
 
   const loadTournamentSettings = async () => {
     try {

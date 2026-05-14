@@ -591,7 +591,7 @@ export default function DrawPage() {
               <div className="p-2 flex flex-col gap-1">
                 {/* Team A - Blue */}
                 <div className={`${PDF_BLUE} text-white rounded-md py-1 px-1.5`}>
-                  <div className="text-[12px] font-medium leading-tight text-center" style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.15' }}>
+                  <div className="text-[14px] font-medium leading-tight text-center" style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.15' }}>
                     {m.p1} & {m.p2}
                   </div>
                 </div>
@@ -603,7 +603,7 @@ export default function DrawPage() {
 
                 {/* Team B - Orange */}
                 <div className={`${PDF_ORANGE} text-white rounded-md py-1 px-1.5`}>
-                  <div className="text-[12px] font-medium leading-tight text-center" style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.15' }}>
+                  <div className="text-[14px] font-medium leading-tight text-center" style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.15' }}>
                     {m.p3} & {m.p4}
                   </div>
                 </div>

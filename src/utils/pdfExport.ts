@@ -117,6 +117,13 @@ export const exportMatchupsToPDF = async (data: PDFExportData) => {
       renderDivision(doc, sortedMale, 'Male Division', BLUE, getTeamAName, getTeamBName, drawPageHeader);
     }
 
+    // ===== Page 4: Final Standings (if players exist) =====
+    if (hasPlayers) {
+      if (doc.getNumberOfPages() > 0) doc.addPage();
+      drawPageHeader();
+      renderFinalStandings(doc, players, drawPageHeader);
+    }
+
     // Footer on all pages
     const total = doc.getNumberOfPages();
     for (let i = 1; i <= total; i++) {
@@ -213,6 +220,118 @@ const renderPlayersRoster = (
   );
   const maleEndY = renderColumn(
     malePlayers, RIGHT_X, 'MALE DIVISION', malePlayers.length,
+    [224, 247, 255], [0, 119, 182]
+  );
+
+  // Vertical divider between columns
+  const dividerTop = y - 4;
+  const dividerBot = Math.max(femaleEndY, maleEndY);
+  doc.setDrawColor(210, 218, 226);
+  doc.setLineWidth(0.3);
+  doc.line(LEFT_X + COL_W + COL_GAP / 2, dividerTop, LEFT_X + COL_W + COL_GAP / 2, dividerBot);
+};
+
+const renderFinalStandings = (
+  doc: jsPDF,
+  players: Player[],
+  drawPageHeader: () => void
+) => {
+  // Sort players by rankings (points descending, then total_scores descending)
+  const femalePlayers = players
+    .filter(p => p.gender === 'female')
+    .sort((a, b) => {
+      if ((b.points || 0) !== (a.points || 0)) return (b.points || 0) - (a.points || 0);
+      return (b.totalScores || 0) - (a.totalScores || 0);
+    });
+  const malePlayers = players
+    .filter(p => p.gender === 'male')
+    .sort((a, b) => {
+      if ((b.points || 0) !== (a.points || 0)) return (b.points || 0) - (a.points || 0);
+      return (b.totalScores || 0) - (a.totalScores || 0);
+    });
+
+  // Title
+  let y = 38;
+  doc.setFontSize(14);
+  doc.setFont(undefined, 'bold');
+  doc.setTextColor(0, 86, 130);
+  doc.text('Final Standings', 105, y, { align: 'center' });
+  doc.setDrawColor(0, 86, 130);
+  doc.setLineWidth(0.5);
+  doc.line(11, y + 2, 199, y + 2);
+  y += 12;
+
+  // Two-column layout constants
+  const COL_W = 90;
+  const COL_GAP = 8;
+  const LEFT_X = 11;
+  const RIGHT_X = LEFT_X + COL_W + COL_GAP;
+  const ROW_H = 7;
+
+  // ── Helper: render a single division standings ──
+  const renderStandingsColumn = (
+    list: Player[],
+    colX: number,
+    label: string,
+    headerBg: [number, number, number],
+    headerFg: [number, number, number]
+  ) => {
+    let cy = y;
+
+    // Division header bar
+    doc.setFillColor(...headerBg);
+    doc.roundedRect(colX, cy - 4, COL_W, 8, 2, 2, 'F');
+    doc.setFontSize(11);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(...headerFg);
+    doc.text(label, colX + 4, cy + 1.5);
+    cy += 10;
+
+    // Header row
+    doc.setFontSize(8);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(80, 80, 80);
+    doc.text('Rank', colX + 4, cy);
+    doc.text('Player', colX + 15, cy);
+    doc.text('Pts', colX + COL_W - 20, cy);
+    doc.text('Score', colX + COL_W - 4, cy, { align: 'right' });
+    cy += 5;
+
+    // Player rows
+    doc.setFontSize(9);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(0, 0, 0);
+
+    list.forEach((p, idx) => {
+      if (idx % 2 === 0) {
+        doc.setFillColor(250, 250, 250);
+        doc.rect(colX, cy - 3, COL_W, ROW_H, 'F');
+      }
+      doc.setFontSize(8);
+      doc.setFont(undefined, 'bold');
+      doc.text(`#${idx + 1}`, colX + 4, cy);
+      doc.setFontSize(9);
+      doc.setFont(undefined, 'normal');
+      doc.text(p.name, colX + 15, cy);
+      doc.setFontSize(9);
+      doc.setFont(undefined, 'bold');
+      doc.text(String(p.points || 0), colX + COL_W - 20, cy);
+      doc.setFontSize(8);
+      doc.setFont(undefined, 'normal');
+      doc.text(String(p.totalScores || 0), colX + COL_W - 4, cy, { align: 'right' });
+      cy += ROW_H;
+    });
+
+    return cy;
+  };
+
+  // Render both columns side by side
+  const femaleEndY = renderStandingsColumn(
+    femalePlayers, LEFT_X, 'FEMALE DIVISION',
+    [255, 243, 224], [255, 127, 80]
+  );
+  const maleEndY = renderStandingsColumn(
+    malePlayers, RIGHT_X, 'MALE DIVISION',
     [224, 247, 255], [0, 119, 182]
   );
 

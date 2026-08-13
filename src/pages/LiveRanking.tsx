@@ -7,6 +7,7 @@ import { db } from "@/config/firebase";
 import { collection, onSnapshot, getDocs, doc, getDoc } from "firebase/firestore";
 import { Player, Match } from "@/types";
 import { getTiebreakerLevel } from "@/utils/rankingTiebreaker";
+import { getPublicDisplayName } from "@/utils/firebaseUtils";
 
 // Rankings Tab Component
 function RankingsTab({ activeTab, currentPlayers, matches }: { activeTab: string; currentPlayers: Player[]; matches: Match[] }) {
@@ -446,7 +447,7 @@ export default function LiveRanking() {
       
       const allPlayers = snapshot.docs.map(doc => ({
         id: doc.id,
-        name: doc.data().name,
+        name: getPublicDisplayName({ id: doc.id, ...doc.data() }),
         points: doc.data().points || 0,
         totalScores: doc.data().total_scores || 0,
         gender: doc.data().gender

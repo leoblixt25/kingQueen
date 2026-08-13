@@ -3,6 +3,17 @@ import { collection, getDocs, query, doc, getDoc } from 'firebase/firestore';
 import { initializePlayersSafe } from './firebaseMigration';
 import { validateMatches, buildValidationMap } from './matchValidation';
 
+// Display name for public surfaces (rankings, matchups). Registered players only
+// appear with their real name AFTER admin approval. Otherwise their placeholder
+// name (e.g. "Female Player 3") is shown, matching pre-registration state.
+export const getPublicDisplayName = (player: any): string => {
+  const isApproved = player?.status === 'approved' || player?.is_confirmed === true;
+  if (isApproved || !player?.name) return player?.name;
+
+  const prefix = player.gender === 'male' ? 'Male Player' : 'Female Player';
+  return player.position != null ? `${prefix} ${player.position}` : prefix;
+};
+
 export const loadPlayers = async () => {
   console.log('🔄 [LOAD] loadPlayers() called');
   
@@ -48,14 +59,14 @@ export const loadPlayers = async () => {
       if (players && players.length > 0) {
         const females = players.filter((p: any) => p.gender === 'female').map((p: any) => ({
           id: p.id, // Preserve Firestore document ID
-          name: p.name,
+          name: getPublicDisplayName(p),
           points: p.points,
           totalScores: p.total_scores
         }));
         
         const males = players.filter((p: any) => p.gender === 'male').map((p: any) => ({
           id: p.id, // Preserve Firestore document ID
-          name: p.name,
+          name: getPublicDisplayName(p),
           points: p.points,
           totalScores: p.total_scores
         }));
@@ -139,14 +150,14 @@ export const loadPlayers = async () => {
     if (players && players.length > 0) {
       const females = players.filter((p: any) => p.gender === 'female').map((p: any) => ({
         id: p.id, // Preserve Firestore document ID
-        name: p.name,
+        name: getPublicDisplayName(p),
         points: p.points,
         totalScores: p.total_scores
       }));
       
       const males = players.filter((p: any) => p.gender === 'male').map((p: any) => ({
         id: p.id, // Preserve Firestore document ID
-        name: p.name,
+        name: getPublicDisplayName(p),
         points: p.points,
         totalScores: p.total_scores
       }));

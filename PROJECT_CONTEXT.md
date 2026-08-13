@@ -354,6 +354,19 @@ Draw Wheel:               Data Loading:
 * Male draw wheel colors updated to consistent ocean blues
 * ResetConfirmationModal now accepts optional title/description/confirmText props
 
+## 13b. Registration Approval Name Masking
+
+* Registered players only appear with their REAL name in rankings and matchups AFTER admin approval
+* Before approval (`status === 'pending'`), the placeholder name (e.g. "Female Player 3") is shown
+* Single source of truth: `getPublicDisplayName()` in `firebaseUtils.ts`
+  * Returns real name only if `status === 'approved'` OR `is_confirmed === true`
+  * Otherwise reconstructs placeholder name from `gender` + `position`
+* Applied in:
+  * `firebaseUtils.loadPlayers()` (both mapping paths) — feeds Index/tournament page
+  * `LiveRanking.tsx` realtime snapshot handler
+* DrawPage and AdminControl already filter `status === 'approved'` before loading
+* Real-time subscription auto-refreshes names after approval (no reload needed)
+
 ## 14. Deployment URLs
 
 * **Cloudflare Pages**: https://sandy-scorekeeper.pages.dev/

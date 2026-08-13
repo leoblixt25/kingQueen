@@ -7,7 +7,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { db } from "@/config/firebase";
 import { collection, getDocs, query, where, doc, setDoc, writeBatch, orderBy, limit, updateDoc } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
-import { Calendar, Users, Trash2, Settings, Crown, Mail, CheckCircle, FileText, Clock, Shuffle } from "lucide-react";
+import { Calendar, Users, Trash2, Settings, Crown, Mail, CheckCircle, FileText, Clock, Shuffle, RotateCcw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { resetPlayersToPlaceholders } from "@/utils/placeholderUtils";
 import { initializePlayers } from "@/utils/playerInitUtils";
@@ -58,6 +58,7 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
   // Inline confirmation states
   const [confirmingApproveId, setConfirmingApproveId] = useState<string | null>(null);
   const [confirmingRemoveId, setConfirmingRemoveId] = useState<string | null>(null);
+  const [confirmingUnapproveId, setConfirmingUnapproveId] = useState<string | null>(null);
   const [confirmingReset, setConfirmingReset] = useState(false);
   const [confirmingInit, setConfirmingInit] = useState(false);
 
@@ -150,6 +151,32 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
       toast({
         title: "Approval Failed",
         description: "Failed to approve player",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleUnapprovePlayer = async (playerId: string, playerName: string) => {
+    try {
+      const playerRef = doc(db, 'players', playerId);
+      await updateDoc(playerRef, {
+        status: 'pending',
+        is_confirmed: false,
+        approved_at: null
+      });
+
+      toast({
+        title: "Player Set Back to Pending",
+        description: `${playerName} has been moved back to pending registrations`,
+      });
+
+      setConfirmingUnapproveId(null);
+      await loadAdminData();
+    } catch (error) {
+      console.error('Error unapproving player:', error);
+      toast({
+        title: "Update Failed",
+        description: "Failed to move player back to pending",
         variant: "destructive",
       });
     }
@@ -568,6 +595,34 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
                         Registered: {new Date(player.registered_at).toLocaleDateString()}
                       </div>
                     </div>
+                    {confirmingUnapproveId === player.id ? (
+                      <div className="flex items-center gap-1 ml-2">
+                        <Button
+                          onClick={() => handleUnapprovePlayer(player.id, player.name)}
+                          size="sm"
+                          className="bg-amber-600 hover:bg-amber-700 text-white px-2"
+                        >
+                          <RotateCcw className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          onClick={() => setConfirmingUnapproveId(null)}
+                          size="sm"
+                          variant="outline"
+                          className="px-2"
+                        >
+                          ✕
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        size="sm"
+                        onClick={() => setConfirmingUnapproveId(player.id)}
+                        className="ml-2 bg-amber-600 hover:bg-amber-700 text-white"
+                      >
+                        <RotateCcw className="w-4 h-4 mr-1" />
+                        Pending
+                      </Button>
+                    )}
                     {confirmingRemoveId === player.id ? (
                       <div className="flex items-center gap-1 ml-2">
                         <Button

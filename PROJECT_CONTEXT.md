@@ -232,6 +232,7 @@ Admins now see all controls immediately after login.
 * ✅ Reset Scores Only (with confirmation modal)
 * ✅ Reset Everything (with confirmation modal)
 * ✅ Approve pending player registrations (inline confirmation)
+* ✅ Move approved player back to pending (inline confirmation)
 * ✅ Export tournament PDF (football-style layout)
 * ✅ View player counts (male/female)
 * ✅ Navigate to Tournament page

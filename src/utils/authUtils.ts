@@ -181,6 +181,117 @@ export const registerWithEmailPassword = async (
 };
 
 /**
+ * Register a Google-authenticated user for the tournament
+ * Uses the existing Google Auth account (no new password account created)
+ */
+export const registerWithGoogle = async (
+  name: string,
+  gender: string
+): Promise<AuthResult> => {
+  try {
+    const user = auth.currentUser;
+    if (!user?.email) {
+      throw new Error('NO_GOOGLE_USER');
+    }
+
+    const email = user.email.toLowerCase();
+
+    // Check if email already exists in Firestore
+    const playersRef = collection(db, 'players');
+    const q = query(playersRef, where('email', '==', email));
+    const snapshot = await getDocs(q);
+
+    if (!snapshot.empty) {
+      throw new Error('EMAIL_ALREADY_EXISTS');
+    }
+
+    // Find next available placeholder slot
+    const placeholderPrefix = gender === 'male' ? 'Male Player' : 'Female Player';
+    const playersQuery = query(
+      playersRef,
+      where('gender', '==', gender)
+    );
+    const playersSnapshot = await getDocs(playersQuery);
+
+    // Find first unconfirmed placeholder
+    const availableSlots = playersSnapshot.docs
+      .map(docSnap => ({ id: docSnap.id, ...(docSnap.data() as any) }))
+      .filter((player: any) => {
+        const isPlaceholder = player.name.startsWith(placeholderPrefix);
+        const isUnconfirmed = !player.is_confirmed || player.is_confirmed === false;
+        return isPlaceholder && isUnconfirmed;
+      })
+      .sort((a: any, b: any) => (a.position || 0) - (b.position || 0));
+
+    if (availableSlots.length === 0) {
+      // Division is full - register as a reserve player instead of blocking
+      const reserveData = {
+        name: name.trim(),
+        email,
+        gender,
+        is_confirmed: false,
+        status: 'pending',
+        is_reserve: true,
+        points: 0,
+        total_scores: 0,
+        registered_at: new Date().toISOString()
+      };
+      const reserveRef = await addDoc(playersRef, reserveData);
+      console.log('✅ [REGISTER] Registered as RESERVE player:', reserveRef.id);
+
+      return {
+        success: true,
+        isReserve: true,
+        user: {
+          ...user,
+          email: user.email,
+          displayName: name
+        }
+      };
+    }
+
+    const placeholder = availableSlots[0] as any;
+
+    // Update the placeholder with real player info
+    const playerRef = doc(db, 'players', placeholder.id);
+    await updateDoc(playerRef, {
+      name: name.trim(),
+      email,
+      is_confirmed: false,
+      status: 'pending',
+      registered_at: new Date().toISOString()
+    });
+
+    console.log('✅ Google Registration Success:', email);
+    console.log('✅ Player saved to Firestore at position:', placeholder.position);
+
+    return {
+      success: true,
+      user: {
+        ...user,
+        email: user.email,
+        displayName: name
+      }
+    };
+  } catch (error: any) {
+    console.error('❌ Google Registration Error:', error.code, error.message);
+
+    let errorMessage = 'Registration failed';
+
+    if (error.message === 'EMAIL_ALREADY_EXISTS') {
+      errorMessage = 'Email already registered';
+    } else if (error.message === 'NO_GOOGLE_USER') {
+      errorMessage = 'Please sign in with Google first';
+    }
+
+    return {
+      success: false,
+      error: errorMessage
+    };
+  }
+};
+
+/**
  * Register new user with email and password
  */
 export const registerWithEmail = async (

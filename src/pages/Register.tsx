@@ -13,29 +13,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Crown, Users, Calendar, AlertCircle, CheckCircle, LogIn, UserPlus, Mail, Info } from "lucide-react";
 import { registerPlayerToSlot } from "@/utils/placeholderUtils";
 import { AuthModal } from "@/components/AuthModal";
-import { getCurrentUser, isAdmin, signInWithGoogle, registerWithEmailPassword } from "@/utils/authUtils";
+import { getCurrentUser, isAdmin, signInWithGoogle, registerWithEmailPassword, registerWithGoogle } from "@/utils/authUtils";
 import MainTitle from "@/components/MainTitle";
-
-// Helper function for Google sign-in - Pure Popup Mode
-const handleGoogleSignUp = async () => {
-  try {
-    const result = await signInWithGoogle();
-    if (result.success) {
-      toast({
-        title: "Welcome!",
-        description: "Please complete your registration below.",
-      });
-    } else if (result.error) {
-      toast({
-        title: "Authentication Error",
-        description: result.error,
-        variant: "destructive",
-      });
-    }
-  } catch (error) {
-    console.error('Google sign up error:', error);
-  }
-};
 
 interface AvailableSpots {
   gender: string;
@@ -242,6 +221,32 @@ export default function Register() {
     });
   };
 
+  const handleGoogleSignUp = async () => {
+    try {
+      const result = await signInWithGoogle();
+      if (result.success && result.user?.email) {
+        // Pre-fill the email field with the authenticated Google account
+        setFormData(prev => ({
+          ...prev,
+          email: result.user.email
+        }));
+        setCurrentUser(result.user);
+        toast({
+          title: "Google Account Connected!",
+          description: `Signed in as ${result.user.email}. Complete your registration below — your email is locked to this account.`,
+        });
+      } else if (result.error) {
+        toast({
+          title: "Authentication Error",
+          description: result.error,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Google sign up error:', error);
+    }
+  };
+
   const checkTournamentRegistrationAndRedirect = async (user: any) => {
     try {
       // Check if user is registered in the tournament
@@ -410,7 +415,9 @@ export default function Register() {
       return;
     }
 
-    if (!formData.password || formData.password.length < 6) {
+    const isGoogleAuth = !!currentUser?.email && currentUser.email.toLowerCase() === formData.email.trim().toLowerCase();
+
+    if (!isGoogleAuth && (!formData.password || formData.password.length < 6)) {
       toast({
         title: "Invalid Password",
         description: "Password must be at least 6 characters",
@@ -439,12 +446,14 @@ export default function Register() {
 
     try {
       // Register with Firebase Auth and save to Firestore
-      const result = await registerWithEmailPassword(
-        formData.email,
-        formData.password,
-        formData.name,
-        formData.gender as 'male' | 'female'
-      );
+      const result = isGoogleAuth
+        ? await registerWithGoogle(formData.name, formData.gender)
+        : await registerWithEmailPassword(
+            formData.email,
+            formData.password,
+            formData.name,
+            formData.gender as 'male' | 'female'
+          );
 
       if (result.success) {
         // Store registration in localStorage
@@ -652,11 +661,11 @@ export default function Register() {
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   className="w-full touch-target bg-white/70 border-sand-dark/30 focus:border-ocean"
                   placeholder="Enter your email"
-                  disabled={!canRegister() || (currentUser?.email && currentUser.email === formData.email)}
+                  disabled={!canRegister() || !!currentUser?.email}
                 />
-                {currentUser?.email && currentUser.email === formData.email && (
+                {currentUser?.email && (
                   <p className="text-xs text-muted-foreground italic">
-                    Email pre-filled from your authenticated account
+                    Email locked to your authenticated account ({currentUser.email})
                   </p>
                 )}
               </div>
@@ -670,10 +679,12 @@ export default function Register() {
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   className="w-full touch-target bg-white/70 border-sand-dark/30 focus:border-ocean"
                   placeholder="Create a password (min 6 characters)"
-                  disabled={!canRegister()}
+                  disabled={!canRegister() || !!currentUser?.email}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Must be at least 6 characters
+                  {currentUser?.email
+                    ? "Password not needed — you're signed in with Google."
+                    : "Must be at least 6 characters"}
                 </p>
               </div>
 

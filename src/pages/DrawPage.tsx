@@ -108,8 +108,8 @@ export default function DrawPage() {
     const ti = pool.indexOf(target), ta = ti * arc + arc / 2;
     const norm = ((-angleRef.current % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
     let diff = ta - norm; if (diff < 0) diff += 2 * Math.PI;
-    const tot = (4 + Math.floor(Math.random() * 4)) * 2 * Math.PI + diff;
-    const dur = 2000 + Math.random() * 600, t0 = performance.now(), a0 = angleRef.current;
+    const tot = (2 + Math.floor(Math.random() * 2)) * 2 * Math.PI + diff;
+    const dur = 900 + Math.random() * 300, t0 = performance.now(), a0 = angleRef.current;
     function frame(now: number) {
       const t = Math.min((now - t0) / dur, 1), ease = 1 - Math.pow(1 - t, 4);
       angleRef.current = a0 + tot * ease;
@@ -163,14 +163,14 @@ export default function DrawPage() {
         // Use the EXACT pre-generated match - no recomputation
         setMatches(prev => [...prev, match]);
         setStatus(`Match ${matchNum} drawn`);
-        setTimeout(() => runSequence(cvRef, angleRef, order, col, preGeneratedMatches, idx + 1, setStatus, setMatches, onComplete), 300);
+        setTimeout(() => runSequence(cvRef, angleRef, order, col, preGeneratedMatches, idx + 1, setStatus, setMatches, onComplete), 150);
         return;
       }
       setStatus(`Match ${matchNum} — ${pi < 2 ? 'team A' : 'team B'} pick ${pi < 2 ? pi + 1 : pi - 1}…`);
       spinTo(cvRef, angleRef, order, col, picks[pi], () => {
         collected.push(picks[pi]);
         setStatus(`${picks[pi]} picked!`);
-        setTimeout(() => { pi++; nextPick(); }, 260);
+        setTimeout(() => { pi++; nextPick(); }, 120);
       });
     }
     nextPick();

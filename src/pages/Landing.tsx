@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Crown, Users, Info, Trophy } from "lucide-react";
+import { Crown, Users, Info, Trophy, Shuffle } from "lucide-react";
 import { auth, db } from "@/config/firebase";
 import { collection, onSnapshot } from "firebase/firestore";
 import MainTitle from "@/components/MainTitle";
@@ -53,6 +53,10 @@ export default function Landing() {
     navigate('/live-ranking');
   };
 
+  const handleDrawClick = () => {
+    navigate('/draw-live');
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-sand-light via-sand to-ocean-light/20 px-4 py-8 flex items-center justify-center">
       <div className="w-full max-w-md mx-auto text-center animate-fade-in">
@@ -86,6 +90,13 @@ export default function Landing() {
           >
             <Info className="w-6 h-6" />
             Info
+          </Button>
+          <Button
+            onClick={handleDrawClick}
+            className="w-full py-7 text-xl font-bold bg-gradient-to-r from-ocean-dark to-[#004488] hover:from-[#003377] hover:to-[#002266] text-white shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 flex items-center justify-center gap-3 rounded-2xl"
+          >
+            <Shuffle className="w-6 h-6" />
+            Tournament Draw
           </Button>
           <Button
             onClick={handleLiveRankingClick}

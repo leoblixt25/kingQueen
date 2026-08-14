@@ -4,16 +4,13 @@ import { db } from '@/config/firebase';
 import { collection, getDocs, doc, writeBatch, setDoc, getDoc } from 'firebase/firestore';
 import { generateMatchesFromOrder, shuffleArray } from '@/utils/staticMatchups';
 import { validateMatches, buildValidationMap } from '@/utils/matchValidation';
+import { FC, MC, paintCanvas } from '@/utils/drawWheel';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ChevronRight, RotateCcw, Target, CheckCircle2 } from 'lucide-react';
 
 interface Player { id: string; name: string; gender: string; status: string; }
 interface DrawnMatch { matchNum: number; p1: string; p2: string; p3: string; p4: string; }
-
-// App theme colors - Female (warm/sunset tones), Male (cool/ocean blues)
-const FC = ['#FF7F50', '#FF6B6B', '#FF8E53', '#FF6B9D', '#FFA07A', '#FF7F7F', '#FF9F43', '#FF6B6B'];
-const MC = ['#0066CC', '#0055AA', '#004488', '#0077BB', '#0088CC', '#005599', '#006699', '#003377'];
 
 export default function DrawPage() {
   const navigate = useNavigate();
@@ -31,6 +28,9 @@ export default function DrawPage() {
   const [saving, setSaving]               = useState(false);
   const [saved, setSaved]                 = useState(false);
   const [loadingTestPlayers, setLoadingTestPlayers] = useState(false);
+
+  // Step-based flow: 1 = Female, 2 = Male, 3 = Complete
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
 
   const fCanvasRef = useRef<HTMLCanvasElement>(null);
   const mCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -55,8 +55,10 @@ export default function DrawPage() {
     }
     resize();
     window.addEventListener('resize', resize);
-    return () => window.removeEventListener('resize', resize);
-  }, [femalePlayers, malePlayers]);
+    // Re-run when step changes so a newly mounted wheel canvas (e.g. male) is painted at the correct size
+    const t = setTimeout(resize, 50);
+    return () => { window.removeEventListener('resize', resize); clearTimeout(t); };
+  }, [femalePlayers, malePlayers, currentStep, saved, fDone]);
 
   async function loadPlayers() {
     try {
@@ -88,30 +90,6 @@ export default function DrawPage() {
       setMalePlayers(all.filter(p => p.gender === 'male'   && p.status === 'approved').map(p => ({ ...p, name: p.name.trim() })));
     } catch (e) { console.error(e); }
     setLoading(false);
-  }
-
-  function paintCanvas(cv: HTMLCanvasElement, angle: number, pool: string[], col: string[]) {
-    const ctx = cv.getContext('2d')!;
-    const sz = cv.width, h = sz / 2, r = h - 4, n = pool.length;
-    ctx.clearRect(0, 0, sz, sz);
-    if (!n) return;
-    const arc = (2 * Math.PI) / n;
-    for (let i = 0; i < n; i++) {
-      const s = angle + i * arc, e = s + arc;
-      ctx.beginPath(); ctx.moveTo(h, h); ctx.arc(h, h, r, s, e); ctx.closePath();
-      ctx.fillStyle = col[i % col.length]; ctx.fill();
-      ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
-      ctx.save(); ctx.translate(h, h); ctx.rotate(s + arc / 2);
-      ctx.textAlign = 'right'; ctx.fillStyle = '#fff';
-      // Bug 5: Larger font size and bold
-      const fs = Math.max(10, sz * 0.065);
-      ctx.font = `700 ${fs}px sans-serif`;
-      ctx.fillText(pool[i].length > 10 ? pool[i].slice(0, 9) + '…' : pool[i], r - 15, fs * 0.35);
-      ctx.restore();
-    }
-    // Bug 5: Slightly larger center circle
-    ctx.beginPath(); ctx.arc(h, h, sz * 0.07, 0, 2 * Math.PI);
-    ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#ddd'; ctx.lineWidth = 1; ctx.stroke();
   }
 
   function spinTo(
@@ -456,9 +434,6 @@ export default function DrawPage() {
       if (cv) paintCanvas(cv, 0, names, d === 'f' ? FC : MC);
     });
   }
-
-  // Step-based flow: 1 = Female, 2 = Male, 3 = Complete
-  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
 
   function renderWheel(gender: 'f' | 'm') {
     const isFemale = gender === 'f';

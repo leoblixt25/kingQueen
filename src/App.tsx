@@ -16,6 +16,7 @@ import NotFound from "./pages/NotFound";
 import PendingApproval from "./pages/PendingApproval";
 import ProtectedRoute from "./components/ProtectedRoute";
 import DrawPage from "./pages/DrawPage";
+import PublicDrawPage from "./pages/PublicDrawPage";
 
 const queryClient = new QueryClient();
 
@@ -40,6 +41,7 @@ const App = () => (
               <DrawPage />
             </ProtectedRoute>
           } />
+          <Route path="/draw-live" element={<PublicDrawPage />} />
           <Route path="/tournament" element={
             <ProtectedRoute>
               <Index />

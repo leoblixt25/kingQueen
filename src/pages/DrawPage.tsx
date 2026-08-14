@@ -5,7 +5,6 @@ import { collection, getDocs, doc, writeBatch, setDoc, getDoc } from 'firebase/f
 import { generateMatchesFromOrder, shuffleArray } from '@/utils/staticMatchups';
 import { validateMatches, buildValidationMap } from '@/utils/matchValidation';
 import { FC, MC, paintCanvas } from '@/utils/drawWheel';
-import { createCanvasRecorder, stopRecorder, uploadDrawVideo, setGitHubToken, hasGitHubToken, updateDrawRecording } from '@/utils/drawRecorder';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ChevronRight, RotateCcw, Target, CheckCircle2 } from 'lucide-react';
@@ -20,9 +19,6 @@ export default function DrawPage() {
   const [loading, setLoading]             = useState(true);
   const [fStatus, setFStatus]             = useState('Ready');
   const [mStatus, setMStatus]             = useState('Ready');
-  const [recording, setRecording]         = useState(false);
-  const [videoReady, setVideoReady]       = useState<{ f: boolean; m: boolean }>({ f: false, m: false });
-  const [videoError, setVideoError]       = useState<{ f: string; m: string }>({ f: '', m: '' });
   const [fStarted, setFStarted]           = useState(false);
   const [mStarted, setMStarted]           = useState(false);
   const [fDone, setFDone]                 = useState(false);
@@ -32,8 +28,6 @@ export default function DrawPage() {
   const [saving, setSaving]               = useState(false);
   const [saved, setSaved]                 = useState(false);
   const [loadingTestPlayers, setLoadingTestPlayers] = useState(false);
-  const [ghToken, setGhToken] = useState(hasGitHubToken() ? '' : '');
-  const [ghTokenSaved, setGhTokenSaved] = useState(hasGitHubToken());
 
   // Step-based flow: 1 = Female, 2 = Male, 3 = Complete
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
@@ -101,8 +95,7 @@ export default function DrawPage() {
   function spinTo(
     cvRef: React.RefObject<HTMLCanvasElement>,
     angleRef: React.MutableRefObject<number>,
-    pool: string[], col: string[], target: string, onDone: () => void,
-    onFrame?: (angle: number) => void
+    pool: string[], col: string[], target: string, onDone: () => void
   ) {
     const cv = cvRef.current!;
     const n = pool.length, arc = (2 * Math.PI) / n;
@@ -115,7 +108,6 @@ export default function DrawPage() {
       const t = Math.min((now - t0) / dur, 1), ease = 1 - Math.pow(1 - t, 4);
       angleRef.current = a0 + tot * ease;
       paintCanvas(cv, angleRef.current, pool, col);
-      onFrame?.(angleRef.current);
       if (t < 1) requestAnimationFrame(frame); else onDone();
     }
     requestAnimationFrame(frame);
@@ -159,34 +151,21 @@ export default function DrawPage() {
     const matchNum = match.matchNum;
     const collected: string[] = [];
     let pi = 0;
-    let status = '';
-    const drawn = [...(idx > 0 ? preGeneratedMatches.slice(0, idx) : [])];
-
-    function setSt(s: string) {
-      status = s;
-      setStatus(s);
-    }
-
-    function frame() {
-      updateDrawRecording(angleRef.current, status, drawn);
-    }
-
+    
     function nextPick() {
       if (pi === 4) {
         // Use the EXACT pre-generated match - no recomputation
-        drawn.push(match);
         setMatches(prev => [...prev, match]);
-        setSt(`Match ${matchNum} drawn`);
-        updateDrawRecording(angleRef.current, status, drawn);
+        setStatus(`Match ${matchNum} drawn`);
         setTimeout(() => runSequence(cvRef, angleRef, order, col, preGeneratedMatches, idx + 1, setStatus, setMatches, onComplete), 150);
         return;
       }
-      setSt(`Match ${matchNum} — ${pi < 2 ? 'team A' : 'team B'} pick ${pi < 2 ? pi + 1 : pi - 1}…`);
+      setStatus(`Match ${matchNum} — ${pi < 2 ? 'team A' : 'team B'} pick ${pi < 2 ? pi + 1 : pi - 1}…`);
       spinTo(cvRef, angleRef, order, col, picks[pi], () => {
         collected.push(picks[pi]);
-        setSt(`${picks[pi]} picked!`);
+        setStatus(`${picks[pi]} picked!`);
         setTimeout(() => { pi++; nextPick(); }, 120);
-      }, frame);
+      });
     }
     nextPick();
   }
@@ -216,31 +195,10 @@ export default function DrawPage() {
     // STEP 3: Start animation (visualization only - matches already determined)
     setStarted(true); 
     setMatches([]);
-    // Record the wheel animation so the public can watch how the draw happened
-    const recorder = createCanvasRecorder(gender, order);
-    if (recorder) {
-      setRecording(true);
-      setVideoReady(prev => ({ ...prev, [gender]: false }));
-      setVideoError(prev => ({ ...prev, [gender]: '' }));
-      console.log(`🎥 [REC] Recording ${gender.toUpperCase()} draw...`);
-    }
     runSequence(cvRef, angleRef, order, col, preGeneratedMatches, 0, setStatus, setMatches, () => {
       setStatus('Complete!');
       setDone(true);
       console.log(`✅ [DRAW ${gender.toUpperCase()}] All matches drawn:`, preGeneratedMatches);
-      if (recorder) {
-        updateDrawRecording(angleRef.current, 'Complete!', preGeneratedMatches);
-        stopRecorder(recorder).then(blob => {
-          if (blob.size > 0) {
-            setRecording(false);
-            return uploadDrawVideo(blob, gender).then(url => {
-              if (url) setVideoReady(prev => ({ ...prev, [gender]: true }));
-              else setVideoError(prev => ({ ...prev, [gender]: 'Video could not be uploaded — check the GitHub token in the Draw page.' }));
-            });
-          }
-          setRecording(false);
-        }).catch(e => { setRecording(false); console.error('⚠️ [REC] failed to finalize video:', e); });
-      }
     });
   }
 
@@ -478,14 +436,6 @@ export default function DrawPage() {
     });
   }
 
-  function saveGitHubToken() {
-    if (!ghToken.trim()) return;
-    setGitHubToken(ghToken);
-    setGhTokenSaved(true);
-    setGhToken('');
-    alert('GitHub token saved in this browser. Draw recordings will be stored on GitHub.');
-  }
-
   function renderWheel(gender: 'f' | 'm') {
     const isFemale = gender === 'f';
     const started = isFemale ? fStarted : mStarted;
@@ -494,9 +444,6 @@ export default function DrawPage() {
     const cvRef = isFemale ? fCanvasRef : mCanvasRef;
     const colors = isFemale ? FC : MC;
     const players = isFemale ? femalePlayers : malePlayers;
-    const isRecording = recording && ((isFemale && !fDone) || (!isFemale && !mDone));
-    const hasVideo = isFemale ? videoReady.f : videoReady.m;
-    const recError = isFemale ? videoError.f : videoError.m;
 
     return (
       <div className="flex flex-col items-center">
@@ -534,7 +481,7 @@ export default function DrawPage() {
           {isFemale ? '👩 Female Division' : '👨 Male Division'}
         </div>
 
-        {/* Wheel container - larger for mobile recording */}
+        {/* Wheel container */}
         <div className="relative w-[300px] h-[300px] sm:w-[320px] sm:h-[320px] mb-4">
           {/* Pointer */}
           <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20">
@@ -825,29 +772,6 @@ export default function DrawPage() {
             {saved ? 'Draw completed' : currentStep === 1 ? 'Step 1: Female Division' : 'Step 2: Male Division'}
           </p>
         </div>
-
-        {/* GitHub token for draw recordings */}
-        {!ghTokenSaved ? (
-          <div className="max-w-md mx-auto mb-6 p-4 bg-white/70 backdrop-blur-sm rounded-xl border border-gray-200 shadow-sm">
-            <p className="text-xs font-semibold text-foreground/70 mb-2">
-              🎥 Set GitHub token to save draw recordings (stored in this browser only)
-            </p>
-            <div className="flex gap-2">
-              <input
-                type="password"
-                value={ghToken}
-                onChange={e => setGhToken(e.target.value)}
-                placeholder="ghp_xxxxxxxx"
-                className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-ocean/40"
-              />
-              <Button onClick={saveGitHubToken} className="shrink-0 bg-ocean hover:bg-ocean-dark text-white text-sm">
-                Save
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <p className="text-xs text-green-600 text-center mb-4">🎥 GitHub storage connected — draw recordings will be saved automatically.</p>
-        )}
 
         {/* Main content - Step based */}
         <div className="w-full">

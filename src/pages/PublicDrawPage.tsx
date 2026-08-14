@@ -19,8 +19,6 @@ export default function PublicDrawPage() {
   const [mMatches, setMMatches] = useState<DrawnMatch[]>([]);
   const [femalePlayers, setFemalePlayers] = useState<Player[]>([]);
   const [malePlayers, setMalePlayers] = useState<Player[]>([]);
-  const [fVideoUrl, setFVideoUrl] = useState<string | null>(null);
-  const [mVideoUrl, setMVideoUrl] = useState<string | null>(null);
 
   const fCanvasRef = useRef<HTMLCanvasElement>(null);
   const mCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -30,10 +28,6 @@ export default function PublicDrawPage() {
   function applySettings(data: any, completed: boolean) {
     setDrawStarted(completed || ((data.drawn_female_matches?.length || 0) > 0) || ((data.drawn_male_matches?.length || 0) > 0));
     setSaved(completed);
-    if (data.draw_video_female_url) setFVideoUrl(data.draw_video_female_url);
-    else setFVideoUrl(null);
-    if (data.draw_video_male_url) setMVideoUrl(data.draw_video_male_url);
-    else setMVideoUrl(null);
     if (data.drawn_female_matches) setFMatches(data.drawn_female_matches);
     if (data.drawn_male_matches) setMMatches(data.drawn_male_matches);
     if (completed) {
@@ -163,31 +157,7 @@ export default function PublicDrawPage() {
     );
   }
 
-  function renderVideo(gender: 'f' | 'm', videoUrl: string | null) {
-    const isFemale = gender === 'f';
-    if (!videoUrl) return null;
-    return (
-      <div className="w-full max-w-md mx-auto">
-        <div className="flex items-center gap-2 mb-2 justify-center">
-          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-          <span className="text-xs font-semibold text-foreground/60 uppercase tracking-wide">
-            Watch the {isFemale ? 'female' : 'male'} draw
-          </span>
-        </div>
-        <video
-          src={videoUrl}
-          controls
-          playsInline
-          autoPlay
-          muted
-          loop
-          className="w-full rounded-xl shadow-lg border border-gray-200 bg-black aspect-[9/16] object-contain"
-        />
-      </div>
-    );
-  }
-
-  function renderWheel(gender: 'f' | 'm', matches: DrawnMatch[], players: Player[], videoUrl: string | null) {
+  function renderWheel(gender: 'f' | 'm', matches: DrawnMatch[], players: Player[]) {
     const isFemale = gender === 'f';
     const cvRef = isFemale ? fCanvasRef : mCanvasRef;
     return (
@@ -234,47 +204,12 @@ export default function PublicDrawPage() {
         </div>
 
         <div className="w-full space-y-10">
-          {/* Video replays featured at the top */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div>
-              <div className="text-center mb-2">
-                <span className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-semibold border ${
-                  'bg-gradient-to-r from-sunset/20 to-[#FF6B6B]/20 text-sunset-dark border-sunset/30'
-                }`}>
-                  👩 Female Division — Watch the draw
-                </span>
-              </div>
-              {renderVideo('f', fVideoUrl)}
-              {!fVideoUrl && (
-                <p className="text-xs text-foreground/50 text-center mt-3">
-                  Draw recording will appear here once the admin runs it.
-                </p>
-              )}
-            </div>
-            <div>
-              <div className="text-center mb-2">
-                <span className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-semibold border ${
-                  'bg-gradient-to-r from-ocean/20 to-[#00B4DB]/20 text-ocean-dark border-ocean/30'
-                }`}>
-                  👨 Male Division — Watch the draw
-                </span>
-              </div>
-              {renderVideo('m', mVideoUrl)}
-              {!mVideoUrl && (
-                <p className="text-xs text-foreground/50 text-center mt-3">
-                  Draw recording will appear here once the admin runs it.
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Results below */}
           <div>
-            {renderWheel('f', fMatches, femalePlayers, fVideoUrl)}
+            {renderWheel('f', fMatches, femalePlayers)}
             {renderMatchGrid(fMatches, `${fMatches.length} Female Matches`)}
           </div>
           <div className="pt-8 border-t border-sand-dark/10">
-            {renderWheel('m', mMatches, malePlayers, mVideoUrl)}
+            {renderWheel('m', mMatches, malePlayers)}
             {renderMatchGrid(mMatches, `${mMatches.length} Male Matches`)}
           </div>
 

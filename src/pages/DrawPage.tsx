@@ -508,8 +508,8 @@ export default function DrawPage() {
         <h3 className="text-sm font-semibold text-foreground/70 mb-3 text-center">
           {matches.length} Matches Generated
         </h3>
-        {/* Grid: 4 matches per row */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-3">
+        {/* Grid: 5 matches per row */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 lg:gap-3">
           {matches.map((m) => (
             <div
               key={m.matchNum}

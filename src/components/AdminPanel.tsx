@@ -131,18 +131,32 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
     }
   };
 
-  const handleApprovePlayer = async (playerId: string, playerName: string, playerEmail: string, gender: string) => {
+  const handleApprovePlayer = async (player: PendingPlayer) => {
     try {
-      const playerRef = doc(db, 'players', playerId);
+      const maxPlayers = settings?.max_players_per_gender || 8;
+      const approvedInGender = confirmedPlayers.filter(p => p.gender === player.gender).length;
+
+      // Guard: reserve players can only be approved if there's a free slot
+      if (player.is_reserve && approvedInGender >= maxPlayers) {
+        toast({
+          title: "Division Full",
+          description: `The ${player.gender} division is full (${approvedInGender}/${maxPlayers}). Remove a confirmed player first to free a slot for ${player.name}.`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const playerRef = doc(db, 'players', player.id);
       await updateDoc(playerRef, {
         status: 'approved',
         is_confirmed: true,
+        is_reserve: false,
         approved_at: new Date().toISOString()
       });
 
       toast({
         title: "Player Approved",
-        description: `${playerName} has been approved and added to the tournament`,
+        description: `${player.name} has been approved and added to the tournament`,
       });
 
       // TODO: Send approval email here if email service is configured
@@ -552,7 +566,7 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
                     {confirmingApproveId === player.id ? (
                       <div className="flex items-center gap-1 ml-2">
                         <Button
-                          onClick={() => handleApprovePlayer(player.id, player.name, player.email, player.gender)}
+                          onClick={() => handleApprovePlayer(player)}
                           size="sm"
                           className="bg-green-600 hover:bg-green-700 text-white px-2"
                         >

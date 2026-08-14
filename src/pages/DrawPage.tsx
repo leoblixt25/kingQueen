@@ -5,7 +5,7 @@ import { collection, getDocs, doc, writeBatch, setDoc, getDoc } from 'firebase/f
 import { generateMatchesFromOrder, shuffleArray } from '@/utils/staticMatchups';
 import { validateMatches, buildValidationMap } from '@/utils/matchValidation';
 import { FC, MC, paintCanvas } from '@/utils/drawWheel';
-import { createCanvasRecorder, stopRecorder, uploadDrawVideo, setGitHubToken, hasGitHubToken } from '@/utils/drawRecorder';
+import { createCanvasRecorder, stopRecorder, uploadDrawVideo, setGitHubToken, hasGitHubToken, updateDrawRecording } from '@/utils/drawRecorder';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ChevronRight, RotateCcw, Target, CheckCircle2 } from 'lucide-react';
@@ -101,7 +101,8 @@ export default function DrawPage() {
   function spinTo(
     cvRef: React.RefObject<HTMLCanvasElement>,
     angleRef: React.MutableRefObject<number>,
-    pool: string[], col: string[], target: string, onDone: () => void
+    pool: string[], col: string[], target: string, onDone: () => void,
+    onFrame?: (angle: number) => void
   ) {
     const cv = cvRef.current!;
     const n = pool.length, arc = (2 * Math.PI) / n;
@@ -114,6 +115,7 @@ export default function DrawPage() {
       const t = Math.min((now - t0) / dur, 1), ease = 1 - Math.pow(1 - t, 4);
       angleRef.current = a0 + tot * ease;
       paintCanvas(cv, angleRef.current, pool, col);
+      onFrame?.(angleRef.current);
       if (t < 1) requestAnimationFrame(frame); else onDone();
     }
     requestAnimationFrame(frame);
@@ -157,21 +159,34 @@ export default function DrawPage() {
     const matchNum = match.matchNum;
     const collected: string[] = [];
     let pi = 0;
-    
+    let status = '';
+    const drawn = [...(idx > 0 ? preGeneratedMatches.slice(0, idx) : [])];
+
+    function setSt(s: string) {
+      status = s;
+      setStatus(s);
+    }
+
+    function frame() {
+      updateDrawRecording(angleRef.current, status, drawn);
+    }
+
     function nextPick() {
       if (pi === 4) {
         // Use the EXACT pre-generated match - no recomputation
+        drawn.push(match);
         setMatches(prev => [...prev, match]);
-        setStatus(`Match ${matchNum} drawn`);
+        setSt(`Match ${matchNum} drawn`);
+        updateDrawRecording(angleRef.current, status, drawn);
         setTimeout(() => runSequence(cvRef, angleRef, order, col, preGeneratedMatches, idx + 1, setStatus, setMatches, onComplete), 150);
         return;
       }
-      setStatus(`Match ${matchNum} — ${pi < 2 ? 'team A' : 'team B'} pick ${pi < 2 ? pi + 1 : pi - 1}…`);
+      setSt(`Match ${matchNum} — ${pi < 2 ? 'team A' : 'team B'} pick ${pi < 2 ? pi + 1 : pi - 1}…`);
       spinTo(cvRef, angleRef, order, col, picks[pi], () => {
         collected.push(picks[pi]);
-        setStatus(`${picks[pi]} picked!`);
+        setSt(`${picks[pi]} picked!`);
         setTimeout(() => { pi++; nextPick(); }, 120);
-      });
+      }, frame);
     }
     nextPick();
   }
@@ -202,7 +217,7 @@ export default function DrawPage() {
     setStarted(true); 
     setMatches([]);
     // Record the wheel animation so the public can watch how the draw happened
-    const recorder = cvRef.current ? createCanvasRecorder(cvRef.current) : null;
+    const recorder = createCanvasRecorder(gender, order);
     if (recorder) {
       setRecording(true);
       setVideoReady(prev => ({ ...prev, [gender]: false }));
@@ -214,12 +229,13 @@ export default function DrawPage() {
       setDone(true);
       console.log(`✅ [DRAW ${gender.toUpperCase()}] All matches drawn:`, preGeneratedMatches);
       if (recorder) {
+        updateDrawRecording(angleRef.current, 'Complete!', preGeneratedMatches);
         stopRecorder(recorder).then(blob => {
           if (blob.size > 0) {
             setRecording(false);
             return uploadDrawVideo(blob, gender).then(url => {
               if (url) setVideoReady(prev => ({ ...prev, [gender]: true }));
-              else setVideoError(prev => ({ ...prev, [gender]: 'Video could not be uploaded — Firebase Storage is not enabled for this project.' }));
+              else setVideoError(prev => ({ ...prev, [gender]: 'Video could not be uploaded — check the GitHub token in the Draw page.' }));
             });
           }
           setRecording(false);

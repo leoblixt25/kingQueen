@@ -428,7 +428,6 @@ export default function DrawPage() {
     setFMatches([]); setMMatches([]); setFStatus('Ready'); setMStatus('Ready');
     setSaved(false); fAngle.current = 0; mAngle.current = 0;
     fOrder.current = []; mOrder.current = [];
-    setRecording(false); setVideoReady({ f: false, m: false }); setVideoError({ f: '', m: '' });
     (['f', 'm'] as const).forEach(d => {
       const cv = d === 'f' ? fCanvasRef.current : mCanvasRef.current;
       const names = (d === 'f' ? femalePlayers : malePlayers).map(p => p.name);
@@ -507,26 +506,6 @@ export default function DrawPage() {
         <p className="text-sm text-foreground/60 text-center font-medium mb-2 min-h-[20px]">
           {status}
         </p>
-
-        {isRecording && (
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-semibold mb-2">
-            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            Recording live draw…
-          </div>
-        )}
-
-        {hasVideo && (
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-100 text-green-700 text-xs font-semibold mb-2">
-            <CheckCircle2 size={14} />
-            Recording saved — visible on public page
-          </div>
-        )}
-
-        {recError && (
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-semibold mb-2">
-            ⚠️ {recError}
-          </div>
-        )}
 
         {/* Start button */}
         {!started && !done && !saved && (

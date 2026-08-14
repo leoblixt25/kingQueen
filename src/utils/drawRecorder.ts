@@ -12,7 +12,10 @@ export function createCanvasRecorder(canvas: HTMLCanvasElement): MediaRecorder |
     const types = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4'];
     const mime = types.find(t => MediaRecorder.isTypeSupported(t));
     if (!mime) return null;
-    return new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 1_500_000 });
+    const recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 1_500_000 });
+    // Must be started or no frames are captured and the final blob is empty
+    recorder.start();
+    return recorder;
   } catch (e) {
     console.error('⚠️ [REC] canvas recording unavailable:', e);
     return null;

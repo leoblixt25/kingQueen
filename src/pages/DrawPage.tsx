@@ -28,6 +28,13 @@ export default function DrawPage() {
   const [saving, setSaving]               = useState(false);
   const [saved, setSaved]                 = useState(false);
   const [loadingTestPlayers, setLoadingTestPlayers] = useState(false);
+  const [now, setNow]                     = useState(new Date());
+
+  // Live clock — updates every second as proof the draw is happening in real time
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
 
   // Step-based flow: 1 = Female, 2 = Male, 3 = Complete
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
@@ -698,25 +705,30 @@ export default function DrawPage() {
       {/* Responsive container: narrow on mobile, wide on desktop */}
       <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         
-        {/* Header - compact single line */}
-        <div className="flex items-center justify-center gap-2 mb-4">
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/60 text-xs font-semibold text-foreground/60">
-            <Target size={12} />
-            {currentStep === 2 && !saved ? 'Male' : 'Female'} Division
-          </span>
-          <h1 className="text-lg sm:text-xl font-bold bg-ocean-gradient bg-clip-text text-transparent">
+        {/* Header */}
+        <div className="text-center mb-4">
+          <h1 className="text-xl sm:text-2xl font-bold bg-ocean-gradient bg-clip-text text-transparent">
             Tournament Draw
           </h1>
-          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
-            saved
-              ? 'bg-green-100 text-green-700'
-              : currentStep === 1
-                ? 'bg-sunset/15 text-sunset-dark border border-sunset/30'
-                : 'bg-ocean/15 text-ocean-dark border border-ocean/30'
-          }`}>
-            {saved ? <CheckCircle2 size={12} /> : null}
-            {saved ? 'Completed' : currentStep === 1 ? 'Step 1 of 2' : 'Step 2 of 2'}
-          </span>
+          <div className="mt-1.5 flex items-center justify-center gap-2">
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold ${
+              saved
+                ? 'bg-green-100 text-green-700'
+                : currentStep === 1
+                  ? 'bg-sunset/15 text-sunset-dark border border-sunset/30'
+                  : 'bg-ocean/15 text-ocean-dark border border-ocean/30'
+            }`}>
+              {saved ? <CheckCircle2 size={14} /> : null}
+              {saved ? 'Completed' : currentStep === 1 ? 'Female Division' : 'Male Division'}
+            </span>
+          </div>
+          {/* Live date & time — proof the draw is happening in real time */}
+          <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-white/70 border border-gray-200 text-sm font-medium text-foreground/70">
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            {now.toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+            <span className="text-foreground/40">•</span>
+            <span className="tabular-nums">{now.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+          </div>
         </div>
 
         {/* Main content - Step based */}

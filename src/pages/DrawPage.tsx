@@ -446,64 +446,25 @@ export default function DrawPage() {
 
     return (
       <div className="flex flex-col items-center">
-        {/* Step indicator */}
-        <div className="flex items-center gap-2 mb-4">
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-            currentStep === 1 
-              ? 'bg-sunset text-white' 
-              : fDone 
-                ? 'bg-green-500 text-white' 
-                : 'bg-gray-200 text-gray-500'
-          }`}>
-            {fDone ? <CheckCircle2 size={16} /> : '1'}
-          </div>
-          <div className="w-12 h-0.5 bg-gray-200">
-            <div className={`h-full transition-all duration-500 ${fDone ? 'bg-green-500' : ''}`} style={{ width: fDone ? '100%' : '0%' }} />
-          </div>
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-            currentStep === 2 
-              ? 'bg-ocean text-white' 
-              : mDone 
-                ? 'bg-green-500 text-white' 
-                : 'bg-gray-200 text-gray-500'
-          }`}>
-            {mDone ? <CheckCircle2 size={16} /> : '2'}
-          </div>
-        </div>
-
-        {/* Division badge */}
-        <div className={`px-4 py-1.5 rounded-full text-sm font-semibold mb-4 ${
-          isFemale 
-            ? 'bg-gradient-to-r from-sunset/20 to-[#FF6B6B]/20 text-sunset-dark border border-sunset/30' 
-            : 'bg-gradient-to-r from-ocean/20 to-[#00B4DB]/20 text-ocean-dark border border-ocean/30'
-        }`}>
-          {isFemale ? '👩 Female Division' : '👨 Male Division'}
-        </div>
-
         {/* Wheel container */}
-        <div className="relative w-[300px] h-[300px] sm:w-[320px] sm:h-[320px] mb-4">
+        <div className="relative w-[240px] h-[240px] sm:w-[260px] sm:h-[260px] mb-3">
           {/* Pointer */}
-          <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20">
-            <div className="w-0 h-0 border-l-[12px] border-r-[12px] border-t-[20px] border-l-transparent border-r-transparent border-t-foreground drop-shadow-lg" />
+          <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 z-20">
+            <div className="w-0 h-0 border-l-[10px] border-r-[10px] border-t-[16px] border-l-transparent border-r-transparent border-t-foreground drop-shadow-lg" />
           </div>
-          {/* Glow effect */}
-          <div className={`absolute inset-0 rounded-full blur-xl opacity-30 ${
-            isFemale ? 'bg-sunset' : 'bg-ocean'
-          }`} />
           {/* Canvas */}
           <canvas 
             ref={cvRef} 
-            className="relative z-10 w-full h-full rounded-full shadow-2xl"
-            style={{ boxShadow: `0 8px 32px ${isFemale ? 'rgba(255,127,80,0.3)' : 'rgba(78,205,196,0.3)'}` }}
+            className="relative z-10 w-full h-full rounded-full shadow-xl"
           />
           {/* Center hub */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-white rounded-full shadow-lg z-20 flex items-center justify-center">
-            <Target size={20} className={isFemale ? 'text-sunset' : 'text-ocean'} />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-full shadow-lg z-20 flex items-center justify-center">
+            <Target size={16} className={isFemale ? 'text-sunset' : 'text-ocean'} />
           </div>
         </div>
 
         {/* Status */}
-        <p className="text-sm text-foreground/60 text-center font-medium mb-2 min-h-[20px]">
+        <p className="text-sm font-semibold text-foreground/70 text-center mb-3 min-h-[20px]">
           {status}
         </p>
 
@@ -511,7 +472,7 @@ export default function DrawPage() {
         {!started && !done && !saved && (
           <Button 
             onClick={() => startDraw(gender)}
-            className={`w-full sm:w-auto touch-target font-semibold px-8 py-4 text-base rounded-xl shadow-lg transition-all duration-300 ${
+            className={`w-full sm:w-auto touch-target font-semibold px-8 py-3 text-base rounded-xl shadow-lg transition-all duration-300 ${
               isFemale 
                 ? 'bg-sunset hover:bg-sunset-dark text-white shadow-sunset/30' 
                 : 'bg-ocean hover:bg-ocean-dark text-white shadow-ocean/30'
@@ -526,7 +487,7 @@ export default function DrawPage() {
         {done && currentStep === 1 && (
           <Button 
             onClick={() => setCurrentStep(2)}
-            className="w-full sm:w-auto touch-target font-semibold px-8 py-4 text-base rounded-xl bg-ocean hover:bg-ocean-dark text-white shadow-lg shadow-ocean/30"
+            className="w-full sm:w-auto touch-target font-semibold px-8 py-3 text-base rounded-xl bg-ocean hover:bg-ocean-dark text-white shadow-lg shadow-ocean/30"
           >
             Continue to Male Draw
             <ChevronRight className="w-5 h-5 ml-2" />
@@ -535,8 +496,7 @@ export default function DrawPage() {
       </div>
     );
   }
-
-  // PDF colors
+// PDF colors
   const PDF_BLUE = 'bg-[#0077B6]';
   const PDF_ORANGE = 'bg-[#FF7F50]';
 
@@ -544,20 +504,17 @@ export default function DrawPage() {
     if (matches.length === 0) return null;
 
     return (
-      <div className="mt-4 w-full">
-        <h3 className="text-sm font-semibold text-foreground/70 mb-4 text-center">
-          {matches.length} Matches Generated
-        </h3>
-        {/* Grid: Mobile 2, Tablet 4, Desktop 7 with equal widths */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 lg:gap-3">
+      <div className="w-full">
+        {/* Grid: 2 cols on mobile, 2 cols on desktop (all matches visible at once) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {matches.map((m) => (
             <div
               key={m.matchNum}
               className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden flex flex-col"
             >
               {/* Header - MATCH X */}
-              <div className="bg-gray-100 px-3 py-1.5 border-b border-gray-200">
-                <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">
+              <div className="bg-gray-100 px-2.5 py-1 border-b border-gray-200">
+                <span className="text-[11px] font-bold text-gray-700 uppercase tracking-wide">
                   Match {m.matchNum}
                 </span>
               </div>
@@ -566,19 +523,19 @@ export default function DrawPage() {
               <div className="p-2 flex flex-col gap-1">
                 {/* Team A - Blue */}
                 <div className={`${PDF_BLUE} text-white rounded-md py-1 px-1.5`}>
-                  <div className="text-[14px] font-medium leading-tight text-center" style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.15' }}>
+                  <div className="text-[13px] font-medium leading-tight text-center" style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.15' }}>
                     {m.p1} & {m.p2}
                   </div>
                 </div>
 
                 {/* VS */}
-                <div className="text-[10px] font-bold text-gray-400 text-center py-0.5">
+                <div className="text-[9px] font-bold text-gray-400 text-center py-0.5">
                   VS
                 </div>
 
                 {/* Team B - Orange */}
                 <div className={`${PDF_ORANGE} text-white rounded-md py-1 px-1.5`}>
-                  <div className="text-[14px] font-medium leading-tight text-center" style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.15' }}>
+                  <div className="text-[13px] font-medium leading-tight text-center" style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.15' }}>
                     {m.p3} & {m.p4}
                   </div>
                 </div>
@@ -738,35 +695,42 @@ export default function DrawPage() {
       {/* Responsive container: narrow on mobile, wide on desktop */}
       <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         
-        {/* Header */}
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/60 text-xs font-semibold text-foreground/60 mb-3">
-            <Target size={14} />
-            Live Draw
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-bold bg-ocean-gradient bg-clip-text text-transparent">
+        {/* Header - compact single line */}
+        <div className="flex items-center justify-center gap-2 mb-4">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/60 text-xs font-semibold text-foreground/60">
+            <Target size={12} />
+            {currentStep === 2 && !saved ? 'Male' : 'Female'} Division
+          </span>
+          <h1 className="text-lg sm:text-xl font-bold bg-ocean-gradient bg-clip-text text-transparent">
             Tournament Draw
           </h1>
-          <p className="text-sm text-foreground/60 mt-1">
-            {saved ? 'Draw completed' : currentStep === 1 ? 'Step 1: Female Division' : 'Step 2: Male Division'}
-          </p>
+          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
+            saved
+              ? 'bg-green-100 text-green-700'
+              : currentStep === 1
+                ? 'bg-sunset/15 text-sunset-dark border border-sunset/30'
+                : 'bg-ocean/15 text-ocean-dark border border-ocean/30'
+          }`}>
+            {saved ? <CheckCircle2 size={12} /> : null}
+            {saved ? 'Completed' : currentStep === 1 ? 'Step 1 of 2' : 'Step 2 of 2'}
+          </span>
         </div>
 
         {/* Main content - Step based */}
         <div className="w-full">
           {/* Show Female Draw (Step 1) */}
           {(currentStep === 1 || saved) && (
-            <div className={currentStep === 2 && !saved ? 'opacity-50' : ''}>
-              {renderWheel('f')}
-              {renderMatchGrid(fMatches, 'f')}
+            <div className={`grid grid-cols-1 md:grid-cols-[240px_1fr] gap-4 md:gap-6 items-start ${currentStep === 2 && !saved ? 'opacity-50' : ''}`}>
+              <div className="md:sticky md:top-4">{renderWheel('f')}</div>
+              <div className="min-w-0">{renderMatchGrid(fMatches, 'f')}</div>
             </div>
           )}
 
           {/* Show Male Draw (Step 2) */}
           {(currentStep === 2 || saved) && fDone && (
-            <div className={currentStep === 1 ? 'hidden' : 'mt-8 pt-6 border-t border-sand-dark/10'}>
-              {renderWheel('m')}
-              {renderMatchGrid(mMatches, 'm')}
+            <div className={`mt-6 pt-4 border-t border-sand-dark/10 grid grid-cols-1 md:grid-cols-[240px_1fr] gap-4 md:gap-6 items-start ${currentStep === 1 ? 'hidden' : ''}`}>
+              <div className="md:sticky md:top-4">{renderWheel('m')}</div>
+              <div className="min-w-0">{renderMatchGrid(mMatches, 'm')}</div>
             </div>
           )}
 
@@ -830,14 +794,6 @@ export default function DrawPage() {
           )}
         </div>
 
-        {/* Footer info */}
-        {!saved && (
-          <div className="text-center mt-4">
-            <p className="text-xs text-foreground/40">
-              Draw is randomly generated using Fisher-Yates shuffle
-            </p>
-          </div>
-        )}
       </div>
     </div>
   );

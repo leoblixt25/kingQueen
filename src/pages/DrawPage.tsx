@@ -505,37 +505,37 @@ export default function DrawPage() {
 
     return (
       <div className="w-full">
-        {/* Grid: 2 cols on mobile, 2 cols on desktop (all matches visible at once) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {/* Grid: 2 cols mobile, 3 cols desktop — all 14 matches compact beside the wheel */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5">
           {matches.map((m) => (
             <div
               key={m.matchNum}
-              className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden flex flex-col"
+              className="bg-white rounded-md shadow-sm border border-gray-200 overflow-hidden flex flex-col"
             >
               {/* Header - MATCH X */}
-              <div className="bg-gray-100 px-2.5 py-1 border-b border-gray-200">
-                <span className="text-[11px] font-bold text-gray-700 uppercase tracking-wide">
+              <div className="bg-gray-100 px-2 py-0.5 border-b border-gray-200">
+                <span className="text-[10px] font-bold text-gray-700 uppercase tracking-wide">
                   Match {m.matchNum}
                 </span>
               </div>
 
               {/* Card Body */}
-              <div className="p-2 flex flex-col gap-1">
+              <div className="p-1.5 flex flex-col gap-0.5">
                 {/* Team A - Blue */}
-                <div className={`${PDF_BLUE} text-white rounded-md py-1 px-1.5`}>
-                  <div className="text-[13px] font-medium leading-tight text-center" style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.15' }}>
+                <div className={`${PDF_BLUE} text-white rounded px-1 py-0.5`}>
+                  <div className="text-xs font-medium leading-tight text-center" style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.1' }}>
                     {m.p1} & {m.p2}
                   </div>
                 </div>
 
                 {/* VS */}
-                <div className="text-[9px] font-bold text-gray-400 text-center py-0.5">
+                <div className="text-[8px] font-bold text-gray-400 text-center">
                   VS
                 </div>
 
                 {/* Team B - Orange */}
-                <div className={`${PDF_ORANGE} text-white rounded-md py-1 px-1.5`}>
-                  <div className="text-[13px] font-medium leading-tight text-center" style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.15' }}>
+                <div className={`${PDF_ORANGE} text-white rounded px-1 py-0.5`}>
+                  <div className="text-xs font-medium leading-tight text-center" style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.1' }}>
                     {m.p3} & {m.p4}
                   </div>
                 </div>

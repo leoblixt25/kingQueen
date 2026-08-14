@@ -414,11 +414,9 @@ export default function Register() {
 
     if (isGenderFull(formData.gender)) {
       toast({
-        title: "Registration Full",
-        description: `${formData.gender} division is full`,
-        variant: "destructive",
+        title: "Reserve Registration",
+        description: `${formData.gender} division is full right now, but we will keep you as a reserve player. If someone cancels, you may get a spot.`,
       });
-      return;
     }
 
     if (!canRegister()) {
@@ -446,10 +444,17 @@ export default function Register() {
         localStorage.setItem('tournament_registered_email', formData.email.trim().toLowerCase());
         localStorage.setItem('tournament_registered_name', formData.name.trim());
 
-        toast({
-          title: "Registration Pending Approval!",
-          description: `Your registration has been submitted. Please wait for admin approval before accessing the tournament.`,
-        });
+        if (result.isReserve) {
+          toast({
+            title: "Reserve Registration Submitted!",
+            description: `The ${formData.gender} division is full right now, but we will keep you as a reserve player. If someone cancels, you may get a spot.`,
+          });
+        } else {
+          toast({
+            title: "Registration Pending Approval!",
+            description: `Your registration has been submitted. Please wait for admin approval before accessing the tournament.`,
+          });
+        }
 
         // Refresh available spots to reflect the new registration
         if (settings) {
@@ -581,7 +586,7 @@ export default function Register() {
                 {maleSpots?.available_spots || 0} / {maleSpots?.total_spots || 8} spots
               </p>
               {isGenderFull('male') && (
-                <div className="mt-2 text-xs text-coral font-medium">FULL</div>
+                <div className="mt-2 text-xs text-coral font-medium">FULL - reserve available</div>
               )}
             </CardContent>
           </Card>
@@ -594,7 +599,7 @@ export default function Register() {
                 {femaleSpots?.available_spots || 0} / {femaleSpots?.total_spots || 8} spots
               </p>
               {isGenderFull('female') && (
-                <div className="mt-2 text-xs text-coral font-medium">FULL</div>
+                <div className="mt-2 text-xs text-coral font-medium">FULL - reserve available</div>
               )}
             </CardContent>
           </Card>
@@ -676,26 +681,26 @@ export default function Register() {
                     <RadioGroupItem 
                       value="male" 
                       id="male" 
-                      disabled={!canRegister() || isGenderFull('male')}
+                      disabled={!canRegister()}
                     />
                     <Label 
                       htmlFor="male" 
                       className={`cursor-pointer ${isGenderFull('male') ? 'text-foreground/50' : 'text-foreground'}`}
                     >
-                      Male {isGenderFull('male') && '(Full)'}
+                      Male {isGenderFull('male') && '(Full - reserve)'}
                     </Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem 
                       value="female" 
                       id="female" 
-                      disabled={!canRegister() || isGenderFull('female')}
+                      disabled={!canRegister()}
                     />
                     <Label 
                       htmlFor="female" 
                       className={`cursor-pointer ${isGenderFull('female') ? 'text-foreground/50' : 'text-foreground'}`}
                     >
-                      Female {isGenderFull('female') && '(Full)'}
+                      Female {isGenderFull('female') && '(Full - reserve)'}
                     </Label>
                   </div>
                 </RadioGroup>
@@ -704,7 +709,7 @@ export default function Register() {
               <div className="flex gap-3 pt-4">
                 <Button
                   type="submit"
-                  disabled={isSubmitting || !canRegister() || (formData.gender && isGenderFull(formData.gender))}
+                  disabled={isSubmitting || !canRegister()}
                   className="flex-1 touch-target bg-ocean hover:bg-ocean-dark text-white font-semibold py-3 transition-all duration-300"
                 >
                   {isSubmitting ? (

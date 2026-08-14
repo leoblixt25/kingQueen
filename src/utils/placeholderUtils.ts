@@ -177,8 +177,7 @@ export const registerPlayerToSlot = async (
 /**
  * Unregister a player by converting back to placeholder
  */
-export const unregisterPlayer = async (email: string) => {
-  try {
+export const unregisterPlayer = async (email: string) => {  try {
     // Find the confirmed player
     const playersRef = collection(db, 'players');
     const q = query(
@@ -217,6 +216,46 @@ export const unregisterPlayer = async (email: string) => {
 
   } catch (error) {
     console.error('Error in unregisterPlayer:', error);
+    throw error;
+  }
+};
+
+/**
+ * Remove a pending player, freeing their slot back to a placeholder
+ * Handles both pending (slot-taking) and reserve (no slot) players
+ */
+export const removePendingPlayer = async (player: any) => {
+  try {
+    const playerRef = doc(db, 'players', player.id);
+
+    // Reserve players were added as extra docs (no placeholder slot) - just delete
+    if (player.is_reserve === true) {
+      await deleteDoc(playerRef);
+      console.log(`✅ Successfully removed reserve player ${player.name}`);
+      return true;
+    }
+
+    // Pending player occupies a placeholder slot - convert back to placeholder
+    const placeholderName = player.gender === 'male'
+      ? `Male Player ${player.position}`
+      : `Female Player ${player.position}`;
+
+    await updateDoc(playerRef, {
+      name: placeholderName,
+      email: null,
+      is_confirmed: false,
+      status: null,
+      registered_at: null,
+      points: 0,
+      total_scores: 0,
+      matches_played: 0
+    });
+
+    console.log(`✅ Successfully removed pending player ${player.name}, slot freed`);
+    return true;
+
+  } catch (error) {
+    console.error('Error in removePendingPlayer:', error);
     throw error;
   }
 };

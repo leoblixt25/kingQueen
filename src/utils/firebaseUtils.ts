@@ -53,7 +53,7 @@ export const loadPlayers = async () => {
       const players = retrySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
-      }));
+      })).filter((p: any) => p.is_reserve !== true);
       
       // Continue to processing
       if (players && players.length > 0) {
@@ -143,7 +143,7 @@ export const loadPlayers = async () => {
     const players = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
-    }));
+    })).filter((p: any) => p.is_reserve !== true);
 
     console.log('✅ [LOAD] Players loaded:', players.length);
 

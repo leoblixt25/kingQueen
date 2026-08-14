@@ -450,8 +450,9 @@ export default function LiveRanking() {
         name: getPublicDisplayName({ id: doc.id, ...doc.data() }),
         points: doc.data().points || 0,
         totalScores: doc.data().total_scores || 0,
-        gender: doc.data().gender
-      }));
+        gender: doc.data().gender,
+        is_reserve: doc.data().is_reserve
+      })).filter(p => p.is_reserve !== true);
 
       // Separate and sort players with deterministic tiebreaking
       const females = allPlayers

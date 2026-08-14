@@ -13,6 +13,7 @@ import { resetPlayersToPlaceholders } from "@/utils/placeholderUtils";
 import { initializePlayers } from "@/utils/playerInitUtils";
 import { initializeMatches } from "@/utils/matchInitUtils";
 import { exportMatchupsToPDF } from "@/utils/pdfExport";
+import { removePendingPlayer } from "@/utils/placeholderUtils";
 import { Player, ResolvedMatch } from "@/types";
 
 interface ConfirmedPlayer {
@@ -31,6 +32,8 @@ interface PendingPlayer {
   gender: string;
   registered_at: string;
   status?: string;
+  position?: number;
+  is_reserve?: boolean;
 }
 
 interface TournamentSettings {
@@ -58,6 +61,7 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
   // Inline confirmation states
   const [confirmingApproveId, setConfirmingApproveId] = useState<string | null>(null);
   const [confirmingRemoveId, setConfirmingRemoveId] = useState<string | null>(null);
+  const [confirmingPendingRemoveId, setConfirmingPendingRemoveId] = useState<string | null>(null);
   const [confirmingUnapproveId, setConfirmingUnapproveId] = useState<string | null>(null);
   const [confirmingReset, setConfirmingReset] = useState(false);
   const [confirmingInit, setConfirmingInit] = useState(false);
@@ -151,6 +155,27 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
       toast({
         title: "Approval Failed",
         description: "Failed to approve player",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRemovePendingPlayer = async (player: PendingPlayer) => {
+    try {
+      await removePendingPlayer(player);
+
+      toast({
+        title: "Registration Removed",
+        description: `${player.name}'s registration has been removed. The slot is now available.`,
+      });
+
+      setConfirmingPendingRemoveId(null);
+      await loadAdminData();
+    } catch (error) {
+      console.error('Error removing pending player:', error);
+      toast({
+        title: "Removal Failed",
+        description: "Failed to remove registration",
         variant: "destructive",
       });
     }
@@ -510,6 +535,11 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
                         <span className="px-2 py-1 text-xs rounded-full bg-amber/20 text-amber-700">
                           pending
                         </span>
+                        {player.is_reserve && (
+                          <span className="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-700">
+                            reserve
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center gap-1 text-sm text-foreground/60">
                         <Mail className="w-3 h-3" />
@@ -545,6 +575,35 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
                       >
                         <CheckCircle className="w-4 h-4 mr-1" />
                         Approve
+                      </Button>
+                    )}
+                    {confirmingPendingRemoveId === player.id ? (
+                      <div className="flex items-center gap-1 ml-2">
+                        <Button
+                          onClick={() => handleRemovePendingPlayer(player)}
+                          size="sm"
+                          variant="destructive"
+                          className="px-2"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          onClick={() => setConfirmingPendingRemoveId(null)}
+                          size="sm"
+                          variant="outline"
+                          className="px-2"
+                        >
+                          ✕
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => setConfirmingPendingRemoveId(player.id)}
+                        className="ml-2"
+                      >
+                        <Trash2 className="w-4 h-4" />
                       </Button>
                     )}
                   </div>

@@ -1,12 +1,13 @@
 import { auth, db, googleProvider } from '@/config/firebase';
 import { signInWithPopup, signOut as firebaseSignOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { doc, setDoc, getDoc, collection, query, where, updateDoc, getDocs } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, query, where, updateDoc, getDocs, addDoc } from 'firebase/firestore';
 
 export interface AuthResult {
   success: boolean;
   user?: any;
   error?: string;
   needsConfirmation?: boolean;
+  isReserve?: boolean;
 }
 
 /**
@@ -97,7 +98,30 @@ export const registerWithEmailPassword = async (
       .sort((a: any, b: any) => (a.position || 0) - (b.position || 0));
 
     if (availableSlots.length === 0) {
-      throw new Error('NO_SLOTS_AVAILABLE');
+      // Division is full - register as a reserve player instead of blocking
+      const reserveData = {
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        gender,
+        is_confirmed: false,
+        status: 'pending',
+        is_reserve: true,
+        points: 0,
+        total_scores: 0,
+        registered_at: new Date().toISOString()
+      };
+      const reserveRef = await addDoc(playersRef, reserveData);
+      console.log('✅ [REGISTER] Registered as RESERVE player:', reserveRef.id);
+
+      return {
+        success: true,
+        isReserve: true,
+        user: {
+          ...user,
+          email: user.email,
+          displayName: name
+        }
+      };
     }
 
     const placeholder = availableSlots[0] as any;

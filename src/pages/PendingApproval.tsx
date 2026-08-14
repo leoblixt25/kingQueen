@@ -13,6 +13,7 @@ export default function PendingApproval() {
   const [playerName, setPlayerName] = useState("");
   const [playerEmail, setPlayerEmail] = useState("");
   const [status, setStatus] = useState<"pending" | "approved" | "not_found">("pending");
+  const [isReserve, setIsReserve] = useState(false);
 
   useEffect(() => {
     checkRegistrationStatus();
@@ -38,6 +39,7 @@ export default function PendingApproval() {
         
         setPlayerName(playerData.name || "");
         setPlayerEmail(playerData.email || "");
+        setIsReserve(!!playerData.is_reserve);
         
         if (playerData.status === 'approved' || playerData.is_confirmed === true) {
           setStatus("approved");
@@ -114,10 +116,20 @@ export default function PendingApproval() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          <Alert className="border-ocean/30 bg-ocean/10">
+          <Alert className={isReserve ? "border-purple-300 bg-purple-50" : "border-ocean/30 bg-ocean/10"}>
             <AlertDescription>
-              Thank you for registering, <strong>{playerName || "Player"}</strong>! 
-              Your registration is currently pending admin approval.
+              {isReserve ? (
+                <>
+                  Thank you for registering, <strong>{playerName || "Player"}</strong>! 
+                  The division is currently full, but we will keep you as a <strong>reserve player</strong>.
+                  If someone cancels, you may get a spot in the tournament.
+                </>
+              ) : (
+                <>
+                  Thank you for registering, <strong>{playerName || "Player"}</strong>! 
+                  Your registration is currently pending admin approval.
+                </>
+              )}
             </AlertDescription>
           </Alert>
 

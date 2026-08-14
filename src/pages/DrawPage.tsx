@@ -5,6 +5,7 @@ import { collection, getDocs, doc, writeBatch, setDoc, getDoc } from 'firebase/f
 import { generateMatchesFromOrder, shuffleArray } from '@/utils/staticMatchups';
 import { validateMatches, buildValidationMap } from '@/utils/matchValidation';
 import { FC, MC, paintCanvas } from '@/utils/drawWheel';
+import { createCanvasRecorder, stopRecorder, uploadDrawVideo } from '@/utils/drawRecorder';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ChevronRight, RotateCcw, Target, CheckCircle2 } from 'lucide-react';
@@ -195,10 +196,18 @@ export default function DrawPage() {
     // STEP 3: Start animation (visualization only - matches already determined)
     setStarted(true); 
     setMatches([]);
+    // Record the wheel animation so the public can watch how the draw happened
+    const recorder = cvRef.current ? createCanvasRecorder(cvRef.current) : null;
+    if (recorder) console.log(`🎥 [REC] Recording ${gender.toUpperCase()} draw...`);
     runSequence(cvRef, angleRef, order, col, preGeneratedMatches, 0, setStatus, setMatches, () => {
       setStatus('Complete!');
       setDone(true);
       console.log(`✅ [DRAW ${gender.toUpperCase()}] All matches drawn:`, preGeneratedMatches);
+      if (recorder) {
+        stopRecorder(recorder).then(blob => {
+          if (blob.size > 0) uploadDrawVideo(blob, gender);
+        }).catch(e => console.error('⚠️ [REC] failed to finalize video:', e));
+      }
     });
   }
 

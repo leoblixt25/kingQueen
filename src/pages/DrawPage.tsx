@@ -5,7 +5,7 @@ import { collection, getDocs, doc, writeBatch, setDoc, getDoc } from 'firebase/f
 import { generateMatchesFromOrder, shuffleArray } from '@/utils/staticMatchups';
 import { validateMatches, buildValidationMap } from '@/utils/matchValidation';
 import { FC, MC, paintCanvas } from '@/utils/drawWheel';
-import { createCanvasRecorder, stopRecorder, uploadDrawVideo } from '@/utils/drawRecorder';
+import { createCanvasRecorder, stopRecorder, uploadDrawVideo, setGitHubToken, hasGitHubToken } from '@/utils/drawRecorder';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ChevronRight, RotateCcw, Target, CheckCircle2 } from 'lucide-react';
@@ -32,6 +32,8 @@ export default function DrawPage() {
   const [saving, setSaving]               = useState(false);
   const [saved, setSaved]                 = useState(false);
   const [loadingTestPlayers, setLoadingTestPlayers] = useState(false);
+  const [ghToken, setGhToken] = useState(hasGitHubToken() ? '' : '');
+  const [ghTokenSaved, setGhTokenSaved] = useState(hasGitHubToken());
 
   // Step-based flow: 1 = Female, 2 = Male, 3 = Complete
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
@@ -460,6 +462,14 @@ export default function DrawPage() {
     });
   }
 
+  function saveGitHubToken() {
+    if (!ghToken.trim()) return;
+    setGitHubToken(ghToken);
+    setGhTokenSaved(true);
+    setGhToken('');
+    alert('GitHub token saved in this browser. Draw recordings will be stored on GitHub.');
+  }
+
   function renderWheel(gender: 'f' | 'm') {
     const isFemale = gender === 'f';
     const started = isFemale ? fStarted : mStarted;
@@ -799,6 +809,29 @@ export default function DrawPage() {
             {saved ? 'Draw completed' : currentStep === 1 ? 'Step 1: Female Division' : 'Step 2: Male Division'}
           </p>
         </div>
+
+        {/* GitHub token for draw recordings */}
+        {!ghTokenSaved ? (
+          <div className="max-w-md mx-auto mb-6 p-4 bg-white/70 backdrop-blur-sm rounded-xl border border-gray-200 shadow-sm">
+            <p className="text-xs font-semibold text-foreground/70 mb-2">
+              🎥 Set GitHub token to save draw recordings (stored in this browser only)
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="password"
+                value={ghToken}
+                onChange={e => setGhToken(e.target.value)}
+                placeholder="ghp_xxxxxxxx"
+                className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-ocean/40"
+              />
+              <Button onClick={saveGitHubToken} className="shrink-0 bg-ocean hover:bg-ocean-dark text-white text-sm">
+                Save
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <p className="text-xs text-green-600 text-center mb-4">🎥 GitHub storage connected — draw recordings will be saved automatically.</p>
+        )}
 
         {/* Main content - Step based */}
         <div className="w-full">

@@ -19,6 +19,8 @@ export default function PublicDrawPage() {
   const [mMatches, setMMatches] = useState<DrawnMatch[]>([]);
   const [femalePlayers, setFemalePlayers] = useState<Player[]>([]);
   const [malePlayers, setMalePlayers] = useState<Player[]>([]);
+  const [drawTarget, setDrawTarget] = useState<number | null>(null);
+  const [now, setNow] = useState(new Date());
 
   const fCanvasRef = useRef<HTMLCanvasElement>(null);
   const mCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -43,6 +45,18 @@ export default function PublicDrawPage() {
       try {
         const settingsSnap = await getDoc(doc(db, 'tournamentSettings', 'settings'));
         if (settingsSnap.exists()) applySettings(settingsSnap.data(), !!settingsSnap.data().draw_completed);
+
+        // Load tournament date from default_settings for the countdown
+        try {
+          const defaultSnap = await getDoc(doc(db, 'tournamentSettings', 'default_settings'));
+          const dateStr = defaultSnap.exists() ? defaultSnap.data().tournament_date : null;
+          if (dateStr) {
+            // Draw happens the day before the tournament
+            const target = new Date(`${dateStr}T00:00:00`);
+            target.setDate(target.getDate() - 1);
+            setDrawTarget(target.getTime());
+          }
+        } catch (e) { console.error(e); }
       } catch (e) { console.error(e); }
       setLoading(false);
     }
@@ -55,6 +69,12 @@ export default function PublicDrawPage() {
     });
 
     return () => unsub();
+  }, []);
+
+  // Countdown tick — updates every second
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
   }, []);
 
   useEffect(() => {
@@ -87,6 +107,13 @@ export default function PublicDrawPage() {
   }
 
   if (!drawStarted || !saved) {
+    const remaining = drawTarget ? Math.max(0, drawTarget - now.getTime()) : null;
+    const days = remaining ? Math.floor(remaining / 86400000) : 0;
+    const hours = remaining ? Math.floor((remaining % 86400000) / 3600000) : 0;
+    const mins = remaining ? Math.floor((remaining % 3600000) / 60000) : 0;
+    const secs = remaining ? Math.floor((remaining % 60000) / 1000) : 0;
+    const pad = (n: number) => String(n).padStart(2, '0');
+
     return (
       <div className="min-h-screen bg-sand-gradient px-4 py-8 flex items-center justify-center">
         <div className="w-full max-w-md mx-auto text-center space-y-6">
@@ -103,6 +130,46 @@ export default function PublicDrawPage() {
               <p className="text-foreground/70 leading-relaxed">
                 The tournament draw has not started yet. The live draw will be available here the day before the tournament.
               </p>
+
+              {/* Countdown to the draw */}
+              {drawTarget && remaining !== null && (
+                <div className="pt-2">
+                  {remaining > 0 ? (
+                    <div className="space-y-3">
+                      <p className="text-xs font-semibold text-foreground/50 uppercase tracking-wide">
+                        Draw starts in
+                      </p>
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="flex-1 max-w-[72px] bg-ocean/10 rounded-xl py-3 px-1 border border-ocean/20">
+                          <div className="text-2xl font-bold text-ocean-dark tabular-nums">{pad(days)}</div>
+                          <div className="text-[10px] font-semibold text-foreground/50 uppercase">days</div>
+                        </div>
+                        <span className="text-xl font-bold text-foreground/30">:</span>
+                        <div className="flex-1 max-w-[72px] bg-ocean/10 rounded-xl py-3 px-1 border border-ocean/20">
+                          <div className="text-2xl font-bold text-ocean-dark tabular-nums">{pad(hours)}</div>
+                          <div className="text-[10px] font-semibold text-foreground/50 uppercase">hours</div>
+                        </div>
+                        <span className="text-xl font-bold text-foreground/30">:</span>
+                        <div className="flex-1 max-w-[72px] bg-ocean/10 rounded-xl py-3 px-1 border border-ocean/20">
+                          <div className="text-2xl font-bold text-ocean-dark tabular-nums">{pad(mins)}</div>
+                          <div className="text-[10px] font-semibold text-foreground/50 uppercase">min</div>
+                        </div>
+                        <span className="text-xl font-bold text-foreground/30">:</span>
+                        <div className="flex-1 max-w-[72px] bg-ocean/10 rounded-xl py-3 px-1 border border-ocean/20">
+                          <div className="text-2xl font-bold text-ocean-dark tabular-nums">{pad(secs)}</div>
+                          <div className="text-[10px] font-semibold text-foreground/50 uppercase">sec</div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sunset/20 text-sunset-dark text-xs font-semibold">
+                      <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                      The draw is starting now — refresh to watch live!
+                    </div>
+                  )}
+                </div>
+              )}
+
               <p className="text-sm text-foreground/50">
                 Please check back later!
               </p>

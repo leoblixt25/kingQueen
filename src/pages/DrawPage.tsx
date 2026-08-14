@@ -20,6 +20,8 @@ export default function DrawPage() {
   const [loading, setLoading]             = useState(true);
   const [fStatus, setFStatus]             = useState('Ready');
   const [mStatus, setMStatus]             = useState('Ready');
+  const [recording, setRecording]         = useState(false);
+  const [videoReady, setVideoReady]       = useState<{ f: boolean; m: boolean }>({ f: false, m: false });
   const [fStarted, setFStarted]           = useState(false);
   const [mStarted, setMStarted]           = useState(false);
   const [fDone, setFDone]                 = useState(false);
@@ -198,15 +200,25 @@ export default function DrawPage() {
     setMatches([]);
     // Record the wheel animation so the public can watch how the draw happened
     const recorder = cvRef.current ? createCanvasRecorder(cvRef.current) : null;
-    if (recorder) console.log(`🎥 [REC] Recording ${gender.toUpperCase()} draw...`);
+    if (recorder) {
+      setRecording(true);
+      setVideoReady(prev => ({ ...prev, [gender]: false }));
+      console.log(`🎥 [REC] Recording ${gender.toUpperCase()} draw...`);
+    }
     runSequence(cvRef, angleRef, order, col, preGeneratedMatches, 0, setStatus, setMatches, () => {
       setStatus('Complete!');
       setDone(true);
       console.log(`✅ [DRAW ${gender.toUpperCase()}] All matches drawn:`, preGeneratedMatches);
       if (recorder) {
         stopRecorder(recorder).then(blob => {
-          if (blob.size > 0) uploadDrawVideo(blob, gender);
-        }).catch(e => console.error('⚠️ [REC] failed to finalize video:', e));
+          if (blob.size > 0) {
+            setRecording(false);
+            return uploadDrawVideo(blob, gender).then(url => {
+              if (url) setVideoReady(prev => ({ ...prev, [gender]: true }));
+            });
+          }
+          setRecording(false);
+        }).catch(e => { setRecording(false); console.error('⚠️ [REC] failed to finalize video:', e); });
       }
     });
   }
@@ -437,6 +449,7 @@ export default function DrawPage() {
     setFMatches([]); setMMatches([]); setFStatus('Ready'); setMStatus('Ready');
     setSaved(false); fAngle.current = 0; mAngle.current = 0;
     fOrder.current = []; mOrder.current = [];
+    setRecording(false); setVideoReady({ f: false, m: false });
     (['f', 'm'] as const).forEach(d => {
       const cv = d === 'f' ? fCanvasRef.current : mCanvasRef.current;
       const names = (d === 'f' ? femalePlayers : malePlayers).map(p => p.name);
@@ -452,6 +465,8 @@ export default function DrawPage() {
     const cvRef = isFemale ? fCanvasRef : mCanvasRef;
     const colors = isFemale ? FC : MC;
     const players = isFemale ? femalePlayers : malePlayers;
+    const isRecording = recording && ((isFemale && !fDone) || (!isFemale && !mDone));
+    const hasVideo = isFemale ? videoReady.f : videoReady.m;
 
     return (
       <div className="flex flex-col items-center">
@@ -512,9 +527,23 @@ export default function DrawPage() {
         </div>
 
         {/* Status */}
-        <p className="text-sm text-foreground/60 text-center font-medium mb-4 min-h-[20px]">
+        <p className="text-sm text-foreground/60 text-center font-medium mb-2 min-h-[20px]">
           {status}
         </p>
+
+        {isRecording && (
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-semibold mb-2">
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            Recording live draw…
+          </div>
+        )}
+
+        {hasVideo && (
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-100 text-green-700 text-xs font-semibold mb-2">
+            <CheckCircle2 size={14} />
+            Recording saved — visible on public page
+          </div>
+        )}
 
         {/* Start button */}
         {!started && !done && !saved && (

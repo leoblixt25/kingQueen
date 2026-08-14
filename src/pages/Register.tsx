@@ -331,14 +331,21 @@ export default function Register() {
   const loadAvailableSpots = async (maxPlayersPerGender: number) => {
     try {
       // Query Firestore for registered players
-      const maleQuery = query(collection(db, 'players'), where('gender', '==', 'male'), where('status', '==', 'approved'));
+      // Occupied slots = approved players + pending (non-reserve) players holding a slot
+      const maleQuery = query(collection(db, 'players'), where('gender', '==', 'male'));
       const maleSnap = await getDocs(maleQuery);
-      
-      const femaleQuery = query(collection(db, 'players'), where('gender', '==', 'female'), where('status', '==', 'approved'));
+
+      const femaleQuery = query(collection(db, 'players'), where('gender', '==', 'female'));
       const femaleSnap = await getDocs(femaleQuery);
 
-      const maleRegisteredCount = maleSnap.size;
-      const femaleRegisteredCount = femaleSnap.size;
+      const countOccupied = (snap: any) => snap.docs.filter((doc: any) => {
+        const p = doc.data();
+        const isActive = p.status === 'approved' || p.status === 'pending';
+        return isActive && p.is_reserve !== true;
+      }).length;
+
+      const maleRegisteredCount = countOccupied(maleSnap);
+      const femaleRegisteredCount = countOccupied(femaleSnap);
       
       const spots = [
         { 

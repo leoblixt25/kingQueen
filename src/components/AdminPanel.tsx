@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { db } from "@/config/firebase";
-import { collection, getDocs, query, where, doc, setDoc, writeBatch, orderBy, limit, updateDoc } from "firebase/firestore";
+import { collection, getDocs, query, where, doc, setDoc, writeBatch, orderBy, limit, updateDoc, addDoc } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 import { Calendar, Users, Trash2, Settings, Crown, Mail, CheckCircle, FileText, Clock, Shuffle, RotateCcw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -23,6 +23,7 @@ interface ConfirmedPlayer {
   gender: string;
   registered_at: string;
   status?: string;
+  position?: number;
 }
 
 interface PendingPlayer {
@@ -63,6 +64,7 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
   const [confirmingRemoveId, setConfirmingRemoveId] = useState<string | null>(null);
   const [confirmingPendingRemoveId, setConfirmingPendingRemoveId] = useState<string | null>(null);
   const [confirmingUnapproveId, setConfirmingUnapproveId] = useState<string | null>(null);
+  const [confirmingMoveToReserveId, setConfirmingMoveToReserveId] = useState<string | null>(null);
   const [confirmingReset, setConfirmingReset] = useState(false);
   const [confirmingInit, setConfirmingInit] = useState(false);
 
@@ -216,6 +218,58 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
       toast({
         title: "Update Failed",
         description: "Failed to move player back to pending",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleMoveToReserve = async (player: ConfirmedPlayer) => {
+    try {
+      const playersRef = collection(db, 'players');
+
+      // Create a new reserve doc (no slot) with the player's info
+      const reserveData = {
+        name: player.name.trim(),
+        email: player.email.trim().toLowerCase(),
+        gender: player.gender,
+        is_confirmed: false,
+        status: 'pending',
+        is_reserve: true,
+        points: 0,
+        total_scores: 0,
+        registered_at: player.registered_at || new Date().toISOString()
+      };
+      await addDoc(playersRef, reserveData);
+
+      // Free their old slot back to a placeholder
+      const placeholderName = player.gender === 'male'
+        ? `Male Player ${player.position ?? ''}`.trim()
+        : `Female Player ${player.position ?? ''}`.trim();
+      const playerRef = doc(db, 'players', player.id);
+      await updateDoc(playerRef, {
+        name: placeholderName,
+        email: null,
+        is_confirmed: false,
+        status: null,
+        approved_at: null,
+        registered_at: null,
+        points: 0,
+        total_scores: 0,
+        matches_played: 0
+      });
+
+      toast({
+        title: "Moved to Reserve",
+        description: `${player.name} has been moved to reserve. Their slot is now free.`,
+      });
+
+      setConfirmingMoveToReserveId(null);
+      await loadAdminData();
+    } catch (error) {
+      console.error('Error moving player to reserve:', error);
+      toast({
+        title: "Update Failed",
+        description: "Failed to move player to reserve",
         variant: "destructive",
       });
     }
@@ -694,6 +748,34 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
                       >
                         <RotateCcw className="w-4 h-4 mr-1" />
                         Pending
+                      </Button>
+                    )}
+                    {confirmingMoveToReserveId === player.id ? (
+                      <div className="flex items-center gap-1 ml-2">
+                        <Button
+                          onClick={() => handleMoveToReserve(player)}
+                          size="sm"
+                          className="bg-purple-600 hover:bg-purple-700 text-white px-2"
+                        >
+                          <CheckCircle className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          onClick={() => setConfirmingMoveToReserveId(null)}
+                          size="sm"
+                          variant="outline"
+                          className="px-2"
+                        >
+                          ✕
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        size="sm"
+                        onClick={() => setConfirmingMoveToReserveId(player.id)}
+                        className="ml-2 bg-purple-600 hover:bg-purple-700 text-white"
+                      >
+                        <Shuffle className="w-4 h-4 mr-1" />
+                        Reserve
                       </Button>
                     )}
                     {confirmingRemoveId === player.id ? (

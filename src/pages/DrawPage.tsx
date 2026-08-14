@@ -454,19 +454,24 @@ export default function DrawPage() {
     return (
       <div className="flex flex-col items-center">
         {/* Wheel container */}
-        <div className="relative w-[240px] h-[240px] sm:w-[260px] sm:h-[260px] mb-3">
+        <div className="relative w-[300px] h-[300px] sm:w-[320px] sm:h-[320px] mb-4">
           {/* Pointer */}
-          <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 z-20">
-            <div className="w-0 h-0 border-l-[10px] border-r-[10px] border-t-[16px] border-l-transparent border-r-transparent border-t-foreground drop-shadow-lg" />
+          <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20">
+            <div className="w-0 h-0 border-l-[12px] border-r-[12px] border-t-[20px] border-l-transparent border-r-transparent border-t-foreground drop-shadow-lg" />
           </div>
+          {/* Glow effect */}
+          <div className={`absolute inset-0 rounded-full blur-xl opacity-30 ${
+            isFemale ? 'bg-sunset' : 'bg-ocean'
+          }`} />
           {/* Canvas */}
           <canvas 
             ref={cvRef} 
-            className="relative z-10 w-full h-full rounded-full shadow-xl"
+            className="relative z-10 w-full h-full rounded-full shadow-2xl"
+            style={{ boxShadow: `0 8px 32px ${isFemale ? 'rgba(255,127,80,0.3)' : 'rgba(78,205,196,0.3)'}` }}
           />
           {/* Center hub */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-full shadow-lg z-20 flex items-center justify-center">
-            <Target size={16} className={isFemale ? 'text-sunset' : 'text-ocean'} />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-white rounded-full shadow-lg z-20 flex items-center justify-center">
+            <Target size={20} className={isFemale ? 'text-sunset' : 'text-ocean'} />
           </div>
         </div>
 
@@ -735,7 +740,7 @@ export default function DrawPage() {
         <div className="w-full">
           {/* Show Female Draw (Step 1) */}
           {(currentStep === 1 || saved) && (
-            <div className={`grid grid-cols-1 md:grid-cols-[240px_1fr] gap-4 md:gap-6 items-start ${currentStep === 2 && !saved ? 'opacity-50' : ''}`}>
+            <div className={`grid grid-cols-1 md:grid-cols-[320px_1fr] gap-4 md:gap-6 items-start ${currentStep === 2 && !saved ? 'opacity-50' : ''}`}>
               <div className="md:sticky md:top-4">{renderWheel('f')}</div>
               <div className="min-w-0">{renderMatchGrid(fMatches, 'f')}</div>
             </div>
@@ -743,7 +748,7 @@ export default function DrawPage() {
 
           {/* Show Male Draw (Step 2) */}
           {(currentStep === 2 || saved) && fDone && (
-            <div className={`mt-6 pt-4 border-t border-sand-dark/10 grid grid-cols-1 md:grid-cols-[240px_1fr] gap-4 md:gap-6 items-start ${currentStep === 1 ? 'hidden' : ''}`}>
+            <div className={`mt-6 pt-4 border-t border-sand-dark/10 grid grid-cols-1 md:grid-cols-[320px_1fr] gap-4 md:gap-6 items-start ${currentStep === 1 ? 'hidden' : ''}`}>
               <div className="md:sticky md:top-4">{renderWheel('m')}</div>
               <div className="min-w-0">{renderMatchGrid(mMatches, 'm')}</div>
             </div>

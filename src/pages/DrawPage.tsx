@@ -22,6 +22,7 @@ export default function DrawPage() {
   const [mStatus, setMStatus]             = useState('Ready');
   const [recording, setRecording]         = useState(false);
   const [videoReady, setVideoReady]       = useState<{ f: boolean; m: boolean }>({ f: false, m: false });
+  const [videoError, setVideoError]       = useState<{ f: string; m: string }>({ f: '', m: '' });
   const [fStarted, setFStarted]           = useState(false);
   const [mStarted, setMStarted]           = useState(false);
   const [fDone, setFDone]                 = useState(false);
@@ -203,6 +204,7 @@ export default function DrawPage() {
     if (recorder) {
       setRecording(true);
       setVideoReady(prev => ({ ...prev, [gender]: false }));
+      setVideoError(prev => ({ ...prev, [gender]: '' }));
       console.log(`🎥 [REC] Recording ${gender.toUpperCase()} draw...`);
     }
     runSequence(cvRef, angleRef, order, col, preGeneratedMatches, 0, setStatus, setMatches, () => {
@@ -215,6 +217,7 @@ export default function DrawPage() {
             setRecording(false);
             return uploadDrawVideo(blob, gender).then(url => {
               if (url) setVideoReady(prev => ({ ...prev, [gender]: true }));
+              else setVideoError(prev => ({ ...prev, [gender]: 'Video could not be uploaded — Firebase Storage is not enabled for this project.' }));
             });
           }
           setRecording(false);
@@ -449,7 +452,7 @@ export default function DrawPage() {
     setFMatches([]); setMMatches([]); setFStatus('Ready'); setMStatus('Ready');
     setSaved(false); fAngle.current = 0; mAngle.current = 0;
     fOrder.current = []; mOrder.current = [];
-    setRecording(false); setVideoReady({ f: false, m: false });
+    setRecording(false); setVideoReady({ f: false, m: false }); setVideoError({ f: '', m: '' });
     (['f', 'm'] as const).forEach(d => {
       const cv = d === 'f' ? fCanvasRef.current : mCanvasRef.current;
       const names = (d === 'f' ? femalePlayers : malePlayers).map(p => p.name);
@@ -467,6 +470,7 @@ export default function DrawPage() {
     const players = isFemale ? femalePlayers : malePlayers;
     const isRecording = recording && ((isFemale && !fDone) || (!isFemale && !mDone));
     const hasVideo = isFemale ? videoReady.f : videoReady.m;
+    const recError = isFemale ? videoError.f : videoError.m;
 
     return (
       <div className="flex flex-col items-center">
@@ -542,6 +546,12 @@ export default function DrawPage() {
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-100 text-green-700 text-xs font-semibold mb-2">
             <CheckCircle2 size={14} />
             Recording saved — visible on public page
+          </div>
+        )}
+
+        {recError && (
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-semibold mb-2">
+            ⚠️ {recError}
           </div>
         )}
 

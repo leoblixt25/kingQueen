@@ -50,8 +50,12 @@ export async function uploadDrawVideo(blob: Blob, gender: 'f' | 'm'): Promise<st
     }, { merge: true });
     console.log(`🎥 [REC] ${gender.toUpperCase()} draw video uploaded (${blob.size} bytes)`);
     return url;
-  } catch (e) {
-    console.error('⚠️ [REC] video upload failed:', e);
+  } catch (e: any) {
+    const msg = e?.code || e?.message || 'unknown error';
+    console.error('⚠️ [REC] video upload failed:', msg);
+    if (msg.includes('404') || msg === 'storage/object-not-found') {
+      console.error('⚠️ [REC] Firebase Storage is not enabled for this project — enable it in the Firebase console (Build → Storage) and re-run the draw.');
+    }
     return null;
   }
 }

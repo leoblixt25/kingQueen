@@ -115,7 +115,7 @@ export default function PublicDrawPage() {
     const pad = (n: number) => String(n).padStart(2, '0');
 
     return (
-      <div className="min-h-screen bg-sand-gradient px-4 py-8 flex items-center justify-center">
+      <div className="min-h-screen bg-sand-gradient px-4 pt-24 pb-8 flex items-start justify-center">
         <div className="w-full max-w-md mx-auto text-center space-y-6">
           <div className="text-6xl">🎟️</div>
           <h1 className="text-2xl sm:text-3xl font-bold bg-ocean-gradient bg-clip-text text-transparent">

@@ -58,7 +58,7 @@ export default function Landing() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sand-light via-sand to-ocean-light/20 px-4 py-4 flex items-center justify-center">
+    <div className="min-h-screen bg-gradient-to-br from-sand-light via-sand to-ocean-light/20 px-4 pt-10 pb-8 flex items-start justify-center">
       <div className="w-full max-w-md mx-auto text-center animate-fade-in">
         <div className="mb-4 animate-bounce-gentle">
           <div className="text-6xl md:text-7xl">🏐</div>
@@ -91,7 +91,7 @@ export default function Landing() {
           </Button>
           <Button
             onClick={handleDrawClick}
-            className="w-full py-7 text-xl font-bold bg-beach-gradient hover:opacity-90 text-white shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 flex items-center justify-center gap-3 rounded-2xl"
+            className="w-full py-7 text-xl font-bold bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 flex items-center justify-center gap-3 rounded-2xl"
           >
             <Shuffle className="w-6 h-6" />
             Tournament Draw
@@ -106,7 +106,7 @@ export default function Landing() {
           </Button>
         </div>
         
-        <div className="mt-8 text-xs text-foreground/60 text-center">
+        <div className="mt-10 text-sm text-foreground/60 text-center">
           <p>Designed and created by <span className="font-bold text-foreground/80">Leo Blixt</span> with a love for beach volleyball</p>
         </div>
       </div>

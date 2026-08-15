@@ -59,7 +59,7 @@
 * Navigation: React Router with protected routes
 * UI updates: Real-time data reload after database writes
 * PDF export: Uses jsPDF with manual text/drawing (no autoTable plugin)
-* Match grid layout: 2-column grid for professional sports schedule appearance
+* Match grid layout (admin DrawPage): 5 matchups per row on desktop; PDF uses 2-column grid
 
 ## 6. How to Use This File
 
@@ -91,9 +91,10 @@ sandy-scorekeeper/
 │   ├── pages/          # Route pages
 │   │   ├── Index.tsx            # Main tournament page
 │   │   ├── AdminControl.tsx     # Admin configuration & controls
-│   │   ├── DrawPage.tsx         # Tournament draw wheel
+│   │   ├── DrawPage.tsx         # Tournament draw wheel (compact, live clock)
+│   │   ├── PublicDrawPage.tsx   # Public draw view + countdown before start
 │   │   ├── LiveRanking.tsx      # Live rankings display
-│   │   ├── Landing.tsx          # Landing/home page
+│   │   ├── Landing.tsx          # Landing/home page (draw button = beach-gradient)
 │   │   ├── PendingApproval.tsx  # Pending registration approval page
 │   │   └── WaitingForDraw.tsx   # Waiting screen before draw
 │   ├── utils/          # Utility functions (Firebase operations)
@@ -354,6 +355,36 @@ Draw Wheel:               Data Loading:
 ### UI Updates
 * Male draw wheel colors updated to consistent ocean blues
 * ResetConfirmationModal now accepts optional title/description/confirmText props
+
+## 13c. Draw Recording REMOVED (Aug 2026)
+
+* ❌ The entire draw-video recording system was **removed** (user decision — admin screen-records the draw and shares via WhatsApp instead)
+* Deleted files:
+  * `src/utils/drawRecorder.ts` (canvas recorder + GitHub Git Data API upload)
+  * `workers/cloudflare-worker.ts` (abandoned Cloudflare Worker approach)
+* Removed from DrawPage/PublicDrawPage: recording badges, GitHub token field, video players, `draw_video_*_url` settings
+* ⚠️ Video storage via GitHub repo `leoblixt25/sandy-draw-videos` is NO LONGER USED
+* ⚠️ The admin GitHub token that was pasted in chat is exposed and should be revoked (no longer read by the app)
+
+## 13d. Admin Draw Page UI (Aug 2026)
+
+* Compact single-line header: `[Female/Male Division badge] Tournament Draw` + live ticking date/time clock (pulses every second — proof the draw is real/live during screen recording)
+* Wheel restored to original size (300px mobile / 320px desktop) with glow + colored shadow; player names drawn at ~17px inside segments
+* Match grid: original card styling, **5 matchups per row** on desktop (14 matches per division — 8 players, STATIC_MATCHUPS)
+* Wheel (left, sticky) + matchups (right) side-by-side grid so all matches stay visible while the wheel spins
+
+## 13e. Public Draw Page Countdown (Aug 2026)
+
+* "Not started yet" card now shows a **live countdown** to the day before the tournament
+* Reads `tournament_date` from `tournamentSettings/default_settings`, target = date − 1 day at 00:00
+* Ticks every second; boxes for days / hours / minutes / seconds
+* At zero: shows "The draw is starting now — refresh to watch live!"
+* No countdown shown if `tournament_date` is unset
+
+## 13f. Landing Page (Aug 2026)
+
+* Tournament Draw button now uses `bg-beach-gradient` (matches Live Ranking button style) instead of dark navy gradient
+* Top spacing tightened: page `py-4`, ball `mb-4`, title `mb-6`, buttons `space-y-4` — ball/buttons moved up
 
 ## 13b. Registration Approval Name Masking
 

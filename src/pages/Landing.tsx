@@ -58,18 +58,16 @@ export default function Landing() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sand-light via-sand to-ocean-light/20 px-4 py-8 flex items-center justify-center">
+    <div className="min-h-screen bg-gradient-to-br from-sand-light via-sand to-ocean-light/20 px-4 py-4 flex items-center justify-center">
       <div className="w-full max-w-md mx-auto text-center animate-fade-in">
-        <div className="mb-8 animate-bounce-gentle">
+        <div className="mb-4 animate-bounce-gentle">
           <div className="text-6xl md:text-7xl">🏐</div>
         </div>
-        <div className="w-full max-w-2xl mx-auto text-center px-4 mb-10">
+        <div className="w-full max-w-2xl mx-auto text-center px-4 mb-6">
           <MainTitle />
         </div>
         
-
-        
-        <div className="space-y-5">
+        <div className="space-y-4">
           <Button
             onClick={handleAdminClick}
             className="w-full py-7 text-xl font-bold bg-gradient-to-r from-sunset to-coral hover:from-sunset-dark hover:to-coral text-white shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 flex items-center justify-center gap-3 rounded-2xl"
@@ -93,7 +91,7 @@ export default function Landing() {
           </Button>
           <Button
             onClick={handleDrawClick}
-            className="w-full py-7 text-xl font-bold bg-gradient-to-r from-ocean-dark to-[#004488] hover:from-[#003377] hover:to-[#002266] text-white shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 flex items-center justify-center gap-3 rounded-2xl"
+            className="w-full py-7 text-xl font-bold bg-beach-gradient hover:opacity-90 text-white shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 flex items-center justify-center gap-3 rounded-2xl"
           >
             <Shuffle className="w-6 h-6" />
             Tournament Draw

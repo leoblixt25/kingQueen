@@ -58,7 +58,7 @@ export default function Landing() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sand-light via-sand to-ocean-light/20 px-4 pt-10 pb-8 flex items-start justify-center">
+    <div className="min-h-screen bg-gradient-to-br from-sand-light via-sand to-ocean-light/20 px-4 pt-24 pb-8 flex items-start justify-center">
       <div className="w-full max-w-md mx-auto text-center animate-fade-in">
         <div className="mb-4 animate-bounce-gentle">
           <div className="text-6xl md:text-7xl">🏐</div>

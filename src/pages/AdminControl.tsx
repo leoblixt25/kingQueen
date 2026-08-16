@@ -319,6 +319,13 @@ export default function AdminControl() {
     <div className="min-h-screen bg-sand-gradient px-4 py-6">
       <div className="max-w-2xl mx-auto space-y-6">
         <header className="text-center pt-6">
+          <Button
+            variant="outline"
+            onClick={() => navigate('/')}
+            className="mb-4 bg-white/70 hover:bg-ocean hover:text-white border-ocean/30 text-ocean-dark transition-all duration-300 touch-target"
+          >
+            ← Back to Home
+          </Button>
           <h1 className="text-3xl font-bold text-transparent bg-beach-gradient bg-clip-text mb-2">
             Admin Control Panel
           </h1>

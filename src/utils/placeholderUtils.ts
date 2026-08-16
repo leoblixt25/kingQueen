@@ -221,6 +221,49 @@ export const unregisterPlayer = async (email: string) => {  try {
 };
 
 /**
+ * Remove orphan placeholder docs created by reserve round-trips.
+ * These are placeholder-named docs that are NOT real slots (no numeric position
+ * 1-8 for their gender) and hold no registered player (no email). They appear as
+ * phantom "Male Player 9" entries in rankings and must be cleaned up.
+ */
+export const cleanupOrphanPlaceholderDocs = async (): Promise<number> => {
+  try {
+    const playersRef = collection(db, 'players');
+    const snapshot = await getDocs(playersRef);
+    const batch = writeBatch(db);
+    let removed = 0;
+
+    snapshot.docs.forEach(docSnap => {
+      const data = docSnap.data() as any;
+      if (data.is_reserve === true) return;
+
+      const prefix = data.gender === 'male' ? 'Male Player' : 'Female Player';
+      const isPlaceholderName = typeof data.name === 'string' && data.name.startsWith(prefix);
+      if (!isPlaceholderName) return;
+
+      // Real slots have a numeric position (1-8) and belong to exactly 8 docs per gender.
+      // Orphan placeholders have no valid position or are duplicates beyond the 8th.
+      const validPosition = typeof data.position === 'number' && data.position >= 1 && data.position <= 8;
+      const hasRealPlayer = Boolean(data.email);
+
+      if (!hasRealPlayer && (data.position == null || !validPosition)) {
+        batch.delete(docSnap.ref);
+        removed++;
+      }
+    });
+
+    if (removed > 0) {
+      await batch.commit();
+      console.log(`✅ [CLEANUP] Removed ${removed} orphan placeholder docs`);
+    }
+    return removed;
+  } catch (error) {
+    console.error('❌ [CLEANUP] Failed to clean orphan placeholders:', error);
+    return 0;
+  }
+};
+
+/**
  * Remove a pending player, freeing their slot back to a placeholder
  * Handles both pending (slot-taking) and reserve (no slot) players
  */

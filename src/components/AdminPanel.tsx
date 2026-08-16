@@ -13,7 +13,7 @@ import { resetPlayersToPlaceholders } from "@/utils/placeholderUtils";
 import { initializePlayers } from "@/utils/playerInitUtils";
 import { initializeMatches } from "@/utils/matchInitUtils";
 import { exportMatchupsToPDF } from "@/utils/pdfExport";
-import { removePendingPlayer } from "@/utils/placeholderUtils";
+import { removePendingPlayer, cleanupOrphanPlaceholderDocs } from "@/utils/placeholderUtils";
 import { Player, ResolvedMatch } from "@/types";
 
 interface ConfirmedPlayer {
@@ -102,6 +102,15 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
       const settingsData = settingsSnap.empty ? null : settingsSnap.docs[0].data();
 
       setSettings(settingsData as any);
+
+      // Auto-clean orphan placeholder docs (phantom "Male Player 9" entries)
+      const removed = await cleanupOrphanPlaceholderDocs();
+      if (removed > 0) {
+        console.log(`🧹 [ADMIN] Cleaned ${removed} orphan placeholder docs`);
+        // Reload lists after cleanup
+        await loadAdminData();
+        return;
+      }
     } catch (error) {
       console.error('Error loading admin data:', error);
     } finally {
@@ -153,15 +162,22 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
       if (player.is_reserve) {
         const playersRef = collection(db, 'players');
         const genderSnap = await getDocs(query(playersRef, where('gender', '==', player.gender)));
-        // Free slot = placeholder doc (no email, not a reserve, not already approved)
-        const freeSlot = genderSnap.docs.find(d => {
-          const data = d.data();
-          return (
-            data.is_reserve !== true &&
-            !data.email &&
-            (data.status == null || data.status === '' || data.status === 'pending')
-          );
-        });
+        // Free slot = REAL placeholder slot doc: must have a numeric position (1-8),
+        // no email, not a reserve, not already approved. Orphan placeholders left by
+        // reserve round-trips have no position and must NOT be claimed (they would
+        // create a phantom 9th player in rankings and break the 8-per-gender invariant).
+        const freeSlots = genderSnap.docs
+          .filter(d => {
+            const data = d.data();
+            return (
+              data.is_reserve !== true &&
+              !data.email &&
+              (data.status == null || data.status === '' || data.status === 'pending') &&
+              typeof data.position === 'number'
+            );
+          })
+          .sort((a, b) => (a.data().position || 0) - (b.data().position || 0));
+        const freeSlot = freeSlots[0];
 
         if (freeSlot) {
           const slotData = freeSlot.data();
@@ -194,6 +210,16 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
           await loadAdminData();
           return;
         }
+
+        // No real slot available for this reserve - approve in place would create a
+        // phantom non-slot player. Show an error instead of silently breaking counts.
+        toast({
+          title: "No Slot Available",
+          description: `No free slot found for ${player.name}. Remove or move a confirmed ${player.gender} player first, then approve again.`,
+          variant: "destructive",
+        });
+        setConfirmingApproveId(null);
+        return;
       }
 
       // Normal path: player already occupies a slot — just approve in place
@@ -274,6 +300,28 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
 
   const handleMoveToReserve = async (player: ConfirmedPlayer) => {
     try {
+      // Approved players without a position are reserves that were approved in place
+      // (extra docs, no slot). Moving them back just reverts their status to pending
+      // reserve - there is no slot to free, so no placeholder should be created.
+      if (player.position == null) {
+        const playerRef = doc(db, 'players', player.id);
+        await updateDoc(playerRef, {
+          is_confirmed: false,
+          status: 'pending',
+          is_reserve: true,
+          approved_at: null
+        });
+
+        toast({
+          title: "Moved to Reserve",
+          description: `${player.name} has been moved back to reserve.`,
+        });
+
+        setConfirmingMoveToReserveId(null);
+        await loadAdminData();
+        return;
+      }
+
       const playersRef = collection(db, 'players');
 
       // Create a new reserve doc (no slot) with the player's info

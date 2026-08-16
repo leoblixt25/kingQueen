@@ -61,14 +61,16 @@ export const loadPlayers = async () => {
           id: p.id, // Preserve Firestore document ID
           name: getPublicDisplayName(p),
           points: p.points,
-          totalScores: p.total_scores
+          totalScores: p.total_scores,
+          isApproved: p.status === 'approved' || p.is_confirmed === true
         }));
         
         const males = players.filter((p: any) => p.gender === 'male').map((p: any) => ({
           id: p.id, // Preserve Firestore document ID
           name: getPublicDisplayName(p),
           points: p.points,
-          totalScores: p.total_scores
+          totalScores: p.total_scores,
+          isApproved: p.status === 'approved' || p.is_confirmed === true
         }));
 
         console.log('✅ [LOAD] Female players:', females.length);
@@ -108,9 +110,21 @@ export const loadPlayers = async () => {
         if (females.length > 8 || males.length > 8) {
           console.log('⚠️ [LOAD] Duplicate players detected. Selecting top 8 by points...');
           
+          // Prefer approved players so real registered players are NEVER dropped
+          // in favor of leftover placeholder/pending docs (e.g. vacated slot + approved reserve)
+          const preferApproved = (a: any, b: any) => {
+            const aApproved = a.isApproved ? 1 : 0;
+            const bApproved = b.isApproved ? 1 : 0;
+            if (aApproved !== bApproved) return bApproved - aApproved;
+            if (b.points !== a.points) return b.points - a.points;
+            if (b.totalScores !== a.totalScores) return b.totalScores - a.totalScores;
+            return (a.id || '').localeCompare(b.id || '');
+          };
+
           const uniqueFemales = [];
           const seenFemaleNames = new Set();
-          for (const player of females) {
+          const sortedFemales = [...females].sort(preferApproved);
+          for (const player of sortedFemales) {
             if (!seenFemaleNames.has(player.name)) {
               seenFemaleNames.add(player.name);
               uniqueFemales.push(player);
@@ -120,7 +134,8 @@ export const loadPlayers = async () => {
           
           const uniqueMales = [];
           const seenMaleNames = new Set();
-          for (const player of males) {
+          const sortedMales = [...males].sort(preferApproved);
+          for (const player of sortedMales) {
             if (!seenMaleNames.has(player.name)) {
               seenMaleNames.add(player.name);
               uniqueMales.push(player);
@@ -152,14 +167,16 @@ export const loadPlayers = async () => {
         id: p.id, // Preserve Firestore document ID
         name: getPublicDisplayName(p),
         points: p.points,
-        totalScores: p.total_scores
+        totalScores: p.total_scores,
+        isApproved: p.status === 'approved' || p.is_confirmed === true
       }));
       
       const males = players.filter((p: any) => p.gender === 'male').map((p: any) => ({
         id: p.id, // Preserve Firestore document ID
         name: getPublicDisplayName(p),
         points: p.points,
-        totalScores: p.total_scores
+        totalScores: p.total_scores,
+        isApproved: p.status === 'approved' || p.is_confirmed === true
       }));
 
       console.log('✅ [LOAD] Female players:', females.length);

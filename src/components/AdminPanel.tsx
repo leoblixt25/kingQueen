@@ -148,6 +148,55 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
         return;
       }
 
+      // Reserve players have no slot of their own (created via addDoc).
+      // Claim a free placeholder slot doc on approval so the division keeps exactly 8 docs.
+      if (player.is_reserve) {
+        const playersRef = collection(db, 'players');
+        const genderSnap = await getDocs(query(playersRef, where('gender', '==', player.gender)));
+        // Free slot = placeholder doc (no email, not a reserve, not already approved)
+        const freeSlot = genderSnap.docs.find(d => {
+          const data = d.data();
+          return (
+            data.is_reserve !== true &&
+            !data.email &&
+            (data.status == null || data.status === '' || data.status === 'pending')
+          );
+        });
+
+        if (freeSlot) {
+          const slotData = freeSlot.data();
+          const batch = writeBatch(db);
+          // Move the player into the slot doc so counts stay at exactly 8
+          batch.set(doc(db, 'players', freeSlot.id), {
+            name: player.name.trim(),
+            email: player.email.trim().toLowerCase(),
+            gender: player.gender,
+            position: slotData.position ?? player.position,
+            status: 'approved',
+            is_confirmed: true,
+            is_reserve: false,
+            approved_at: new Date().toISOString(),
+            registered_at: player.registered_at || new Date().toISOString(),
+            points: 0,
+            total_scores: 0,
+            matches_played: 0
+          });
+          // Remove the old reserve doc (it has no slot position)
+          batch.delete(doc(db, 'players', player.id));
+          await batch.commit();
+
+          toast({
+            title: "Player Approved",
+            description: `${player.name} has been approved into slot ${slotData.position ?? ''} in the ${player.gender} division`,
+          });
+
+          setConfirmingApproveId(null);
+          await loadAdminData();
+          return;
+        }
+      }
+
+      // Normal path: player already occupies a slot — just approve in place
       const playerRef = doc(db, 'players', player.id);
       await updateDoc(playerRef, {
         status: 'approved',

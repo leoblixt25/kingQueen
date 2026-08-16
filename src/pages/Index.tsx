@@ -182,8 +182,11 @@ export default function KingQueenOfTheBeach() {
   }, [isLoading, isLoadingUserData, loadTournamentData]);
 
   // Auto-retry if matches are empty after loading completes
+  // CRITICAL: Only retry when the draw is completed but matches are missing (data integrity).
+  // While the draw is pending, empty matches are NORMAL for approved players waiting on WaitingForDraw —
+  // retrying there would blink the page between the loading screen and the countdown every few seconds.
   useEffect(() => {
-    if (!isLoading && (!matches || matches.length === 0)) {
+    if (!isLoading && drawCompleted && (!matches || matches.length === 0)) {
       console.log('⏱️ [AUTO-RETRY-MATCHES] Loading finished but no matches, setting up retry...');
       
       const retryTimer = setTimeout(() => {
@@ -193,7 +196,7 @@ export default function KingQueenOfTheBeach() {
       
       return () => clearTimeout(retryTimer);
     }
-  }, [matches, isLoading, loadTournamentData]);
+  }, [matches, isLoading, drawCompleted, loadTournamentData]);
 
   // Auto-jump to next unfinished match when matches load
   useEffect(() => {

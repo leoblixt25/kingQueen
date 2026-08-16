@@ -121,9 +121,22 @@ export default function KingQueenOfTheBeach() {
   }
   
   // Build players map and resolve match player IDs to actual player data
+  // SAFE: resolveMatchPlayers uses strict validation that THROWS on any mismatch.
+  // A throw during render (e.g. matches snapshot arriving before players load)
+  // would blank the whole page, so resolution is guarded and never fatal.
   const playersMap = buildPlayersMap(femalePlayers, malePlayers);
-  const resolvedFemaleMatches = resolveMatchPlayers(femaleMatches, playersMap);
-  const resolvedMaleMatches = resolveMatchPlayers(maleMatches, playersMap);
+  let resolvedFemaleMatches: ResolvedMatch[] = [];
+  let resolvedMaleMatches: ResolvedMatch[] = [];
+  if (playersMap.size > 0) {
+    try {
+      resolvedFemaleMatches = resolveMatchPlayers(femaleMatches, playersMap);
+      resolvedMaleMatches = resolveMatchPlayers(maleMatches, playersMap);
+    } catch (resolveError) {
+      console.error('❌ [MATCH RESOLVE] Resolution failed during render (recovering):', resolveError);
+      resolvedFemaleMatches = [];
+      resolvedMaleMatches = [];
+    }
+  }
   const matches = gender === 'female' ? resolvedFemaleMatches : resolvedMaleMatches
 
   // HARD SAFETY CHECK: If draw is completed but no matches exist, log CRITICAL ERROR

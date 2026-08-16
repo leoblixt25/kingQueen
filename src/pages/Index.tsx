@@ -126,8 +126,9 @@ export default function KingQueenOfTheBeach() {
   const resolvedMaleMatches = resolveMatchPlayers(maleMatches, playersMap);
   const matches = gender === 'female' ? resolvedFemaleMatches : resolvedMaleMatches
 
-  // HARD SAFETY CHECK: If draw is completed but no matches exist, CRITICAL ERROR
-  // This prevents silent empty states and forces investigation
+  // HARD SAFETY CHECK: If draw is completed but no matches exist, log CRITICAL ERROR
+  // NOTE: This must NOT throw — draw_completed can become true (settings snapshot)
+  // before matches finish loading, and a throw during render would blank the whole page.
   const totalMatchCount = resolvedFemaleMatches.length + resolvedMaleMatches.length;
   if (drawCompleted && totalMatchCount === 0) {
     console.error('❌❌❌ CRITICAL ERROR ❌❌❌');
@@ -137,7 +138,6 @@ export default function KingQueenOfTheBeach() {
     console.error('  1. Matches were deleted after draw completion');
     console.error('  2. Match generation failed silently');
     console.error('  3. Player IDs changed (e.g., new test players loaded)');
-    throw new Error('CRITICAL: Draw completed but no matches found. Data integrity violation.');
   }
 
   // Use deterministic tiebreaker system for final rankings

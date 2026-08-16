@@ -24,22 +24,35 @@ export default function PlayerAccess() {
       setCurrentUser(user);
       
       if (user) {
-        // Check if user is already registered for the tournament
+        // Check if user is already registered for the tournament (any status)
         const playersRef = collection(db, 'players');
-        const q = query(playersRef, where('email', '==', user.email?.toLowerCase() || ''), where('status', '==', 'approved'));
+        const q = query(playersRef, where('email', '==', user.email?.toLowerCase() || ''));
         const snapshot = await getDocs(q);
 
         if (!snapshot.empty) {
-          const player = snapshot.docs[0].data() as any;
-          // Player is already registered, redirect to their division
-          toast({
-            title: "Welcome Back!",
-            description: "You're already registered. Redirecting to tournament...",
-          });
-          
-          setTimeout(() => {
-            navigate(`/tournament/${player.gender}`);
-          }, 1000);
+          const player = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as any;
+          if (player.email) localStorage.setItem('tournament_registered_email', player.email.toLowerCase());
+          if (player.name) localStorage.setItem('tournament_registered_name', player.name);
+
+          if (player.status === 'approved' || player.is_confirmed === true) {
+            // Player is approved, redirect to their division
+            toast({
+              title: "Welcome Back!",
+              description: "You're already registered. Redirecting to tournament...",
+            });
+            setTimeout(() => {
+              navigate(`/tournament/${player.gender}`);
+            }, 1000);
+          } else {
+            // Pending or reserve — keep showing their status
+            toast({
+              title: "Registration Pending",
+              description: "Your registration is pending approval. Taking you to your status page...",
+            });
+            setTimeout(() => {
+              navigate('/pending-approval');
+            }, 1000);
+          }
           return;
         }
       }

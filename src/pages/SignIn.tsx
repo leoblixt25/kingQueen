@@ -31,6 +31,27 @@ export default function SignIn() {
 
   const redirectMode = searchParams.get('mode');
 
+  const redirectAfterSignIn = (player: any) => {
+    // Restore localStorage so /pending-approval can show this player's status
+    if (player?.email) localStorage.setItem('tournament_registered_email', player.email.toLowerCase());
+    if (player?.name) localStorage.setItem('tournament_registered_name', player.name);
+
+    if (player && (player.status === 'approved' || player.is_confirmed === true)) {
+      setTimeout(() => {
+        navigate(`/tournament/${player.gender}`);
+      }, 1000);
+    } else if (player) {
+      // Pending or reserve — keep showing the pending/status message
+      setTimeout(() => {
+        navigate('/pending-approval');
+      }, 1000);
+    } else {
+      setTimeout(() => {
+        navigate('/register');
+      }, 1000);
+    }
+  };
+
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -55,16 +76,7 @@ export default function SignIn() {
         
         // Check tournament registration and redirect
         const player = await getCurrentUserTournamentData();
-        
-        if (player && player.is_confirmed) {
-          setTimeout(() => {
-            navigate(`/tournament/${player.gender}`);
-          }, 1000);
-        } else {
-          setTimeout(() => {
-            navigate('/register');
-          }, 1000);
-        }
+        redirectAfterSignIn(player);
       } else {
         toast({
           title: "Sign In Failed",
@@ -96,16 +108,7 @@ export default function SignIn() {
         
         // Check tournament registration and redirect
         const player = await getCurrentUserTournamentData();
-        
-        if (player && player.is_confirmed) {
-          setTimeout(() => {
-            navigate(`/tournament/${player.gender}`);
-          }, 1000);
-        } else {
-          setTimeout(() => {
-            navigate('/register');
-          }, 1000);
-        }
+        redirectAfterSignIn(player);
       } else {
         toast({
           title: "Google Sign In Failed",

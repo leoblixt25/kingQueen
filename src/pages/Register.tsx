@@ -7,13 +7,13 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useNavigate } from "react-router-dom";
 import { auth, db } from "@/config/firebase";
-import { doc, getDoc, getDocs, collection, query, where } from "firebase/firestore";
+import { getDocs, collection, query, where } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { Crown, Users, Calendar, AlertCircle, CheckCircle, LogIn, UserPlus, Mail, Info } from "lucide-react";
 import { registerPlayerToSlot } from "@/utils/placeholderUtils";
 import { AuthModal } from "@/components/AuthModal";
-import { getCurrentUser, isAdmin, signInWithGoogle, registerWithEmailPassword, registerWithGoogle } from "@/utils/authUtils";
+import { signInWithGoogle, registerWithEmailPassword, registerWithGoogle } from "@/utils/authUtils";
 import MainTitle from "@/components/MainTitle";
 
 interface AvailableSpots {
@@ -65,6 +65,36 @@ export default function Register() {
     }
   };
 
+  const findPlayerByEmail = async (email: string) => {
+    try {
+      const q = query(collection(db, 'players'), where('email', '==', email.toLowerCase()));
+      const snap = await getDocs(q);
+      if (!snap.empty) return { id: snap.docs[0].id, ...snap.docs[0].data() } as any;
+    } catch (e) { console.error('Error finding player by email:', e); }
+    return null;
+  };
+
+  const handleExistingRegistration = (player: any) => {
+    // Restore localStorage so /pending-approval can show this player's status
+    if (player.email) localStorage.setItem('tournament_registered_email', player.email.toLowerCase());
+    if (player.name) localStorage.setItem('tournament_registered_name', player.name);
+
+    if (player.status === 'approved' || player.is_confirmed === true) {
+      toast({
+        title: "Welcome Back!",
+        description: "You're already registered. Redirecting to tournament...",
+      });
+      setTimeout(() => navigate(`/tournament/${player.gender}`), 1000);
+    } else {
+      // Pending or reserve — keep showing the pending/status message
+      toast({
+        title: "Registration Pending",
+        description: "Your registration is pending approval. Taking you to your status page...",
+      });
+      setTimeout(() => navigate('/pending-approval'), 1000);
+    }
+  };
+
   useEffect(() => {
     checkRegistrationStatus();
     loadRegistrationData();
@@ -84,54 +114,25 @@ export default function Register() {
       // Check if user is already authenticated
       const user = auth.currentUser;
       
-      if (user) {
-        // Check if user is registered in the tournament
-        const playerRef = doc(db, 'players', user.email.toLowerCase());
-        const playerSnap = await getDoc(playerRef);
-        
-        if (playerSnap.exists()) {
-          const player = { id: playerSnap.id, ...playerSnap.data() } as any;
-          // Player is already registered, redirect to tournament
-          setCurrentUser(user);
-          
-          // Check if user is admin
-          const adminStatus = await isAdmin();
-          setUserIsAdmin(adminStatus);
-          
-          toast({
-            title: "Welcome Back!",
-            description: "You're already registered. Redirecting to tournament...",
-          });
-          
-          setTimeout(() => {
-            navigate(`/tournament/${player.gender}`);
-          }, 1000);
-          
+      if (user?.email) {
+        // Check if user is registered in the tournament (query by email — players may have any doc id)
+        const player = await findPlayerByEmail(user.email);
+        setCurrentUser(user);
+
+        if (player) {
+          handleExistingRegistration(player);
           return;
         }
       }
       
       // Check for local registration data as fallback
       const registeredEmail = localStorage.getItem('tournament_registered_email');
-      const registeredName = localStorage.getItem('tournament_registered_name');
       
-      if (registeredEmail && registeredName) {
-        // Check if user exists in the database
-        const playerRef = doc(db, 'players', registeredEmail.toLowerCase());
-        const playerSnap = await getDoc(playerRef);
+      if (registeredEmail) {
+        const player = await findPlayerByEmail(registeredEmail);
         
-        if (playerSnap.exists()) {
-          const player = { id: playerSnap.id, ...playerSnap.data() } as any;
-          // Player is already registered, redirect to tournament
-          toast({
-            title: "Welcome Back!",
-            description: "You're already registered. Redirecting to tournament...",
-          });
-          
-          setTimeout(() => {
-            navigate(`/tournament/${player.gender}`);
-          }, 1000);
-          
+        if (player) {
+          handleExistingRegistration(player);
           return;
         }
       }
@@ -161,20 +162,10 @@ export default function Register() {
           }
           
           // Check if user is registered for the tournament
-          const playerRef = doc(db, 'players', user.email.toLowerCase());
-          const playerSnap = await getDoc(playerRef);
+          const player = await findPlayerByEmail(user.email);
           
-          if (playerSnap.exists()) {
-            const player = { id: playerSnap.id, ...playerSnap.data() } as any;
-            // Player is already registered, redirect to their division
-            toast({
-              title: "Welcome Back!",
-              description: "You're already registered. Redirecting to tournament...",
-            });
-            
-            setTimeout(() => {
-              navigate(`/tournament/${(player as any).gender}`);
-            }, 1000);
+          if (player) {
+            handleExistingRegistration(player);
           } else {
             // Player is not registered, show a message and allow registration
             toast({
@@ -249,21 +240,11 @@ export default function Register() {
 
   const checkTournamentRegistrationAndRedirect = async (user: any) => {
     try {
-      // Check if user is registered in the tournament
-      const playerRef = doc(db, 'players', user.email.toLowerCase());
-      const playerSnap = await getDoc(playerRef);
+      // Check if user is registered in the tournament (query by email)
+      const player = await findPlayerByEmail(user.email);
       
-      if (playerSnap.exists()) {
-        const player = { id: playerSnap.id, ...playerSnap.data() } as any;
-        // Player is already registered, redirect to their division
-        toast({
-          title: "Welcome Back!",
-          description: "You're already registered. Redirecting to tournament...",
-        });
-        
-        setTimeout(() => {
-          navigate(`/tournament/${player.gender}`);
-        }, 1500);
+      if (player) {
+        handleExistingRegistration(player);
       } else {
         // Player is not registered, show a message and allow registration
         toast({

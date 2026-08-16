@@ -247,10 +247,17 @@ export default function DrawPage() {
       console.log('📋 [SAVE] Male matches to save:', mMatches);
 
       // Bug 2: Case-insensitive name matching with error throwing
-      const byName = (name: string): string => {
-        const found = allPlayers.find(p => p.name?.trim().toLowerCase() === name?.trim().toLowerCase());
+      // IMPORTANT: Only match APPROVED players of the SAME gender. A pending/reserve
+      // player can share a name with an approved player (e.g. "moon"), and matching
+      // against all players would save the wrong ID and break the tournament page.
+      const byName = (name: string, gender: 'female' | 'male'): string => {
+        const found = allPlayers.find(p =>
+          p.gender === gender &&
+          p.status === 'approved' &&
+          p.name?.trim().toLowerCase() === name?.trim().toLowerCase()
+        );
         if (!found) {
-          console.error(`❌ [SAVE] Player not found by name: "${name}"`);
+          console.error(`❌ [SAVE] Approved ${gender} player not found by name: "${name}"`);
           throw new Error(`Player not found: "${name}". Draw cannot be saved.`);
         }
         return found.id;
@@ -263,10 +270,10 @@ export default function DrawPage() {
       try {
         // STEP 1: Convert names to IDs and build temporary Match structures for validation
         const femaleMatchStructs = fMatches.map(m => {
-          const p1id = byName(m.p1);
-          const p2id = byName(m.p2);
-          const p3id = byName(m.p3);
-          const p4id = byName(m.p4);
+          const p1id = byName(m.p1, 'female');
+          const p2id = byName(m.p2, 'female');
+          const p3id = byName(m.p3, 'female');
+          const p4id = byName(m.p4, 'female');
           console.log(`✅ [SAVE] Female match ${m.matchNum}: ${m.p1}(${p1id}) & ${m.p2}(${p2id}) vs ${m.p3}(${p3id}) & ${m.p4}(${p4id})`);
           return {
             match_number: m.matchNum,
@@ -280,10 +287,10 @@ export default function DrawPage() {
         });
 
         const maleMatchStructs = mMatches.map(m => {
-          const p1id = byName(m.p1);
-          const p2id = byName(m.p2);
-          const p3id = byName(m.p3);
-          const p4id = byName(m.p4);
+          const p1id = byName(m.p1, 'male');
+          const p2id = byName(m.p2, 'male');
+          const p3id = byName(m.p3, 'male');
+          const p4id = byName(m.p4, 'male');
           console.log(`✅ [SAVE] Male match ${m.matchNum}: ${m.p1}(${p1id}) & ${m.p2}(${p2id}) vs ${m.p3}(${p3id}) & ${m.p4}(${p4id})`);
           return {
             match_number: m.matchNum,

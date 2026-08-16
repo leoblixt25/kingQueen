@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '@/config/firebase';
-import { doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { FC, MC, paintCanvas } from '@/utils/drawWheel';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -45,6 +45,13 @@ export default function PublicDrawPage() {
       try {
         const settingsSnap = await getDoc(doc(db, 'tournamentSettings', 'settings'));
         if (settingsSnap.exists()) applySettings(settingsSnap.data(), !!settingsSnap.data().draw_completed);
+
+        // Load approved players so the spin wheels show names exactly like the admin draw page
+        const snap = await getDocs(collection(db, 'players'));
+        const all = snap.docs.map(d => ({ id: d.id, ...d.data() } as Player));
+        all.forEach(p => { if (p.name) p.name = p.name.trim(); });
+        setFemalePlayers(all.filter(p => p.gender === 'female' && p.status === 'approved').map(p => ({ ...p, name: p.name.trim() })));
+        setMalePlayers(all.filter(p => p.gender === 'male' && p.status === 'approved').map(p => ({ ...p, name: p.name.trim() })));
 
         // Load tournament date from default_settings for the countdown
         try {

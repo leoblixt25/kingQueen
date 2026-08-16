@@ -369,6 +369,14 @@ export default function AdminControl() {
           </CardContent>
         </Card>
 
+        <Button
+          onClick={() => navigate('/tournament')}
+          className="w-full bg-ocean hover:bg-ocean-dark text-white font-semibold py-3 transition-all duration-300 flex items-center justify-center gap-2"
+        >
+          <Users className="w-4 h-4" />
+          View Tournament
+        </Button>
+
         {showTournamentConfig && (
         <Card className="bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach">
           <CardHeader>
@@ -514,14 +522,6 @@ export default function AdminControl() {
             </Button>
           </CardContent>
         </Card>
-
-        <Button
-          onClick={() => navigate('/tournament')}
-          className="w-full bg-ocean hover:bg-ocean-dark text-white font-semibold py-3 transition-all duration-300 flex items-center justify-center gap-2"
-        >
-          <Users className="w-4 h-4" />
-          View Tournament
-        </Button>
 
         {/* Modals */}
         <ResetConfirmationModal

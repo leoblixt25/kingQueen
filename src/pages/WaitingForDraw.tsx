@@ -25,8 +25,8 @@ export default function WaitingForDraw({ onDrawComplete }: { onDrawComplete: () 
         const defaultSnap = await getDoc(doc(db, 'tournamentSettings', 'default_settings'));
         const dateStr = defaultSnap.exists() ? defaultSnap.data().tournament_date : null;
         if (dateStr) {
+          // Count to the end of the draw day (day before the tournament)
           const target = new Date(`${dateStr}T00:00:00`);
-          target.setDate(target.getDate() - 1);
           setDrawTarget(target.getTime());
         }
       } catch (e) { console.error(e); }

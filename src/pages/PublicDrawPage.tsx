@@ -21,6 +21,7 @@ export default function PublicDrawPage() {
   const [malePlayers, setMalePlayers] = useState<Player[]>([]);
   const [drawTarget, setDrawTarget] = useState<number | null>(null);
   const [now, setNow] = useState(new Date());
+  const [activeTab, setActiveTab] = useState<'female' | 'male'>('female');
 
   const fCanvasRef = useRef<HTMLCanvasElement>(null);
   const mCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -276,14 +277,44 @@ export default function PublicDrawPage() {
           </p>
         </div>
 
+        {/* Tabs */}
+        <div className="flex gap-2 max-w-md mx-auto mb-8">
+          <Button
+            onClick={() => setActiveTab('female')}
+            className={`flex-1 touch-target font-semibold text-base py-3 transition-all duration-300 ${
+              activeTab === 'female'
+                ? 'bg-sunset hover:bg-sunset-dark text-white shadow-beach'
+                : 'bg-white/70 hover:bg-sunset hover:text-white border-sunset/30 text-sunset-dark shadow-sand'
+            }`}
+          >
+            👩 Female
+          </Button>
+          <Button
+            onClick={() => setActiveTab('male')}
+            className={`flex-1 touch-target font-semibold text-base py-3 transition-all duration-300 ${
+              activeTab === 'male'
+                ? 'bg-ocean hover:bg-ocean-dark text-white shadow-beach'
+                : 'bg-white/70 hover:bg-ocean hover:text-white border-ocean/30 text-ocean-dark shadow-sand'
+            }`}
+          >
+            👨 Male
+          </Button>
+        </div>
+
         <div className="w-full space-y-10">
           <div>
-            {renderWheel('f', fMatches, femalePlayers)}
-            {renderMatchGrid(fMatches, `${fMatches.length} Female Matches`)}
-          </div>
-          <div className="pt-8 border-t border-sand-dark/10">
-            {renderWheel('m', mMatches, malePlayers)}
-            {renderMatchGrid(mMatches, `${mMatches.length} Male Matches`)}
+            {activeTab === 'female' && (
+              <>
+                {renderWheel('f', fMatches, femalePlayers)}
+                {renderMatchGrid(fMatches, `${fMatches.length} Female Matches`)}
+              </>
+            )}
+            {activeTab === 'male' && (
+              <>
+                {renderWheel('m', mMatches, malePlayers)}
+                {renderMatchGrid(mMatches, `${mMatches.length} Male Matches`)}
+              </>
+            )}
           </div>
 
           <div className="text-center pt-2 pb-4">

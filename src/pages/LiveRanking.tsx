@@ -567,7 +567,7 @@ export default function LiveRanking() {
   // Gate: hide rankings until the draw is complete (mirrors the public draw page)
   if (!drawCompleted) {
     return (
-      <div className="min-h-screen bg-sand-gradient px-4 py-6 flex items-start justify-center pt-28">
+      <div className="min-h-screen bg-sand-gradient px-4 py-6 flex items-start justify-center pt-36">
         <div className="text-center space-y-4 max-w-md mx-auto">
           <div className="text-6xl mb-2">🏆</div>
           <h1 className="text-2xl sm:text-3xl font-bold bg-beach-gradient bg-clip-text text-transparent">

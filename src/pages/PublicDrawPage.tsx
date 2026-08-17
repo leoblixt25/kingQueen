@@ -100,7 +100,7 @@ export default function PublicDrawPage() {
     const t = setTimeout(paint, 60);
     window.addEventListener('resize', paint);
     return () => { window.removeEventListener('resize', paint); clearTimeout(t); };
-  }, [loading, saved, femalePlayers, malePlayers, fOrder.current.length, mOrder.current.length]);
+  }, [loading, saved, femalePlayers, malePlayers, fOrder.current.length, mOrder.current.length, activeTab]);
 
   if (loading) {
     return (

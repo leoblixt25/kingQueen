@@ -418,9 +418,20 @@ export default function LiveRanking() {
   const [finalMatchData, setFinalMatchData] = useState<any>(null);
   const [matches, setMatches] = useState<Match[]>([]);
   const [tournamentCity, setTournamentCity] = useState('');
+  const [drawCompleted, setDrawCompleted] = useState(false);
 
   useEffect(() => {
     console.log('🏆 [LIVE RANKING] Setting up real-time listeners...');
+
+    // Live: only reveal rankings once the draw is complete
+    const settingsRef = doc(db, 'tournamentSettings', 'settings');
+    const unsubscribeSettings = onSnapshot(settingsRef, (snap) => {
+      if (snap.exists()) {
+        setDrawCompleted(snap.data()?.draw_completed === true);
+      }
+    }, (error) => {
+      console.error('❌ [LIVE RANKING] Error loading draw status:', error);
+    });
     
     // Load tournament city
     const loadTournamentCity = async () => {
@@ -530,6 +541,7 @@ export default function LiveRanking() {
     // Cleanup listeners on unmount
     return () => {
       console.log('🧹 [LIVE RANKING] Cleaning up listeners...');
+      unsubscribeSettings();
       unsubscribePlayers();
       unsubscribeMatches();
       unsubscribeFinal();
@@ -547,6 +559,31 @@ export default function LiveRanking() {
             Loading Rankings...
           </h2>
           <p className="text-foreground/70 font-medium">Fetching live tournament data</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Gate: hide rankings until the draw is complete (mirrors the public draw page)
+  if (!drawCompleted) {
+    return (
+      <div className="min-h-screen bg-sand-gradient px-4 py-6 flex items-center justify-center">
+        <div className="text-center space-y-4 max-w-md mx-auto">
+          <div className="text-6xl mb-2">🏆</div>
+          <h1 className="text-2xl sm:text-3xl font-bold bg-beach-gradient bg-clip-text text-transparent">
+            Live Ranking
+          </h1>
+          <p className="text-foreground/70 leading-relaxed">
+            The live ranking will be available here once the tournament draw is complete.
+          </p>
+          <Button
+            variant="outline"
+            onClick={() => navigate('/')}
+            className="w-full touch-target bg-white/70 hover:bg-ocean hover:text-white border-ocean/30 text-ocean transition-all duration-300"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Home
+          </Button>
         </div>
       </div>
     );

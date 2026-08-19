@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '@/config/firebase';
-import { collection, getDocs, doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, onSnapshot, writeBatch } from 'firebase/firestore';
 import { FC, MC, paintCanvas } from '@/utils/drawWheel';
+import { generateMatchesFromOrder, shuffleArray } from '@/utils/staticMatchups';
+import { validateMatches, buildValidationMap } from '@/utils/matchValidation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Target, ChevronLeft, CheckCircle2, Timer } from 'lucide-react';
@@ -23,10 +25,24 @@ export default function PublicDrawPage() {
   const [now, setNow] = useState(new Date());
   const [activeTab, setActiveTab] = useState<'female' | 'male'>('female');
 
+  // Automated draw state (mirrors the admin draw page, read-only)
+  const [fStatus, setFStatus] = useState('Ready');
+  const [mStatus, setMStatus] = useState('Ready');
+  const [fStarted, setFStarted] = useState(false);
+  const [mStarted, setMStarted] = useState(false);
+  const [fDone, setFDone] = useState(false);
+  const [mDone, setMDone] = useState(false);
+  const [drawing, setDrawing] = useState(false);
+
   const fCanvasRef = useRef<HTMLCanvasElement>(null);
   const mCanvasRef = useRef<HTMLCanvasElement>(null);
+  const fAngle = useRef(0);
+  const mAngle = useRef(0);
   const fOrder = useRef<string[]>([]);
   const mOrder = useRef<string[]>([]);
+  const autoDrawRef = useRef(false);
+  const autoScheduledRef = useRef(false);
+  const autoSaveDone = useRef(false);
 
   function applySettings(data: any, completed: boolean) {
     setDrawStarted(completed || ((data.drawn_female_matches?.length || 0) > 0) || ((data.drawn_male_matches?.length || 0) > 0));
@@ -40,6 +56,243 @@ export default function PublicDrawPage() {
       mOrder.current = mNames;
     }
   }
+
+  // --- Automated draw engine (mirrors Admin Draw Page, read-only) ---
+
+  function spinTo(
+    cvRef: React.RefObject<HTMLCanvasElement>,
+    angleRef: React.MutableRefObject<number>,
+    pool: string[], col: string[], target: string, onDone: () => void
+  ) {
+    const cv = cvRef.current!;
+    const n = pool.length, arc = (2 * Math.PI) / n;
+    const ti = pool.indexOf(target), ta = ti * arc + arc / 2;
+    const norm = ((-angleRef.current % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+    let diff = ta - norm; if (diff < 0) diff += 2 * Math.PI;
+    const tot = (2 + Math.floor(Math.random() * 2)) * 2 * Math.PI + diff;
+    const dur = 900 + Math.random() * 300, t0 = performance.now(), a0 = angleRef.current;
+    function frame(now: number) {
+      const t = Math.min((now - t0) / dur, 1), ease = 1 - Math.pow(1 - t, 4);
+      angleRef.current = a0 + tot * ease;
+      paintCanvas(cv, angleRef.current, pool, col);
+      if (t < 1) requestAnimationFrame(frame); else onDone();
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function generateAllMatches(order: string[], gender: 'female' | 'male'): DrawnMatch[] {
+    const matches = generateMatchesFromOrder(order, gender);
+    return matches.map(m => ({
+      matchNum: m.matchNum,
+      p1: m.p1,
+      p2: m.p2,
+      p3: m.p3,
+      p4: m.p4
+    }));
+  }
+
+  function runSequence(
+    cvRef: React.RefObject<HTMLCanvasElement>,
+    angleRef: React.MutableRefObject<number>,
+    order: string[],
+    col: string[],
+    preGeneratedMatches: DrawnMatch[],
+    idx: number,
+    setStatus: (s: string) => void,
+    setMatches: React.Dispatch<React.SetStateAction<DrawnMatch[]>>,
+    onComplete: () => void
+  ) {
+    if (idx >= preGeneratedMatches.length) { onComplete(); return; }
+
+    const match = preGeneratedMatches[idx];
+    const picks = [match.p1, match.p2, match.p3, match.p4];
+    const matchNum = match.matchNum;
+    const collected: string[] = [];
+    let pi = 0;
+
+    function nextPick() {
+      if (pi === 4) {
+        setMatches(prev => [...prev, match]);
+        setStatus(`Match ${matchNum} drawn`);
+        setTimeout(() => runSequence(cvRef, angleRef, order, col, preGeneratedMatches, idx + 1, setStatus, setMatches, onComplete), 150);
+        return;
+      }
+      setStatus(`Match ${matchNum} — ${pi < 2 ? 'team A' : 'team B'} pick ${pi < 2 ? pi + 1 : pi - 1}…`);
+      spinTo(cvRef, angleRef, order, col, picks[pi], () => {
+        collected.push(picks[pi]);
+        setStatus(`${picks[pi]} picked!`);
+        setTimeout(() => { pi++; nextPick(); }, 120);
+      });
+    }
+    nextPick();
+  }
+
+  function startDivision(gender: 'f' | 'm') {
+    const players    = gender === 'f' ? femalePlayers : malePlayers;
+    const col        = gender === 'f' ? FC : MC;
+    const cvRef      = gender === 'f' ? fCanvasRef : mCanvasRef;
+    const angleRef   = gender === 'f' ? fAngle : mAngle;
+    const orderRef   = gender === 'f' ? fOrder : mOrder;
+    const setStatus  = gender === 'f' ? setFStatus  : setMStatus;
+    const setMatches = gender === 'f' ? setFMatches : setMMatches;
+    const setStarted = gender === 'f' ? setFStarted : setMStarted;
+    const setDone    = gender === 'f' ? setFDone : setMDone;
+
+    const order = shuffleArray(players.map(p => p.name));
+    orderRef.current = order;
+
+    const preGeneratedMatches = generateAllMatches(order, gender === 'f' ? 'female' : 'male');
+    console.log(`🎯 [AUTO DRAW ${gender.toUpperCase()}] Generated ${preGeneratedMatches.length} matches from shuffled order:`, order);
+
+    setStarted(true);
+    setMatches([]);
+    runSequence(cvRef, angleRef, order, col, preGeneratedMatches, 0, setStatus, setMatches, () => {
+      setStatus('Complete!');
+      setDone(true);
+      console.log(`✅ [AUTO DRAW ${gender.toUpperCase()}] All matches drawn:`, preGeneratedMatches);
+    });
+  }
+
+  async function autoSaveDraw() {
+    try {
+      console.log('🗑️ [AUTO SAVE] Deleting existing matches...');
+      const existing = await getDocs(collection(db, 'matches'));
+
+      if (!existing.empty) {
+        const delBatch = writeBatch(db);
+        existing.docs.forEach(d => delBatch.delete(d.ref));
+        await delBatch.commit();
+
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        const verify = await getDocs(collection(db, 'matches'));
+        if (!verify.empty) {
+          console.error('❌ [AUTO SAVE] Deletion incomplete!');
+          return;
+        }
+      }
+
+      const playerSnap = await getDocs(collection(db, 'players'));
+      const allPlayers = playerSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
+
+      const byName = (name: string, gender: 'female' | 'male'): string => {
+        const found = allPlayers.find(p =>
+          p.gender === gender &&
+          p.status === 'approved' &&
+          p.name?.trim().toLowerCase() === name?.trim().toLowerCase()
+        );
+        if (!found) throw new Error(`Player not found: "${name}". Draw cannot be saved.`);
+        return found.id;
+      };
+
+      const wb = writeBatch(db);
+      const matchesRef = collection(db, 'matches');
+
+      const femaleMatchStructs = fMatches.map(m => ({
+        match_number: m.matchNum,
+        gender: 'female' as const,
+        teamA: [byName(m.p1, 'female'), byName(m.p2, 'female')] as [string, string],
+        teamB: [byName(m.p3, 'female'), byName(m.p4, 'female')] as [string, string],
+        score1: 0,
+        score2: 0,
+        isSubmitted: false
+      }));
+
+      const maleMatchStructs = mMatches.map(m => ({
+        match_number: m.matchNum,
+        gender: 'male' as const,
+        teamA: [byName(m.p1, 'male'), byName(m.p2, 'male')] as [string, string],
+        teamB: [byName(m.p3, 'male'), byName(m.p4, 'male')] as [string, string],
+        score1: 0,
+        score2: 0,
+        isSubmitted: false
+      }));
+
+      const playerMap = buildValidationMap(allPlayers);
+      validateMatches(femaleMatchStructs, playerMap);
+      validateMatches(maleMatchStructs, playerMap);
+
+      femaleMatchStructs.forEach(match => {
+        wb.set(doc(matchesRef), {
+          match_number: match.match_number,
+          gender: match.gender,
+          player1_id: match.teamA[0],
+          player2_id: match.teamA[1],
+          player3_id: match.teamB[0],
+          player4_id: match.teamB[1],
+          score1: 0,
+          score2: 0,
+          is_completed: false
+        });
+      });
+
+      maleMatchStructs.forEach(match => {
+        wb.set(doc(matchesRef), {
+          match_number: match.match_number,
+          gender: match.gender,
+          player1_id: match.teamA[0],
+          player2_id: match.teamA[1],
+          player3_id: match.teamB[0],
+          player4_id: match.teamB[1],
+          score1: 0,
+          score2: 0,
+          is_completed: false
+        });
+      });
+
+      const savedFemaleMatches = femaleMatchStructs.map((m, i) => ({
+        id: `female_match_${i + 1}`,
+        match_number: m.match_number,
+        gender: 'female' as const,
+        teamA: m.teamA,
+        teamB: m.teamB,
+        score1: 0,
+        score2: 0,
+        isSubmitted: false
+      }));
+
+      const savedMaleMatches = maleMatchStructs.map((m, i) => ({
+        id: `male_match_${i + 1}`,
+        match_number: m.match_number,
+        gender: 'male' as const,
+        teamA: m.teamA,
+        teamB: m.teamB,
+        score1: 0,
+        score2: 0,
+        isSubmitted: false
+      }));
+
+      wb.set(doc(db, 'tournamentSettings', 'settings'), {
+        draw_completed: true,
+        drawn_female_matches: fMatches,
+        drawn_male_matches: mMatches,
+        saved_female_matches: savedFemaleMatches,
+        saved_male_matches: savedMaleMatches
+      }, { merge: true });
+
+      await wb.commit();
+      console.log('✅ [AUTO SAVE] Draw saved successfully!');
+      setSaved(true);
+      setDrawing(false);
+    } catch (e) {
+      console.error('❌ [AUTO SAVE] Failed to save draw:', e);
+      setDrawing(false);
+    }
+  }
+
+  function runAutoDraw() {
+    if (autoDrawRef.current) return;
+    autoDrawRef.current = true;
+    console.log('🎬 [AUTO DRAW] Countdown finished — starting automated live draw');
+    setDrawing(true);
+  }
+
+  // STEP 1: Start the female draw once the live view (with canvases) is mounted
+  useEffect(() => {
+    if (!drawing || fStarted || mStarted) return;
+    const t = setTimeout(() => startDivision('f'), 300);
+    return () => clearTimeout(t);
+  }, [drawing, fStarted, mStarted]);
 
   useEffect(() => {
     async function load() {
@@ -85,6 +338,33 @@ export default function PublicDrawPage() {
     return () => clearInterval(t);
   }, []);
 
+  // Trigger the automated draw the moment the countdown target is reached
+  useEffect(() => {
+    if (loading) return;
+    if (saved || drawStarted) return;
+    if (!drawTarget) return;
+    if (now.getTime() < drawTarget) return;
+    if (autoDrawRef.current || autoScheduledRef.current) return;
+    autoScheduledRef.current = true;
+    // Small delay so the page visibly transitions to the live draw experience
+    setTimeout(runAutoDraw, 400);
+  }, [now, drawTarget, saved, drawStarted, loading]);
+
+  // STEP 2: When female draw completes, automatically start the male draw
+  useEffect(() => {
+    if (!drawing || !fDone || mStarted) return;
+    const t = setTimeout(() => startDivision('m'), 600);
+    return () => clearTimeout(t);
+  }, [drawing, fDone, mStarted]);
+
+  // STEP 3: When both draws complete, automatically save
+  useEffect(() => {
+    if (!drawing || !fDone || !mDone || autoSaveDone.current) return;
+    autoSaveDone.current = true;
+    const t = setTimeout(() => autoSaveDraw(), 500);
+    return () => clearTimeout(t);
+  }, [drawing, fDone, mDone]);
+
   useEffect(() => {
     function paint() {
       (['f', 'm'] as const).forEach(d => {
@@ -94,14 +374,14 @@ export default function PublicDrawPage() {
         cv.width = sz; cv.height = sz;
         const order = d === 'f' ? fOrder.current : mOrder.current;
         const names = order.length ? order : (d === 'f' ? femalePlayers : malePlayers).map(p => p.name);
-        paintCanvas(cv, 0, names, d === 'f' ? FC : MC);
+        paintCanvas(cv, d === 'f' ? fAngle.current : mAngle.current, names, d === 'f' ? FC : MC);
       });
     }
     paint();
     const t = setTimeout(paint, 60);
     window.addEventListener('resize', paint);
     return () => { window.removeEventListener('resize', paint); clearTimeout(t); };
-  }, [loading, saved, femalePlayers, malePlayers, fOrder.current.length, mOrder.current.length, activeTab]);
+  }, [loading, saved, femalePlayers, malePlayers, fOrder.current.length, mOrder.current.length, activeTab, drawing, fDone, mDone, fStarted, mStarted]);
 
   if (loading) {
     return (
@@ -109,6 +389,47 @@ export default function PublicDrawPage() {
         <div className="text-center space-y-4">
           <div className="text-4xl animate-bounce">🏐</div>
           <p className="text-foreground/60">Loading draw…</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Live automated draw experience — mirrors the Admin Draw Page (read-only, auto-saves)
+  if (drawing) {
+    return (
+      <div className="min-h-screen bg-sand-gradient">
+        <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/60 text-xs font-semibold text-foreground/60 mb-3">
+              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+              Live Draw in Progress
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold bg-ocean-gradient bg-clip-text text-transparent">
+              Tournament Draw
+            </h1>
+            <p className="text-sm text-foreground/60 mt-1">
+              The wheels are spinning — watch the matchups being generated live!
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+            <div>
+              {renderWheel('f', fMatches, femalePlayers)}
+              {renderWheelStatus('f')}
+              {renderMatchGrid(fMatches, `${fMatches.length} Female Matches`)}
+            </div>
+            <div>
+              {renderWheel('m', mMatches, malePlayers)}
+              {renderWheelStatus('m')}
+              {renderMatchGrid(mMatches, `${mMatches.length} Male Matches`)}
+            </div>
+          </div>
+
+          <div className="text-center pt-8">
+            <p className="text-sm text-foreground/50">
+              This is a live automated draw — both divisions will be drawn automatically and saved.
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -258,6 +579,19 @@ export default function PublicDrawPage() {
         <p className="text-sm text-foreground/60 text-center font-medium mb-2 min-h-[20px]">
           {matches.length} matches drawn
         </p>
+      </div>
+    );
+  }
+
+  function renderWheelStatus(gender: 'f' | 'm') {
+    const isFemale = gender === 'f';
+    const status = isFemale ? fStatus : mStatus;
+    return (
+      <div className="flex flex-col items-center mb-4">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold bg-white/70 border border-foreground/10 shadow-sand">
+          <span className={`w-2 h-2 rounded-full ${status.includes('picked') || status.includes('drawn') || status === 'Complete!' ? 'bg-green-500' : 'bg-amber-500 animate-pulse'}`} />
+          <span className="text-foreground/70">{status}</span>
+        </div>
       </div>
     );
   }

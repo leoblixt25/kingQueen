@@ -685,11 +685,11 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
                 {pendingPlayers.map((player) => (
                   <div
                     key={player.id}
-                    className="flex items-center justify-between p-3 bg-white rounded-lg border border-amber/20"
+                    className="flex flex-wrap items-center justify-between gap-2 p-3 bg-white rounded-lg border border-amber/20"
                   >
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold">{player.name}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-semibold break-words">{player.name}</span>
                         <span className={`px-2 py-1 text-xs rounded-full ${
                           player.gender === 'male' 
                             ? 'bg-ocean/20 text-ocean' 
@@ -706,9 +706,9 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-1 text-sm text-foreground/60">
-                        <Mail className="w-3 h-3" />
-                        {player.email}
+                      <div className="flex items-center gap-1 text-sm text-foreground/60 min-w-0">
+                        <Mail className="w-3 h-3 flex-shrink-0" />
+                        <span className="break-all">{player.email}</span>
                       </div>
                       <div className="text-xs text-foreground/50">
                         Registered: {new Date(player.registered_at).toLocaleDateString()}
@@ -798,11 +798,11 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
                 {confirmedPlayers.map((player) => (
                   <div
                     key={player.id}
-                    className="flex items-center justify-between p-3 bg-white rounded-lg border border-sand-dark/20"
+                    className="flex flex-wrap items-center justify-between gap-2 p-3 bg-white rounded-lg border border-sand-dark/20"
                   >
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold">{player.name}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-semibold break-words">{player.name}</span>
                         <span className={`px-2 py-1 text-xs rounded-full ${
                           player.gender === 'male' 
                             ? 'bg-ocean/20 text-ocean' 
@@ -811,9 +811,9 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
                           {player.gender}
                         </span>
                       </div>
-                      <div className="flex items-center gap-1 text-sm text-foreground/60">
-                        <Mail className="w-3 h-3" />
-                        {player.email}
+                      <div className="flex items-center gap-1 text-sm text-foreground/60 min-w-0">
+                        <Mail className="w-3 h-3 flex-shrink-0" />
+                        <span className="break-all">{player.email}</span>
                       </div>
                       <div className="text-xs text-foreground/50">
                         Registered: {new Date(player.registered_at).toLocaleDateString()}

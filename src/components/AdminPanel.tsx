@@ -685,11 +685,11 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
                 {pendingPlayers.map((player) => (
                   <div
                     key={player.id}
-                    className="flex flex-wrap items-center justify-between gap-2 p-3 bg-white rounded-lg border border-amber/20"
+                    className="flex flex-col gap-2 p-3 bg-white rounded-lg border border-amber/20 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-semibold break-words">{player.name}</span>
+                        <span className="font-semibold">{player.name}</span>
                         <span className={`px-2 py-1 text-xs rounded-full ${
                           player.gender === 'male' 
                             ? 'bg-ocean/20 text-ocean' 
@@ -708,69 +708,70 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
                       </div>
                       <div className="flex items-center gap-1 text-sm text-foreground/60 min-w-0">
                         <Mail className="w-3 h-3 flex-shrink-0" />
-                        <span className="break-all">{player.email}</span>
+                        <span className="break-words">{player.email}</span>
                       </div>
                       <div className="text-xs text-foreground/50">
                         Registered: {new Date(player.registered_at).toLocaleDateString()}
                       </div>
                     </div>
-                    {confirmingApproveId === player.id ? (
-                      <div className="flex items-center gap-1 ml-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {confirmingApproveId === player.id ? (
+                        <div className="flex items-center gap-1">
+                          <Button
+                            onClick={() => handleApprovePlayer(player)}
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700 text-white px-2"
+                          >
+                            <CheckCircle className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            onClick={() => setConfirmingApproveId(null)}
+                            size="sm"
+                            variant="outline"
+                            className="px-2"
+                          >
+                            ✕
+                          </Button>
+                        </div>
+                      ) : (
                         <Button
-                          onClick={() => handleApprovePlayer(player)}
+                          onClick={() => setConfirmingApproveId(player.id)}
                           size="sm"
-                          className="bg-green-600 hover:bg-green-700 text-white px-2"
+                          className="bg-green-600 hover:bg-green-700 text-white"
                         >
-                          <CheckCircle className="w-4 h-4" />
+                          <CheckCircle className="w-4 h-4 mr-1" />
+                          Approve
                         </Button>
+                      )}
+                      {confirmingPendingRemoveId === player.id ? (
+                        <div className="flex items-center gap-1">
+                          <Button
+                            onClick={() => handleRemovePendingPlayer(player)}
+                            size="sm"
+                            variant="destructive"
+                            className="px-2"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            onClick={() => setConfirmingPendingRemoveId(null)}
+                            size="sm"
+                            variant="outline"
+                            className="px-2"
+                          >
+                            ✕
+                          </Button>
+                        </div>
+                      ) : (
                         <Button
-                          onClick={() => setConfirmingApproveId(null)}
-                          size="sm"
-                          variant="outline"
-                          className="px-2"
-                        >
-                          ✕
-                        </Button>
-                      </div>
-                    ) : (
-                      <Button
-                        onClick={() => setConfirmingApproveId(player.id)}
-                        size="sm"
-                        className="ml-2 bg-green-600 hover:bg-green-700 text-white"
-                      >
-                        <CheckCircle className="w-4 h-4 mr-1" />
-                        Approve
-                      </Button>
-                    )}
-                    {confirmingPendingRemoveId === player.id ? (
-                      <div className="flex items-center gap-1 ml-2">
-                        <Button
-                          onClick={() => handleRemovePendingPlayer(player)}
-                          size="sm"
                           variant="destructive"
-                          className="px-2"
+                          size="sm"
+                          onClick={() => setConfirmingPendingRemoveId(player.id)}
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
-                        <Button
-                          onClick={() => setConfirmingPendingRemoveId(null)}
-                          size="sm"
-                          variant="outline"
-                          className="px-2"
-                        >
-                          ✕
-                        </Button>
-                      </div>
-                    ) : (
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => setConfirmingPendingRemoveId(player.id)}
-                        className="ml-2"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    )}
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -798,11 +799,11 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
                 {confirmedPlayers.map((player) => (
                   <div
                     key={player.id}
-                    className="flex flex-wrap items-center justify-between gap-2 p-3 bg-white rounded-lg border border-sand-dark/20"
+                    className="flex flex-col gap-2 p-3 bg-white rounded-lg border border-sand-dark/20 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-semibold break-words">{player.name}</span>
+                        <span className="font-semibold">{player.name}</span>
                         <span className={`px-2 py-1 text-xs rounded-full ${
                           player.gender === 'male' 
                             ? 'bg-ocean/20 text-ocean' 
@@ -813,97 +814,98 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
                       </div>
                       <div className="flex items-center gap-1 text-sm text-foreground/60 min-w-0">
                         <Mail className="w-3 h-3 flex-shrink-0" />
-                        <span className="break-all">{player.email}</span>
+                        <span className="break-words">{player.email}</span>
                       </div>
                       <div className="text-xs text-foreground/50">
                         Registered: {new Date(player.registered_at).toLocaleDateString()}
                       </div>
                     </div>
-                    {confirmingUnapproveId === player.id ? (
-                      <div className="flex items-center gap-1 ml-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {confirmingUnapproveId === player.id ? (
+                        <div className="flex items-center gap-1">
+                          <Button
+                            onClick={() => handleUnapprovePlayer(player.id, player.name)}
+                            size="sm"
+                            className="bg-amber-600 hover:bg-amber-700 text-white px-2"
+                          >
+                            <RotateCcw className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            onClick={() => setConfirmingUnapproveId(null)}
+                            size="sm"
+                            variant="outline"
+                            className="px-2"
+                          >
+                            ✕
+                          </Button>
+                        </div>
+                      ) : (
                         <Button
-                          onClick={() => handleUnapprovePlayer(player.id, player.name)}
                           size="sm"
-                          className="bg-amber-600 hover:bg-amber-700 text-white px-2"
+                          onClick={() => setConfirmingUnapproveId(player.id)}
+                          className="bg-amber-600 hover:bg-amber-700 text-white"
                         >
-                          <RotateCcw className="w-4 h-4" />
+                          <RotateCcw className="w-4 h-4 mr-1" />
+                          Pending
                         </Button>
+                      )}
+                      {confirmingMoveToReserveId === player.id ? (
+                        <div className="flex items-center gap-1">
+                          <Button
+                            onClick={() => handleMoveToReserve(player)}
+                            size="sm"
+                            className="bg-purple-600 hover:bg-purple-700 text-white px-2"
+                          >
+                            <CheckCircle className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            onClick={() => setConfirmingMoveToReserveId(null)}
+                            size="sm"
+                            variant="outline"
+                            className="px-2"
+                          >
+                            ✕
+                          </Button>
+                        </div>
+                      ) : (
                         <Button
-                          onClick={() => setConfirmingUnapproveId(null)}
                           size="sm"
-                          variant="outline"
-                          className="px-2"
+                          onClick={() => setConfirmingMoveToReserveId(player.id)}
+                          className="bg-purple-600 hover:bg-purple-700 text-white"
                         >
-                          ✕
+                          <Shuffle className="w-4 h-4 mr-1" />
+                          Reserve
                         </Button>
-                      </div>
-                    ) : (
-                      <Button
-                        size="sm"
-                        onClick={() => setConfirmingUnapproveId(player.id)}
-                        className="ml-2 bg-amber-600 hover:bg-amber-700 text-white"
-                      >
-                        <RotateCcw className="w-4 h-4 mr-1" />
-                        Pending
-                      </Button>
-                    )}
-                    {confirmingMoveToReserveId === player.id ? (
-                      <div className="flex items-center gap-1 ml-2">
+                      )}
+                      {confirmingRemoveId === player.id ? (
+                        <div className="flex items-center gap-1">
+                          <Button
+                            onClick={() => handleRemovePlayer(player.id, player.name)}
+                            size="sm"
+                            variant="destructive"
+                            className="px-2"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            onClick={() => setConfirmingRemoveId(null)}
+                            size="sm"
+                            variant="outline"
+                            className="px-2"
+                          >
+                            ✕
+                          </Button>
+                        </div>
+                      ) : (
                         <Button
-                          onClick={() => handleMoveToReserve(player)}
-                          size="sm"
-                          className="bg-purple-600 hover:bg-purple-700 text-white px-2"
-                        >
-                          <CheckCircle className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          onClick={() => setConfirmingMoveToReserveId(null)}
-                          size="sm"
-                          variant="outline"
-                          className="px-2"
-                        >
-                          ✕
-                        </Button>
-                      </div>
-                    ) : (
-                      <Button
-                        size="sm"
-                        onClick={() => setConfirmingMoveToReserveId(player.id)}
-                        className="ml-2 bg-purple-600 hover:bg-purple-700 text-white"
-                      >
-                        <Shuffle className="w-4 h-4 mr-1" />
-                        Reserve
-                      </Button>
-                    )}
-                    {confirmingRemoveId === player.id ? (
-                      <div className="flex items-center gap-1 ml-2">
-                        <Button
-                          onClick={() => handleRemovePlayer(player.id, player.name)}
-                          size="sm"
                           variant="destructive"
-                          className="px-2"
+                          size="sm"
+                          onClick={() => setConfirmingRemoveId(player.id)}
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
-                        <Button
-                          onClick={() => setConfirmingRemoveId(null)}
-                          size="sm"
-                          variant="outline"
-                          className="px-2"
-                        >
-                          ✕
-                        </Button>
-                      </div>
-                    ) : (
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => setConfirmingRemoveId(player.id)}
-                        className="ml-2"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    )}
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

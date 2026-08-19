@@ -241,7 +241,8 @@ Admins now see all controls immediately after login.
 ### Navigation
 * Tournament page shows "← Back to Admin" button for admin users
 * Draw page buttons navigate to /tournament (not /)
-* Admin page has "View Tournament" button
+* Admin page has "View Tournament" button (placed between "Current Configuration" card and "Admin Controls" card)
+* Admin page has "← Back to Home" button above the page title (navigates to /)
 
 ## 12. Match Generation System (Single Source of Truth)
 
@@ -375,11 +376,45 @@ Draw Wheel:               Data Loading:
 
 ## 13e. Public Draw Page Countdown (Aug 2026)
 
-* "Not started yet" card now shows a **live countdown** to the day before the tournament
-* Reads `tournament_date` from `tournamentSettings/default_settings`, target = date − 1 day at 00:00
+* "Not started yet" card shows a **live countdown** to the draw time
+* Reads `tournament_date` from `tournamentSettings/default_settings`, target = **9pm (21:00) the day before the tournament** (e.g. Fri 21:00 when the tournament is Sat)
 * Ticks every second; boxes for days / hours / minutes / seconds
 * At zero: shows "The draw is starting now — refresh to watch live!"
 * No countdown shown if `tournament_date` is unset
+* Same 9pm-target countdown is used on `WaitingForDraw.tsx` for approved players
+
+## 13g. Public Draw Page Division Tabs (Aug 2026)
+
+* Female and Male draw results shown in **separate tabs** on the public draw page (same style as Live Ranking tabs: 👩 Female / 👨 Male)
+* Only the active division's wheel + match grid renders
+* The wheel paint effect depends on `activeTab` so the newly-mounted canvas is painted immediately on tab switch (otherwise it stays empty until a resize)
+
+## 13h. Draw Save Name Collision Fix (Aug 2026)
+
+* `DrawPage.tsx` `byName()` previously matched player names across ALL players and returned the first hit
+* Bug: duplicate names (e.g. approved `male_8` "moon" + pending female reserve "moon") caused the wrong ID to be saved into matches → tournament page couldn't resolve the pending/reserve ID → stuck on "Loading Tournament Data..."
+* Fix: `byName(name, gender)` now only matches **approved** players of the **same gender**
+
+## 13i. Tournament Page Stability Fixes (Aug 2026)
+
+* Blank/stuck tournament page after saving the draw was caused by render-time throws (no error boundary → blank page)
+* Removed the `throw` in Index.tsx "HARD SAFETY CHECK" (draw completed but matches empty) — now logs CRITICAL ERROR only
+* `resolveMatchPlayers()` is now guarded at the call site in `Index.tsx`: only resolves when the player map is non-empty, and wraps resolution in try/catch so a mismatch logs instead of blanking the page
+
+## 13j. Approved-Player Waiting Page Fix (Aug 2026)
+
+* `Index.tsx` auto-retry (reload tournament data when matches empty) is now gated on `drawCompleted` — while the draw is pending, empty matches are normal for approved players on `WaitingForDraw`, so retrying caused the page to blink between loading screen and countdown every few seconds
+* `WaitingForDraw.tsx` top padding reduced (`pt-24` → `pt-12`) to move content up
+
+## 13k. Automated Live Draw on Public Page (Aug 2026)
+
+* The public draw page now **clones the Admin Draw Page experience** as a read-only, fully automated live draw
+* Before the draw time (9pm the day before the tournament): unchanged countdown/waiting screen
+* At the 9pm target: the page auto-transitions to a "Live Draw in Progress" experience mirroring the admin wheels (both divisions, spinning wheel animation, per-pick status, matchups appearing live)
+* Female division spins first, then male; when **both** are complete the draw is **auto-saved** (deletes old matches, writes the 28 new matches, sets `draw_completed: true` + `drawn_*`/`saved_*` matches) with zero user interaction
+* The draw engine (`spinTo`, `runSequence`, `startDivision`, `autoSaveDraw`) is a faithful read-only copy of the Admin Draw Page logic; Admin Draw Page itself is untouched and still uses manual Start/Save
+* Auto-save uses the same name→ID resolution rules as the admin save (`byName` = approved + same gender, case-insensitive) and full validation, so matchups cannot save broken IDs
+* Note: each visiting device runs its own local random draw; only the auto-saved result is authoritative
 
 ## 13f. Landing Page (Aug 2026)
 

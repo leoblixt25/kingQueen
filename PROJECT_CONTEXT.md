@@ -406,16 +406,6 @@ Draw Wheel:               Data Loading:
 * `Index.tsx` auto-retry (reload tournament data when matches empty) is now gated on `drawCompleted` — while the draw is pending, empty matches are normal for approved players on `WaitingForDraw`, so retrying caused the page to blink between loading screen and countdown every few seconds
 * `WaitingForDraw.tsx` top padding reduced (`pt-24` → `pt-12`) to move content up
 
-## 13k. Automated Live Draw on Public Page (Aug 2026)
-
-* The public draw page now **clones the Admin Draw Page experience** as a read-only, fully automated live draw
-* Before the draw time (9pm the day before the tournament): unchanged countdown/waiting screen
-* At the 9pm target: the page auto-transitions to a "Live Draw in Progress" experience mirroring the admin wheels (both divisions, spinning wheel animation, per-pick status, matchups appearing live)
-* Female division spins first, then male; when **both** are complete the draw is **auto-saved** (deletes old matches, writes the 28 new matches, sets `draw_completed: true` + `drawn_*`/`saved_*` matches) with zero user interaction
-* The draw engine (`spinTo`, `runSequence`, `startDivision`, `autoSaveDraw`) is a faithful read-only copy of the Admin Draw Page logic; Admin Draw Page itself is untouched and still uses manual Start/Save
-* Auto-save uses the same name→ID resolution rules as the admin save (`byName` = approved + same gender, case-insensitive) and full validation, so matchups cannot save broken IDs
-* Note: each visiting device runs its own local random draw; only the auto-saved result is authoritative
-
 ## 13f. Landing Page (Aug 2026)
 
 * Tournament Draw button now uses `bg-beach-gradient` (matches Live Ranking button style) instead of dark navy gradient

@@ -43,25 +43,17 @@ export default function PublicDrawPage() {
 
   useEffect(() => {
     async function load() {
-      // Load settings, players, and default_settings in parallel so the
-      // page doesn't wait for three sequential round trips.
-      const [settingsSnap, playersSnap, defaultSnap] = await Promise.allSettled([
+      // Load settings and default_settings in parallel so the page shows the
+      // countdown without waiting for the (larger) players collection. Players
+      // are only needed for the spin wheels, which appear after the draw is done,
+      // so they are fetched in the background below.
+      const [settingsSnap, defaultSnap] = await Promise.allSettled([
         getDoc(doc(db, 'tournamentSettings', 'settings')),
-        getDocs(collection(db, 'players')),
         getDoc(doc(db, 'tournamentSettings', 'default_settings')),
       ]);
 
       if (settingsSnap.status === 'fulfilled' && settingsSnap.value.exists()) {
         applySettings(settingsSnap.value.data(), !!settingsSnap.value.data().draw_completed);
-      }
-
-      if (playersSnap.status === 'fulfilled') {
-        const all = playersSnap.value.docs.map(d => ({ id: d.id, ...d.data() } as Player));
-        all.forEach(p => { if (p.name) p.name = p.name.trim(); });
-        setFemalePlayers(all.filter(p => p.gender === 'female' && p.status === 'approved').map(p => ({ ...p, name: p.name.trim() })));
-        setMalePlayers(all.filter(p => p.gender === 'male' && p.status === 'approved').map(p => ({ ...p, name: p.name.trim() })));
-      } else {
-        console.error('Failed to load players on public draw page:', playersSnap.reason);
       }
 
       if (defaultSnap.status === 'fulfilled' && defaultSnap.value.exists()) {
@@ -76,6 +68,18 @@ export default function PublicDrawPage() {
       setLoading(false);
     }
     load();
+
+    // Load approved players in the background so the spin wheels show names
+    // exactly like the admin draw page. Not blocking: wheels fall back to the
+    // drawn match names and repaint once players arrive.
+    getDocs(collection(db, 'players'))
+      .then(snap => {
+        const all = snap.docs.map(d => ({ id: d.id, ...d.data() } as Player));
+        all.forEach(p => { if (p.name) p.name = p.name.trim(); });
+        setFemalePlayers(all.filter(p => p.gender === 'female' && p.status === 'approved').map(p => ({ ...p, name: p.name.trim() })));
+        setMalePlayers(all.filter(p => p.gender === 'male' && p.status === 'approved').map(p => ({ ...p, name: p.name.trim() })));
+      })
+      .catch(err => console.error('Failed to load players on public draw page:', err));
 
     // Live: update the moment the admin starts/saves the draw
     const unsub = onSnapshot(doc(db, 'tournamentSettings', 'settings'), (snap) => {

@@ -43,29 +43,36 @@ export default function PublicDrawPage() {
 
   useEffect(() => {
     async function load() {
-      try {
-        const settingsSnap = await getDoc(doc(db, 'tournamentSettings', 'settings'));
-        if (settingsSnap.exists()) applySettings(settingsSnap.data(), !!settingsSnap.data().draw_completed);
+      // Load settings, players, and default_settings in parallel so the
+      // page doesn't wait for three sequential round trips.
+      const [settingsSnap, playersSnap, defaultSnap] = await Promise.allSettled([
+        getDoc(doc(db, 'tournamentSettings', 'settings')),
+        getDocs(collection(db, 'players')),
+        getDoc(doc(db, 'tournamentSettings', 'default_settings')),
+      ]);
 
-        // Load approved players so the spin wheels show names exactly like the admin draw page
-        const snap = await getDocs(collection(db, 'players'));
-        const all = snap.docs.map(d => ({ id: d.id, ...d.data() } as Player));
+      if (settingsSnap.status === 'fulfilled' && settingsSnap.value.exists()) {
+        applySettings(settingsSnap.value.data(), !!settingsSnap.value.data().draw_completed);
+      }
+
+      if (playersSnap.status === 'fulfilled') {
+        const all = playersSnap.value.docs.map(d => ({ id: d.id, ...d.data() } as Player));
         all.forEach(p => { if (p.name) p.name = p.name.trim(); });
         setFemalePlayers(all.filter(p => p.gender === 'female' && p.status === 'approved').map(p => ({ ...p, name: p.name.trim() })));
         setMalePlayers(all.filter(p => p.gender === 'male' && p.status === 'approved').map(p => ({ ...p, name: p.name.trim() })));
+      } else {
+        console.error('Failed to load players on public draw page:', playersSnap.reason);
+      }
 
-        // Load tournament date from default_settings for the countdown
-        try {
-          const defaultSnap = await getDoc(doc(db, 'tournamentSettings', 'default_settings'));
-          const dateStr = defaultSnap.exists() ? defaultSnap.data().tournament_date : null;
-          if (dateStr) {
-            // Draw is at 9pm the day before the tournament
-            const target = new Date(`${dateStr}T21:00:00`);
-            target.setDate(target.getDate() - 1);
-            setDrawTarget(target.getTime());
-          }
-        } catch (e) { console.error(e); }
-      } catch (e) { console.error(e); }
+      if (defaultSnap.status === 'fulfilled' && defaultSnap.value.exists()) {
+        const dateStr = defaultSnap.value.data().tournament_date;
+        if (dateStr) {
+          // Draw is at 9pm the day before the tournament
+          const target = new Date(`${dateStr}T21:00:00`);
+          target.setDate(target.getDate() - 1);
+          setDrawTarget(target.getTime());
+        }
+      }
       setLoading(false);
     }
     load();

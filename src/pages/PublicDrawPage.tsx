@@ -23,6 +23,14 @@ export default function PublicDrawPage() {
   const [now, setNow] = useState(new Date());
   const [activeTab, setActiveTab] = useState<'female' | 'male'>('female');
 
+  // LIVE MIRROR state (fed by the admin draw page pick-by-pick)
+  const [liveRunning, setLiveRunning] = useState(false);
+  const [liveActive, setLiveActive] = useState<'f' | 'm' | null>(null);
+  const [liveOrderF, setLiveOrderF] = useState<string[]>([]);
+  const [liveOrderM, setLiveOrderM] = useState<string[]>([]);
+  const [livePicksF, setLivePicksF] = useState<string[]>([]);
+  const [livePicksM, setLivePicksM] = useState<string[]>([]);
+
   const fCanvasRef = useRef<HTMLCanvasElement>(null);
   const mCanvasRef = useRef<HTMLCanvasElement>(null);
   const fOrder = useRef<string[]>([]);
@@ -39,6 +47,16 @@ export default function PublicDrawPage() {
       fOrder.current = fNames;
       mOrder.current = mNames;
     }
+
+    // LIVE MIRROR: parse broadcast fields defensively — anything missing or
+    // malformed simply leaves the page on its normal countdown/results view.
+    setLiveRunning(data.live_draw_status === 'running');
+    const act = data.live_draw_active;
+    setLiveActive(act === 'f' || act === 'm' ? act : null);
+    if (Array.isArray(data.live_draw_order_f)) setLiveOrderF(data.live_draw_order_f);
+    if (Array.isArray(data.live_draw_order_m)) setLiveOrderM(data.live_draw_order_m);
+    if (Array.isArray(data.live_draw_picks_f)) setLivePicksF(data.live_draw_picks_f);
+    if (Array.isArray(data.live_draw_picks_m)) setLivePicksM(data.live_draw_picks_m);
   }
 
   useEffect(() => {
@@ -123,6 +141,27 @@ export default function PublicDrawPage() {
         </div>
       </div>
     );
+  }
+
+  // LIVE MIRROR: while the admin is running the draw, show picks appearing in
+  // real time. If anything is missing, fall through to the normal views.
+  if (!saved && liveRunning && liveActive) {
+    const hasNames = liveActive === 'f'
+      ? (liveOrderF.length > 0 || femalePlayers.length > 0)
+      : (liveOrderM.length > 0 || malePlayers.length > 0);
+    if (hasNames) {
+      return (
+        <LiveDrawView
+          liveActive={liveActive}
+          orderF={liveOrderF}
+          orderM={liveOrderM}
+          picksF={livePicksF}
+          picksM={livePicksM}
+          fallbackF={femalePlayers.map(p => p.name)}
+          fallbackM={malePlayers.map(p => p.name)}
+        />
+      );
+    }
   }
 
   if (!drawStarted || !saved) {
@@ -326,6 +365,186 @@ export default function PublicDrawPage() {
                 {renderWheel('m', mMatches, malePlayers)}
                 {renderMatchGrid(mMatches, `${mMatches.length} Male Matches`)}
               </>
+            )}
+          </div>
+
+          <div className="text-center pt-2 pb-4">
+            <Button
+              onClick={() => navigate('/')}
+              variant="outline"
+              className="w-full sm:w-auto touch-target"
+            >
+              <ChevronLeft className="w-4 h-4 mr-2" />
+              Back to Home
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface LiveDrawViewProps {
+  liveActive: 'f' | 'm';
+  orderF: string[];
+  orderM: string[];
+  picksF: string[];
+  picksM: string[];
+  fallbackF: string[];
+  fallbackM: string[];
+}
+
+/**
+ * LIVE MIRROR: read-only view shown while the admin draw is running.
+ * Matchups appear one-by-one as the admin's wheel lands each pick —
+ * state comes straight from Firestore, so every device stays in sync
+ * and late joiners see the current progress immediately.
+ */
+function LiveDrawView({ liveActive, orderF, orderM, picksF, picksM, fallbackF, fallbackM }: LiveDrawViewProps) {
+  const navigate = useNavigate();
+  const [tab, setTab] = useState<'female' | 'male'>(liveActive === 'm' ? 'male' : 'female');
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Follow whichever gender the admin is currently drawing
+  useEffect(() => { setTab(liveActive === 'm' ? 'male' : 'female'); }, [liveActive]);
+
+  const isFemale = tab === 'female';
+  const order = isFemale ? orderF : orderM;
+  const fallback = isFemale ? fallbackF : fallbackM;
+  const picks = isFemale ? picksF : picksM;
+
+  useEffect(() => {
+    function paint() {
+      const cv = canvasRef.current;
+      if (!cv) return;
+      const sz = cv.parentElement?.offsetWidth || 300;
+      cv.width = sz; cv.height = sz;
+      const names = order.length ? order : fallback;
+      if (names.length) paintCanvas(cv, 0, names, isFemale ? FC : MC);
+    }
+    paint();
+    const t = setTimeout(paint, 60);
+    window.addEventListener('resize', paint);
+    return () => { window.removeEventListener('resize', paint); clearTimeout(t); };
+  }, [isFemale, order, fallback]);
+
+  const n = picks.length;
+  const completeCount = Math.floor(n / 4);
+  const within = n % 4;
+  const isActiveGender = (liveActive === 'f') === isFemale;
+  let status: string;
+  if (!isActiveGender) status = completeCount >= 7 ? 'Complete!' : `${completeCount} matches drawn`;
+  else if (n === 0) status = 'Get ready…';
+  else if (within === 0) status = `Match ${completeCount} drawn`;
+  else status = `Match ${completeCount + 1} in progress — ${picks[n - 1]} picked!`;
+
+  // Only fully drawn matches become cards; a partial match shows via the status line
+  const matches: DrawnMatch[] = [];
+  for (let i = 0; i < completeCount; i++) {
+    matches.push({ matchNum: i + 1, p1: picks[i * 4], p2: picks[i * 4 + 1], p3: picks[i * 4 + 2], p4: picks[i * 4 + 3] });
+  }
+
+  const PDF_BLUE = 'bg-[#0077B6]';
+  const PDF_ORANGE = 'bg-[#FF7F50]';
+
+  return (
+    <div className="min-h-screen bg-sand-gradient">
+      <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+        <div className="text-center mb-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-50 text-xs font-semibold text-red-600 border border-red-200 mb-3">
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            Live now
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold bg-ocean-gradient bg-clip-text text-transparent">
+            Tournament Draw
+          </h1>
+          <p className="text-sm text-foreground/60 mt-1">Watch the draw happen in real time</p>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-2 max-w-md mx-auto mb-8">
+          <Button
+            onClick={() => setTab('female')}
+            className={`flex-1 touch-target font-semibold text-base py-3 transition-all duration-300 ${
+              tab === 'female'
+                ? 'bg-sunset hover:bg-sunset-dark text-white shadow-beach'
+                : 'bg-white/70 hover:bg-sunset hover:text-white border-sunset/30 text-sunset-dark shadow-sand'
+            }`}
+          >
+            👩 Female
+          </Button>
+          <Button
+            onClick={() => setTab('male')}
+            className={`flex-1 touch-target font-semibold text-base py-3 transition-all duration-300 ${
+              tab === 'male'
+                ? 'bg-ocean hover:bg-ocean-dark text-white shadow-beach'
+                : 'bg-white/70 hover:bg-ocean hover:text-white border-ocean/30 text-ocean-dark shadow-sand'
+            }`}
+          >
+            👨 Male
+          </Button>
+        </div>
+
+        <div className="w-full space-y-10">
+          <div className="flex flex-col items-center">
+            <div className={`px-4 py-1.5 rounded-full text-sm font-semibold mb-4 ${
+              isFemale
+                ? 'bg-gradient-to-r from-sunset/20 to-[#FF6B6B]/20 text-sunset-dark border border-sunset/30'
+                : 'bg-gradient-to-r from-ocean/20 to-[#00B4DB]/20 text-ocean-dark border border-ocean/30'
+            }`}>
+              {isFemale ? '👩 Female Division' : '👨 Male Division'}
+            </div>
+
+            {/* Wheel */}
+            <div className="relative w-[300px] h-[300px] sm:w-[320px] sm:h-[320px] mb-4">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20">
+                <div className="w-0 h-0 border-l-[12px] border-r-[12px] border-t-[20px] border-l-transparent border-r-transparent border-t-foreground drop-shadow-lg" />
+              </div>
+              <div className={`absolute inset-0 rounded-full blur-xl opacity-30 ${isFemale ? 'bg-sunset' : 'bg-ocean'}`} />
+              <canvas
+                ref={canvasRef}
+                className="relative z-10 w-full h-full rounded-full shadow-2xl"
+                style={{ boxShadow: `0 8px 32px ${isFemale ? 'rgba(255,127,80,0.3)' : 'rgba(78,205,196,0.3)'}` }}
+              />
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-white rounded-full shadow-lg z-20 flex items-center justify-center">
+                <Target size={20} className={isFemale ? 'text-sunset' : 'text-ocean'} />
+              </div>
+            </div>
+
+            {/* Status */}
+            <p className="text-sm font-semibold text-foreground/70 text-center mb-6 min-h-[20px]">
+              {status}
+            </p>
+
+            {/* Matches revealed so far */}
+            {matches.length > 0 && (
+              <div className="mt-2 w-full">
+                <h3 className="text-sm font-semibold text-foreground/70 mb-4 text-center">
+                  {matches.length} {isFemale ? 'Female' : 'Male'} Matches
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 lg:gap-3">
+                  {matches.map((m) => (
+                    <div key={m.matchNum} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden flex flex-col">
+                      <div className="bg-gray-100 px-3 py-1.5 border-b border-gray-200">
+                        <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">Match {m.matchNum}</span>
+                      </div>
+                      <div className="p-2 flex flex-col gap-1">
+                        <div className={`${PDF_BLUE} text-white rounded-md py-1 px-1.5`}>
+                          <div className="text-[14px] font-medium leading-tight text-center" style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.15' }}>
+                            {m.p1} & {m.p2}
+                          </div>
+                        </div>
+                        <div className="text-[10px] font-bold text-gray-400 text-center py-0.5">VS</div>
+                        <div className={`${PDF_ORANGE} text-white rounded-md py-1 px-1.5`}>
+                          <div className="text-[14px] font-medium leading-tight text-center" style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.15' }}>
+                            {m.p3} & {m.p4}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
 

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '@/config/firebase';
-import { collection, getDocs, doc, writeBatch, setDoc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, writeBatch, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { generateMatchesFromOrder, shuffleArray } from '@/utils/staticMatchups';
 import { validateMatches, buildValidationMap } from '@/utils/matchValidation';
 import { FC, MC, paintCanvas } from '@/utils/drawWheel';
@@ -45,6 +45,15 @@ export default function DrawPage() {
   const mAngle     = useRef(0);
   const fOrder     = useRef<string[]>([]);
   const mOrder     = useRef<string[]>([]);
+  const fPicksRef  = useRef<string[]>([]);
+  const mPicksRef  = useRef<string[]>([]);
+
+  // LIVE MIRROR: publish draw progress so public devices can follow along pick-by-pick.
+  // Fire-and-forget — never blocks or breaks the admin draw if publishing fails.
+  function publishLive(patch: Record<string, unknown>) {
+    updateDoc(doc(db, 'tournamentSettings', 'settings'), patch)
+      .catch(e => console.error('📢 [LIVE] publish failed:', e));
+  }
 
   useEffect(() => { loadPlayers(); }, []);
 
@@ -149,7 +158,8 @@ export default function DrawPage() {
     idx: number,
     setStatus: (s: string) => void,
     setMatches: React.Dispatch<React.SetStateAction<DrawnMatch[]>>,
-    onComplete: () => void
+    onComplete: () => void,
+    onPick: (name: string) => void
   ) {
     if (idx >= preGeneratedMatches.length) { onComplete(); return; }
     
@@ -164,12 +174,13 @@ export default function DrawPage() {
         // Use the EXACT pre-generated match - no recomputation
         setMatches(prev => [...prev, match]);
         setStatus(`Match ${matchNum} drawn`);
-        setTimeout(() => runSequence(cvRef, angleRef, order, col, preGeneratedMatches, idx + 1, setStatus, setMatches, onComplete), 150);
+        setTimeout(() => runSequence(cvRef, angleRef, order, col, preGeneratedMatches, idx + 1, setStatus, setMatches, onComplete, onPick), 150);
         return;
       }
       setStatus(`Match ${matchNum} — ${pi < 2 ? 'team A' : 'team B'} pick ${pi < 2 ? pi + 1 : pi - 1}…`);
       spinTo(cvRef, angleRef, order, col, picks[pi], () => {
         collected.push(picks[pi]);
+        onPick(picks[pi]);
         setStatus(`${picks[pi]} picked!`);
         setTimeout(() => { pi++; nextPick(); }, 120);
       });
@@ -187,10 +198,20 @@ export default function DrawPage() {
     const setMatches = gender === 'f' ? setFMatches : setMMatches;
     const setStarted = gender === 'f' ? setFStarted : setMStarted;
     const setDone    = gender === 'f' ? setFDone : setMDone;
+    const picksRef   = gender === 'f' ? fPicksRef : mPicksRef;
     
     // STEP 1: Shuffle player order ONCE
     const order = shuffleArray(players.map(p => p.name));
     orderRef.current = order;
+
+    // LIVE MIRROR: broadcast shuffled order so public devices follow the same wheel
+    picksRef.current = [];
+    publishLive({
+      live_draw_status: 'running',
+      live_draw_active: gender,
+      [`live_draw_order_${gender}`]: order,
+      [`live_draw_picks_${gender}`]: []
+    });
     
     // STEP 2: Generate ALL matches immediately from the shuffled order
     // This is the SINGLE SOURCE OF TRUTH - these matches are final
@@ -206,6 +227,9 @@ export default function DrawPage() {
       setStatus('Complete!');
       setDone(true);
       console.log(`✅ [DRAW ${gender.toUpperCase()}] All matches drawn:`, preGeneratedMatches);
+    }, (name: string) => {
+      picksRef.current = [...picksRef.current, name];
+      publishLive({ [`live_draw_picks_${gender}`]: picksRef.current });
     });
   }
 
@@ -385,7 +409,10 @@ export default function DrawPage() {
           drawn_male_matches: mMatches,
           // NEW format for deterministic restoration (recovery)
           saved_female_matches: savedFemaleMatches,
-          saved_male_matches: savedMaleMatches
+          saved_male_matches: savedMaleMatches,
+          // LIVE MIRROR: mark broadcast as finished
+          live_draw_status: 'done',
+          live_draw_active: ''
         }, { merge: true });
 
       } catch (nameError) {
@@ -417,7 +444,13 @@ export default function DrawPage() {
         drawn_female_matches: [],
         drawn_male_matches: [],
         saved_female_matches: [],
-        saved_male_matches: []
+        saved_male_matches: [],
+        live_draw_status: 'idle',
+        live_draw_active: '',
+        live_draw_order_f: [],
+        live_draw_order_m: [],
+        live_draw_picks_f: [],
+        live_draw_picks_m: []
       }, { merge: true });
 
       // Delete all matches
@@ -438,6 +471,7 @@ export default function DrawPage() {
   }
 
   function resetDraw() {
+    publishLive({ live_draw_status: 'idle', live_draw_active: '' });
     setFStarted(false); setMStarted(false); setFDone(false); setMDone(false);
     setFMatches([]); setMMatches([]); setFStatus('Ready'); setMStatus('Ready');
     setSaved(false); fAngle.current = 0; mAngle.current = 0;

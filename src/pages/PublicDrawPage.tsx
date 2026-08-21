@@ -10,6 +10,12 @@ import { Target, ChevronLeft, CheckCircle2, Timer } from 'lucide-react';
 interface Player { id: string; name: string; gender: string; status: string; }
 interface DrawnMatch { matchNum: number; p1: string; p2: string; p3: string; p4: string; }
 
+// Identity-stable comparison so snapshot updates don't re-render (and cancel
+// in-flight wheel spins) when nothing actually changed.
+function sameArray(a: string[], b: string[]) {
+  return a.length === b.length && a.every((v, i) => v === b[i]);
+}
+
 export default function PublicDrawPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -53,10 +59,10 @@ export default function PublicDrawPage() {
     setLiveRunning(data.live_draw_status === 'running');
     const act = data.live_draw_active;
     setLiveActive(act === 'f' || act === 'm' ? act : null);
-    if (Array.isArray(data.live_draw_order_f)) setLiveOrderF(data.live_draw_order_f);
-    if (Array.isArray(data.live_draw_order_m)) setLiveOrderM(data.live_draw_order_m);
-    if (Array.isArray(data.live_draw_picks_f)) setLivePicksF(data.live_draw_picks_f);
-    if (Array.isArray(data.live_draw_picks_m)) setLivePicksM(data.live_draw_picks_m);
+    if (Array.isArray(data.live_draw_order_f)) setLiveOrderF(prev => (sameArray(prev, data.live_draw_order_f) ? prev : data.live_draw_order_f));
+    if (Array.isArray(data.live_draw_order_m)) setLiveOrderM(prev => (sameArray(prev, data.live_draw_order_m) ? prev : data.live_draw_order_m));
+    if (Array.isArray(data.live_draw_picks_f)) setLivePicksF(prev => (sameArray(prev, data.live_draw_picks_f) ? prev : data.live_draw_picks_f));
+    if (Array.isArray(data.live_draw_picks_m)) setLivePicksM(prev => (sameArray(prev, data.live_draw_picks_m) ? prev : data.live_draw_picks_m));
   }
 
   useEffect(() => {
@@ -412,6 +418,13 @@ function LiveDrawView({ liveActive, orderF, orderM, picksF, picksM, fallbackF, f
   // Follow whichever gender the admin is currently drawing
   useEffect(() => { setTab(liveActive === 'm' ? 'male' : 'female'); }, [liveActive]);
 
+  // Live clock — same as the admin draw page
+  const [clockNow, setClockNow] = useState(new Date());
+  useEffect(() => {
+    const t = setInterval(() => setClockNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
   const isFemale = tab === 'female';
   const order = isFemale ? orderF : orderM;
   const fallback = isFemale ? fallbackF : fallbackM;
@@ -444,7 +457,6 @@ function LiveDrawView({ liveActive, orderF, orderM, picksF, picksM, fallbackF, f
     function paint() {
       const cv = canvasRef.current;
       if (!cv) return;
-      animRef.current += 1; // cancel any in-flight spin before repainting statically
       const sz = cv.parentElement?.offsetWidth || 300;
       cv.width = sz; cv.height = sz;
       const names = order.length ? order : fallback;
@@ -499,6 +511,13 @@ function LiveDrawView({ liveActive, orderF, orderM, picksF, picksM, fallbackF, f
             Tournament Draw
           </h1>
           <p className="text-sm text-foreground/60 mt-1">Watch the draw happen in real time</p>
+          {/* Live date & time — proof the draw is happening in real time */}
+          <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-white/70 border border-gray-200 text-sm font-medium text-foreground/70">
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            {clockNow.toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+            <span className="text-foreground/40">•</span>
+            <span className="tabular-nums">{clockNow.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+          </div>
         </div>
 
         {/* Tabs */}

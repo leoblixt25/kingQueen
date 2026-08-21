@@ -404,6 +404,10 @@ function LiveDrawView({ liveActive, orderF, orderM, picksF, picksM, fallbackF, f
   const navigate = useNavigate();
   const [tab, setTab] = useState<'female' | 'male'>(liveActive === 'm' ? 'male' : 'female');
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const angleRef = useRef(0);
+  const animRef = useRef(0);
+  const prevFCount = useRef(0);
+  const prevMCount = useRef(0);
 
   // Follow whichever gender the admin is currently drawing
   useEffect(() => { setTab(liveActive === 'm' ? 'male' : 'female'); }, [liveActive]);
@@ -413,20 +417,56 @@ function LiveDrawView({ liveActive, orderF, orderM, picksF, picksM, fallbackF, f
   const fallback = isFemale ? fallbackF : fallbackM;
   const picks = isFemale ? picksF : picksM;
 
+  // Same easing/spin math as the admin wheel: animate to the segment of `target`
+  function spinTo(pool: string[], col: string[], target: string) {
+    const cv = canvasRef.current;
+    if (!cv || !pool.length) return;
+    const ti = pool.indexOf(target);
+    if (ti < 0) return;
+    animRef.current += 1;
+    const myAnim = animRef.current;
+    const n = pool.length, arc = (2 * Math.PI) / n;
+    const ta = ti * arc + arc / 2;
+    const norm = ((-angleRef.current % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+    let diff = ta - norm; if (diff < 0) diff += 2 * Math.PI;
+    const tot = (2 + Math.floor(Math.random() * 2)) * 2 * Math.PI + diff;
+    const dur = 900 + Math.random() * 300, t0 = performance.now(), a0 = angleRef.current;
+    function frame(now: number) {
+      const t = Math.min((now - t0) / dur, 1), ease = 1 - Math.pow(1 - t, 4);
+      angleRef.current = a0 + tot * ease;
+      paintCanvas(cv, angleRef.current, pool, col);
+      if (t < 1 && animRef.current === myAnim) requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+
   useEffect(() => {
     function paint() {
       const cv = canvasRef.current;
       if (!cv) return;
+      animRef.current += 1; // cancel any in-flight spin before repainting statically
       const sz = cv.parentElement?.offsetWidth || 300;
       cv.width = sz; cv.height = sz;
       const names = order.length ? order : fallback;
-      if (names.length) paintCanvas(cv, 0, names, isFemale ? FC : MC);
+      if (names.length) paintCanvas(cv, angleRef.current, names, isFemale ? FC : MC);
     }
     paint();
     const t = setTimeout(paint, 60);
     window.addEventListener('resize', paint);
     return () => { window.removeEventListener('resize', paint); clearTimeout(t); };
   }, [isFemale, order, fallback]);
+
+  // When a new pick arrives from Firestore, spin the wheel to it like the admin page
+  useEffect(() => {
+    const prevRef = isFemale ? prevFCount : prevMCount;
+    const n = picks.length;
+    if (n > prevRef.current) {
+      const pool = order.length ? order : fallback;
+      const latest = picks[n - 1];
+      if (latest && pool.includes(latest)) spinTo(pool, isFemale ? FC : MC, latest);
+    }
+    prevRef.current = n;
+  }, [picks, isFemale, order, fallback]);
 
   const n = picks.length;
   const completeCount = Math.floor(n / 4);

@@ -76,6 +76,35 @@ async function dispatchDeletion(githubToken, idToken) {
   }
 }
 
+// ---------- Check latest matching GitHub Action run status ----------
+
+async function getRunStatus(githubToken, sinceIso) {
+  try {
+    const resp = await fetch(
+      'https://api.github.com/repos/' + GITHUB_REPO + '/actions/runs?per_page=5',
+      {
+        headers: {
+          'Authorization': 'Bearer ' + githubToken,
+          'Accept': 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28',
+          'User-Agent': 'sandy-scorekeeper-worker',
+        },
+      }
+    );
+    if (!resp.ok) return { status: 'error', detail: 'github_api_' + resp.status };
+
+    const data = await resp.json();
+    const run = (data.workflow_runs || []).find(
+      w => w.event === 'repository_dispatch' &&
+           new Date(w.created_at).getTime() >= new Date(sinceIso).getTime()
+    );
+    if (!run) return { status: 'none' };
+    return { status: run.status, conclusion: run.conclusion };
+  } catch (err) {
+    return { status: 'error', detail: err instanceof Error ? err.message : String(err) };
+  }
+}
+
 // ---------- Worker entry point ----------
 
 export default {
@@ -85,6 +114,15 @@ export default {
     }
 
     if (request.method !== 'POST') {
+      // Status endpoint for polling the GitHub Action outcome
+      if (request.method === 'GET') {
+        const url = new URL(request.url);
+        const since = url.searchParams.get('since');
+        if (url.pathname === '/status' && since && env.GH_PAT) {
+          const status = await getRunStatus(env.GH_PAT, since);
+          return jsonResponse(status, 200);
+        }
+      }
       return jsonResponse({ status: 'online', hint: 'POST the request to this URL' }, 200);
     }
 

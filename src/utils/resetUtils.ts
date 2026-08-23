@@ -46,32 +46,26 @@ export const resetScoresOnly = async () => {
 
 /**
  * Wait for the "Delete registered players" GitHub Action run to finish.
- * The runs API is public for public repositories — no auth needed.
+ * Status is polled through the Cloudflare Worker (the repo is private, so
+ * the browser cannot query the GitHub API anonymously).
  */
-const GITHUB_RUNS_URL = 'https://api.github.com/repos/leoblixt25/sandy-scorekeeper/actions/runs';
-
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
-async function waitForGithubRunCompletion(startedAtIso: string): Promise<string> {
+async function waitForGithubRunCompletion(workerUrl: string, startedAtIso: string): Promise<string> {
   // Poll every 5s for up to 4 minutes
   for (let i = 0; i < 48; i++) {
     await sleep(5000);
     try {
-      const resp = await fetch(`${GITHUB_RUNS_URL}?per_page=5`, {
-        headers: { 'Accept': 'application/vnd.github+json' },
-      });
+      const resp = await fetch(
+        `${workerUrl}/status?since=${encodeURIComponent(startedAtIso)}`
+      );
       if (!resp.ok) continue;
 
       const data = await resp.json();
-      const run = (data.workflow_runs || []).find(
-        (w: any) =>
-          w.event === 'repository_dispatch' &&
-          new Date(w.created_at).getTime() >= new Date(startedAtIso).getTime()
-      );
-      if (!run) continue;
+      if (data.status === 'none' || data.status === 'error') continue;
 
-      console.log(`⏳ [AUTH] GitHub Action status: ${run.status}`);
-      if (run.status === 'completed') return run.conclusion;
+      console.log(`⏳ [AUTH] GitHub Action status: ${data.status}`);
+      if (data.status === 'completed') return data.conclusion;
     } catch {
       // transient network hiccup — keep polling
     }
@@ -147,7 +141,7 @@ export const deleteFirebaseAuthUsers = async () => {
 
       // Relay accepted the request — wait for the GitHub Action to finish
       console.log('🚀 [AUTH] Deletion dispatched to GitHub Actions, waiting for completion...');
-      const conclusion = await waitForGithubRunCompletion(startedAtIso);
+      const conclusion = await waitForGithubRunCompletion(workerUrl, startedAtIso);
 
       if (conclusion !== 'success') {
         throw new Error(

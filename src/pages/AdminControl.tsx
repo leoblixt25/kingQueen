@@ -375,9 +375,10 @@ export default function AdminControl() {
       }
     } catch (error) {
       console.error('❌ [DELETE PLAYERS] Failed:', error);
+      const reason = error instanceof Error ? error.message : 'Unknown error';
       toast({
         title: "Error",
-        description: "Failed to delete player accounts. Please try again.",
+        description: `Failed to delete player accounts: ${reason}`,
         variant: "destructive",
       });
     } finally {

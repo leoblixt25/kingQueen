@@ -210,7 +210,7 @@ for (let i = 0; i < toDelete.length; i += 1000) {
 
   const data = await postJson(
     'https://identitytoolkit.googleapis.com/v1/projects/' + PROJECT_ID + '/accounts:batchDelete',
-    { localids: chunk, force: true },
+    { localIds: chunk, force: true },
     { Authorization: 'Bearer ' + accessToken },
     'Delete users'
   );

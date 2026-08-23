@@ -6,7 +6,23 @@ interface Player {
   gender?: string;
   points?: number;
   totalScores?: number;
+  // Firestore stores this snake_case; accept both spellings
+  total_scores?: number;
 }
+
+// Firestore field is `total_scores`; some callers map it to camelCase
+const scoreOf = (p: Player): number =>
+  p.total_scores ?? p.totalScores ?? 0;
+
+/**
+ * Official ranking order used across the app:
+ * points desc -> total scores desc -> player id (deterministic)
+ */
+export const comparePlayersByRanking = (a: Player, b: Player): number => {
+  if ((b.points || 0) !== (a.points || 0)) return (b.points || 0) - (a.points || 0);
+  if (scoreOf(b) !== scoreOf(a)) return scoreOf(b) - scoreOf(a);
+  return (a.id || '').localeCompare(b.id || '');
+};
 
 interface Match {
   id?: string;
@@ -236,19 +252,9 @@ const renderFinalStandings = (
   players: Player[],
   drawPageHeader: () => void
 ) => {
-  // Sort players by rankings (points descending, then total_scores descending)
-  const femalePlayers = players
-    .filter(p => p.gender === 'female')
-    .sort((a, b) => {
-      if ((b.points || 0) !== (a.points || 0)) return (b.points || 0) - (a.points || 0);
-      return (b.totalScores || 0) - (a.totalScores || 0);
-    });
-  const malePlayers = players
-    .filter(p => p.gender === 'male')
-    .sort((a, b) => {
-      if ((b.points || 0) !== (a.points || 0)) return (b.points || 0) - (a.points || 0);
-      return (b.totalScores || 0) - (a.totalScores || 0);
-    });
+  // Sort players by official ranking (points desc, scores desc, id)
+  const femalePlayers = players.filter(p => p.gender === 'female').sort(comparePlayersByRanking);
+  const malePlayers = players.filter(p => p.gender === 'male').sort(comparePlayersByRanking);
 
   // Title
   let y = 38;
@@ -318,7 +324,7 @@ const renderFinalStandings = (
       doc.text(String(p.points || 0), colX + COL_W - 20, cy);
       doc.setFontSize(8);
       doc.setFont(undefined, 'normal');
-      doc.text(String(p.totalScores || 0), colX + COL_W - 4, cy, { align: 'right' });
+      doc.text(String(scoreOf(p)), colX + COL_W - 4, cy, { align: 'right' });
       cy += ROW_H;
     });
 

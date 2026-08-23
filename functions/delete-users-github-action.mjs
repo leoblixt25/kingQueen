@@ -166,13 +166,16 @@ console.log('Step 3/5: listing auth accounts...');
 const allUsers = [];
 let nextPageToken;
 do {
-  const body = { maxResults: 1000 };
-  if (nextPageToken) body.nextPageToken = nextPageToken;
+  // accounts:batchGet is a GET method (query params), not POST
+  let url =
+    'https://identitytoolkit.googleapis.com/v1/projects/' +
+    PROJECT_ID +
+    '/accounts:batchGet?maxResults=1000';
+  if (nextPageToken) url += '&nextPageToken=' + encodeURIComponent(nextPageToken);
 
-  const data = await postJson(
-    'https://identitytoolkit.googleapis.com/v1/projects/' + PROJECT_ID + '/accounts:batchGet',
-    body,
-    { Authorization: 'Bearer ' + accessToken },
+  const data = await fetchJson(
+    url,
+    { method: 'GET', headers: { Authorization: 'Bearer ' + accessToken } },
     'List users'
   );
 

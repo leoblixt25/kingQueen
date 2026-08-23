@@ -91,13 +91,16 @@ async function verifyCaller(idToken) {
 
 // ---------- Service-account auth: signed JWT -> access token (cached) ----------
 
-async function getAccessToken(serviceAccountJson) {
+async function getAccessToken(serviceAccountBinding) {
+  // Accept either a raw JSON string (Secret) or an already-parsed object (JSON variable)
+  const sa = typeof serviceAccountBinding === 'string'
+    ? JSON.parse(serviceAccountBinding)
+    : serviceAccountBinding;
+
   const now = Math.floor(Date.now() / 1000);
   if (cachedAccessToken && cachedAccessTokenExp - 120 > now) {
     return cachedAccessToken;
   }
-
-  const sa = JSON.parse(serviceAccountJson);
 
   const header = { alg: 'RS256', typ: 'JWT' };
   const claim = {

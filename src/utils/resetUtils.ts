@@ -62,7 +62,7 @@ export const deleteFirebaseAuthUsers = async () => {
     
     // Call Cloudflare Worker endpoint
     // IMPORTANT: Update this URL after deploying the worker to Cloudflare
-    const workerUrl = 'https://sandy-scorekeeper-workers.leoblixt25.workers.dev';
+    const workerUrl = 'https://sandy-scorekeeper-workers.leo-blixt77.workers.dev';
     
     console.log('🌐 [AUTH] Calling Cloudflare Worker to delete users...');
     

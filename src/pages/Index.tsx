@@ -20,6 +20,8 @@ import { getCurrentUser, isAdmin as checkIsAdmin, signOut, getCurrentUserTournam
 import { buildPlayersMap, resolveMatchPlayers } from "@/utils/matchPlayerResolver";
 import { sortPlayersWithTiebreakers, getTiebreakerLevel } from "@/utils/rankingTiebreaker";
 import MainTitle from "@/components/MainTitle";
+import TournamentFinished from "@/components/TournamentFinished";
+import { useTournamentFinished } from "@/hooks/useTournamentFinished";
 
 interface TournamentSettings {
   id?: string;
@@ -51,6 +53,7 @@ export default function KingQueenOfTheBeach() {
   const [showScoreResetModal, setShowScoreResetModal] = useState(false);
   const [isResettingScores, setIsResettingScores] = useState(false);
   const [drawCompleted, setDrawCompleted] = useState(false);
+  const tournamentFinished = useTournamentFinished();
   
   const [editingMatchId, setEditingMatchId] = useState<string | null>(null);
 
@@ -757,6 +760,11 @@ export default function KingQueenOfTheBeach() {
         </div>
       </div>
     );
+  }
+
+  // Tournament Switch Off Mode: players see the finished page (admins keep full access)
+  if (tournamentFinished && !userIsAdmin) {
+    return <TournamentFinished />;
   }
 
   // Gate: Show waiting screen for approved non-admin users until draw is complete

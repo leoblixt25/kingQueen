@@ -8,7 +8,8 @@ import { toast } from "@/hooks/use-toast";
 import { db } from "@/config/firebase";
 import { collection, getDocs, query, orderBy, limit, doc, setDoc, getDoc, updateDoc, where } from "firebase/firestore";
 import { signOut } from "@/utils/authUtils";
-import { LogOut, Save, Crown, Users, AlertTriangle, Settings, RotateCcw, Trash } from "lucide-react";
+import { LogOut, Save, Crown, Users, AlertTriangle, Settings, RotateCcw, Trash, PowerOff } from "lucide-react";
+import { useTournamentFinished } from "@/hooks/useTournamentFinished";
 import { ResetConfirmationModal } from "@/components/ResetConfirmationModal";
 import { resetScoresOnly } from "@/utils/resetUtils";
 import { PlayerReplacer } from "@/components/PlayerReplacer";
@@ -42,6 +43,8 @@ export default function AdminControl() {
   const [isResettingScores, setIsResettingScores] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [showPlayerReplacer, setShowPlayerReplacer] = useState(false);
+  const tournamentFinished = useTournamentFinished();
+  const [isTogglingStatus, setIsTogglingStatus] = useState(false);
   const [femalePlayers, setFemalePlayers] = useState<any[]>([]);
   const [malePlayers, setMalePlayers] = useState<any[]>([]);
   const [femaleMatches, setFemaleMatches] = useState<any[]>([]);
@@ -302,6 +305,49 @@ export default function AdminControl() {
     }
   };
 
+  // Tournament Switch Off Mode: disable/restore public tournament pages.
+  // Only writes one flag to the settings doc — no data is ever deleted.
+  const handleSwitchOffTournament = async () => {
+    if (!window.confirm('Are you sure you want to close this tournament? Public tournament pages will be disabled.')) return;
+    setIsTogglingStatus(true);
+    try {
+      await setDoc(doc(db, 'tournamentSettings', 'settings'), { tournament_status: 'finished' }, { merge: true });
+      toast({
+        title: "Tournament Closed",
+        description: "Public tournament pages are now disabled.",
+      });
+    } catch (error) {
+      console.error('Error switching off tournament:', error);
+      toast({
+        title: "Error",
+        description: "Failed to switch off tournament",
+        variant: "destructive",
+      });
+    } finally {
+      setIsTogglingStatus(false);
+    }
+  };
+
+  const handleRestoreAccess = async () => {
+    setIsTogglingStatus(true);
+    try {
+      await setDoc(doc(db, 'tournamentSettings', 'settings'), { tournament_status: 'active' }, { merge: true });
+      toast({
+        title: "Tournament Restored",
+        description: "Public tournament pages are available again.",
+      });
+    } catch (error) {
+      console.error('Error restoring tournament access:', error);
+      toast({
+        title: "Error",
+        description: "Failed to restore tournament access",
+        variant: "destructive",
+      });
+    } finally {
+      setIsTogglingStatus(false);
+    }
+  };
+
 
 
   if (isLoading) {
@@ -470,6 +516,37 @@ export default function AdminControl() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
+            {/* Tournament Switch Off Mode: status + switch */}
+            <div className="flex items-center justify-between p-3 rounded-lg bg-sand/10 border border-sand-dark/20">
+              <span className="text-sm font-medium text-foreground/60">Tournament Status</span>
+              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
+                tournamentFinished ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+              }`}>
+                <span className={`w-2 h-2 rounded-full ${tournamentFinished ? 'bg-red-500' : 'bg-green-500 animate-pulse'}`} />
+                {tournamentFinished ? 'Tournament Finished' : 'Active Tournament'}
+              </span>
+            </div>
+            {tournamentFinished ? (
+              <Button
+                variant="outline"
+                onClick={handleRestoreAccess}
+                disabled={isTogglingStatus}
+                className="w-full touch-target bg-white/70 hover:bg-palm hover:text-white border-palm/30 text-palm-dark transition-all duration-300"
+              >
+                <RotateCcw className={`w-4 h-4 mr-2 ${isTogglingStatus ? 'animate-spin' : ''}`} />
+                Restore Tournament Access
+              </Button>
+            ) : (
+              <Button
+                variant="destructive"
+                onClick={handleSwitchOffTournament}
+                disabled={isTogglingStatus}
+                className="w-full touch-target bg-coral hover:bg-coral-dark text-white transition-all duration-300"
+              >
+                <PowerOff className="w-4 h-4 mr-2" />
+                Switch Off Tournament Mode
+              </Button>
+            )}
             <Button
               variant="outline"
               onClick={() => setShowTournamentConfig(!showTournamentConfig)}

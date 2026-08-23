@@ -8,6 +8,8 @@ import { collection, onSnapshot, getDocs, doc, getDoc } from "firebase/firestore
 import { Player, Match } from "@/types";
 import { getTiebreakerLevel } from "@/utils/rankingTiebreaker";
 import { getPublicDisplayName } from "@/utils/firebaseUtils";
+import TournamentFinished from "@/components/TournamentFinished";
+import { useTournamentFinished } from "@/hooks/useTournamentFinished";
 
 // Rankings Tab Component
 function RankingsTab({ activeTab, currentPlayers, matches }: { activeTab: string; currentPlayers: Player[]; matches: Match[] }) {
@@ -419,6 +421,7 @@ export default function LiveRanking() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [tournamentCity, setTournamentCity] = useState('');
   const [drawCompleted, setDrawCompleted] = useState(false);
+  const tournamentFinished = useTournamentFinished();
 
   useEffect(() => {
     console.log('🏆 [LIVE RANKING] Setting up real-time listeners...');
@@ -549,6 +552,11 @@ export default function LiveRanking() {
   }, []);
 
   const currentPlayers = activeTab === 'female' ? femalePlayers : malePlayers;
+
+  // Tournament Switch Off Mode: live rankings disabled for the public
+  if (tournamentFinished) {
+    return <TournamentFinished />;
+  }
 
   if (isLoading) {
     return (

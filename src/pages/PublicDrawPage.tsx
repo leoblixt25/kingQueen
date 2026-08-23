@@ -6,6 +6,8 @@ import { FC, MC, paintCanvas } from '@/utils/drawWheel';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Target, ChevronLeft, CheckCircle2, Timer } from 'lucide-react';
+import TournamentFinished from '@/components/TournamentFinished';
+import { useTournamentFinished } from '@/hooks/useTournamentFinished';
 
 interface Player { id: string; name: string; gender: string; status: string; }
 interface DrawnMatch { matchNum: number; p1: string; p2: string; p3: string; p4: string; }
@@ -36,6 +38,7 @@ export default function PublicDrawPage() {
   const [liveOrderM, setLiveOrderM] = useState<string[]>([]);
   const [livePicksF, setLivePicksF] = useState<string[]>([]);
   const [livePicksM, setLivePicksM] = useState<string[]>([]);
+  const tournamentFinished = useTournamentFinished();
 
   const fCanvasRef = useRef<HTMLCanvasElement>(null);
   const mCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -147,6 +150,11 @@ export default function PublicDrawPage() {
         </div>
       </div>
     );
+  }
+
+  // Tournament Switch Off Mode: public draw page disabled
+  if (tournamentFinished) {
+    return <TournamentFinished />;
   }
 
   // LIVE MIRROR: while the admin is running the draw, show picks appearing in

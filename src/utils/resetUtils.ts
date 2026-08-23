@@ -65,24 +65,50 @@ export const deleteFirebaseAuthUsers = async () => {
     const workerUrl = 'https://sandy-scorekeeper-workers.leo-blixt77.workers.dev';
     
     console.log('🌐 [AUTH] Calling Cloudflare Worker to delete users...');
-    
-    const response = await fetch(workerUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ token }),
-    });
 
-    const result = await response.json();
+    // Retry a few times: free-plan CPU limits can kill the worker intermittently;
+    // a warm retry often succeeds once the access-token cache is primed.
+    const MAX_ATTEMPTS = 4;
+    let lastError: unknown = null;
 
-    if (!response.ok) {
-      const reason = result.details ? `${result.error} (${result.details})` : result.error;
-      throw new Error(reason || 'Failed to delete Firebase users');
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      let response: Response;
+      let result: any;
+
+      try {
+        response = await fetch(workerUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ token }),
+        });
+        result = await response.json();
+      } catch (parseErr) {
+        // Non-JSON (HTML) reply => worker was killed; retry
+        lastError = parseErr;
+        console.warn(`⚠️ [AUTH] Attempt ${attempt}/${MAX_ATTEMPTS} failed (worker killed), retrying...`);
+        await new Promise(r => setTimeout(r, 800));
+        continue;
+      }
+
+      if (!response.ok) {
+        const reason = result.details ? `${result.error} (${result.details})` : result.error;
+        // 500s may be transient CPU kills -> retry; 4xx are real auth problems -> stop
+        if (response.status >= 500 && attempt < MAX_ATTEMPTS) {
+          lastError = new Error(reason || 'Failed to delete Firebase users');
+          console.warn(`⚠️ [AUTH] Attempt ${attempt}/${MAX_ATTEMPTS} got ${response.status}, retrying...`);
+          await new Promise(r => setTimeout(r, 800));
+          continue;
+        }
+        throw new Error(reason || 'Failed to delete Firebase users');
+      }
+
+      console.log(`✅ [AUTH] Successfully deleted ${result.deletedCount} users`);
+      return result;
     }
 
-    console.log(`✅ [AUTH] Successfully deleted ${result.deletedCount} users`);
-    return result;
+    throw lastError instanceof Error ? lastError : new Error('Worker unreachable');
   } catch (error) {
     console.error('❌ [AUTH] Error deleting Firebase Authentication users:', error);
     throw error;

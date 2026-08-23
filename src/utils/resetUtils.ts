@@ -75,9 +75,10 @@ export const deleteFirebaseAuthUsers = async () => {
     });
 
     const result = await response.json();
-    
+
     if (!response.ok) {
-      throw new Error(result.error || 'Failed to delete Firebase users');
+      const reason = result.details ? `${result.error} (${result.details})` : result.error;
+      throw new Error(reason || 'Failed to delete Firebase users');
     }
 
     console.log(`✅ [AUTH] Successfully deleted ${result.deletedCount} users`);

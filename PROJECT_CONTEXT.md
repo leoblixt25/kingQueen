@@ -113,6 +113,12 @@ sandy-scorekeeper/
 │   │   └── index.ts     # Match, Player, ResolvedMatch types
 │   └── config/         # Firebase configuration
 ├── public/             # Static assets
+├── workers/            # Cloudflare Worker: delete-firebase-users.js (admin-verify + GitHub relay)
+├── scripts/            # Local utilities (Delete-Players.bat one-click deletion)
+├── scripts-firebase-tools/ # Standalone Firebase admin scripts (NO functions/ name — see 13k!)
+│   ├── delete-auth-users.mjs          # Local one-shot deletion (firebase-admin)
+│   └── delete-users-github-action.mjs # Zero-dependency script run by GitHub Actions
+├── .github/workflows/  # delete-users.yml (repository_dispatch deletion workflow)
 ├── supabase/           # Database migrations (for reference)
 └── package.json        # Dependencies
 ```
@@ -424,25 +430,82 @@ Draw Wheel:               Data Loading:
 * DrawPage and AdminControl already filter `status === 'approved'` before loading
 * Real-time subscription auto-refreshes names after approval (no reload needed)
 
+## 13k. Player Account Deletion via GitHub Actions (Aug 2026) — WORKING
+
+### Architecture (button → result)
+```
+Admin clicks "Delete All Registered Players"
+  → POST workers/delete-firebase-users.js (Cloudflare Worker, free plan)
+      ├─ verifies caller ID token via Google Identity Toolkit accounts:lookup (NO local crypto)
+      ├─ requires caller email == ADMIN_EMAIL
+      └─ POSTs repository_dispatch 'delete-users' to GitHub API using GH_PAT secret
+  → GitHub Action (.github/workflows/delete-users.yml) runs on ubuntu-latest
+      └─ node scripts-firebase-tools/delete-users-github-action.mjs "$CALLER_ID_TOKEN"
+           ├─ re-verifies caller is admin (defense in depth)
+           ├─ signs service-account JWT with node:crypto (zero npm deps)
+           ├─ GET accounts:batchGet → lists all auth users
+           ├─ POST accounts:batchDelete {localIds: chunk, force:true} (admin email skipped)
+           └─ prints RESULT Deleted=N Failed=M AdminKept=1
+  → App polls worker GET /status?since=<iso> every 5s
+      └─ worker queries GitHub runs API WITH GH_PAT and returns run status/conclusion
+  → Success/failure toast when the Action completes (~30-60s total)
+```
+
+### WHY this design (do not regress)
+* Cloudflare Workers FREE plan = **10ms CPU cap**; RS256 signing exceeds it → worker killed with an HTML error page (`<!DOCTYPE`...). Any crypto in the request path will fail intermittently/permanently.
+* Firebase Functions need Blaze plan (unusable here).
+* GitHub Actions public-hosted runners have NO practical CPU limit and are free.
+* Repo is PRIVATE → browser cannot poll api.github.com anonymously (404) → status must be relayed by the worker.
+
+### Required secrets (all set up, rotate periodically)
+* Worker `GH_PAT` — GitHub token able to trigger repository_dispatch (currently `gh auth token`)
+* Repo Actions secret `FIREBASE_SERVICE_ACCOUNT_JSON` — full service-account JSON contents
+* Local `.bat` reads key JSON from `%USERPROFILE%\Downloads\<service-account-file>.json`
+
+### Hard-won gotchas (CRITICAL)
+* ❌ **NEVER create a `functions/` directory at repo root** — Cloudflare Pages auto-compiles it as Pages Functions and EVERY build fails. Local scripts live in `scripts-firebase-tools/`.
+* `projects.accounts:batchGet` is a **GET** method (query params). POSTing it returns Google's HTML 404 page.
+* `accounts:batchDelete` body uses camelCase **`localIds`** (legacy lowercase `localids` → LOCAL_ID_LIST_EXCEEDS_LIMIT 400).
+* Old frontend cached in browser can fake "Success" — always hard-refresh / incognito when testing deploys.
+* Cloudflare Pages build status: `npx wrangler pages deployment list --project-name sandy-scorekeeper`.
+
+### Offline fallback
+* Double-click `scripts\Delete-Players.bat` — runs `scripts-firebase-tools/delete-auth-users.mjs` locally with firebase-admin (needs `npm install` inside scripts-firebase-tools/ once). Proven: deleted 24 accounts flawlessly.
+
+## 13l. PDF Export Updates (Aug 2026)
+
+### Final Standings fix
+* Firestore players store snake_case `total_scores`; export previously read camelCase only → scores missing/wrong order
+* Shared ranking comparator exported from pdfExport.ts: points desc → total_scores desc → id compare (use everywhere)
+
+### Championship Final page (new last page)
+* Data: `finalMatches/current` doc — team1_set1..3, team2_set2..3, winner_team, male_king_id/female_queen_id/male_prince_id/female_princess_id
+* Bracket mapping: Team 1 = Male#1 + Female#2, Team 2 = Male#2 + Female#1; royal IDs remapped to bracket sides based on winner_team
+* Gold-themed cards + CHAMPIONS badge + Honours panel (King/Queen/Prince/Princess); names resolved by stored IDs with ranking fallbacks
+
+### Filename
+* `King-Queen-<CitySanitized>-<YYYY-MM-DD>.pdf` (city from tournament settings via new optional `tournamentCity` export param)
+
 ## 14. Deployment URLs
 
 * **Cloudflare Pages**: https://sandy-scorekeeper.pages.dev/
+* **Cloudflare Worker (deletion relay)**: https://sandy-scorekeeper-workers.leo-blixt77.workers.dev
 * **Firebase Hosting**: https://kingqueen-c3543.web.app
 * **GitHub Repository**: https://github.com/leoblixt25/sandy-scorekeeper
+* **Deletion workflow runs**: https://github.com/leoblixt25/sandy-scorekeeper/actions
 
 ### Deployment Commands
 ```bash
-# Build
+# Build (verify before pushing — Pages builds fail loudly otherwise)
 npm run build
 
-# Deploy to Firebase Hosting
-npx firebase deploy --only hosting
+# Deploy worker (after editing workers/delete-firebase-users.js)
+npx wrangler deploy
 
-# Deploy to Cloudflare Pages
-npx wrangler pages deploy dist --project-name sandy-scorekeeper --branch main --commit-dirty=true
-
-# Push to GitHub
+# Push to GitHub (auto-triggers Cloudflare Pages build)
 git add -A
 git commit -m "message"
 git push origin main
 ```
+
+⚠️ `DEPLOY_CLOUDFLARE_WORKER_FREE.md`, `FUNCTIONS_DEPLOYMENT_GUIDE.md` and other older guides describe the ABANDONED direct-worker / Firebase Functions approaches. The working architecture is section 13k.

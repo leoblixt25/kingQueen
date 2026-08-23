@@ -164,3 +164,118 @@ export const resetEverything = functions.https.onCall(
   }
 );
 
+interface DeletePlayersResult {
+  success: boolean;
+  message: string;
+  details: {
+    usersDeleted: number;
+    usersSkipped: number;
+    errorCount: number;
+    errors: string[];
+  };
+}
+
+/**
+ * Admin-Only: Delete All Registered Player Accounts
+ *
+ * This callable function:
+ * 1. Deletes ALL users from Firebase Authentication EXCEPT the admin
+ * 2. Does NOT touch Firestore data — tournament history, scores, rankings
+ *    and player records are preserved
+ *
+ * Security: Only the admin email can call this function. The Firebase ID
+ * token is verified server-side; no admin credentials live in the frontend.
+ */
+export const deleteAllPlayerAccounts = functions.https.onCall(
+  async (data, context): Promise<DeletePlayersResult> => {
+    // ==========================================
+    // SECURITY CHECK: Verify caller is admin
+    // ==========================================
+
+    if (!context.auth) {
+      throw new functions.https.HttpsError(
+        "unauthenticated",
+        "You must be logged in to perform this action."
+      );
+    }
+
+    const callerEmail = context.auth.token.email;
+
+    if (callerEmail !== ADMIN_EMAIL) {
+      throw new functions.https.HttpsError(
+        "permission-denied",
+        "Only the admin can perform this action."
+      );
+    }
+
+    // Verify confirmation flag
+    if (data.confirm !== true) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "Confirmation flag must be set to true."
+      );
+    }
+
+    functions.logger.info(`🔴 Admin ${callerEmail} initiated player account deletion`);
+
+    const result: DeletePlayersResult = {
+      success: false,
+      message: "",
+      details: {
+        usersDeleted: 0,
+        usersSkipped: 0,
+        errorCount: 0,
+        errors: [],
+      },
+    };
+
+    try {
+      let nextPageToken: string | undefined;
+
+      do {
+        // List users in batches (max 1000 per call)
+        const listUsersResult = await admin.auth().listUsers(1000, nextPageToken);
+
+        for (const user of listUsersResult.users) {
+          // Skip the admin account
+          if (user.email === ADMIN_EMAIL) {
+            functions.logger.info(`⏭️  Skipped admin account: ${user.email}`);
+            result.details.usersSkipped++;
+            continue;
+          }
+
+          try {
+            await admin.auth().deleteUser(user.uid);
+            functions.logger.info(`✅ Deleted player account: ${user.email || user.uid}`);
+            result.details.usersDeleted++;
+          } catch (error: any) {
+            const errorMsg = `Failed to delete user ${user.email || user.uid}: ${error.message}`;
+            functions.logger.error(errorMsg);
+            result.details.errors.push(errorMsg);
+            result.details.errorCount++;
+          }
+        }
+
+        nextPageToken = listUsersResult.pageToken;
+      } while (nextPageToken);
+
+      result.success = true;
+      result.message = "All registered player accounts have been removed. Admin account remains active.";
+
+      functions.logger.info(`🎉 Player account deletion completed:`, result.details);
+
+      return result;
+    } catch (error: any) {
+      functions.logger.error("❌ Player account deletion failed:", error);
+      result.message = `❌ Deletion failed: ${error.message}`;
+      result.details.errors.push(error.message);
+
+      throw new functions.https.HttpsError(
+        "internal",
+        result.message,
+        result.details
+      );
+    }
+  }
+);
+

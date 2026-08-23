@@ -8,10 +8,10 @@ import { toast } from "@/hooks/use-toast";
 import { db } from "@/config/firebase";
 import { collection, getDocs, query, orderBy, limit, doc, setDoc, getDoc, updateDoc, where } from "firebase/firestore";
 import { signOut } from "@/utils/authUtils";
-import { LogOut, Save, Crown, Users, AlertTriangle, Settings, RotateCcw, Trash, PowerOff } from "lucide-react";
+import { LogOut, Save, Crown, Users, AlertTriangle, Settings, RotateCcw, Trash, PowerOff, UserX } from "lucide-react";
 import { useTournamentFinished } from "@/hooks/useTournamentFinished";
 import { ResetConfirmationModal } from "@/components/ResetConfirmationModal";
-import { resetScoresOnly } from "@/utils/resetUtils";
+import { resetScoresOnly, deleteFirebaseAuthUsers } from "@/utils/resetUtils";
 import { PlayerReplacer } from "@/components/PlayerReplacer";
 import { AdminPanel } from "@/components/AdminPanel";
 import { loadMatches } from "@/utils/firebaseUtils";
@@ -45,6 +45,7 @@ export default function AdminControl() {
   const [showPlayerReplacer, setShowPlayerReplacer] = useState(false);
   const tournamentFinished = useTournamentFinished();
   const [isTogglingStatus, setIsTogglingStatus] = useState(false);
+  const [isDeletingPlayers, setIsDeletingPlayers] = useState(false);
   const [femalePlayers, setFemalePlayers] = useState<any[]>([]);
   const [malePlayers, setMalePlayers] = useState<any[]>([]);
   const [femaleMatches, setFemaleMatches] = useState<any[]>([]);
@@ -348,6 +349,42 @@ export default function AdminControl() {
     }
   };
 
+  // Delete all registered player accounts from Firebase Authentication
+  // (server-side via Cloud Function — the admin account is never touched)
+  const handleDeleteAllPlayers = async () => {
+    const confirmed = window.confirm(
+      'Warning: This will permanently remove all registered player accounts from Firebase Authentication. The admin account will not be deleted. Continue?'
+    );
+    if (!confirmed) return;
+
+    setIsDeletingPlayers(true);
+    try {
+      const result = await deleteFirebaseAuthUsers();
+      console.log('🗑️ [DELETE PLAYERS] Result:', result);
+      if (result && (result as any).errorCount > 0) {
+        toast({
+          title: "Completed With Errors",
+          description: `${(result as any).deletedCount} account(s) removed, ${(result as any).errorCount} failed. Failed deletions were logged.`,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Success",
+          description: "All registered player accounts have been removed. Admin account remains active.",
+        });
+      }
+    } catch (error) {
+      console.error('❌ [DELETE PLAYERS] Failed:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete player accounts. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeletingPlayers(false);
+    }
+  };
+
 
 
   if (isLoading) {
@@ -578,6 +615,24 @@ export default function AdminControl() {
             >
               <RotateCcw className="w-4 h-4 mr-2" />
               Reset Scores Only
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteAllPlayers}
+              disabled={isDeletingPlayers}
+              className="w-full touch-target bg-coral hover:bg-coral-dark text-white transition-all duration-300"
+            >
+              {isDeletingPlayers ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+                  Deleting Accounts...
+                </>
+              ) : (
+                <>
+                  <UserX className="w-4 h-4 mr-2" />
+                  Delete All Registered Players
+                </>
+              )}
             </Button>
             <Button
               variant="destructive"

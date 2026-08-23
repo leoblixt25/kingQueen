@@ -1,27 +1,38 @@
 /**
  * Delete All Registered Player Accounts — Cloudflare Worker (plain JS)
  *
- * Paste this entire file into the Cloudflare dashboard code editor
- * (Workers & Pages > sandy-scorekeeper-workers > Edit code).
+ * Deployed as "sandy-scorekeeper-workers" via wrangler.toml.
  *
  * Required Secret variable: FIREBASE_SERVICE_ACCOUNT
  *   = the FULL contents of the service-account JSON downloaded from
  *     Firebase Console > Project Settings > Service Accounts.
  *
  * Security:
- *   - Verifies the caller's Firebase ID token (signature, expiry, audience)
- *   - Only proceeds when the token belongs to the admin email below
+ *   - Caller identity verified server-side via Firebase Identity Toolkit
+ *     accounts:lookup (Google validates the ID token cryptographically,
+ *     keeping our CPU usage far below the free-plan limit)
+ *   - Only proceeds when the caller is the admin email below
  *   - Deletes ONLY Authentication accounts (except the admin account)
  *   - Never touches Firestore data (players, matches, scores, rankings)
+ *
+ * CPU notes (free plan = 10ms/req):
+ *   - No local RS256 verification of the caller's token
+ *   - Service-account access token cached in isolate memory (~1h),
+ *     so the expensive RSA sign runs at most once per hour
  */
 
 const PROJECT_ID = 'kingqueen-c3543';
 const ADMIN_EMAIL = 'leo.blixt77@gmail.com';
+const WEB_API_KEY = 'AIzaSyB59VBp3g79K0yYxcCmxwdp0mvgGTbdxxU';
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
+
+// Cached service-account access token (per isolate lifetime)
+let cachedAccessToken = null;
+let cachedAccessTokenExp = 0;
 
 function jsonResponse(obj, status) {
   return new Response(JSON.stringify(obj), {
@@ -30,7 +41,7 @@ function jsonResponse(obj, status) {
   });
 }
 
-// ---------- base64url helpers ----------
+// ---------- base64url / PEM helpers ----------
 
 function b64UrlToBytes(s) {
   s = s.replace(/-/g, '+').replace(/_/g, '/');
@@ -60,11 +71,33 @@ function pemToPkcs8Bytes(pem) {
   return b64UrlToBytes(b64);
 }
 
-// ---------- Service-account auth: signed JWT -> access token ----------
+// ---------- Verify caller via Google (no local crypto) ----------
+
+async function verifyCaller(idToken) {
+  const resp = await fetch(
+    'https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=' + WEB_API_KEY,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken: idToken }),
+    }
+  );
+  const data = await resp.json();
+  if (!resp.ok || !Array.isArray(data.users) || !data.users[0]) {
+    throw new Error('Invalid or expired login token');
+  }
+  return data.users[0]; // Google-verified account record
+}
+
+// ---------- Service-account auth: signed JWT -> access token (cached) ----------
 
 async function getAccessToken(serviceAccountJson) {
-  const sa = JSON.parse(serviceAccountJson);
   const now = Math.floor(Date.now() / 1000);
+  if (cachedAccessToken && cachedAccessTokenExp - 120 > now) {
+    return cachedAccessToken;
+  }
+
+  const sa = JSON.parse(serviceAccountJson);
 
   const header = { alg: 'RS256', typ: 'JWT' };
   const claim = {
@@ -106,52 +139,10 @@ async function getAccessToken(serviceAccountJson) {
   if (!tokenData.access_token) {
     throw new Error('Could not obtain Google access token: ' + JSON.stringify(tokenData));
   }
-  return tokenData.access_token;
-}
 
-// ---------- Verify the caller's Firebase ID token ----------
-
-async function verifyFirebaseIdToken(token) {
-  const parts = token.split('.');
-  if (parts.length !== 3) throw new Error('Malformed ID token');
-
-  const header = JSON.parse(new TextDecoder().decode(b64UrlToBytes(parts[0])));
-  const payload = JSON.parse(new TextDecoder().decode(b64UrlToBytes(parts[1])));
-
-  if (header.alg !== 'RS256') throw new Error('Unsupported token algorithm');
-
-  // Google publishes the token-signing public keys in JWK format
-  const jwksResp = await fetch(
-    'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com'
-  );
-  if (!jwksResp.ok) throw new Error('Could not fetch Google public keys');
-  const jwks = await jwksResp.json();
-
-  const jwk = jwks.keys.find(function (k) { return k.kid === header.kid; });
-  if (!jwk) throw new Error('Token signed with unknown key');
-
-  const publicKey = await crypto.subtle.importKey(
-    'jwk',
-    jwk,
-    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
-    false,
-    ['verify']
-  );
-
-  const signatureValid = await crypto.subtle.verify(
-    'RSASSA-PKCS1-v1_5',
-    publicKey,
-    b64UrlToBytes(parts[2]),
-    new TextEncoder().encode(parts[0] + '.' + parts[1])
-  );
-  if (!signatureValid) throw new Error('Invalid token signature');
-
-  const now = Math.floor(Date.now() / 1000);
-  if (payload.exp < now) throw new Error('Token expired');
-  if (payload.aud !== PROJECT_ID) throw new Error('Token issued for wrong project');
-  if (payload.iss !== 'https://securetoken.google.com/' + PROJECT_ID) throw new Error('Invalid token issuer');
-
-  return payload;
+  cachedAccessToken = tokenData.access_token;
+  cachedAccessTokenExp = now + (tokenData.expires_in || 3600);
+  return cachedAccessToken;
 }
 
 // ---------- List users (paginated) via Identity Toolkit Admin REST API ----------
@@ -253,21 +244,21 @@ export default {
         return jsonResponse({ error: 'Token is required' }, 400);
       }
 
-      // 1. Verify the caller's Firebase identity (server-side)
-      let payload;
+      // 1. Verify the caller's Firebase identity (Google does the crypto)
+      let user;
       try {
-        payload = await verifyFirebaseIdToken(body.token);
+        user = await verifyCaller(body.token);
       } catch (err) {
         return jsonResponse({ error: 'Unauthorized: ' + err.message }, 403);
       }
 
-      if (payload.email !== ADMIN_EMAIL) {
+      if (user.email !== ADMIN_EMAIL) {
         return jsonResponse({ error: 'Unauthorized: Admin privileges required' }, 403);
       }
 
-      console.log('Admin verified:', payload.email, '(' + payload.user_id + ')');
+      console.log('Admin verified:', user.email);
 
-      // 2. Exchange the service account for a short-lived Google access token
+      // 2. Exchange the service account for a short-lived Google access token (cached ~1h)
       const accessToken = await getAccessToken(env.FIREBASE_SERVICE_ACCOUNT);
 
       // 3. List every auth account

@@ -1,23 +1,7 @@
-# Cloudflare Pages Configuration
-# This app is a static React build - deploys to Cloudflare Pages
+# Cloudflare Worker: Delete All Registered Players
+# Deploys workers/delete-firebase-users.js as "sandy-scorekeeper-workers"
+# URL: https://sandy-scorekeeper-workers.leoblixt25.workers.dev
 
-name = "sandy-scorekeeper"
-compatibility_date = "2024-01-01"
-
-# Build command for Cloudflare Pages
-[build]
-command = "npm run build"
-
-# Output directory for static build
-[site]
-bucket = "./dist"
-
-# SPA routing - all routes serve index.html
-[[redirects]]
-from = "/*"
-to = "/index.html"
-status = 200
-
-[vars]
-# Firebase config is embedded in the build via Vite env vars
-# Set these in Cloudflare Pages dashboard: Settings > Environment variables
+name = "sandy-scorekeeper-workers"
+main = "workers/delete-firebase-users.js"
+compatibility_date = "2024-09-23"

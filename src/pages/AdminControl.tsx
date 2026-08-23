@@ -683,6 +683,7 @@ export default function AdminControl() {
             femaleMatches={femaleMatches}
             maleMatches={maleMatches}
             tournamentDate={tournamentDate}
+            tournamentCity={tournamentCity}
           />
         )}
 

@@ -50,9 +50,10 @@ interface AdminPanelProps {
   femaleMatches?: ResolvedMatch[];
   maleMatches?: ResolvedMatch[];
   tournamentDate?: string;
+  tournamentCity?: string;
 }
 
-export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tournamentDate }: AdminPanelProps) {
+export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tournamentDate, tournamentCity }: AdminPanelProps) {
   const navigate = useNavigate();
   const [confirmedPlayers, setConfirmedPlayers] = useState<ConfirmedPlayer[]>([]);
   const [pendingPlayers, setPendingPlayers] = useState<PendingPlayer[]>([]);
@@ -469,6 +470,7 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
         femaleMatches: femaleMatchesData,
         maleMatches: maleMatchesData,
         tournamentDate: tournamentDate || settings?.tournament_date || '',
+        tournamentCity: tournamentCity,
         finalMatch
       });
       

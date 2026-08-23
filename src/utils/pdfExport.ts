@@ -54,6 +54,7 @@ interface PDFExportData {
   femaleMatches: Match[];
   maleMatches: Match[];
   tournamentDate: string;
+  tournamentCity?: string;
   finalMatch?: FinalMatchInfo;
 }
 
@@ -73,7 +74,7 @@ export function getOrderedMatches<T extends { match_number?: number }>(matches: 
 
 export const exportMatchupsToPDF = async (data: PDFExportData) => {
   try {
-    const { players, femaleMatches, maleMatches, tournamentDate, finalMatch } = data;
+    const { players, femaleMatches, maleMatches, tournamentDate, tournamentCity, finalMatch } = data;
 
     // Allow export if there's ANY data (players or matches)
     const hasPlayers = players && players.length > 0;
@@ -174,7 +175,24 @@ export const exportMatchupsToPDF = async (data: PDFExportData) => {
       );
     }
 
-    doc.save(`King-Queen-Beach-Volleyball-${new Date().toISOString().split('T')[0]}.pdf`);
+    // Filename: King-Queen-<City>-<YYYY-MM-DD>.pdf (e.g. King-Queen-DaNang-2026-08-22.pdf)
+    const sanitize = (s: string) => s.replace(/[^A-Za-z0-9]/g, '');
+    let datePart = '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(tournamentDate || '')) {
+      // Already YYYY-MM-DD — use as-is to avoid timezone shifts
+      datePart = tournamentDate;
+    } else if (tournamentDate) {
+      const d = new Date(tournamentDate);
+      if (!isNaN(d.getTime())) {
+        datePart = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      }
+    }
+    if (!datePart) {
+      const today = new Date();
+      datePart = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    }
+    const cityPart = tournamentCity ? sanitize(tournamentCity) : 'Beach-Volleyball';
+    doc.save(`King-Queen-${cityPart}-${datePart}.pdf`);
   } catch (err: any) {
     console.error('PDF export error:', err);
     alert(`Failed to generate PDF: ${err.message || 'Unknown error'}`);

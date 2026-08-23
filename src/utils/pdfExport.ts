@@ -36,11 +36,25 @@ interface Match {
   isSubmitted?: boolean;
 }
 
+export interface FinalMatchInfo {
+  isCompleted: boolean;
+  /** Bracket Team 1 = Male #1 & Female #2 */
+  teamAMale: string;
+  teamAFemale: string;
+  /** Bracket Team 2 = Male #2 & Female #1 */
+  teamBMale: string;
+  teamBFemale: string;
+  setsTeamA: (number | null)[];
+  setsTeamB: (number | null)[];
+  winnerTeam: number | null; // 1 or 2
+}
+
 interface PDFExportData {
   players: Player[];
   femaleMatches: Match[];
   maleMatches: Match[];
   tournamentDate: string;
+  finalMatch?: FinalMatchInfo;
 }
 
 const BLUE: [number, number, number]      = [0, 119, 182];
@@ -59,7 +73,7 @@ export function getOrderedMatches<T extends { match_number?: number }>(matches: 
 
 export const exportMatchupsToPDF = async (data: PDFExportData) => {
   try {
-    const { players, femaleMatches, maleMatches, tournamentDate } = data;
+    const { players, femaleMatches, maleMatches, tournamentDate, finalMatch } = data;
 
     // Allow export if there's ANY data (players or matches)
     const hasPlayers = players && players.length > 0;
@@ -138,6 +152,13 @@ export const exportMatchupsToPDF = async (data: PDFExportData) => {
       if (doc.getNumberOfPages() > 0) doc.addPage();
       drawPageHeader();
       renderFinalStandings(doc, players, drawPageHeader);
+    }
+
+    // ===== Page 5: Championship Final result (if final match data exists) =====
+    if (finalMatch) {
+      if (doc.getNumberOfPages() > 0) doc.addPage();
+      drawPageHeader();
+      renderChampionshipFinal(doc, finalMatch);
     }
 
     // Footer on all pages
@@ -347,6 +368,159 @@ const renderFinalStandings = (
   doc.setDrawColor(210, 218, 226);
   doc.setLineWidth(0.3);
   doc.line(LEFT_X + COL_W + COL_GAP / 2, dividerTop, LEFT_X + COL_W + COL_GAP / 2, dividerBot);
+};
+
+const GOLD: [number, number, number]       = [176, 141, 30];
+const GOLD_LIGHT: [number, number, number] = [255, 246, 220];
+
+const sumSets = (sets: (number | null)[]): number =>
+  sets.reduce<number>((sum, v) => sum + (v || 0), 0);
+
+const renderChampionshipFinal = (doc: jsPDF, fm: FinalMatchInfo) => {
+  // Title
+  let y = 38;
+  doc.setFontSize(14);
+  doc.setFont(undefined, 'bold');
+  doc.setTextColor(...GOLD);
+  doc.text('Championship Final', 105, y, { align: 'center' });
+  doc.setDrawColor(...GOLD);
+  doc.setLineWidth(0.5);
+  doc.line(11, y + 2, 199, y + 2);
+  y += 14;
+
+  const CARD_W = 90;
+  const CARD_H = 54;
+  const COL_GAP = 8;
+  const X1 = 11;
+  const X2 = X1 + CARD_W + COL_GAP;
+
+  const drawTeamCard = (
+    x: number,
+    teamLabel: string,
+    isWinner: boolean,
+    maleName: string,
+    femaleName: string,
+    sets: (number | null)[]
+  ) => {
+    const cx = x + CARD_W / 2;
+
+    // Card background + border (gold & thicker for winners)
+    doc.setFillColor(255, 255, 255);
+    doc.setDrawColor(...(isWinner ? GOLD : [210, 218, 226] as [number, number, number]));
+    doc.setLineWidth(isWinner ? 0.8 : 0.25);
+    doc.roundedRect(x, y, CARD_W, CARD_H, 2.5, 2.5, 'FD');
+
+    // Label strip
+    const labelH = 7;
+    doc.setFillColor(...(isWinner ? GOLD_LIGHT : [232, 240, 248] as [number, number, number]));
+    doc.roundedRect(x, y, CARD_W, labelH, 2.5, 2.5, 'F');
+    doc.rect(x, y + 3, CARD_W, labelH - 3, 'F');
+
+    doc.setFontSize(9);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(...(isWinner ? GOLD : [0, 70, 110] as [number, number, number]));
+    doc.text(teamLabel, x + 4, y + 4.8);
+    if (isWinner && fm.isCompleted) {
+      doc.text('CHAMPIONS', x + CARD_W - 4, y + 4.8, { align: 'right' });
+    }
+
+    // Player names
+    const nameMaxW = CARD_W - 10;
+    let ny = y + labelH + 8;
+    doc.setTextColor(0, 0, 0);
+    const fs1 = fitFontSize(doc, maleName, nameMaxW, 11, 7);
+    doc.setFontSize(fs1);
+    doc.setFont(undefined, 'bold');
+    doc.text(maleName || 'TBD', cx, ny, { align: 'center' });
+
+    ny += 8;
+    const fs2 = fitFontSize(doc, femaleName, nameMaxW, 11, 7);
+    doc.setFontSize(fs2);
+    doc.text(femaleName || 'TBD', cx, ny, { align: 'center' });
+    doc.setFont(undefined, 'normal');
+
+    // Divider
+    doc.setDrawColor(225, 225, 225);
+    doc.setLineWidth(0.25);
+    doc.line(x + 6, ny + 4, x + CARD_W - 6, ny + 4);
+
+    // Set scores
+    const setY = ny + 12;
+    doc.setFontSize(7);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(120, 120, 120);
+    doc.text('Set 1', x + CARD_W * (1 / 6), setY - 3.5, { align: 'center' });
+    doc.text('Set 2', x + CARD_W / 2, setY - 3.5, { align: 'center' });
+    doc.text('Set 3', x + CARD_W * (5 / 6), setY - 3.5, { align: 'center' });
+
+    doc.setFontSize(13);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(0, 0, 0);
+    doc.text(sets[0] != null ? String(sets[0]) : '-', x + CARD_W * (1 / 6), setY + 3, { align: 'center' });
+    doc.text(sets[1] != null ? String(sets[1]) : '-', x + CARD_W / 2, setY + 3, { align: 'center' });
+    doc.text(sets[2] != null ? String(sets[2]) : '-', x + CARD_W * (5 / 6), setY + 3, { align: 'center' });
+
+    // Total points
+    doc.setFontSize(9);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(90, 90, 90);
+    doc.text(`Total: ${sumSets(sets)} pts`, cx, y + CARD_H - 5, { align: 'center' });
+  };
+
+  drawTeamCard(X1, 'TEAM 1', fm.winnerTeam === 1, fm.teamAMale, fm.teamAFemale, fm.setsTeamA || []);
+  drawTeamCard(X2, 'TEAM 2', fm.winnerTeam === 2, fm.teamBMale, fm.teamBFemale, fm.setsTeamB || []);
+
+  y += CARD_H + 10;
+
+  if (!fm.isCompleted) {
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(130, 130, 130);
+    doc.text('The championship final has not been played yet.', 105, y + 4, { align: 'center' });
+    return;
+  }
+
+  // Honours panel
+  const panelX = 20;
+  const panelW = 170;
+  const panelH = 34;
+  doc.setFillColor(252, 248, 235);
+  doc.setDrawColor(...GOLD);
+  doc.setLineWidth(0.4);
+  doc.roundedRect(panelX, y, panelW, panelH, 2.5, 2.5, 'FD');
+
+  doc.setFontSize(9);
+  doc.setFont(undefined, 'bold');
+  doc.setTextColor(...GOLD);
+  doc.text('HONOURS', 105, y + 6, { align: 'center' });
+
+  const winnerIsA = fm.winnerTeam === 1;
+  const king = winnerIsA ? fm.teamAMale : fm.teamBMale;
+  const queen = winnerIsA ? fm.teamAFemale : fm.teamBFemale;
+  const prince = winnerIsA ? fm.teamBMale : fm.teamAMale;
+  const princess = winnerIsA ? fm.teamBFemale : fm.teamAFemale;
+
+  const honor = (role: string, name: string, x: number, cy: number) => {
+    doc.setFontSize(9);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(...GOLD);
+    doc.text(`${role}:`, x, cy);
+    const roleW = doc.getTextWidth(`${role}: `);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(40, 40, 40);
+    const fs = fitFontSize(doc, name || 'TBD', 75 - roleW, 9, 6.5);
+    doc.setFontSize(fs);
+    doc.text(name || 'TBD', x + roleW, cy);
+  };
+
+  const midX = panelX + panelW / 2 + 4;
+  const row1 = y + 15;
+  const row2 = y + 24;
+
+  honor('King', king, panelX + 8, row1);
+  honor('Queen', queen, midX, row1);
+  honor('Prince', prince, panelX + 8, row2);
+  honor('Princess', princess, midX, row2);
 };
 
 const renderDivision = (

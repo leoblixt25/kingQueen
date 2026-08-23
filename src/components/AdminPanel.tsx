@@ -5,14 +5,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { db } from "@/config/firebase";
-import { collection, getDocs, query, where, doc, setDoc, writeBatch, orderBy, limit, updateDoc, addDoc } from "firebase/firestore";
+import { collection, getDocs, query, where, doc, getDoc, setDoc, writeBatch, orderBy, limit, updateDoc, addDoc } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 import { Calendar, Users, Trash2, Settings, Crown, Mail, CheckCircle, FileText, Clock, Shuffle, RotateCcw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { resetPlayersToPlaceholders } from "@/utils/placeholderUtils";
 import { initializePlayers } from "@/utils/playerInitUtils";
 import { initializeMatches } from "@/utils/matchInitUtils";
-import { exportMatchupsToPDF } from "@/utils/pdfExport";
+import { exportMatchupsToPDF, FinalMatchInfo } from "@/utils/pdfExport";
 import { removePendingPlayer, cleanupOrphanPlaceholderDocs } from "@/utils/placeholderUtils";
 import { Player, ResolvedMatch } from "@/types";
 
@@ -400,11 +400,76 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
         return;
       }
       
+      // Load championship final result (finalMatches/current)
+      let finalMatch: FinalMatchInfo | undefined;
+      try {
+        const fmSnap = await getDoc(doc(db, 'finalMatches', 'current'));
+        if (fmSnap.exists()) {
+          const fm: any = fmSnap.data();
+          const nameById = (id: any): string =>
+            playersData.find((p: any) => p.id === id)?.name || '';
+          const males = playersData.filter((p: any) => p.gender === 'male');
+          const females = playersData.filter((p: any) => p.gender === 'female');
+
+          const king = nameById(fm.male_king_id);
+          const queen = nameById(fm.female_queen_id);
+          const prince = nameById(fm.male_prince_id);
+          const princess = nameById(fm.female_princess_id);
+
+          let winnerTeam: number | null =
+            fm.winner_team === 1 || fm.winner_team === 'team1' ? 1 :
+            fm.winner_team === 2 || fm.winner_team === 'team2' ? 2 : null;
+
+          const isCompleted = !!fm.is_completed;
+
+          // Fallback winner from set scores
+          if (!winnerTeam && isCompleted) {
+            const t1 = [fm.team1_set1, fm.team1_set2, fm.team1_set3];
+            const t2 = [fm.team2_set1, fm.team2_set2, fm.team2_set3];
+            let s1 = 0, s2 = 0;
+            for (let i = 0; i < 3; i++) {
+              if ((t1[i] ?? 0) > (t2[i] ?? 0)) s1++;
+              else if ((t2[i] ?? 0) > (t1[i] ?? 0)) s2++;
+            }
+            winnerTeam = s1 > s2 ? 1 : s2 > s1 ? 2 : null;
+          }
+
+          // Bracket teams: Team 1 = Male #1 & Female #2, Team 2 = Male #2 & Female #1.
+          // Stored royal IDs always reflect the final titles, so map them back to bracket sides.
+          let teamAMale: string, teamAFemale: string, teamBMale: string, teamBFemale: string;
+          if (winnerTeam === 2) {
+            teamAMale = prince || males[1]?.name || 'TBD';
+            teamAFemale = princess || females[0]?.name || 'TBD';
+            teamBMale = king || males[0]?.name || 'TBD';
+            teamBFemale = queen || females[1]?.name || 'TBD';
+          } else {
+            teamAMale = king || males[0]?.name || 'TBD';
+            teamAFemale = queen || females[1]?.name || 'TBD';
+            teamBMale = prince || males[1]?.name || 'TBD';
+            teamBFemale = princess || females[0]?.name || 'TBD';
+          }
+
+          finalMatch = {
+            isCompleted,
+            teamAMale,
+            teamAFemale,
+            teamBMale,
+            teamBFemale,
+            setsTeamA: [fm.team1_set1 ?? null, fm.team1_set2 ?? null, fm.team1_set3 ?? null],
+            setsTeamB: [fm.team2_set1 ?? null, fm.team2_set2 ?? null, fm.team2_set3 ?? null],
+            winnerTeam,
+          };
+        }
+      } catch (fmError) {
+        console.warn('Could not load final match for PDF:', fmError);
+      }
+
       await exportMatchupsToPDF({
         players: playersData,
         femaleMatches: femaleMatchesData,
         maleMatches: maleMatchesData,
-        tournamentDate: tournamentDate || settings?.tournament_date || ''
+        tournamentDate: tournamentDate || settings?.tournament_date || '',
+        finalMatch
       });
       
       toast({

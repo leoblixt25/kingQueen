@@ -45,7 +45,44 @@ export const resetScoresOnly = async () => {
 };
 
 /**
- * Delete Firebase Authentication users via Cloudflare Worker (FREE - No Blaze Plan Required)
+ * Wait for the "Delete registered players" GitHub Action run to finish.
+ * The runs API is public for public repositories — no auth needed.
+ */
+const GITHUB_RUNS_URL = 'https://api.github.com/repos/leoblixt25/sandy-scorekeeper/actions/runs';
+
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+async function waitForGithubRunCompletion(startedAtIso: string): Promise<string> {
+  // Poll every 5s for up to 4 minutes
+  for (let i = 0; i < 48; i++) {
+    await sleep(5000);
+    try {
+      const resp = await fetch(`${GITHUB_RUNS_URL}?per_page=5`, {
+        headers: { 'Accept': 'application/vnd.github+json' },
+      });
+      if (!resp.ok) continue;
+
+      const data = await resp.json();
+      const run = (data.workflow_runs || []).find(
+        (w: any) =>
+          w.event === 'repository_dispatch' &&
+          new Date(w.created_at).getTime() >= new Date(startedAtIso).getTime()
+      );
+      if (!run) continue;
+
+      console.log(`⏳ [AUTH] GitHub Action status: ${run.status}`);
+      if (run.status === 'completed') return run.conclusion;
+    } catch {
+      // transient network hiccup — keep polling
+    }
+  }
+  throw new Error('Timed out waiting for the deletion to finish (check the repo Actions tab)');
+}
+
+/**
+ * Delete Firebase Authentication users:
+ * Cloudflare Worker verifies the admin, then triggers a GitHub Action which
+ * performs the deletion (GitHub has no CPU limits on the free plan).
  */
 export const deleteFirebaseAuthUsers = async () => {
   console.log('🗑️ [AUTH] Deleting Firebase Authentication users...');
@@ -60,15 +97,15 @@ export const deleteFirebaseAuthUsers = async () => {
     // Get the Firebase ID token
     const token = await user.getIdToken();
     
-    // Call Cloudflare Worker endpoint
-    // IMPORTANT: Update this URL after deploying the worker to Cloudflare
     const workerUrl = 'https://sandy-scorekeeper-workers.leo-blixt77.workers.dev';
     
-    console.log('🌐 [AUTH] Calling Cloudflare Worker to delete users...');
+    // Allow matching a run created slightly before our dispatch (clock skew)
+    const startedAtIso = new Date(Date.now() - 90_000).toISOString();
 
-    // Retry a few times: free-plan CPU limits can kill the worker intermittently;
-    // a warm retry often succeeds once the access-token cache is primed.
-    const MAX_ATTEMPTS = 4;
+    console.log('🌐 [AUTH] Calling Cloudflare Worker to trigger deletion...');
+
+    // Retry a few times in case of a transient worker failure.
+    const MAX_ATTEMPTS = 3;
     let lastError: unknown = null;
 
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
@@ -85,27 +122,41 @@ export const deleteFirebaseAuthUsers = async () => {
         });
         result = await response.json();
       } catch (parseErr) {
-        // Non-JSON (HTML) reply => worker was killed; retry
         lastError = parseErr;
-        console.warn(`⚠️ [AUTH] Attempt ${attempt}/${MAX_ATTEMPTS} failed (worker killed), retrying...`);
-        await new Promise(r => setTimeout(r, 800));
+        console.warn(`⚠️ [AUTH] Attempt ${attempt}/${MAX_ATTEMPTS} failed, retrying...`);
+        await sleep(800);
         continue;
       }
 
       if (!response.ok) {
         const reason = result.details ? `${result.error} (${result.details})` : result.error;
-        // 500s may be transient CPU kills -> retry; 4xx are real auth problems -> stop
         if (response.status >= 500 && attempt < MAX_ATTEMPTS) {
           lastError = new Error(reason || 'Failed to delete Firebase users');
           console.warn(`⚠️ [AUTH] Attempt ${attempt}/${MAX_ATTEMPTS} got ${response.status}, retrying...`);
-          await new Promise(r => setTimeout(r, 800));
+          await sleep(800);
           continue;
         }
         throw new Error(reason || 'Failed to delete Firebase users');
       }
 
-      console.log(`✅ [AUTH] Successfully deleted ${result.deletedCount} users`);
-      return result;
+      // Legacy direct response (no GitHub relay)
+      if (!result.started) {
+        console.log(`✅ [AUTH] Successfully deleted ${result.deletedCount} users`);
+        return result;
+      }
+
+      // Relay accepted the request — wait for the GitHub Action to finish
+      console.log('🚀 [AUTH] Deletion dispatched to GitHub Actions, waiting for completion...');
+      const conclusion = await waitForGithubRunCompletion(startedAtIso);
+
+      if (conclusion !== 'success') {
+        throw new Error(
+          `GitHub deletion finished with "${conclusion}" — see the repository's Actions tab`
+        );
+      }
+
+      console.log('✅ [AUTH] GitHub Action completed successfully');
+      return { success: true, message: 'Deleted via GitHub Actions' };
     }
 
     throw lastError instanceof Error ? lastError : new Error('Worker unreachable');

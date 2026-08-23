@@ -1,0 +1,28 @@
+name: Delete registered players
+
+on:
+  repository_dispatch:
+    types: [delete-users]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  delete-users:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Delete player auth accounts
+        env:
+          SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          CALLER_ID_TOKEN: ${{ github.event.client_payload.idToken }}
+        run: node functions/delete-users-github-action.mjs "$CALLER_ID_TOKEN"

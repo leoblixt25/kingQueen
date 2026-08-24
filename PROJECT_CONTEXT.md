@@ -486,6 +486,23 @@ Admin clicks "Delete All Registered Players"
 ### Filename
 * `King-Queen-<CitySanitized>-<YYYY-MM-DD>.pdf` (city from tournament settings via new optional `tournamentCity` export param)
 
+## 13m. Switch-Off UX + Reset Everything Cleanup (Aug 2026)
+
+* `/player-access` now renders `TournamentFinished` when Switch Off Mode is on (same gate as LiveRanking/PublicDrawPage). Signed-in registered players still auto-redirect, but their destination pages respect the switch-off too.
+* ❌ Browser `window.confirm()` popups are being phased out (blocked by some browsers). Replaced with in-app `ResetConfirmationModal` instances:
+  * **Switch Off Tournament Mode** (AdminControl) — explains pages get disabled, nothing deleted, restorable.
+  * **Delete All Registered Players** (AdminControl) — exact warning text preserved; confirm button "Delete All".
+  * Still using window.confirm: final-match reset (Index.tsx), restart draw (DrawPage.tsx).
+* **Reset Everything** (`fullTournamentReset` in resetUtils.ts) now ALSO:
+  * Clears `tournamentSettings/settings` draw state: `draw_completed:false`, empty `drawn_*_matches`/`saved_*_matches`, live-mirror fields reset to idle — otherwise the public draw page kept showing stale matchups forever
+  * Sets `tournament_status:'active'` so public pages are visible again for the new season
+  * Clears `tournamentSettings/default_settings.tournament_date` (no stale countdown from last season)
+* PublicDrawPage pre-draw view now has three states:
+  * No confirmed date → "**The draw is not ready yet.** Once the tournament day is confirmed, the countdown for the draw will appear here."
+  * Date set & upcoming → countdown boxes (unchanged)
+  * Date reached → "draw is starting now" pulse pill (unchanged)
+* Countdown reappears automatically once a new date is saved via Configure Tournament.
+
 ## 14. Deployment URLs
 
 * **Cloudflare Pages**: https://sandy-scorekeeper.pages.dev/

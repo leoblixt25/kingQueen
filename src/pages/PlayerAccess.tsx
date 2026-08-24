@@ -8,11 +8,14 @@ import { toast } from "@/hooks/use-toast";
 import { auth, db } from "@/config/firebase";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import MainTitle from "@/components/MainTitle";
+import TournamentFinished from "@/components/TournamentFinished";
+import { useTournamentFinished } from "@/hooks/useTournamentFinished";
 
 export default function PlayerAccess() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const tournamentFinished = useTournamentFinished();
 
   useEffect(() => {
     checkAuthStatus();
@@ -70,6 +73,11 @@ export default function PlayerAccess() {
   const handleRegister = () => {
     navigate('/register');
   };
+
+  // Tournament Switch Off Mode: player access disabled for the public
+  if (tournamentFinished) {
+    return <TournamentFinished />;
+  }
 
   if (isLoading) {
     return (

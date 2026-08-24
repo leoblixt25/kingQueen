@@ -1,6 +1,6 @@
 import { db } from '@/config/firebase';
 import { auth } from '@/config/firebase';
-import { collection, getDocs, writeBatch, doc, query } from 'firebase/firestore';
+import { collection, getDocs, writeBatch, doc, query, setDoc } from 'firebase/firestore';
 import { initializePlayers } from './playerInitUtils';
 import { initializeMatches } from './matchInitUtils';
 import { getCurrentUser } from '@/utils/authUtils';
@@ -197,6 +197,31 @@ export const fullTournamentReset = async () => {
     
     await batch.commit();
     console.log('🗑️ [RESET] All data deleted');
+    
+    // Clear the public draw state so the public draw page shows the
+    // "not ready yet" message instead of stale matchups, and restore
+    // public access for the new season.
+    await setDoc(
+      doc(db, 'tournamentSettings', 'settings'),
+      {
+        draw_completed: false,
+        drawn_female_matches: [],
+        drawn_male_matches: [],
+        saved_female_matches: [],
+        saved_male_matches: [],
+        live_draw_status: 'idle',
+        live_draw_active: '',
+        live_draw_order_f: [],
+        live_draw_order_m: [],
+        live_draw_picks_f: [],
+        live_draw_picks_m: [],
+        tournament_status: 'active',
+      },
+      { merge: true }
+    );
+    // No tournament day confirmed yet — countdown reappears once a new date is set
+    await setDoc(doc(db, 'tournamentSettings', 'default_settings'), { tournament_date: '' }, { merge: true });
+    console.log('🧹 [RESET] Public draw state cleared');
     
     // Reinitialize players first
     await initializePlayers();

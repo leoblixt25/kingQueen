@@ -179,10 +179,12 @@ export default function PublicDrawPage() {
   }
 
   if (!drawStarted || !saved) {
-    const remaining = drawTarget ? Math.max(0, drawTarget - now.getTime()) : null;
+    const msLeft = drawTarget !== null ? drawTarget - now.getTime() : null;
+    const hasUpcoming = msLeft !== null && msLeft > 0;
+    const remaining = hasUpcoming ? msLeft : null;
     const days = remaining ? Math.floor(remaining / 86400000) : 0;
     const hours = remaining ? Math.floor((remaining % 86400000) / 3600000) : 0;
-    const mins = remaining ? Math.floor((remaining % 3600000) / 60000) : 0;
+    const mins = remaining ? Math.floor((remaining % 60000) / 60000) : 0;
     const secs = remaining ? Math.floor((remaining % 60000) / 1000) : 0;
     const pad = (n: number) => String(n).padStart(2, '0');
 
@@ -200,14 +202,15 @@ export default function PublicDrawPage() {
                 Not started yet
               </div>
               <p className="text-foreground/70 leading-relaxed">
-                The tournament draw has not started yet. The live draw will be available here the day before the tournament.
+                {hasUpcoming
+                  ? 'The tournament draw has not started yet. The live draw will be available here the day before the tournament.'
+                  : 'The draw is not ready yet. Once the tournament day is confirmed, the countdown for the draw will appear here.'}
               </p>
 
-              {/* Countdown to the draw */}
-              {drawTarget && remaining !== null && (
+              {/* Countdown to the draw — only while a tournament day is confirmed */}
+              {hasUpcoming && (
                 <div className="pt-2">
-                  {remaining > 0 ? (
-                    <div className="space-y-3">
+                  <div className="space-y-3">
                       <p className="text-xs font-semibold text-foreground/50 uppercase tracking-wide">
                         Draw starts in
                       </p>
@@ -233,12 +236,14 @@ export default function PublicDrawPage() {
                         </div>
                       </div>
                     </div>
-                  ) : (
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sunset/20 text-sunset-dark text-xs font-semibold">
-                      <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                      The draw is starting now — refresh to watch live!
-                    </div>
-                  )}
+                </div>
+              )}
+
+              {/* Date confirmed but draw window reached — invite to the live draw */}
+              {!hasUpcoming && msLeft !== null && msLeft <= 0 && (
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sunset/20 text-sunset-dark text-xs font-semibold">
+                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                  The draw is starting now — refresh to watch live!
                 </div>
               )}
 

@@ -46,6 +46,7 @@ export default function AdminControl() {
   const tournamentFinished = useTournamentFinished();
   const [isTogglingStatus, setIsTogglingStatus] = useState(false);
   const [showSwitchOffModal, setShowSwitchOffModal] = useState(false);
+  const [showDeletePlayersModal, setShowDeletePlayersModal] = useState(false);
   const [isDeletingPlayers, setIsDeletingPlayers] = useState(false);
   const [femalePlayers, setFemalePlayers] = useState<any[]>([]);
   const [malePlayers, setMalePlayers] = useState<any[]>([]);
@@ -352,11 +353,6 @@ export default function AdminControl() {
   // Delete all registered player accounts from Firebase Authentication
   // (server-side via Cloud Function — the admin account is never touched)
   const handleDeleteAllPlayers = async () => {
-    const confirmed = window.confirm(
-      'Warning: This will permanently remove all registered player accounts from Firebase Authentication. The admin account will not be deleted. Continue?'
-    );
-    if (!confirmed) return;
-
     setIsDeletingPlayers(true);
     try {
       const result = await deleteFirebaseAuthUsers();
@@ -619,7 +615,7 @@ export default function AdminControl() {
             </Button>
             <Button
               variant="destructive"
-              onClick={handleDeleteAllPlayers}
+              onClick={() => setShowDeletePlayersModal(true)}
               disabled={isDeletingPlayers}
               className="w-full touch-target bg-coral hover:bg-coral-dark text-white transition-all duration-300"
             >
@@ -685,6 +681,19 @@ export default function AdminControl() {
           title="Switch Off Tournament Mode?"
           description="Public tournament pages (draw, live ranking, player access) will be disabled for everyone except admins. No data is deleted — you can restore access at any time."
           confirmText="Switch Off"
+        />
+
+        <ResetConfirmationModal
+          isOpen={showDeletePlayersModal}
+          onClose={() => setShowDeletePlayersModal(false)}
+          onConfirm={() => {
+            setShowDeletePlayersModal(false);
+            handleDeleteAllPlayers();
+          }}
+          isResetting={isDeletingPlayers}
+          title="Delete All Registered Players?"
+          description="Warning: This will permanently remove all registered player accounts from Firebase Authentication. The admin account will not be deleted. Continue?"
+          confirmText="Delete All"
         />
 
         {showAdminPanel && (

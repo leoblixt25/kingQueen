@@ -45,6 +45,7 @@ export default function AdminControl() {
   const [showPlayerReplacer, setShowPlayerReplacer] = useState(false);
   const tournamentFinished = useTournamentFinished();
   const [isTogglingStatus, setIsTogglingStatus] = useState(false);
+  const [showSwitchOffModal, setShowSwitchOffModal] = useState(false);
   const [isDeletingPlayers, setIsDeletingPlayers] = useState(false);
   const [femalePlayers, setFemalePlayers] = useState<any[]>([]);
   const [malePlayers, setMalePlayers] = useState<any[]>([]);
@@ -309,7 +310,6 @@ export default function AdminControl() {
   // Tournament Switch Off Mode: disable/restore public tournament pages.
   // Only writes one flag to the settings doc — no data is ever deleted.
   const handleSwitchOffTournament = async () => {
-    if (!window.confirm('Are you sure you want to close this tournament? Public tournament pages will be disabled.')) return;
     setIsTogglingStatus(true);
     try {
       await setDoc(doc(db, 'tournamentSettings', 'settings'), { tournament_status: 'finished' }, { merge: true });
@@ -577,7 +577,7 @@ export default function AdminControl() {
             ) : (
               <Button
                 variant="destructive"
-                onClick={handleSwitchOffTournament}
+                onClick={() => setShowSwitchOffModal(true)}
                 disabled={isTogglingStatus}
                 className="w-full touch-target bg-coral hover:bg-coral-dark text-white transition-all duration-300"
               >
@@ -672,6 +672,19 @@ export default function AdminControl() {
           title="Reset All Scores?"
           description="This will reset all match scores to 0. Players and match structure will be preserved. This action cannot be undone."
           confirmText="Reset Scores"
+        />
+
+        <ResetConfirmationModal
+          isOpen={showSwitchOffModal}
+          onClose={() => setShowSwitchOffModal(false)}
+          onConfirm={() => {
+            setShowSwitchOffModal(false);
+            handleSwitchOffTournament();
+          }}
+          isResetting={isTogglingStatus}
+          title="Switch Off Tournament Mode?"
+          description="Public tournament pages (draw, live ranking, player access) will be disabled for everyone except admins. No data is deleted — you can restore access at any time."
+          confirmText="Switch Off"
         />
 
         {showAdminPanel && (

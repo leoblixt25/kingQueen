@@ -17,6 +17,7 @@ import PendingApproval from "./pages/PendingApproval";
 import ProtectedRoute from "./components/ProtectedRoute";
 import DrawPage from "./pages/DrawPage";
 import PublicDrawPage from "./pages/PublicDrawPage";
+import InstallPage from "./pages/InstallPage";
 
 const queryClient = new QueryClient();
 
@@ -56,6 +57,7 @@ const App = () => (
           <Route path="/player-access" element={<PlayerAccess />} />
           <Route path="/register" element={<Register />} />
           <Route path="/pending-approval" element={<PendingApproval />} />
+          <Route path="/install" element={<InstallPage />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

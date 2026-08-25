@@ -491,8 +491,10 @@ Admin clicks "Delete All Registered Players"
 * `/player-access` now renders `TournamentFinished` when Switch Off Mode is on (same gate as LiveRanking/PublicDrawPage). Signed-in registered players still auto-redirect, but their destination pages respect the switch-off too.
 * ❌ Browser `window.confirm()` popups are being phased out (blocked by some browsers). Replaced with in-app `ResetConfirmationModal` instances:
   * **Switch Off Tournament Mode** (AdminControl) — explains pages get disabled, nothing deleted, restorable.
-  * **Delete All Registered Players** (AdminControl) — exact warning text preserved; confirm button "Delete All".
-  * Still using window.confirm: final-match reset (Index.tsx), restart draw (DrawPage.tsx).
+  * ✅ **Delete All Registered Players** (AdminControl) — exact warning text preserved; confirm button "Delete All".
+  * ✅ **Final Match Reset** (Index) — "Reset Final Match?" with description of what gets cleared.
+  * ✅ **Restart Draw** (DrawPage) — "Restart Draw?" with warning about clearing all match data.
+  * ✅ All browser `window.confirm()` popups in the app are now replaced — none remain.
 * **Reset Everything** (`fullTournamentReset` in resetUtils.ts) now ALSO:
   * Clears `tournamentSettings/settings` draw state: `draw_completed:false`, empty `drawn_*_matches`/`saved_*_matches`, live-mirror fields reset to idle — otherwise the public draw page kept showing stale matchups forever
   * Sets `tournament_status:'active'` so public pages are visible again for the new season
@@ -502,6 +504,18 @@ Admin clicks "Delete All Registered Players"
   * Date set & upcoming → countdown boxes (unchanged)
   * Date reached → "draw is starting now" pulse pill (unchanged)
 * Countdown reappears automatically once a new date is saved via Configure Tournament.
+
+## 13n. PWA + Install Page (Aug 2026)
+
+* App is now a **Progressive Web App (PWA)** — users can "Add to Home Screen" on iOS/Android and it behaves like a native app (full screen, home screen icon, offline shell cache).
+* Service worker (`public/sw.js`) uses **network-first** strategy: normal speed when online, falls back to cached shell only when offline. Firebase/GitHub/Cloudflare API traffic is never intercepted or cached.
+* `public/manifest.json` defines app name, icon (`icon.png`), theme color (`#0077B6`), standalone display mode.
+* `index.html` updated with manifest link, `theme-color` meta, `apple-mobile-web-app-capable` meta.
+* **`/install` page** (`src/pages/InstallPage.tsx`): platform-aware install page with:
+  * Android → one-tap install via `beforeinstallprompt` (native browser prompt, single button)
+  * iOS → step-by-step visual guide with Share button icon
+  * Desktop → QR code (via `api.qrserver.com`) for scanning with phone camera
+* Service worker registration is production-only (`import.meta.env.PROD`) so dev/hot-reload is unaffected.
 
 ## 14. Deployment URLs
 

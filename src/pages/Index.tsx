@@ -52,6 +52,7 @@ export default function KingQueenOfTheBeach() {
   const [isResetting, setIsResetting] = useState(false);
   const [showScoreResetModal, setShowScoreResetModal] = useState(false);
   const [isResettingScores, setIsResettingScores] = useState(false);
+  const [showResetFinalMatchModal, setShowResetFinalMatchModal] = useState(false);
   const [drawCompleted, setDrawCompleted] = useState(false);
   const tournamentFinished = useTournamentFinished();
   
@@ -669,10 +670,7 @@ export default function KingQueenOfTheBeach() {
   }
 
   const handleResetFinalMatch = async () => {
-    if (!window.confirm('Are you sure you want to reset the final match? This will clear all final match data.')) {
-      return;
-    }
-    
+    setShowResetFinalMatchModal(false);
     try {
       const finalMatchesRef = collection(db, 'finalMatches');
       const snapshot = await getDocs(finalMatchesRef);
@@ -1323,7 +1321,7 @@ export default function KingQueenOfTheBeach() {
                         </Button>
                         <Button 
                           variant="destructive" 
-                          onClick={handleResetFinalMatch} 
+                          onClick={() => setShowResetFinalMatchModal(true)} 
                           className="w-full touch-target bg-coral hover:bg-coral-dark transition-all duration-300"
                         >
                           <Trash className="w-4 h-4 mr-2" />
@@ -1560,6 +1558,16 @@ export default function KingQueenOfTheBeach() {
 
       </div>
       <Toaster />
+
+      <ResetConfirmationModal
+        isOpen={showResetFinalMatchModal}
+        onClose={() => setShowResetFinalMatchModal(false)}
+        onConfirm={handleResetFinalMatch}
+        isResetting={false}
+        title="Reset Final Match?"
+        description="This will clear all final match data including scores and team selections. This action cannot be undone."
+        confirmText="Reset Match"
+      />
     </div>
   );
 }

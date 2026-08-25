@@ -8,6 +8,7 @@ import { FC, MC, paintCanvas } from '@/utils/drawWheel';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ChevronRight, RotateCcw, Target, CheckCircle2 } from 'lucide-react';
+import { ResetConfirmationModal } from '@/components/ResetConfirmationModal';
 
 interface Player { id: string; name: string; gender: string; status: string; }
 interface DrawnMatch { matchNum: number; p1: string; p2: string; p3: string; p4: string; }
@@ -29,6 +30,8 @@ export default function DrawPage() {
   const [saved, setSaved]                 = useState(false);
   const [loadingTestPlayers, setLoadingTestPlayers] = useState(false);
   const [now, setNow]                     = useState(new Date());
+  const [showRestartDrawModal, setShowRestartDrawModal] = useState(false);
+  const [isResettingDraw, setIsResettingDraw] = useState(false);
 
   // Live clock — updates every second as proof the draw is happening in real time
   useEffect(() => {
@@ -434,7 +437,8 @@ export default function DrawPage() {
 
   // Bug 4: Restart draw function
   async function restartDraw() {
-    if (!window.confirm('This will clear the current draw and all match data. Players will need to wait for a new draw. Are you sure?')) return;
+    setShowRestartDrawModal(false);
+    setIsResettingDraw(true);
     try {
       console.log('🔄 [RESTART] Clearing draw data...');
       
@@ -468,6 +472,7 @@ export default function DrawPage() {
       console.error('❌ [RESTART] Failed to restart draw:', e);
       alert('Failed to restart draw.');
     }
+    setIsResettingDraw(false);
   }
 
   function resetDraw() {
@@ -843,7 +848,7 @@ export default function DrawPage() {
                 </Button>
 
                 <Button
-                  onClick={restartDraw}
+                  onClick={() => setShowRestartDrawModal(true)}
                   variant="outline"
                   className="w-full touch-target py-4 text-base border-coral text-coral hover:bg-coral/10"
                 >
@@ -856,6 +861,16 @@ export default function DrawPage() {
         </div>
 
       </div>
+
+      <ResetConfirmationModal
+        isOpen={showRestartDrawModal}
+        onClose={() => setShowRestartDrawModal(false)}
+        onConfirm={restartDraw}
+        isResetting={isResettingDraw}
+        title="Restart Draw?"
+        description="This will clear the current draw and all match data. Players will need to wait for a new draw. Are you sure?"
+        confirmText="Restart Draw"
+      />
     </div>
   );
 }

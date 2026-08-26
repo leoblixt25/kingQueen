@@ -326,14 +326,12 @@ export default function Register() {
 
       const countOccupied = (snap: any) => snap.docs.filter((doc: any) => {
         const p = doc.data();
-        const isActive = p.status === 'approved' || p.status === 'pending';
-        return isActive && p.is_reserve !== true;
+        return p.status === 'approved' && p.is_reserve !== true;
       }).length;
 
       const countReserve = (snap: any) => snap.docs.filter((doc: any) => {
         const p = doc.data();
-        const isActive = p.status === 'approved' || p.status === 'pending';
-        return isActive && p.is_reserve === true;
+        return p.status === 'approved' && p.is_reserve === true;
       }).length;
 
       const maleRegisteredCount = countOccupied(maleSnap);

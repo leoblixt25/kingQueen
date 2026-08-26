@@ -580,7 +580,7 @@ export default function Register() {
               <Users className="w-6 h-6 mx-auto mb-2 text-ocean" />
               <h3 className="font-semibold text-ocean">Male Division</h3>
               <p className="text-sm text-foreground/70">
-                {maleSpots?.available_spots || 0} / {maleSpots?.total_spots || 8} spots
+                {maleSpots?.available_spots || 0} spots available
               </p>
               {isGenderFull('male') && (
                 <div className="mt-2 text-xs text-coral font-medium">FULL - reserve available</div>
@@ -593,7 +593,7 @@ export default function Register() {
               <Users className="w-6 h-6 mx-auto mb-2 text-sunset" />
               <h3 className="font-semibold text-sunset">Female Division</h3>
               <p className="text-sm text-foreground/70">
-                {femaleSpots?.available_spots || 0} / {femaleSpots?.total_spots || 8} spots
+                {femaleSpots?.available_spots || 0} spots available
               </p>
               {isGenderFull('female') && (
                 <div className="mt-2 text-xs text-coral font-medium">FULL - reserve available</div>

@@ -7,7 +7,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useNavigate } from "react-router-dom";
 import { auth, db } from "@/config/firebase";
-import { getDocs, collection, query, where } from "firebase/firestore";
+import { getDocs, collection, query, where, onSnapshot } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { Crown, Users, Calendar, AlertCircle, CheckCircle, LogIn, UserPlus, Mail, Info } from "lucide-react";
@@ -105,9 +105,49 @@ export default function Register() {
 
   // Refresh available spots when settings change
   useEffect(() => {
-    if (settings && availableSpots.length === 0) {
-      loadAvailableSpots(settings.max_players_per_gender || 8);
-    }
+    if (!settings) return;
+    const maxPlayersPerGender = settings.max_players_per_gender || 8;
+
+    const maleQuery = query(collection(db, 'players'), where('gender', '==', 'male'));
+    const femaleQuery = query(collection(db, 'players'), where('gender', '==', 'female'));
+
+    const unsubMale = onSnapshot(maleQuery, (snap) => {
+      const occupied = snap.docs.filter((d) => {
+        const p = d.data();
+        return (p.status === 'approved' || p.status === 'pending') && p.is_reserve !== true;
+      }).length;
+      const reserve = snap.docs.filter((d) => {
+        const p = d.data();
+        return (p.status === 'approved' || p.status === 'pending') && p.is_reserve === true;
+      }).length;
+      setAvailableSpots((prev) => {
+        const female = prev.find((s) => s.gender === 'female');
+        return [
+          { gender: 'male', available_spots: maxPlayersPerGender - occupied, total_spots: maxPlayersPerGender, registered_count: occupied, reserve_count: reserve },
+          female || { gender: 'female', available_spots: maxPlayersPerGender, total_spots: maxPlayersPerGender, registered_count: 0, reserve_count: 0 }
+        ];
+      });
+    });
+
+    const unsubFemale = onSnapshot(femaleQuery, (snap) => {
+      const occupied = snap.docs.filter((d) => {
+        const p = d.data();
+        return (p.status === 'approved' || p.status === 'pending') && p.is_reserve !== true;
+      }).length;
+      const reserve = snap.docs.filter((d) => {
+        const p = d.data();
+        return (p.status === 'approved' || p.status === 'pending') && p.is_reserve === true;
+      }).length;
+      setAvailableSpots((prev) => {
+        const male = prev.find((s) => s.gender === 'male');
+        return [
+          male || { gender: 'male', available_spots: maxPlayersPerGender, total_spots: maxPlayersPerGender, registered_count: 0, reserve_count: 0 },
+          { gender: 'female', available_spots: maxPlayersPerGender - occupied, total_spots: maxPlayersPerGender, registered_count: occupied, reserve_count: reserve }
+        ];
+      });
+    });
+
+    return () => { unsubMale(); unsubFemale(); };
   }, [settings]);
 
   const checkRegistrationStatus = async () => {
@@ -299,8 +339,12 @@ export default function Register() {
         });
       }
 
-      // Load available spots based on settings
-      loadAvailableSpots(8);
+      // Default settings if none found
+      setSettings({
+        tournament_date: new Date().toISOString(),
+        max_players_per_gender: 8,
+        registration_cutoff_days: 3
+      });
     } catch (error) {
       console.error('Error loading registration data:', error);
       // Default settings if error
@@ -309,64 +353,8 @@ export default function Register() {
         max_players_per_gender: 8,
         registration_cutoff_days: 3
       });
-      loadAvailableSpots(8);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const loadAvailableSpots = async (maxPlayersPerGender: number) => {
-    try {
-      // Query Firestore for registered players
-      // Occupied slots = approved players + pending (non-reserve) players holding a slot
-      const maleQuery = query(collection(db, 'players'), where('gender', '==', 'male'));
-      const maleSnap = await getDocs(maleQuery);
-
-      const femaleQuery = query(collection(db, 'players'), where('gender', '==', 'female'));
-      const femaleSnap = await getDocs(femaleQuery);
-
-      const countOccupied = (snap: any) => snap.docs.filter((doc: any) => {
-        const p = doc.data();
-        const isActive = p.status === 'approved' || p.status === 'pending';
-        return isActive && p.is_reserve !== true;
-      }).length;
-
-      const countReserve = (snap: any) => snap.docs.filter((doc: any) => {
-        const p = doc.data();
-        const isActive = p.status === 'approved' || p.status === 'pending';
-        return isActive && p.is_reserve === true;
-      }).length;
-
-      const maleRegisteredCount = countOccupied(maleSnap);
-      const femaleRegisteredCount = countOccupied(femaleSnap);
-      const maleReserveCount = countReserve(maleSnap);
-      const femaleReserveCount = countReserve(femaleSnap);
-      
-      const spots = [
-        { 
-          gender: 'male', 
-          available_spots: maxPlayersPerGender - maleRegisteredCount, 
-          total_spots: maxPlayersPerGender,
-          registered_count: maleRegisteredCount,
-          reserve_count: maleReserveCount
-        },
-        { 
-          gender: 'female', 
-          available_spots: maxPlayersPerGender - femaleRegisteredCount, 
-          total_spots: maxPlayersPerGender,
-          registered_count: femaleRegisteredCount,
-          reserve_count: femaleReserveCount
-        }
-      ];
-      
-      setAvailableSpots(spots);
-    } catch (error) {
-      console.error('Error loading available spots:', error);
-      // Default values
-      setAvailableSpots([
-        { gender: 'male', available_spots: 8, total_spots: 8, registered_count: 0 },
-        { gender: 'female', available_spots: 8, total_spots: 8, registered_count: 0 }
-      ]);
     }
   };
 
@@ -464,11 +452,6 @@ export default function Register() {
           });
         }
 
-        // Refresh available spots to reflect the new registration
-        if (settings) {
-          loadAvailableSpots(settings.max_players_per_gender || 8);
-        }
-        
         // Show pending approval message instead of redirecting
         setTimeout(() => {
           navigate('/pending-approval');

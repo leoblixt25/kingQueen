@@ -572,7 +572,7 @@ export function AuthModal({ onClose, onSuccess, availableSpots, googleUser, show
                 <div className="p-2 sm:p-3 bg-ocean/10 rounded-lg text-center">
                   <p className="text-xs sm:text-sm font-medium text-ocean">Male Division</p>
                   <p className="text-xs text-gray-600">
-                    {maleSpots?.available_spots || 0} / {maleSpots?.total_spots || 8} spots
+                    {maleSpots?.total_spots || 8} spots available
                   </p>
                   {isGenderFull('male') && (
                     <div className="text-xs text-red-600 font-medium">FULL</div>
@@ -581,7 +581,7 @@ export function AuthModal({ onClose, onSuccess, availableSpots, googleUser, show
                 <div className="p-2 sm:p-3 bg-sunset/10 rounded-lg text-center">
                   <p className="text-xs sm:text-sm font-medium text-sunset">Female Division</p>
                   <p className="text-xs text-gray-600">
-                    {femaleSpots?.available_spots || 0} / {femaleSpots?.total_spots || 8} spots
+                    {femaleSpots?.total_spots || 8} spots available
                   </p>
                   {isGenderFull('female') && (
                     <div className="text-xs text-red-600 font-medium">FULL</div>
@@ -787,7 +787,7 @@ export function AuthModal({ onClose, onSuccess, availableSpots, googleUser, show
                 <div className="p-2 sm:p-3 bg-ocean/10 rounded-lg text-center">
                   <p className="text-xs sm:text-sm font-medium text-ocean">Male Division</p>
                   <p className="text-xs text-gray-600">
-                    {maleSpots?.available_spots || 0} / {maleSpots?.total_spots || 8} spots
+                    {maleSpots?.total_spots || 8} spots available
                   </p>
                   {isGenderFull('male') && (
                     <div className="text-xs text-red-600 font-medium">FULL</div>
@@ -796,7 +796,7 @@ export function AuthModal({ onClose, onSuccess, availableSpots, googleUser, show
                 <div className="p-2 sm:p-3 bg-sunset/10 rounded-lg text-center">
                   <p className="text-xs sm:text-sm font-medium text-sunset">Female Division</p>
                   <p className="text-xs text-gray-600">
-                    {femaleSpots?.available_spots || 0} / {femaleSpots?.total_spots || 8} spots
+                    {femaleSpots?.total_spots || 8} spots available
                   </p>
                   {isGenderFull('female') && (
                     <div className="text-xs text-red-600 font-medium">FULL</div>

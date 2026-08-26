@@ -7,7 +7,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useNavigate } from "react-router-dom";
 import { auth, db } from "@/config/firebase";
-import { getDocs, collection, query, where, onSnapshot } from "firebase/firestore";
+import { getDocs, collection, query, where } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { Crown, Users, Calendar, AlertCircle, CheckCircle, LogIn, UserPlus, Mail, Info } from "lucide-react";
@@ -103,51 +103,40 @@ export default function Register() {
     checkGoogleAuthSession();
   }, []);
 
-  // Refresh available spots when settings change
+  // Refresh available spots periodically
   useEffect(() => {
     if (!settings) return;
-    const maxPlayersPerGender = settings.max_players_per_gender || 8;
+    const max = settings.max_players_per_gender || 8;
 
-    const maleQuery = query(collection(db, 'players'), where('gender', '==', 'male'));
-    const femaleQuery = query(collection(db, 'players'), where('gender', '==', 'female'));
+    const refreshSpots = async () => {
+      try {
+        const maleSnap = await getDocs(query(collection(db, 'players'), where('gender', '==', 'male')));
+        const femaleSnap = await getDocs(query(collection(db, 'players'), where('gender', '==', 'female')));
 
-    const unsubMale = onSnapshot(maleQuery, (snap) => {
-      const occupied = snap.docs.filter((d) => {
-        const p = d.data();
-        return (p.status === 'approved' || p.status === 'pending') && p.is_reserve !== true;
-      }).length;
-      const reserve = snap.docs.filter((d) => {
-        const p = d.data();
-        return (p.status === 'approved' || p.status === 'pending') && p.is_reserve === true;
-      }).length;
-      setAvailableSpots((prev) => {
-        const female = prev.find((s) => s.gender === 'female');
-        return [
-          { gender: 'male', available_spots: maxPlayersPerGender - occupied, total_spots: maxPlayersPerGender, registered_count: occupied, reserve_count: reserve },
-          female || { gender: 'female', available_spots: maxPlayersPerGender, total_spots: maxPlayersPerGender, registered_count: 0, reserve_count: 0 }
-        ];
-      });
-    });
+        const countOccupied = (snap: any) => snap.docs.filter((d: any) => {
+          const p = d.data();
+          return (p.status === 'approved' || p.status === 'pending') && p.is_reserve !== true;
+        }).length;
 
-    const unsubFemale = onSnapshot(femaleQuery, (snap) => {
-      const occupied = snap.docs.filter((d) => {
-        const p = d.data();
-        return (p.status === 'approved' || p.status === 'pending') && p.is_reserve !== true;
-      }).length;
-      const reserve = snap.docs.filter((d) => {
-        const p = d.data();
-        return (p.status === 'approved' || p.status === 'pending') && p.is_reserve === true;
-      }).length;
-      setAvailableSpots((prev) => {
-        const male = prev.find((s) => s.gender === 'male');
-        return [
-          male || { gender: 'male', available_spots: maxPlayersPerGender, total_spots: maxPlayersPerGender, registered_count: 0, reserve_count: 0 },
-          { gender: 'female', available_spots: maxPlayersPerGender - occupied, total_spots: maxPlayersPerGender, registered_count: occupied, reserve_count: reserve }
-        ];
-      });
-    });
+        const countReserve = (snap: any) => snap.docs.filter((d: any) => {
+          const p = d.data();
+          return (p.status === 'approved' || p.status === 'pending') && p.is_reserve === true;
+        }).length;
 
-    return () => { unsubMale(); unsubFemale(); };
+        const maleOcc = countOccupied(maleSnap);
+        const femaleOcc = countOccupied(femaleSnap);
+        setAvailableSpots([
+          { gender: 'male', available_spots: max - maleOcc, total_spots: max, registered_count: maleOcc, reserve_count: countReserve(maleSnap) },
+          { gender: 'female', available_spots: max - femaleOcc, total_spots: max, registered_count: femaleOcc, reserve_count: countReserve(femaleSnap) }
+        ]);
+      } catch (e) {
+        console.error('Error refreshing spots:', e);
+      }
+    };
+
+    refreshSpots();
+    const interval = setInterval(refreshSpots, 5000);
+    return () => clearInterval(interval);
   }, [settings]);
 
   const checkRegistrationStatus = async () => {

@@ -21,7 +21,6 @@ interface AvailableSpots {
   available_spots: number;
   total_spots: number;
   registered_count?: number;
-  reserve_count?: number;
 }
 
 interface TournamentSettings {
@@ -103,40 +102,11 @@ export default function Register() {
     checkGoogleAuthSession();
   }, []);
 
-  // Refresh available spots periodically
+  // Refresh available spots when settings change
   useEffect(() => {
-    if (!settings) return;
-    const max = settings.max_players_per_gender || 8;
-
-    const refreshSpots = async () => {
-      try {
-        const maleSnap = await getDocs(query(collection(db, 'players'), where('gender', '==', 'male')));
-        const femaleSnap = await getDocs(query(collection(db, 'players'), where('gender', '==', 'female')));
-
-        const countOccupied = (snap: any) => snap.docs.filter((d: any) => {
-          const p = d.data();
-          return (p.status === 'approved' || p.status === 'pending') && p.is_reserve !== true;
-        }).length;
-
-        const countReserve = (snap: any) => snap.docs.filter((d: any) => {
-          const p = d.data();
-          return (p.status === 'approved' || p.status === 'pending') && p.is_reserve === true;
-        }).length;
-
-        const maleOcc = countOccupied(maleSnap);
-        const femaleOcc = countOccupied(femaleSnap);
-        setAvailableSpots([
-          { gender: 'male', available_spots: max - maleOcc, total_spots: max, registered_count: maleOcc, reserve_count: countReserve(maleSnap) },
-          { gender: 'female', available_spots: max - femaleOcc, total_spots: max, registered_count: femaleOcc, reserve_count: countReserve(femaleSnap) }
-        ]);
-      } catch (e) {
-        console.error('Error refreshing spots:', e);
-      }
-    };
-
-    refreshSpots();
-    const interval = setInterval(refreshSpots, 5000);
-    return () => clearInterval(interval);
+    if (settings && availableSpots.length === 0) {
+      loadAvailableSpots(settings.max_players_per_gender || 8);
+    }
   }, [settings]);
 
   const checkRegistrationStatus = async () => {
@@ -328,12 +298,8 @@ export default function Register() {
         });
       }
 
-      // Default settings if none found
-      setSettings({
-        tournament_date: new Date().toISOString(),
-        max_players_per_gender: 8,
-        registration_cutoff_days: 3
-      });
+      // Load available spots based on settings
+      loadAvailableSpots(8);
     } catch (error) {
       console.error('Error loading registration data:', error);
       // Default settings if error
@@ -342,8 +308,54 @@ export default function Register() {
         max_players_per_gender: 8,
         registration_cutoff_days: 3
       });
+      loadAvailableSpots(8);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadAvailableSpots = async (maxPlayersPerGender: number) => {
+    try {
+      // Query Firestore for registered players
+      // Occupied slots = approved players + pending (non-reserve) players holding a slot
+      const maleQuery = query(collection(db, 'players'), where('gender', '==', 'male'));
+      const maleSnap = await getDocs(maleQuery);
+
+      const femaleQuery = query(collection(db, 'players'), where('gender', '==', 'female'));
+      const femaleSnap = await getDocs(femaleQuery);
+
+      const countOccupied = (snap: any) => snap.docs.filter((doc: any) => {
+        const p = doc.data();
+        const isActive = p.status === 'approved' || p.status === 'pending';
+        return isActive && p.is_reserve !== true;
+      }).length;
+
+      const maleRegisteredCount = countOccupied(maleSnap);
+      const femaleRegisteredCount = countOccupied(femaleSnap);
+      
+      const spots = [
+        { 
+          gender: 'male', 
+          available_spots: maxPlayersPerGender - maleRegisteredCount, 
+          total_spots: maxPlayersPerGender,
+          registered_count: maleRegisteredCount
+        },
+        { 
+          gender: 'female', 
+          available_spots: maxPlayersPerGender - femaleRegisteredCount, 
+          total_spots: maxPlayersPerGender,
+          registered_count: femaleRegisteredCount
+        }
+      ];
+      
+      setAvailableSpots(spots);
+    } catch (error) {
+      console.error('Error loading available spots:', error);
+      // Default values
+      setAvailableSpots([
+        { gender: 'male', available_spots: 8, total_spots: 8, registered_count: 0 },
+        { gender: 'female', available_spots: 8, total_spots: 8, registered_count: 0 }
+      ]);
     }
   };
 
@@ -441,6 +453,11 @@ export default function Register() {
           });
         }
 
+        // Refresh available spots to reflect the new registration
+        if (settings) {
+          loadAvailableSpots(settings.max_players_per_gender || 8);
+        }
+        
         // Show pending approval message instead of redirecting
         setTimeout(() => {
           navigate('/pending-approval');
@@ -563,9 +580,7 @@ export default function Register() {
               <Users className="w-6 h-6 mx-auto mb-2 text-ocean" />
               <h3 className="font-semibold text-ocean">Male Division</h3>
               <p className="text-sm text-foreground/70">
-                {(maleSpots?.available_spots ?? 0) > 0
-                  ? `${maleSpots?.total_spots || 8} spots available`
-                  : `Reserve list - Position #${(maleSpots?.reserve_count ?? 0) + 1}`}
+                {maleSpots?.available_spots || 0} / {maleSpots?.total_spots || 8} spots
               </p>
               {isGenderFull('male') && (
                 <div className="mt-2 text-xs text-coral font-medium">FULL - reserve available</div>
@@ -578,9 +593,7 @@ export default function Register() {
               <Users className="w-6 h-6 mx-auto mb-2 text-sunset" />
               <h3 className="font-semibold text-sunset">Female Division</h3>
               <p className="text-sm text-foreground/70">
-                {(femaleSpots?.available_spots ?? 0) > 0
-                  ? `${femaleSpots?.total_spots || 8} spots available`
-                  : `Reserve list - Position #${(femaleSpots?.reserve_count ?? 0) + 1}`}
+                {femaleSpots?.available_spots || 0} / {femaleSpots?.total_spots || 8} spots
               </p>
               {isGenderFull('female') && (
                 <div className="mt-2 text-xs text-coral font-medium">FULL - reserve available</div>

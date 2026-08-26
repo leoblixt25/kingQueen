@@ -31,7 +31,7 @@ import { registerPlayerToSlot } from "@/utils/placeholderUtils";
 interface AuthModalProps {
   onClose: () => void;
   onSuccess: (user: any, isAdmin?: boolean) => void;
-  availableSpots: { gender: string; available_spots: number; total_spots: number; }[];
+  availableSpots: { gender: string; available_spots: number; total_spots: number; reserve_count?: number; }[];
   googleUser?: any; // For completing Google user registration
   showGoogleRegistrationForm?: boolean;
 }
@@ -572,7 +572,9 @@ export function AuthModal({ onClose, onSuccess, availableSpots, googleUser, show
                 <div className="p-2 sm:p-3 bg-ocean/10 rounded-lg text-center">
                   <p className="text-xs sm:text-sm font-medium text-ocean">Male Division</p>
                   <p className="text-xs text-gray-600">
-                    {maleSpots?.total_spots || 8} spots available
+                    {(maleSpots?.available_spots ?? 0) > 0
+                      ? `${maleSpots?.total_spots || 8} spots available`
+                      : `Reserve list - Position #${(maleSpots?.reserve_count ?? 0) + 1}`}
                   </p>
                   {isGenderFull('male') && (
                     <div className="text-xs text-red-600 font-medium">FULL</div>
@@ -581,7 +583,9 @@ export function AuthModal({ onClose, onSuccess, availableSpots, googleUser, show
                 <div className="p-2 sm:p-3 bg-sunset/10 rounded-lg text-center">
                   <p className="text-xs sm:text-sm font-medium text-sunset">Female Division</p>
                   <p className="text-xs text-gray-600">
-                    {femaleSpots?.total_spots || 8} spots available
+                    {(femaleSpots?.available_spots ?? 0) > 0
+                      ? `${femaleSpots?.total_spots || 8} spots available`
+                      : `Reserve list - Position #${(femaleSpots?.reserve_count ?? 0) + 1}`}
                   </p>
                   {isGenderFull('female') && (
                     <div className="text-xs text-red-600 font-medium">FULL</div>
@@ -787,7 +791,9 @@ export function AuthModal({ onClose, onSuccess, availableSpots, googleUser, show
                 <div className="p-2 sm:p-3 bg-ocean/10 rounded-lg text-center">
                   <p className="text-xs sm:text-sm font-medium text-ocean">Male Division</p>
                   <p className="text-xs text-gray-600">
-                    {maleSpots?.total_spots || 8} spots available
+                    {(maleSpots?.available_spots ?? 0) > 0
+                      ? `${maleSpots?.total_spots || 8} spots available`
+                      : `Reserve list - Position #${(maleSpots?.reserve_count ?? 0) + 1}`}
                   </p>
                   {isGenderFull('male') && (
                     <div className="text-xs text-red-600 font-medium">FULL</div>
@@ -796,7 +802,9 @@ export function AuthModal({ onClose, onSuccess, availableSpots, googleUser, show
                 <div className="p-2 sm:p-3 bg-sunset/10 rounded-lg text-center">
                   <p className="text-xs sm:text-sm font-medium text-sunset">Female Division</p>
                   <p className="text-xs text-gray-600">
-                    {femaleSpots?.total_spots || 8} spots available
+                    {(femaleSpots?.available_spots ?? 0) > 0
+                      ? `${femaleSpots?.total_spots || 8} spots available`
+                      : `Reserve list - Position #${(femaleSpots?.reserve_count ?? 0) + 1}`}
                   </p>
                   {isGenderFull('female') && (
                     <div className="text-xs text-red-600 font-medium">FULL</div>

@@ -416,9 +416,11 @@ export default function Register() {
     }
 
     if (isGenderFull(formData.gender)) {
+      const spot = availableSpots.find(s => s.gender === formData.gender);
+      const reservePos = (spot?.reserve_count ?? 0) + 1;
       toast({
         title: "Reserve Registration",
-        description: `${formData.gender} division is full right now, but we will keep you as a reserve player. If someone cancels, you may get a spot.`,
+        description: `${formData.gender} division is full right now, but we will keep you as a reserve player. Your position: #${reservePos} on the waiting list.`,
       });
     }
 
@@ -450,9 +452,11 @@ export default function Register() {
         localStorage.setItem('tournament_registered_name', formData.name.trim());
 
         if (result.isReserve) {
+          const spot = availableSpots.find(s => s.gender === formData.gender);
+          const reservePos = (spot?.reserve_count ?? 0) + 1;
           toast({
             title: "Reserve Registration Submitted!",
-            description: `The ${formData.gender} division is full right now, but we will keep you as a reserve player. If someone cancels, you may get a spot.`,
+            description: `The ${formData.gender} division is full right now, but we will keep you as a reserve player. Your position: #${reservePos} on the waiting list.`,
           });
         } else {
           toast({

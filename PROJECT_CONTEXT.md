@@ -517,6 +517,29 @@ Admin clicks "Delete All Registered Players"
   * Desktop → QR code (via `api.qrserver.com`) for scanning with phone camera
 * Service worker registration is production-only (`import.meta.env.PROD`) so dev/hot-reload is unaffected.
 
+## 13o. Spot Counter + Reserve Position UX (Aug 2026)
+
+* Registration page spots display changed from "X / Y spots" to "**X spots available**" (simpler, less confusing).
+* Spots count **only approved players** — pending registrations don't reduce the available count (was a bug during earlier refactors).
+* Spots refresh every 5 seconds via `setInterval` + `getDocs` polling (real-time `onSnapshot` approach was attempted but failed silently — Firestore composite index issue on the `where('gender','==',...)` query).
+* **Reserve position** shown in:
+  * Toast messages after registration: "Your position: #2 on the waiting list"
+  * **Pending-approval page** (`PendingApproval.tsx`): calculates position by counting existing reserve players of same gender + 1, displayed as "Your position on the waiting list: **#2**"
+* `reserve_count` field added to `AvailableSpots` interface in Register.tsx — used for position calculation only, not for display on spots cards.
+
+## 13p. Whist-8 Match Generation (Aug 2026)
+
+* `STATIC_MATCHUPS` in `src/utils/staticMatchups.ts` replaced with a **verified cyclic Whist-8 (Wh(8)) matrix**.
+* **14 matches across 7 rounds × 2 courts** — same match count as before, mathematically balanced:
+  * Every player partners with each other player exactly **1 time**
+  * Every player opposes each other player exactly **2 times**
+  * Each player plays in exactly **7 matches**
+* Draw process unchanged: Fisher-Yates shuffle → `generateMatchesFromOrder()` → same `GeneratedMatch[]` output → same Firestore schema.
+* `GeneratedMatch` now includes optional `round` and `court` fields (backward-compatible — existing consumers ignore them).
+* `verifyWhist8Integrity()` exported from `staticMatchups.ts` — verifies all 4 guarantees programmatically.
+* Standalone check script: `scripts/verify-whist8.ts` (run via `npx tsx scripts/verify-whist8.ts`).
+* All existing consumers (`DrawPage.tsx`, `firebaseMigration.ts`, `tournamentReset.ts`, `matchInitUtils.ts`) work unchanged — they iterate `STATIC_MATCHUPS` with the same `[p1,p2,p3,p4]` destructuring pattern.
+
 ## 14. Deployment URLs
 
 * **Cloudflare Pages**: https://sandy-scorekeeper.pages.dev/

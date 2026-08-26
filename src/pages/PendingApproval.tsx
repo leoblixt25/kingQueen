@@ -14,6 +14,7 @@ export default function PendingApproval() {
   const [playerEmail, setPlayerEmail] = useState("");
   const [status, setStatus] = useState<"pending" | "approved" | "not_found">("pending");
   const [isReserve, setIsReserve] = useState(false);
+  const [reservePosition, setReservePosition] = useState<number | null>(null);
 
   useEffect(() => {
     checkRegistrationStatus();
@@ -52,6 +53,16 @@ export default function PendingApproval() {
           }, 2000);
         } else {
           setStatus("pending");
+        }
+
+        if (playerData.is_reserve) {
+          const genderQuery = query(playersRef, where('gender', '==', playerData.gender));
+          const genderSnap = await getDocs(genderQuery);
+          const reserveBefore = genderSnap.docs.filter((d) => {
+            const p = d.data();
+            return p.is_reserve === true && (p.status === 'approved' || p.status === 'pending') && p.email !== email.toLowerCase();
+          }).length;
+          setReservePosition(reserveBefore + 1);
         }
       } else {
         setStatus("not_found");
@@ -122,6 +133,7 @@ export default function PendingApproval() {
                 <>
                   Thank you for registering, <strong>{playerName || "Player"}</strong>! 
                   The division is currently full, but we will keep you as a <strong>reserve player</strong>.
+                  Your position on the waiting list: <strong>#{reservePosition}</strong>.
                   If someone cancels, you may get a spot in the tournament.
                 </>
               ) : (

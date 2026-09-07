@@ -550,16 +550,17 @@ Admin clicks "Delete All Registered Players"
 
 ### Deployment Commands
 ```bash
-# Build (verify before pushing — Pages builds fail loudly otherwise)
+# Build
 npm run build
+
+# Deploy to BOTH hosts (always deploy both together)
+firebase deploy --only hosting   # Firebase Hosting (faster for players — closer to Firestore Asia)
+git push origin main             # Cloudflare Pages (auto-deploys on push)
 
 # Deploy worker (after editing workers/delete-firebase-users.js)
 npx wrangler deploy
-
-# Push to GitHub (auto-triggers Cloudflare Pages build)
-git add -A
-git commit -m "message"
-git push origin main
 ```
+
+⚠️ **Dual deployment rule**: Every code change must be deployed to both Cloudflare Pages (`git push`) AND Firebase Hosting (`firebase deploy --only hosting`). Run both after every commit.
 
 ⚠️ `DEPLOY_CLOUDFLARE_WORKER_FREE.md`, `FUNCTIONS_DEPLOYMENT_GUIDE.md` and other older guides describe the ABANDONED direct-worker / Firebase Functions approaches. The working architecture is section 13k.

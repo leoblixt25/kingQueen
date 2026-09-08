@@ -439,11 +439,28 @@ Draw Wheel:               Data Loading:
 * Repo Actions secret `FIREBASE_SERVICE_ACCOUNT_JSON` — full service-account JSON contents
 * Local `.bat` reads key JSON from `%USERPROFILE%\Downloads\<service-account-file>.json`
 
+### Cloudflare Worker relay (for the new EU app)
+* Worker **`sandy-scorekeeper-workers`** live at `https://sandy-scorekeeper-workers.leo-blixt77.workers.dev` relays the "Delete All Registered Players" request from the browser to GitHub Actions (`repository_dispatch`).
+* The worker verifies the caller's Firebase ID token with Google then dispatches to GitHub. **Source is NOT in this repo** — it's edited directly in the Cloudflare dashboard (Quick Edit).
+* Deployed worker code must contain (edit these constants in the Cloudflare Quick Edit editor — they are separate from the Settings Variables):
+  * `GITHUB_REPO = 'leoblixt25/kingQueen'` (was `sandy-scorekeeper` after EU migration)
+  * `ADMIN_EMAIL = 'leo.blixt77@gmail.com'`
+  * `WEB_API_KEY = 'AIzaSyBmLIUYNdvR1DIlVPjVpkU003zC6UyRzgY'` (the **EU** project key — the old `AIzaSyB59...` key caused "Unauthorized: Invalid or expired token")
+* Cloudflare Worker Settings → Variables and Secrets:
+  * `GH_PAT` — GitHub PAT able to `repository_dispatch` on `kingQueen` (fine-grained: Actions write).
+  * (A `FIREBASE_SERVICE_ACCOUNT` variable also exists but is NOT used by the deletion verification path — the worker uses `WEB_API_KEY` instead.)
+
+### EU migration deltas (verified working Sep 2026)
+* Repo moved `leoblixt25/sandy-scorekeeper` → `leoblixt25/kingQueen`. The workflow file + script now live in `kingQueen` and the dispatch goes to `kingQueen`.
+* Secret `FIREBASE_SERVICE_ACCOUNT_JSON` set in `leoblixt25/kingQueen` (service account `kingqueen-eu-firebase-adminsdk-fbsvc-246e9b4a36.json`).
+* `delete-users-github-action.mjs` uses `PROJECT_ID='kingqueen-eu'` and `WEB_API_KEY='AIzaSyBmLIUYNdvR1DIlVPjVpkU003zC6UyRzgY'`.
+
 ### Gotchas (CRITICAL)
 * ❌ **NEVER create a `functions/` directory at repo root** — it breaks the build. Local scripts live in `scripts-firebase-tools/`.
 * `projects.accounts:batchGet` is a **GET** method (query params). POSTing it returns Google's HTML 404 page.
 * `accounts:batchDelete` body uses camelCase **`localIds`** (legacy lowercase `localids` → LOCAL_ID_LIST_EXCEEDS_LIMIT 400).
 * Old frontend cached in browser can fake "Success" — always hard-refresh / incognito when testing deploys.
+* Changing `GITHUB_REPO`/`WEB_API_KEY` in the Cloudflare worker requires editing the **code constants** in Quick Edit AND pressing **Save and Deploy** (Settings-only variable changes do NOT fix token/repo errors). Wait ~60s for edge propagation.
 
 ## 13l. PDF Export Updates (Aug 2026)
 

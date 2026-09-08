@@ -18,9 +18,9 @@
  * so this worker only needs to return "dispatched" quickly.
  */
 
-const GITHUB_REPO = 'leoblixt25/sandy-scorekeeper';
+const GITHUB_REPO = 'leoblixt25/kingQueen';
 const ADMIN_EMAIL = 'leo.blixt77@gmail.com';
-const WEB_API_KEY = 'AIzaSyB59VBp3g79K0yYxcCmxwdp0mvgGTbdxxU';
+const WEB_API_KEY = 'AIzaSyBmLIUYNdvR1DIlVPjVpkU003zC6UyRzgY';
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',

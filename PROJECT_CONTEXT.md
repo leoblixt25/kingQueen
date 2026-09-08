@@ -538,6 +538,20 @@ Draw Wheel:               Data Loading:
 * **Bug fixed**: Reserve button failed for TEST players — test players created by DrawPage have NO `email` field, so `player.email.trim()` threw a `TypeError`. Now `email: player.email ? player.email.trim().toLowerCase() : null` (and `name` guarded with `(player.name || '').trim()`). Same guard applied to `handleApprovePlayer`'s reserve→slot claim path. Real registered players always have email → behavior unchanged.
 * After moving to reserve: real player → new `pending`/`is_reserve` doc + old slot reverts to placeholder (no email, status null). Test player → same but `email: null` on the reserve doc.
 
+## 13r. LiveRanking Tiebreaker Sort + Points-Persistence Fix (Sep 2026)
+
+* Commit `3232961` fixed `LiveRanking` tiebreaker sort direction and installed **Vitest** (`vitest run` for `npm test`; Vite 5.4.21 requires Vitest v3, not v5).
+* Commit `518e160`: `loadTestPlayers()` now uses random real names (Camila, Sofia, etc.) instead of "Male/Female Player N".
+* **Ranking "doesn't work" incident** (reported after above commits) — root cause was **DATA, not sort**:
+  * All 16 player docs had `points:0`/`total_scores:0` despite 10 completed female matches with real scores → standings correctly showed all-zero tie.
+  * Deployed bundle verified: `sortPlayersWithTiebreakers` (`XK`/`x6`) + `calculateRankingsFromMatches` both correctly wired (`updateMatchScore` → dynamic `import("./rankingUtils")` → calc).
+  * Likely cause: stale cached `index.html` → dynamic-import of the old `rankingUtils-*.js` chunk failed silently → match score still saved, player points never written.
+  * Fix applied **directly to live Firestore** (Admin SDK one-shot, no code change): points now Sofia 9/101, Mia 8/89, Elena 8/93, Emma 8/92, Ava 7/91, Isabella 7/90, Olivia 7/95, Camila 6/87. Males stay 0 (no completed male matches).
+  * ⚠️ Reminder: hard-refresh (Ctrl+Shift+R) after deploys — sw.js network-first + stale index.html hid the fix.
+* Deployed Firestore rules verified **identical to repo** (Auth required for writes; public reads) — rules were NOT the blocker.
+* Tests: `src/utils/liveRankingRepro.test.ts` (LiveRanking-shaped sort regression), `rankingTiebreaker.test.ts`, `staticMatchups.test.ts` — 9 pass.
+* ⚠️ GitHub PAT was leaked in chat — **revoke + regenerate** in GitHub, then update the `GH_PAT` secret in the Cloudflare Worker (`sandy-scorekeeper-workers`).
+
 ## 14. Deployment URLs
 
 ### EU Project (KingQueen_EU — LIVE)

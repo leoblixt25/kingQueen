@@ -14,7 +14,7 @@ function detectPlatform(): Platform {
   return 'desktop';
 }
 
-const APP_URL = 'https://sandy-scorekeeper.pages.dev';
+const APP_URL = 'https://kingqueen-eu.web.app';
 
 export default function InstallPage() {
   const navigate = useNavigate();

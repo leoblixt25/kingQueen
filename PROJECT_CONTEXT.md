@@ -530,6 +530,14 @@ Draw Wheel:               Data Loading:
 * Standalone check script: `scripts/verify-whist8.ts` (run via `npx tsx scripts/verify-whist8.ts`).
 * All existing consumers (`DrawPage.tsx`, `firebaseMigration.ts`, `tournamentReset.ts`, `matchInitUtils.ts`) work unchanged — they iterate `STATIC_MATCHUPS` with the same `[p1,p2,p3,p4]` destructuring pattern.
 
+## 13q. AdminPanel One-Click Actions (Sep 2026)
+
+* Removed the two-step in-row confirmation for player actions in the Registration panel (`AdminPanel.tsx`). Approve / Delete-pending / Pending / Reserve / Delete-confirmed now act immediately on first click.
+* Kept confirmations ONLY for the global destructive actions (Initialize Tournament Database, Reset Players Only).
+* Per-row confirmation state variables (`confirmingApproveId`, `confirmingRemoveId`, `confirmingPendingRemoveId`, `confirmingUnapproveId`, `confirmingMoveToReserveId`) removed.
+* **Bug fixed**: Reserve button failed for TEST players — test players created by DrawPage have NO `email` field, so `player.email.trim()` threw a `TypeError`. Now `email: player.email ? player.email.trim().toLowerCase() : null` (and `name` guarded with `(player.name || '').trim()`). Same guard applied to `handleApprovePlayer`'s reserve→slot claim path. Real registered players always have email → behavior unchanged.
+* After moving to reserve: real player → new `pending`/`is_reserve` doc + old slot reverts to placeholder (no email, status null). Test player → same but `email: null` on the reserve doc.
+
 ## 14. Deployment URLs
 
 ### EU Project (KingQueen_EU — LIVE)

@@ -542,25 +542,35 @@ Admin clicks "Delete All Registered Players"
 
 ## 14. Deployment URLs
 
+### EU Project (KingQueen_EU — LIVE)
+* **Firebase Hosting**: https://kingqueen-eu.web.app
+* **Firebase Project**: `kingqueen-eu` (region europe-west1, for lower latency to Barcelona users)
+* **GitHub Repository**: https://github.com/leoblixt25/kingQueen
+* **Local folder**: `C:\Users\leobl\OneDrive\Documents\King_Queen_8_2026\KingQueen_EU` (full clone of sandy-scorekeeper, commit `3a39f83`, then EU config commits)
+
+### Original Project (sandy-scorekeeper — FROZEN, do not touch)
 * **Cloudflare Pages**: https://sandy-scorekeeper.pages.dev/
 * **Cloudflare Worker (deletion relay)**: https://sandy-scorekeeper-workers.leo-blixt77.workers.dev
 * **Firebase Hosting**: https://kingqueen-c3543.web.app
 * **GitHub Repository**: https://github.com/leoblixt25/sandy-scorekeeper
-* **Deletion workflow runs**: https://github.com/leoblixt25/sandy-scorekeeper/actions
 
-### Deployment Commands
+### EU Deployment Commands
 ```bash
 # Build
 npm run build
 
-# Deploy to BOTH hosts (always deploy both together)
-firebase deploy --only hosting   # Firebase Hosting (faster for players — closer to Firestore Asia)
-git push origin main             # Cloudflare Pages (auto-deploys on push)
+# Deploy EU to Firebase Hosting
+firebase deploy --only hosting --project kingqueen-eu
 
-# Deploy worker (after editing workers/delete-firebase-users.js)
-npx wrangler deploy
+# Deploy EU Firestore rules
+firebase deploy --only firestore:rules --project kingqueen-eu
+
+# Push to EU repo
+git push origin main
 ```
 
-⚠️ **Dual deployment rule**: Every code change must be deployed to both Cloudflare Pages (`git push`) AND Firebase Hosting (`firebase deploy --only hosting`). Run both after every commit.
+⚠️ **Directive**: NEVER touch the `sandy-scorekeeper` repo (GitHub or local) going forward. All new work happens only in `KingQueen_EU` local + `kingQueen` GitHub repo.
+
+⚠️ **Migration done**: All Firestore data (16 players, 28 matches, 24 tournamentSettings) and the single admin auth user migrated from `kingqueen-c3543` to `kingqueen-eu` via `scripts-firebase-tools/migrate-data.mjs`. Service-account JSON keys are NOT stored in the repo — re-generate as needed (`firebase deploy` uses interactive `firebase login`).
 
 ⚠️ `DEPLOY_CLOUDFLARE_WORKER_FREE.md`, `FUNCTIONS_DEPLOYMENT_GUIDE.md` and other older guides describe the ABANDONED direct-worker / Firebase Functions approaches. The working architecture is section 13k.

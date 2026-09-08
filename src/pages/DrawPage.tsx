@@ -647,17 +647,24 @@ export default function DrawPage() {
       // 4. Create fresh players with NEW IDs
       const playersRef = collection(db, 'players');
 
+      // Random real names for test players
+      const femaleNames = ['Sofia','Emma','Mia','Isabella','Olivia','Ava','Elena','Camila'];
+      const maleNames   = ['Liam','Noah','Mateo','Lucas','Diego','Andrés','Felipe','Sebastián'];
+      const shuffle = <T,>(arr: T[]) => [...arr].sort(() => Math.random() - 0.5);
+      const shuffledFemales = shuffle(femaleNames);
+      const shuffledMales   = shuffle(maleNames);
+
       // Create 8 female test players
-      for (let i = 1; i <= 8; i++) {
+      for (let i = 0; i < 8; i++) {
         const playerData = {
-          name: `Female Player ${i}`,
+          name: shuffledFemales[i],
           gender: 'female',
           status: 'approved',
           is_confirmed: true,
           points: 0,
           total_scores: 0,
           matches_played: 0,
-          position: i,
+          position: i + 1,
           approved_at: new Date().toISOString()
         };
         const newDocRef = doc(playersRef);
@@ -665,16 +672,16 @@ export default function DrawPage() {
       }
 
       // Create 8 male test players
-      for (let i = 1; i <= 8; i++) {
+      for (let i = 0; i < 8; i++) {
         const playerData = {
-          name: `Male Player ${i}`,
+          name: shuffledMales[i],
           gender: 'male',
           status: 'approved',
           is_confirmed: true,
           points: 0,
           total_scores: 0,
           matches_played: 0,
-          position: i,
+          position: i + 1,
           approved_at: new Date().toISOString()
         };
         const newDocRef = doc(playersRef);

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Crown, Users, Info, Trophy, Shuffle } from "lucide-react";
+import { Crown, Users, Info, Trophy, Shuffle, Download } from "lucide-react";
 import { auth, db } from "@/config/firebase";
 import { collection, onSnapshot } from "firebase/firestore";
 import MainTitle from "@/components/MainTitle";
@@ -51,6 +51,10 @@ export default function Landing() {
 
   const handleLiveRankingClick = () => {
     navigate('/live-ranking');
+  };
+
+  const handleInstallClick = () => {
+    navigate('/install');
   };
 
   const handleDrawClick = () => {
@@ -103,6 +107,18 @@ export default function Landing() {
             <Trophy className="w-6 h-6" />
             <span>Live Ranking</span>
             <span className={`w-3 h-3 rounded-full border-2 border-white ${finishedMatches === 28 ? 'bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.8)]' : 'bg-green-400 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.9)]'}`} />
+          </Button>
+        </div>
+
+        <div className="mt-6">
+          <Button
+            onClick={handleInstallClick}
+            variant="outline"
+            size="sm"
+            className="text-foreground/70 hover:text-ocean hover:border-ocean/40"
+          >
+            <Download className="w-4 h-4 mr-1.5" />
+            Install App
           </Button>
         </div>
         

@@ -2,22 +2,22 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Players collection - Open read/write for development
+    // Players collection - Public read, authenticated write
     match /players/{playerId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if request.auth != null;
     }
 
-    // Matches collection - Open read/write
+    // Matches collection - Public read, authenticated write
     match /matches/{matchId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if request.auth != null;
     }
 
-    // Final Matches collection - Open read/write
+    // Final Matches collection - Public read, authenticated write
     match /finalMatches/{document=**} {
       allow read: if true;
-      allow write: if true;
+      allow write: if request.auth != null;
     }
 
     // Tournament Settings - Read public, Write authenticated

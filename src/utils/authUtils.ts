@@ -1,5 +1,5 @@
 import { auth, db, googleProvider } from '@/config/firebase';
-import { signInWithPopup, signOut as firebaseSignOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { signInWithPopup, signOut as firebaseSignOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, deleteUser } from 'firebase/auth';
 import { doc, setDoc, getDoc, collection, query, where, updateDoc, getDocs, addDoc } from 'firebase/firestore';
 
 export interface AuthResult {
@@ -60,48 +60,57 @@ export const registerWithEmailPassword = async (
   name: string,
   gender: string
 ): Promise<AuthResult> => {
+  const playersRef = collection(db, 'players');
+  const normalizedEmail = email.trim().toLowerCase();
+
+  // Check for duplicates FIRST, before creating any auth account.
+  // This avoids orphaned Firebase Auth users when the email is already registered.
+  const dupQuery = query(playersRef, where('email', '==', normalizedEmail));
+  const dupSnapshot = await getDocs(dupQuery);
+
+  if (!dupSnapshot.empty) {
+    return {
+      success: false,
+      error: 'Email already registered. Please sign in instead.'
+    };
+  }
+
+  // Find next available placeholder slot
+  const placeholderPrefix = gender === 'male' ? 'Male Player' : 'Female Player';
+  const playersQuery = query(
+    playersRef,
+    where('gender', '==', gender)
+  );
+  const playersSnapshot = await getDocs(playersQuery);
+
+  // Find first unconfirmed placeholder
+  const availableSlots = playersSnapshot.docs
+    .map(docSnap => ({ id: docSnap.id, ...(docSnap.data() as any) }))
+    .filter((player: any) => {
+      const isPlaceholder = player.name.startsWith(placeholderPrefix);
+      const isUnconfirmed = !player.is_confirmed || player.is_confirmed === false;
+      return isPlaceholder && isUnconfirmed;
+    })
+    .sort((a: any, b: any) => (a.position || 0) - (b.position || 0));
+
+  let createdUser: any = null;
+
   try {
-    // Create Firebase Auth user
-    const userCredential = await createUserWithEmailAndPassword(auth, email.toLowerCase(), password);
+    // Create Firebase Auth user now that Firestore has no conflicts
+    const userCredential = await createUserWithEmailAndPassword(auth, normalizedEmail, password);
     const user = userCredential.user;
+    createdUser = user;
 
     // Update display name
     await updateProfile(user, {
       displayName: name
     });
 
-    // Check if email already exists in Firestore
-    const playersRef = collection(db, 'players');
-    const q = query(playersRef, where('email', '==', email.toLowerCase()));
-    const snapshot = await getDocs(q);
-
-    if (!snapshot.empty) {
-      throw new Error('EMAIL_ALREADY_EXISTS');
-    }
-
-    // Find next available placeholder slot
-    const placeholderPrefix = gender === 'male' ? 'Male Player' : 'Female Player';
-    const playersQuery = query(
-      playersRef,
-      where('gender', '==', gender)
-    );
-    const playersSnapshot = await getDocs(playersQuery);
-    
-    // Find first unconfirmed placeholder
-    const availableSlots = playersSnapshot.docs
-      .map(docSnap => ({ id: docSnap.id, ...(docSnap.data() as any) }))
-      .filter((player: any) => {
-        const isPlaceholder = player.name.startsWith(placeholderPrefix);
-        const isUnconfirmed = !player.is_confirmed || player.is_confirmed === false;
-        return isPlaceholder && isUnconfirmed;
-      })
-      .sort((a: any, b: any) => (a.position || 0) - (b.position || 0));
-
     if (availableSlots.length === 0) {
       // Division is full - register as a reserve player instead of blocking
       const reserveData = {
         name: name.trim(),
-        email: email.trim().toLowerCase(),
+        email: normalizedEmail,
         gender,
         is_confirmed: false,
         status: 'pending',
@@ -125,12 +134,12 @@ export const registerWithEmailPassword = async (
     }
 
     const placeholder = availableSlots[0] as any;
-    
+
     // Update the placeholder with real player info
     const playerRef = doc(db, 'players', placeholder.id);
     await updateDoc(playerRef, {
       name: name.trim(),
-      email: email.trim().toLowerCase(),
+      email: normalizedEmail,
       is_confirmed: false,
       status: 'pending',
       registered_at: new Date().toISOString()
@@ -149,20 +158,24 @@ export const registerWithEmailPassword = async (
     };
   } catch (error: any) {
     console.error('❌ Registration Error:', error.code, error.message);
-    
-    let errorMessage = 'Registration failed';
-    
-    if (error.code === 'auth/email-already-in-use') {
-      // Check if it's in Firestore (already registered player)
-      const playersRef = collection(db, 'players');
-      const q = query(playersRef, where('email', '==', email.toLowerCase()));
-      const snapshot = await getDocs(q);
-      
-      if (!snapshot.empty) {
-        errorMessage = 'Email already registered. Please sign in instead.';
-      } else {
-        errorMessage = 'Email already in use. Please try signing in or use a different email.';
+
+    // Roll back the auth account if we created one but a later step failed.
+    // This prevents orphaned Firebase Auth users for failed registrations.
+    if (createdUser) {
+      try {
+        await deleteUser(createdUser);
+        console.log('🧹 Removed orphaned auth account for clean rollback');
+      } catch (cleanupError) {
+        console.error('⚠️ Could not clean up auth account:', cleanupError);
       }
+    }
+
+    let errorMessage = 'Registration failed';
+
+    if (error.code === 'auth/email-already-in-use') {
+      // Auth account pre-exists (e.g. orphaned from an older registration) but
+      // no Firestore player — do NOT create anything; suggest sign-in.
+      errorMessage = 'Email already in use. Please try signing in or use a different email.';
     } else if (error.code === 'auth/weak-password') {
       errorMessage = 'Password is too weak. Use at least 6 characters';
     } else if (error.code === 'auth/invalid-email') {
@@ -172,7 +185,7 @@ export const registerWithEmailPassword = async (
     } else if (error.message === 'NO_SLOTS_AVAILABLE') {
       errorMessage = 'Registration is full for this division';
     }
-    
+
     return {
       success: false,
       error: errorMessage

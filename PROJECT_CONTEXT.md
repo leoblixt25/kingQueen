@@ -18,9 +18,10 @@
 
 ## 2. Tech Stack (FIXED - DO NOT CHANGE)
 
-* **Version Control**: GitHub
-* **Hosting/Deployment**: Cloudflare Pages
+* **Version Control**: GitHub (repo `leoblixt25/kingQueen`)
+* **Hosting/Deployment**: Firebase Hosting
 * **Database**: Firebase Firestore
+* **Auth**: Firebase Authentication
 * **Frontend**: React + TypeScript + Vite
 * **Styling**: Tailwind CSS
 
@@ -29,7 +30,7 @@
 ## 3. Core Rules (CRITICAL)
 
 * ❌ Do NOT replace Firebase with any other database
-* ❌ Do NOT replace Cloudflare with any other hosting service
+* ❌ Do NOT replace Firebase Hosting with any other hosting service (no Cloudflare)
 * ❌ Do NOT replace GitHub with any other version control
 * ❌ Do NOT introduce new backend services (AWS, Supabase, etc.)
 * ❌ Do NOT change database structure unless explicitly requested
@@ -37,7 +38,7 @@
 * ❌ Do NOT make local changes without pushing to GitHub
 * ✅ Always build on top of existing logic
 * ✅ Always check existing code before making changes
-* ✅ Assume Firebase is the only database solution
+* ✅ Assume Firebase is the only database solution and hosting platform
 * ✅ Always commit and push changes to GitHub after each update
 
 ## 4. Editing Guidelines
@@ -75,7 +76,7 @@
 ## 7. Key Files Structure
 
 ```
-sandy-scorekeeper/
+KingQueen_EU/
 ├── src/
 │   ├── components/     # React components
 │   │   ├── AdminPanel.tsx       # Admin controls (approval, PDF export, settings)
@@ -96,6 +97,7 @@ sandy-scorekeeper/
 │   │   ├── LiveRanking.tsx      # Live rankings display
 │   │   ├── Landing.tsx          # Landing/home page (draw button = beach-gradient)
 │   │   ├── PendingApproval.tsx  # Pending registration approval page
+│   │   ├── InstallPage.tsx      # PWA install page
 │   │   └── WaitingForDraw.tsx   # Waiting screen before draw
 │   ├── utils/          # Utility functions (Firebase operations)
 │   │   ├── pdfExport.ts         # PDF generation with football-style layout
@@ -105,32 +107,34 @@ sandy-scorekeeper/
 │   │   ├── matchPlayerResolver.ts # Resolves player IDs to Player objects in matches
 │   │   ├── matchValidation.ts  # Match validation utilities
 │   │   ├── matchInitUtils.ts    # Match initialization with deterministic IDs
-│   │   ├── staticMatchups.ts    # SINGLE SOURCE OF TRUTH: 14 match combinations
+│   │   ├── staticMatchups.ts    # SINGLE SOURCE OF TRUTH: 14 match combinations (Whist-8)
 │   │   ├── rankingTiebreaker.ts # Tiebreaker calculation for rankings
 │   │   ├── authUtils.ts         # Authentication and registration logic
 │   │   └── placeholderUtils.ts  # Placeholder player management
 │   ├── types/          # TypeScript type definitions
 │   │   └── index.ts     # Match, Player, ResolvedMatch types
-│   └── config/         # Firebase configuration
-├── public/             # Static assets
-├── workers/            # Cloudflare Worker: delete-firebase-users.js (admin-verify + GitHub relay)
+│   └── config/         # Firebase configuration (firebase.ts — kingqueen-eu)
+├── public/             # Static assets (manifest.json, sw.js service worker, auth/callback.html)
 ├── scripts/            # Local utilities (Delete-Players.bat one-click deletion)
-├── scripts-firebase-tools/ # Standalone Firebase admin scripts (NO functions/ name — see 13k!)
+├── scripts-firebase-tools/ # Standalone Firebase admin scripts (NO functions/ name!)
 │   ├── delete-auth-users.mjs          # Local one-shot deletion (firebase-admin)
-│   └── delete-users-github-action.mjs # Zero-dependency script run by GitHub Actions
-├── .github/workflows/  # delete-users.yml (repository_dispatch deletion workflow)
-├── supabase/           # Database migrations (for reference)
+│   ├── delete-users-github-action.mjs # GitHub Actions deletion script (calls admin SDK)
+│   └── migrate-data.mjs               # Firestore + Auth data migration script
+├── .github/workflows/  # GitHub Actions workflows
+├── firebase.json       # Hosting (site: kingqueen-eu) + firestore rules config
+├── firestore.rules     # Firestore security rules
 └── package.json        # Dependencies
 ```
 
 ## 8. Important Notes
 
 * All database operations use Firebase Firestore
+* Deploy to Firebase Hosting via `firebase deploy --only hosting --project kingqueen-eu`
 * No server-side code or backend APIs
 * Client-side ranking calculations after match updates
 * Small delays may be needed for Firebase write completion
 * Real-time subscriptions for live data updates
-* All updates must be committed and pushed to GitHub to trigger deployment
+* All changes committed and pushed to GitHub (`leoblixt25/kingQueen`)
 
 ## 9. Player Registration System
 
@@ -363,15 +367,10 @@ Draw Wheel:               Data Loading:
 * Male draw wheel colors updated to consistent ocean blues
 * ResetConfirmationModal now accepts optional title/description/confirmText props
 
-## 13c. Draw Recording REMOVED (Aug 2026)
+## 13c. Draw Recording REMOVED
 
-* ❌ The entire draw-video recording system was **removed** (user decision — admin screen-records the draw and shares via WhatsApp instead)
-* Deleted files:
-  * `src/utils/drawRecorder.ts` (canvas recorder + GitHub Git Data API upload)
-  * `workers/cloudflare-worker.ts` (abandoned Cloudflare Worker approach)
-* Removed from DrawPage/PublicDrawPage: recording badges, GitHub token field, video players, `draw_video_*_url` settings
-* ⚠️ Video storage via GitHub repo `leoblixt25/sandy-draw-videos` is NO LONGER USED
-* ⚠️ The admin GitHub token that was pasted in chat is exposed and should be revoked (no longer read by the app)
+* ❌ The draw-video recording system is **removed** — the admin screen-records the draw and shares via WhatsApp instead.
+* ⚠️ Video storage via GitHub repo `leoblixt25/sandy-draw-videos` is NO LONGER USED.
 
 ## 13d. Admin Draw Page UI (Aug 2026)
 
@@ -430,47 +429,21 @@ Draw Wheel:               Data Loading:
 * DrawPage and AdminControl already filter `status === 'approved'` before loading
 * Real-time subscription auto-refreshes names after approval (no reload needed)
 
-## 13k. Player Account Deletion via GitHub Actions (Aug 2026) — WORKING
+## 13k. Player Account Deletion (Firebase Admin SDK) — WORKING
 
-### Architecture (button → result)
-```
-Admin clicks "Delete All Registered Players"
-  → POST workers/delete-firebase-users.js (Cloudflare Worker, free plan)
-      ├─ verifies caller ID token via Google Identity Toolkit accounts:lookup (NO local crypto)
-      ├─ requires caller email == ADMIN_EMAIL
-      └─ POSTs repository_dispatch 'delete-users' to GitHub API using GH_PAT secret
-  → GitHub Action (.github/workflows/delete-users.yml) runs on ubuntu-latest
-      └─ node scripts-firebase-tools/delete-users-github-action.mjs "$CALLER_ID_TOKEN"
-           ├─ re-verifies caller is admin (defense in depth)
-           ├─ signs service-account JWT with node:crypto (zero npm deps)
-           ├─ GET accounts:batchGet → lists all auth users
-           ├─ POST accounts:batchDelete {localIds: chunk, force:true} (admin email skipped)
-           └─ prints RESULT Deleted=N Failed=M AdminKept=1
-  → App polls worker GET /status?since=<iso> every 5s
-      └─ worker queries GitHub runs API WITH GH_PAT and returns run status/conclusion
-  → Success/failure toast when the Action completes (~30-60s total)
-```
+### Two deletion paths
+1. **GitHub Actions** (`scripts-firebase-tools/delete-users-github-action.mjs`) — zero-dependency script (global fetch + node:crypto) invoked via `.github/workflows/delete-users.yml`. Verifies the caller's Firebase ID token with Google (Identity Toolkit) and aborts unless it belongs to `ADMIN_EMAIL`. Deletes ONLY Auth accounts except the admin. Never touches Firestore.
+2. **Local one-shot** (`scripts/Delete-Players.bat` → `scripts-firebase-tools/delete-auth-users.mjs`) — uses firebase-admin, reads the service-account JSON from `%USERPROFILE%\Downloads\`. Proven: deleted 24 accounts flawlessly.
 
-### WHY this design (do not regress)
-* Cloudflare Workers FREE plan = **10ms CPU cap**; RS256 signing exceeds it → worker killed with an HTML error page (`<!DOCTYPE`...). Any crypto in the request path will fail intermittently/permanently.
-* Firebase Functions need Blaze plan (unusable here).
-* GitHub Actions public-hosted runners have NO practical CPU limit and are free.
-* Repo is PRIVATE → browser cannot poll api.github.com anonymously (404) → status must be relayed by the worker.
-
-### Required secrets (all set up, rotate periodically)
-* Worker `GH_PAT` — GitHub token able to trigger repository_dispatch (currently `gh auth token`)
+### Required secrets (rotate periodically)
 * Repo Actions secret `FIREBASE_SERVICE_ACCOUNT_JSON` — full service-account JSON contents
 * Local `.bat` reads key JSON from `%USERPROFILE%\Downloads\<service-account-file>.json`
 
-### Hard-won gotchas (CRITICAL)
-* ❌ **NEVER create a `functions/` directory at repo root** — Cloudflare Pages auto-compiles it as Pages Functions and EVERY build fails. Local scripts live in `scripts-firebase-tools/`.
+### Gotchas (CRITICAL)
+* ❌ **NEVER create a `functions/` directory at repo root** — it breaks the build. Local scripts live in `scripts-firebase-tools/`.
 * `projects.accounts:batchGet` is a **GET** method (query params). POSTing it returns Google's HTML 404 page.
 * `accounts:batchDelete` body uses camelCase **`localIds`** (legacy lowercase `localids` → LOCAL_ID_LIST_EXCEEDS_LIMIT 400).
 * Old frontend cached in browser can fake "Success" — always hard-refresh / incognito when testing deploys.
-* Cloudflare Pages build status: `npx wrangler pages deployment list --project-name sandy-scorekeeper`.
-
-### Offline fallback
-* Double-click `scripts\Delete-Players.bat` — runs `scripts-firebase-tools/delete-auth-users.mjs` locally with firebase-admin (needs `npm install` inside scripts-firebase-tools/ once). Proven: deleted 24 accounts flawlessly.
 
 ## 13l. PDF Export Updates (Aug 2026)
 
@@ -508,7 +481,7 @@ Admin clicks "Delete All Registered Players"
 ## 13n. PWA + Install Page (Aug 2026)
 
 * App is now a **Progressive Web App (PWA)** — users can "Add to Home Screen" on iOS/Android and it behaves like a native app (full screen, home screen icon, offline shell cache).
-* Service worker (`public/sw.js`) uses **network-first** strategy: normal speed when online, falls back to cached shell only when offline. Firebase/GitHub/Cloudflare API traffic is never intercepted or cached.
+* Service worker (`public/sw.js`) uses **network-first** strategy: normal speed when online, falls back to cached shell only when offline. Firebase API traffic is never intercepted or cached.
 * `public/manifest.json` defines app name, icon (`icon.png`), theme color (`#0077B6`), standalone display mode.
 * `index.html` updated with manifest link, `theme-color` meta, `apple-mobile-web-app-capable` meta.
 * **`/install` page** (`src/pages/InstallPage.tsx`): platform-aware install page with:
@@ -544,15 +517,9 @@ Admin clicks "Delete All Registered Players"
 
 ### EU Project (KingQueen_EU — LIVE)
 * **Firebase Hosting**: https://kingqueen-eu.web.app
-* **Firebase Project**: `kingqueen-eu` (region europe-west1, for lower latency to Barcelona users)
+* **Firebase Project**: `kingqueen-eu` (europe-west1, lower latency for Barcelona users)
 * **GitHub Repository**: https://github.com/leoblixt25/kingQueen
-* **Local folder**: `C:\Users\leobl\OneDrive\Documents\King_Queen_8_2026\KingQueen_EU` (full clone of sandy-scorekeeper, commit `3a39f83`, then EU config commits)
-
-### Original Project (sandy-scorekeeper — FROZEN, do not touch)
-* **Cloudflare Pages**: https://sandy-scorekeeper.pages.dev/
-* **Cloudflare Worker (deletion relay)**: https://sandy-scorekeeper-workers.leo-blixt77.workers.dev
-* **Firebase Hosting**: https://kingqueen-c3543.web.app
-* **GitHub Repository**: https://github.com/leoblixt25/sandy-scorekeeper
+* **Local folder**: `C:\Users\leobl\OneDrive\Documents\King_Queen_8_2026\KingQueen_EU`
 
 ### EU Deployment Commands
 ```bash
@@ -569,7 +536,7 @@ firebase deploy --only firestore:rules --project kingqueen-eu
 git push origin main
 ```
 
-⚠️ **Directive**: NEVER touch the `sandy-scorekeeper` repo (GitHub or local) going forward. All new work happens only in `KingQueen_EU` local + `kingQueen` GitHub repo.
+⚠️ **Directive**: This is the ONLY app repo. All work happens in `KingQueen_EU` local + `kingQueen` GitHub repo.
 
 ⚠️ **Migration done**: All Firestore data (16 players, 28 matches, 24 tournamentSettings) and the single admin auth user migrated from `kingqueen-c3543` to `kingqueen-eu` via `scripts-firebase-tools/migrate-data.mjs`. Service-account JSON keys are NOT stored in the repo — re-generate as needed (`firebase deploy` uses interactive `firebase login`).
 

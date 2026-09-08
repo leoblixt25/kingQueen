@@ -1,0 +1,35 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Players collection - Open read/write for development
+    match /players/{playerId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Matches collection - Open read/write
+    match /matches/{matchId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Final Matches collection - Open read/write
+    match /finalMatches/{document=**} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Tournament Settings - Read public, Write authenticated
+    match /tournamentSettings/{settingId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Admins collection - Read public (for admin checks), write none
+    match /admins/{adminId} {
+      allow read: if true;
+      allow write: if false;
+    }
+  }
+}

@@ -6,7 +6,7 @@ import { Crown, ArrowLeft, Trophy, Check } from "lucide-react";
 import { db } from "@/config/firebase";
 import { collection, onSnapshot, getDocs, doc, getDoc } from "firebase/firestore";
 import { Player, Match } from "@/types";
-import { getTiebreakerLevel } from "@/utils/rankingTiebreaker";
+import { getTiebreakerLevel, sortPlayersWithTiebreakers } from "@/utils/rankingTiebreaker";
 import { getPublicDisplayName } from "@/utils/firebaseUtils";
 import TournamentFinished from "@/components/TournamentFinished";
 import { useTournamentFinished } from "@/hooks/useTournamentFinished";
@@ -24,23 +24,8 @@ function RankingsTab({ activeTab, currentPlayers, matches }: { activeTab: string
   }).length;
   
   // Sort players deterministically using full tiebreaker system
-  const playerPointsMap = new Map<string, number>();
-  currentPlayers.forEach(p => {
-    if (p.id) playerPointsMap.set(p.id, p.points);
-  });
-  
-  const sortedPlayers = [...currentPlayers].sort((a, b) => {
-    if (b.points !== a.points) return b.points - a.points;
-    if (b.totalScores !== a.totalScores) return b.totalScores - a.totalScores;
-    // Use full tiebreaker system
-    return getTiebreakerLevel(a, b, matches, playerPointsMap) === null ? 
-      (b.totalScores - a.totalScores || (a.id || '').localeCompare(b.id || '')) :
-      getTiebreakerLevel(a, b, matches, playerPointsMap) === 'Score' ? -1 : 
-      getTiebreakerLevel(a, b, matches, playerPointsMap) === 'Difference' ? -1 :
-      getTiebreakerLevel(a, b, matches, playerPointsMap) === 'Head-to-head' ? -1 :
-      getTiebreakerLevel(a, b, matches, playerPointsMap) === 'Opponents' ? -1 :
-      (a.id || '').localeCompare(b.id || '');
-  });
+  // (points, total scores, point differential, head-to-head, opponents, id)
+  const sortedPlayers = sortPlayersWithTiebreakers(currentPlayers, matches);
   
   // Detect which tiebreaker was used
   const getTiebreakerForPlayer = (index: number): string | null => {
@@ -51,6 +36,10 @@ function RankingsTab({ activeTab, currentPlayers, matches }: { activeTab: string
     
     // Only show tiebreaker if points are tied
     if (currentPlayer.points === previousPlayer.points) {
+      const playerPointsMap = new Map<string, number>();
+      currentPlayers.forEach(p => {
+        if (p.id) playerPointsMap.set(p.id, p.points);
+      });
       return getTiebreakerLevel(previousPlayer, currentPlayer, matches, playerPointsMap);
     }
     

@@ -1,0 +1,8 @@
+# Cloudflare Pages redirects for SPA (Single Page Application)
+# This ensures all routes are handled by React Router
+
+# Handle all routes by serving index.html
+/*    /index.html   200
+
+# Allow auth/callback.html to be served directly (for Firebase email link authentication)
+/auth/callback.html    /auth/callback.html   200

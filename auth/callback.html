@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Signing you in...</title>
+</head>
+<body>
+  <h2>Signing you in...</h2>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getAuth, isSignInWithEmailLink, signInWithEmailLink } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyB59VBp3g79K0yYxcCmxwdp0mvgGTbdxxU",
+      authDomain: "kingqueen-c3543.firebaseapp.com",
+      projectId: "kingqueen-c3543",
+      appId: "1:243756782404:web:98d91f75b0e0c11d607d11"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    async function completeSignIn() {
+      if (isSignInWithEmailLink(auth, window.location.href)) {
+        let email = localStorage.getItem("emailForSignIn");
+
+        if (!email) {
+          email = prompt("Please confirm your email");
+        }
+
+        try {
+          await signInWithEmailLink(auth, email, window.location.href);
+          localStorage.removeItem("emailForSignIn");
+
+          // ✅ Redirect after login
+          window.location.href = "/";
+        } catch (error) {
+          console.error(error);
+          alert("Login failed. Try again.");
+        }
+      }
+    }
+
+    completeSignIn();
+  </script>
+</body>
+</html>

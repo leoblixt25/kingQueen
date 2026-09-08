@@ -1,0 +1,17 @@
+[phases.setup]
+nixPkgs = ['nodejs-18_x', 'npm-9_x']
+
+[phases.build]
+cmds = [
+  'npm cache clean --force',
+  'rm -rf node_modules package-lock.json',
+  'npm install',
+  'npm run build'
+]
+
+[phases.start]
+cmd = 'npm run preview -- --host 0.0.0.0 --port $PORT'
+
+[variables]
+NODE_ENV = 'production'
+NPM_CONFIG_CACHE = '/tmp/.npm'

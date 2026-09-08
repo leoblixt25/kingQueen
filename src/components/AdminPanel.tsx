@@ -180,8 +180,8 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
           const batch = writeBatch(db);
           // Move the player into the slot doc so counts stay at exactly 8
           batch.set(doc(db, 'players', freeSlot.id), {
-            name: player.name.trim(),
-            email: player.email.trim().toLowerCase(),
+            name: (player.name || '').trim(),
+            email: player.email ? player.email.trim().toLowerCase() : null,
             gender: player.gender,
             position: slotData.position ?? player.position,
             status: 'approved',
@@ -321,9 +321,10 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
       const playersRef = collection(db, 'players');
 
       // Create a new reserve doc (no slot) with the player's info
+      // Test players have no email — guard against undefined
       const reserveData = {
-        name: player.name.trim(),
-        email: player.email.trim().toLowerCase(),
+        name: (player.name || '').trim(),
+        email: player.email ? player.email.trim().toLowerCase() : null,
         gender: player.gender,
         is_confirmed: false,
         status: 'pending',

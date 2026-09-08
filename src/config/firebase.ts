@@ -5,12 +5,12 @@ import { getFunctions } from "firebase/functions";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyB59VBp3g79K0yYxcCmxwdp0mvgGTbdxxU",
-  authDomain: "kingqueen-c3543.firebaseapp.com",
-  projectId: "kingqueen-c3543",
-  storageBucket: "kingqueen-c3543.firebasestorage.app",
-  messagingSenderId: "243756782404",
-  appId: "1:243756782404:web:98d91f75b0e0c11d607d11"
+  apiKey: "AIzaSyBmLIUYNdvR1DIlVPjVpkU003zC6UyRzgY",
+  authDomain: "kingqueen-eu.firebaseapp.com",
+  projectId: "kingqueen-eu",
+  storageBucket: "kingqueen-eu.firebasestorage.app",
+  messagingSenderId: "431999738299",
+  appId: "1:431999738299:web:6ef4c7c76ab4171740249e"
 };
 
 // Initialize Firebase

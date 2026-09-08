@@ -16,9 +16,9 @@
 
 import { createSign } from 'node:crypto';
 
-const PROJECT_ID = 'kingqueen-c3543';
+const PROJECT_ID = 'kingqueen-eu';
 const ADMIN_EMAIL = 'leo.blixt77@gmail.com';
-const WEB_API_KEY = 'AIzaSyB59VBp3g79K0yYxcCmxwdp0mvgGTbdxxU';
+const WEB_API_KEY = 'AIzaSyBmLIUYNdvR1DIlVPjVpkU003zC6UyRzgY';
 const UA = 'sandy-scorekeeper-deletion/1.0';
 
 function b64Url(buf) {

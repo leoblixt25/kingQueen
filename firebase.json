@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "site": "kingqueen-c3543",
+    "site": "kingqueen-eu",
     "public": "dist",
     "ignore": [
       "firebase.json",

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +17,10 @@ export default function PlayerAccess() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const tournamentFinished = useTournamentFinished();
+  const tournamentFinishedRef = useRef(tournamentFinished);
+  useEffect(() => {
+    tournamentFinishedRef.current = tournamentFinished;
+  }, [tournamentFinished]);
 
   useEffect(() => {
     checkAuthStatus();
@@ -45,7 +49,9 @@ export default function PlayerAccess() {
               description: "You're already registered. Redirecting to tournament...",
             });
             setTimeout(() => {
-              navigate(`/tournament/${player.gender}`);
+              if (!tournamentFinishedRef.current) {
+                navigate(`/tournament/${player.gender}`);
+              }
             }, 1000);
           } else {
             // Pending or reserve — keep showing their status
@@ -54,7 +60,9 @@ export default function PlayerAccess() {
               description: "Your registration is pending approval. Taking you to your status page...",
             });
             setTimeout(() => {
-              navigate('/pending-approval');
+              if (!tournamentFinishedRef.current) {
+                navigate('/pending-approval');
+              }
             }, 1000);
           }
           return;

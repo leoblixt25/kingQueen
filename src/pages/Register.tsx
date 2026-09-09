@@ -15,6 +15,8 @@ import { registerPlayerToSlot } from "@/utils/placeholderUtils";
 import { AuthModal } from "@/components/AuthModal";
 import { signInWithGoogle, registerWithEmailPassword, registerWithGoogle } from "@/utils/authUtils";
 import MainTitle from "@/components/MainTitle";
+import TournamentFinished from "@/components/TournamentFinished";
+import { useTournamentFinished } from "@/hooks/useTournamentFinished";
 
 interface AvailableSpots {
   gender: string;
@@ -31,6 +33,7 @@ interface TournamentSettings {
 
 export default function Register() {
   const navigate = useNavigate();
+  const tournamentFinished = useTournamentFinished();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -505,6 +508,10 @@ export default function Register() {
   const handleCancel = () => {
     setFormData({ name: "", email: "", password: "", gender: "" });
   };
+
+  if (tournamentFinished) {
+    return <TournamentFinished />;
+  }
 
   if (isLoading) {
     return (

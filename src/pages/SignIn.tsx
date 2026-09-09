@@ -17,9 +17,12 @@ import { toast } from "@/hooks/use-toast";
 import { signInWithGoogle, signInWithEmail } from "@/utils/authUtils";
 import { getCurrentUserTournamentData } from "@/utils/authUtils";
 import MainTitle from "@/components/MainTitle";
+import TournamentFinished from "@/components/TournamentFinished";
+import { useTournamentFinished } from "@/hooks/useTournamentFinished";
 
 export default function SignIn() {
   const navigate = useNavigate();
+  const tournamentFinished = useTournamentFinished();
   const [searchParams] = useSearchParams();
   const [formData, setFormData] = useState({
     email: "",
@@ -134,6 +137,10 @@ export default function SignIn() {
       navigate('/');
     }
   };
+
+  if (tournamentFinished) {
+    return <TournamentFinished />;
+  }
 
   return (
     <div className="min-h-screen bg-sand-gradient px-4 py-6 flex items-center justify-center">

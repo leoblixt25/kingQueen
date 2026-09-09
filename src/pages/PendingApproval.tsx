@@ -8,9 +8,12 @@ import { signOut } from "@/utils/authUtils";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { Clock, Mail, ArrowLeft, LogOut } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import TournamentFinished from "@/components/TournamentFinished";
+import { useTournamentFinished } from "@/hooks/useTournamentFinished";
 
 export default function PendingApproval() {
   const navigate = useNavigate();
+  const tournamentFinished = useTournamentFinished();
   const [playerName, setPlayerName] = useState("");
   const [playerEmail, setPlayerEmail] = useState("");
   const [status, setStatus] = useState<"pending" | "approved" | "not_found">("pending");
@@ -87,6 +90,11 @@ export default function PendingApproval() {
       console.error('Error checking status:', error);
     }
   };
+
+  // Tournament Switch Off Mode: pending/reserve players see the finished page
+  if (tournamentFinished) {
+    return <TournamentFinished />;
+  }
 
   if (status === "not_found") {
     return (

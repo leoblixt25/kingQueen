@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, CreditCard, Check, X } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
 
 interface PaymentFormProps {
   amount: number; // in cents

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { initializeTournamentDatabase, checkDatabaseStatus } from "@/utils/tournamentInit";
 import { emergencyFix } from "@/utils/emergencyFix";
+import { toast } from "@/hooks/use-toast";
 import { Database, Play, CheckCircle, AlertTriangle } from "lucide-react";
 
 export function DatabaseInit() {

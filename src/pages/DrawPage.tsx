@@ -28,6 +28,7 @@ export default function DrawPage() {
   const [mMatches, setMMatches]           = useState<DrawnMatch[]>([]);
   const [saving, setSaving]               = useState(false);
   const [saved, setSaved]                 = useState(false);
+  const [saveFeedback, setSaveFeedback]       = useState(false);
   const [loadingTestPlayers, setLoadingTestPlayers] = useState(false);
   const [now, setNow]                     = useState(new Date());
   const [showRestartDrawModal, setShowRestartDrawModal] = useState(false);
@@ -428,6 +429,8 @@ export default function DrawPage() {
       await wb.commit();
       console.log('✅ [SAVE] Draw saved successfully!');
       setSaved(true);
+      setSaveFeedback(true);
+      setTimeout(() => setSaveFeedback(false), 2000);
     } catch (e) { 
       console.error('❌ [SAVE] Failed to save draw:', e); 
       alert('Failed to save draw. Check console.'); 
@@ -817,6 +820,8 @@ export default function DrawPage() {
               >
                 {saving ? (
                   <><RotateCcw className="w-5 h-5 mr-2 animate-spin" /> Saving…</>
+                ) : saveFeedback ? (
+                  <>✓ Saved!</>
                 ) : (
                   <><CheckCircle2 className="w-5 h-5 mr-2" /> Save Draw to Tournament</>
                 )}

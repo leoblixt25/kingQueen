@@ -57,6 +57,10 @@ export default function KingQueenOfTheBeach() {
   const tournamentFinished = useTournamentFinished();
   
   const [editingMatchId, setEditingMatchId] = useState<string | null>(null);
+  const [submitFeedbackMatchIndex, setSubmitFeedbackMatchIndex] = useState<number | null>(null);
+  const [saveEditFeedback, setSaveEditFeedback] = useState(false);
+  const [finalSubmitFeedback, setFinalSubmitFeedback] = useState(false);
+  const [finalEditFeedback, setFinalEditFeedback] = useState(false);
 
   const {
     femalePlayers,
@@ -419,6 +423,9 @@ export default function KingQueenOfTheBeach() {
       await updateMatchScore(currentMatchIndex, scoreValue1, scoreValue2, gender);
       console.log('✅ [SUBMIT] Score update completed');
 
+      setSubmitFeedbackMatchIndex(currentMatchIndex);
+      setTimeout(() => setSubmitFeedbackMatchIndex(null), 2000);
+
       // Clear the score inputs - the match data will update via realtime subscriptions
       setScore1('');
       setScore2('');
@@ -567,6 +574,8 @@ export default function KingQueenOfTheBeach() {
       setEditingMatchId(null);
       setScore1('');
       setScore2('');
+      setSaveEditFeedback(true);
+      setTimeout(() => setSaveEditFeedback(false), 2000);
     } catch (error) {
       console.error('Error updating match score:', error);
       toast({
@@ -605,6 +614,8 @@ export default function KingQueenOfTheBeach() {
       // Use the updated final match logic based on tournament type
       await updateFinalMatchData(finalMatchScores);
       console.log('🏆 [FINAL SUBMIT] Success! Setting submitted state...');
+      setFinalSubmitFeedback(true);
+      setTimeout(() => setFinalSubmitFeedback(false), 2000);
       
       // Manually set submitted state immediately
       // Don't wait for real-time update
@@ -626,6 +637,8 @@ export default function KingQueenOfTheBeach() {
     setIsEditingFinalMatch(false);
     try {
       await updateFinalMatchData(finalMatchScores);
+      setFinalEditFeedback(true);
+      setTimeout(() => setFinalEditFeedback(false), 2000);
     } catch (error) {
       console.error('Error updating final match:', error);
       toast({
@@ -1150,7 +1163,7 @@ export default function KingQueenOfTheBeach() {
                     onClick={handleFinalMatchSubmit} 
                     className="w-full touch-target bg-palm hover:bg-palm-dark text-white font-bold py-4 text-lg shadow-beach transition-all duration-300"
                   >
-                    🚀 Submit Championship Match
+                    {finalSubmitFeedback ? "✓ Submitted!" : "🚀 Submit Championship Match"}
                   </Button>
                 ) : (
                   <div className="space-y-4">
@@ -1299,7 +1312,7 @@ export default function KingQueenOfTheBeach() {
                             onClick={handleFinalMatchEditSubmit} 
                             className="w-full touch-target bg-palm hover:bg-palm-dark text-white transition-all duration-300"
                           >
-                            💾 Save Changes
+                            {finalEditFeedback ? "✓ Saved!" : "💾 Save Changes"}
                           </Button>
                         )}
                       </div>
@@ -1410,7 +1423,7 @@ export default function KingQueenOfTheBeach() {
                         onClick={handleScoreSubmit} 
                         className="w-full touch-target bg-palm hover:bg-palm-dark text-white font-bold py-4 text-lg shadow-beach transition-all duration-300"
                       >
-                        🚀 Submit Score
+                        {submitFeedbackMatchIndex === currentMatchIndex ? "✓ Submitted!" : "🚀 Submit Score"}
                       </Button>
                     ) : editingMatchId === currentMatch.id ? (
                       <div className="flex gap-3">
@@ -1418,7 +1431,7 @@ export default function KingQueenOfTheBeach() {
                           onClick={handleSaveMatchEdit} 
                           className="flex-1 touch-target bg-palm hover:bg-palm-dark text-white transition-all duration-300"
                         >
-                          💾 Save Score
+                          {saveEditFeedback ? "✓ Saved!" : "💾 Save Score"}
                         </Button>
                         <Button 
                           onClick={handleCancelEdit} 

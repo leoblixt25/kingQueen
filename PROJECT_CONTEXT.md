@@ -552,6 +552,54 @@ Draw Wheel:               Data Loading:
 * Tests: `src/utils/liveRankingRepro.test.ts` (LiveRanking-shaped sort regression), `rankingTiebreaker.test.ts`, `staticMatchups.test.ts` — 9 pass.
 * ⚠️ GitHub PAT was leaked in chat — **revoke + regenerate** in GitHub, then update the `GH_PAT` secret in the Cloudflare Worker (`sandy-scorekeeper-workers`).
 
+## 13s. Score-Submission Gating Attempt — REVERTED (Sep 2026)
+
+* Attempted to restrict score submission to the two playing participants and gate auto-advance to admins. **User rejected it** ("no need these rules, i already have a working app").
+* `firestore.rules` restored to the original committed permissive version (any authenticated user writes; admins collection read-only) via `git checkout -- firestore.rules`.
+* All admins-gating removed from `Index.tsx` (score submit, final-match submit/edit, final inputs, submit button). Auto-advance is unconditional again. No permission-denied toast.
+* Only the **non-restricting** fixes below were kept.
+
+## 13t. Kept Fixes (Sep 2026) — commits `b1ccb95`/`d1fa385` → `0c38b8a`
+
+* **#2 Transactional registration**: `authUtils.claimRegistrationSlot()` runs in a Firestore transaction and sets `uid` on the player doc — no race-condition double-claims.
+* **#3 Score-save errors now surface**: `matchUtils`/`useTournamentActions` THROW on failure instead of silent success; duplicate submission guarded with a loading state on Submit/Save buttons.
+* **#4 Navigation/auto-advance fixes** in `Index.tsx`: `matchesRef`, `advanceTimerRef`, `clearAdvanceTimer()`, `scheduleAdvance()`, `positionedGenderCountRef`, localStorage cleanup.
+* **#10 Atomic draw**: `saveDraw()` in `DrawPage.tsx` writes all matches atomically with deterministic IDs `female_match_N` / `male_match_N`.
+* Verified: tsc = 22 pre-existing errors / **0 new**; vitest 9/9; build passes.
+
+## 13u. Player Removal Slot Recycling + Reserve Toast Fix (commit `0c38b8a` — Sep 2026)
+
+* `AdminPanel.handleRemovePlayer`: removing an approved slot player (`position != null`) now **recycles the slot doc** back to a placeholder (name "Female/Male Player N", email null, status null, points/scores reset) instead of deleting it. Deleting left the slot with no placeholder → re-approving a new player failed with "list is full". Only **slot-less approved reserves** (`position == null`) are hard-deleted. Call site passes `(id, name, gender, position)`; `deleteDoc` imported.
+* `Register.tsx`: removed the premature "Reserve Registration" toast (fired immediately on click, duplicating the pending-approval page). `loadAvailableSpots` now counts **pending** registrations in occupancy (occupied = `approved` OR `pending` non-reserve; reserve = `approved` OR `pending` reserves) — matches real capacity.
+
+## 13v. Cloudflare Worker GH_PAT Rebound (Sep 2026)
+
+* Symptom: "Delete All Registered Players" → 500 `{"error":"Worker misconfigured: GH_PAT secret is missing"}`.
+* Root cause: worker `sandy-scorekeeper-workers` had **zero secrets** bound (`npx wrangler secret list --name sandy-scorekeeper-workers` → `[]`). A `GET /status?since=...` probe returned the generic fallback — that `/status` branch only activates when `env.GH_PAT` exists — proving the secret was unset on the live worker.
+* Hunted: GitHub repo secrets (`kingQueen` + `sandy-scorekeeper`) only contain `FIREBASE_SERVICE_ACCOUNT_JSON` variants — no `GH_PAT`; none committed locally (`ghp_/GH_PAT` grep = 0 hits). The value was recovered from the earlier session and re-added via the Cloudflare dashboard (Settings → Variables and Secrets → Add secret → `GH_PAT`).
+* Verified working: `GET https://sandy-scorekeeper-workers.leo-blixt77.workers.dev/status?since=...` → `{"status":"completed","conclusion":"success"}`. Delete-all flow confirmed working by user.
+* ⚠️ `sandy-scorekeeper-workers.leoblixt25.workers.dev` does **NOT** resolve — the worker only exists on the `leo-blixt77` account subdomain.
+* Worker source is tracked in `workers/delete-firebase-users.js` + `wrangler.toml` (worker name `sandy-scorekeeper-workers`); deployed bundle matches repo (EU `WEB_API_KEY`, `GITHUB_REPO='leoblixt25/kingQueen'`). wrangler OAuth token has only read scopes — secret writes need the Cloudflare dashboard or a Workers-edit token.
+
+## 13w. GH_PAT Security Decision (supersedes 13r revoke advice)
+
+* 13r advised revoking the leaked PAT. **User explicitly declined** — the key is to stay in Cloudflare and everywhere. Current `GH_PAT` = the same PAT from the earlier session, re-bound to the worker Sep 2026.
+* Do **NOT** remove or rotate the GH_PAT secret unless the user explicitly asks.
+
+## 13x. PWA Android Install Fix — exact-size black icons (8570163 → 4eb0f3c → 5e68ce8, Sep 2026)
+
+* Root cause: `public/icon.png` is **1254×1254, fully opaque, dark-navy artwork** (border ≈ `#010000`–`#071F47`), but `manifest.json` declared it as `192x192`, `512x512`, and `512x512 maskable`. Play/Chrome uses declared dimensions to render the install icon — the mismatch made Android install unreliable ("installed but no icon" / wouldn't install), while iOS (`apple-touch-icon`) was unaffected.
+* Attempt 1 (`8570163`): generated 192/512/maskable icons on a **sand/white** background → Android installed but the icon now had a white background — user disliked it.
+* Revert (`4eb0f3c`): restored original manifest + `icon.png`.
+* Final fix (`5e68ce8`): regenerated exact-size icons **from the original navy artwork** (no sand):
+  - `public/icon-192.png` — 192x192, full art
+  - `public/icon-512.png` — 512x512, full art
+  - `public/icon-maskable-512.png` — 512x512, navy safe-zone padding, content at 72%
+  - `manifest.json`: real icons with exact sizes + correct `purpose` (`any`/`maskable`), added `scope:"/"`, `id:"/"`, `background_color` → `#020d23` (navy).
+  - `index.html`: `apple-touch-icon` → `/icon-192.png`.
+* Deployed; user confirms Android install **works and the icon stays black** like iPhone.
+* Gotcha: after icon changes the phone may show the previous icon — remove the installed app, reopen the site so the SW re-registers, then reinstall.
+
 ## 14. Deployment URLs
 
 ### EU Project (KingQueen_EU — LIVE)

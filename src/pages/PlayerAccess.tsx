@@ -6,6 +6,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Users, LogIn, UserPlus, Info } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { auth, db } from "@/config/firebase";
+import { signOut } from "@/utils/authUtils";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import MainTitle from "@/components/MainTitle";
 import TournamentFinished from "@/components/TournamentFinished";
@@ -72,6 +73,22 @@ export default function PlayerAccess() {
 
   const handleRegister = () => {
     navigate('/register');
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      localStorage.removeItem('tournament_registered_email');
+      localStorage.removeItem('tournament_registered_name');
+      setCurrentUser(null);
+      toast({
+        title: "Signed Out",
+        description: "You've been signed out successfully.",
+      });
+      navigate('/player-access');
+    } catch (error) {
+      console.error('Sign out error:', error);
+    }
   };
 
   // Tournament Switch Off Mode: player access disabled for the public
@@ -151,6 +168,14 @@ export default function PlayerAccess() {
                     </>
                   )}
                 </p>
+                <Button
+                  onClick={handleSignOut}
+                  variant="outline"
+                  className="mt-3 w-full border-blue-300 bg-white text-blue-700 hover:bg-blue-50"
+                >
+                  <LogIn className="w-4 h-4 mr-2 rotate-180" />
+                  Sign Out
+                </Button>
               </AlertDescription>
             </Alert>
           )}

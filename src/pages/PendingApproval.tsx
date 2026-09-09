@@ -4,8 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { db } from "@/config/firebase";
+import { signOut } from "@/utils/authUtils";
 import { collection, query, where, getDocs } from "firebase/firestore";
-import { Clock, Mail, ArrowLeft } from "lucide-react";
+import { Clock, Mail, ArrowLeft, LogOut } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 export default function PendingApproval() {
@@ -21,6 +22,21 @@ export default function PendingApproval() {
     const interval = setInterval(checkRegistrationStatus, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      localStorage.removeItem('tournament_registered_email');
+      localStorage.removeItem('tournament_registered_name');
+      toast({
+        title: "Signed Out",
+        description: "You've been signed out successfully.",
+      });
+      navigate('/player-access');
+    } catch (error) {
+      console.error('Sign out error:', error);
+    }
+  };
 
   const checkRegistrationStatus = async () => {
     const email = localStorage.getItem('tournament_registered_email');
@@ -169,6 +185,14 @@ export default function PendingApproval() {
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Home
+            </Button>
+            <Button
+              onClick={handleSignOut}
+              variant="outline"
+              className="w-full border-coral/30 text-coral hover:bg-coral/10"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Sign Out
             </Button>
             <Button
               onClick={checkRegistrationStatus}

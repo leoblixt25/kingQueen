@@ -52,6 +52,8 @@ export default function KingQueenOfTheBeach() {
   const [isResetting, setIsResetting] = useState(false);
   const [showScoreResetModal, setShowScoreResetModal] = useState(false);
   const [isResettingScores, setIsResettingScores] = useState(false);
+  const [isSubmittingScore, setIsSubmittingScore] = useState(false);
+  const [isSavingScore, setIsSavingScore] = useState(false);
   const [showResetFinalMatchModal, setShowResetFinalMatchModal] = useState(false);
   const [drawCompleted, setDrawCompleted] = useState(false);
   const tournamentFinished = useTournamentFinished();
@@ -374,6 +376,7 @@ export default function KingQueenOfTheBeach() {
   };
 
   const handleScoreSubmit = async () => {
+    if (isSubmittingScore) return;
     console.log('🏐 [SUBMIT] Score submit clicked');
     console.log('📊 [SUBMIT] Current scores:', { score1, score2 });
     
@@ -413,7 +416,8 @@ export default function KingQueenOfTheBeach() {
     }
     
     console.log('✅ [SUBMIT] Scores validated:', scoreValue1, scoreValue2);
-    
+
+    setIsSubmittingScore(true);
     try {
       console.log('🚀 [SUBMIT] Calling updateMatchScore...');
       await updateMatchScore(currentMatchIndex, scoreValue1, scoreValue2, gender);
@@ -456,6 +460,8 @@ export default function KingQueenOfTheBeach() {
         description: "Failed to submit scores. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsSubmittingScore(false);
     }
   };
 
@@ -556,11 +562,12 @@ export default function KingQueenOfTheBeach() {
   }
 
   const handleSaveMatchEdit = async () => {
-    if (!editingMatchId) return;
+    if (isSavingScore || !editingMatchId) return;
     
     const scoreValue1 = parseInt(score1, 10) || 0;
     const scoreValue2 = parseInt(score2, 10) || 0;
     
+    setIsSavingScore(true);
     try {
       await updateMatchScore(currentMatchIndex, scoreValue1, scoreValue2, gender, true);
       await loadTournamentData();
@@ -574,6 +581,8 @@ export default function KingQueenOfTheBeach() {
         description: "Failed to update match score",
         variant: "destructive",
       });
+    } finally {
+      setIsSavingScore(false);
     }
   }
 
@@ -1408,17 +1417,33 @@ export default function KingQueenOfTheBeach() {
                     {!currentMatch.isSubmitted && editingMatchId !== currentMatch.id ? (
                       <Button 
                         onClick={handleScoreSubmit} 
+                        disabled={isSubmittingScore}
                         className="w-full touch-target bg-palm hover:bg-palm-dark text-white font-bold py-4 text-lg shadow-beach transition-all duration-300"
                       >
-                        🚀 Submit Score
+                        {isSubmittingScore ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Submitting...
+                          </>
+                        ) : (
+                          <>🚀 Submit Score</>
+                        )}
                       </Button>
                     ) : editingMatchId === currentMatch.id ? (
                       <div className="flex gap-3">
                         <Button 
                           onClick={handleSaveMatchEdit} 
+                          disabled={isSavingScore}
                           className="flex-1 touch-target bg-palm hover:bg-palm-dark text-white transition-all duration-300"
                         >
-                          💾 Save Score
+                          {isSavingScore ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Saving...
+                            </>
+                          ) : (
+                            <>💾 Save Score</>
+                          )}
                         </Button>
                         <Button 
                           onClick={handleCancelEdit} 

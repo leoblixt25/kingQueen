@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Users, LogIn, UserPlus, Info } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
 import { auth, db } from "@/config/firebase";
 import { signOut } from "@/utils/authUtils";
 import { collection, getDocs, query, where } from "firebase/firestore";
@@ -44,10 +43,6 @@ export default function PlayerAccess() {
 
           if (player.status === 'approved' || player.is_confirmed === true) {
             // Player is approved, redirect to their division
-            toast({
-              title: "Welcome Back!",
-              description: "You're already registered. Redirecting to tournament...",
-            });
             setTimeout(() => {
               if (!tournamentFinishedRef.current) {
                 navigate(`/tournament/${player.gender}`);
@@ -55,10 +50,6 @@ export default function PlayerAccess() {
             }, 1000);
           } else {
             // Pending or reserve — keep showing their status
-            toast({
-              title: "Registration Pending",
-              description: "Your registration is pending approval. Taking you to your status page...",
-            });
             setTimeout(() => {
               if (!tournamentFinishedRef.current) {
                 navigate('/pending-approval');
@@ -89,10 +80,6 @@ export default function PlayerAccess() {
       localStorage.removeItem('tournament_registered_email');
       localStorage.removeItem('tournament_registered_name');
       setCurrentUser(null);
-      toast({
-        title: "Signed Out",
-        description: "You've been signed out successfully.",
-      });
       navigate('/player-access');
     } catch (error) {
       console.error('Sign out error:', error);

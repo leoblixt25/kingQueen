@@ -72,11 +72,6 @@ export default function SignIn() {
       const result = await signInWithEmail(formData.email, formData.password);
       
       if (result.success) {
-        toast({
-          title: "Welcome Back!",
-          description: "Successfully signed in!",
-        });
-        
         // Check tournament registration and redirect
         const player = await getCurrentUserTournamentData();
         redirectAfterSignIn(player);
@@ -104,11 +99,6 @@ export default function SignIn() {
       const result = await signInWithGoogle();
       
       if (result.success) {
-        toast({
-          title: "Welcome!",
-          description: "Successfully signed in with Google.",
-        });
-        
         // Check tournament registration and redirect
         const player = await getCurrentUserTournamentData();
         redirectAfterSignIn(player);

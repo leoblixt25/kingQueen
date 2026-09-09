@@ -40,11 +40,6 @@ export default function AdminLogin() {
         throw new Error("Access denied. Please check your credentials.");
       }
 
-      toast({
-        title: "Success",
-        description: "Logged in as administrator",
-      });
-      
       navigate('/admin/control');
     } catch (error: any) {
       console.error("Login error:", error);
@@ -84,11 +79,6 @@ export default function AdminLogin() {
           });
           return;
         }
-        
-        toast({
-          title: "Success",
-          description: "Logged in as administrator",
-        });
         
         navigate('/admin/control');
       } else {
@@ -145,11 +135,6 @@ export default function AdminLogin() {
             return;
           }
 
-          toast({
-            title: "Success",
-            description: "Logged in as administrator",
-          });
-          
           navigate('/admin/control');
         }
       } catch (error: any) {

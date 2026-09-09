@@ -352,11 +352,6 @@ export default function KingQueenOfTheBeach() {
       localStorage.removeItem('tournament_registered_email');
       localStorage.removeItem('tournament_registered_name');
       
-      toast({
-        title: "Signed Out",
-        description: "You've been signed out successfully.",
-      });
-      
       navigate('/');
     } catch (error) {
       console.error('Sign out error:', error);
@@ -423,12 +418,6 @@ export default function KingQueenOfTheBeach() {
       console.log('🚀 [SUBMIT] Calling updateMatchScore...');
       await updateMatchScore(currentMatchIndex, scoreValue1, scoreValue2, gender);
       console.log('✅ [SUBMIT] Score update completed');
-      
-      // Show success message
-      toast({
-        title: "Score Submitted! 🎉",
-        description: `Final score: ${scoreValue1} - ${scoreValue2}. Rankings updated.`,
-      });
 
       // Clear the score inputs - the match data will update via realtime subscriptions
       setScore1('');
@@ -489,11 +478,6 @@ export default function KingQueenOfTheBeach() {
       setScore2('');
       setShowScoreResetModal(false);
       setIsResettingScores(false);
-      
-      toast({
-        title: "Scores Reset ✓",
-        description: "All scores have been reset successfully",
-      });
     } catch (error) {
       console.error('❌ [SCORE RESET] Score reset failed:', error);
       setIsResettingScores(false);
@@ -543,11 +527,6 @@ export default function KingQueenOfTheBeach() {
       setShowFinalMatch(false);
       setShowResetModal(false);
       setIsResetting(false);
-      
-      toast({
-        title: "Tournament Reset",
-        description: "Tournament has been completely reset",
-      });
     } catch (error) {
       console.error('❌ [FULL RESET] Error:', error);
       // Just close the modal and reset state - no error message
@@ -588,10 +567,6 @@ export default function KingQueenOfTheBeach() {
       setEditingMatchId(null);
       setScore1('');
       setScore2('');
-      toast({
-        title: "Score Updated",
-        description: "Match score and rankings updated successfully",
-      });
     } catch (error) {
       console.error('Error updating match score:', error);
       toast({
@@ -633,10 +608,6 @@ export default function KingQueenOfTheBeach() {
       
       // Manually set submitted state immediately
       // Don't wait for real-time update
-      toast({
-        title: "Final Match Submitted",
-        description: "Championship match results saved successfully",
-      });
     } catch (error) {
       console.error('❌ [FINAL SUBMIT] Error submitting final match:', error);
       toast({
@@ -655,10 +626,6 @@ export default function KingQueenOfTheBeach() {
     setIsEditingFinalMatch(false);
     try {
       await updateFinalMatchData(finalMatchScores);
-      toast({
-        title: "Final Match Updated",
-        description: "Championship match results updated successfully",
-      });
     } catch (error) {
       console.error('Error updating final match:', error);
       toast({

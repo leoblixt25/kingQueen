@@ -17,10 +17,6 @@ const AdminLogin = ({ onLogin }: AdminLoginProps) => {
   const handleLogin = () => {
     if (username === "leo" && password === "Woodgoat22!!") {
       onLogin(true);
-      toast({
-        title: "Success",
-        description: "Logged in as administrator",
-      });
     } else {
       toast({
         title: "Error",

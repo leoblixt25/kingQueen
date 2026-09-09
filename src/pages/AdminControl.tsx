@@ -8,7 +8,7 @@ import { toast } from "@/hooks/use-toast";
 import { db } from "@/config/firebase";
 import { collection, getDocs, query, orderBy, limit, doc, setDoc, getDoc, updateDoc, where } from "firebase/firestore";
 import { signOut } from "@/utils/authUtils";
-import { LogOut, Save, Crown, Users, AlertTriangle, Settings, RotateCcw, Trash, PowerOff, UserX } from "lucide-react";
+import { LogOut, Save, Crown, Users, AlertTriangle, Settings, RotateCcw, Trash, PowerOff, UserX, Check } from "lucide-react";
 import { useTournamentFinished } from "@/hooks/useTournamentFinished";
 import { ResetConfirmationModal } from "@/components/ResetConfirmationModal";
 import { resetScoresOnly, deleteFirebaseAuthUsers } from "@/utils/resetUtils";
@@ -34,6 +34,7 @@ export default function AdminControl() {
   const [registrationCutoff, setRegistrationCutoff] = useState(3);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [settingsSaved, setSettingsSaved] = useState(false);
   const [existingSettingsId, setExistingSettingsId] = useState<string | null>(null);
   const [playerCounts, setPlayerCounts] = useState<{ maleCount: number; femaleCount: number } | null>(null);
   const [showTournamentConfig, setShowTournamentConfig] = useState(false);
@@ -190,10 +191,8 @@ export default function AdminControl() {
       
       console.log('=== SAVE COMPLETED ===');
 
-      toast({
-        title: "Success",
-        description: "Tournament settings saved successfully",
-      });
+      setSettingsSaved(true);
+      setTimeout(() => setSettingsSaved(false), 2000);
     } catch (error) {
       console.error('Error saving settings:', error);
       toast({
@@ -209,10 +208,6 @@ export default function AdminControl() {
   const handleLogout = async () => {
     try {
       await signOut();
-      toast({
-        title: "Logged Out",
-        description: "You have been successfully logged out",
-      });
       navigate('/');
     } catch (error) {
       console.error('Error signing out:', error);
@@ -245,11 +240,6 @@ export default function AdminControl() {
       console.log('✅ [FULL RESET] Firebase stabilization complete');
       setShowResetModal(false);
       setIsResetting(false);
-      
-      toast({
-        title: "Tournament Reset",
-        description: "Tournament has been completely reset",
-      });
       
       // Navigate to tournament page to see the fresh data
       navigate('/tournament');
@@ -286,11 +276,6 @@ export default function AdminControl() {
       
       setShowScoreResetModal(false);
       setIsResettingScores(false);
-      
-      toast({
-        title: "Scores Reset ✓",
-        description: "All scores have been reset successfully",
-      });
     } catch (error) {
       console.error('❌ [SCORE RESET] Score reset failed:', error);
       setIsResettingScores(false);
@@ -314,10 +299,6 @@ export default function AdminControl() {
     setIsTogglingStatus(true);
     try {
       await setDoc(doc(db, 'tournamentSettings', 'settings'), { tournament_status: 'finished' }, { merge: true });
-      toast({
-        title: "Tournament Closed",
-        description: "Public tournament pages are now disabled.",
-      });
     } catch (error) {
       console.error('Error switching off tournament:', error);
       toast({
@@ -334,10 +315,6 @@ export default function AdminControl() {
     setIsTogglingStatus(true);
     try {
       await setDoc(doc(db, 'tournamentSettings', 'settings'), { tournament_status: 'active' }, { merge: true });
-      toast({
-        title: "Tournament Restored",
-        description: "Public tournament pages are available again.",
-      });
     } catch (error) {
       console.error('Error restoring tournament access:', error);
       toast({
@@ -364,10 +341,7 @@ export default function AdminControl() {
           variant: "destructive",
         });
       } else {
-        toast({
-          title: "Success",
-          description: "All registered player accounts have been removed. Admin account remains active.",
-        });
+        // All player accounts removed — the admin panel list updates automatically.
       }
     } catch (error) {
       console.error('❌ [DELETE PLAYERS] Failed:', error);
@@ -521,6 +495,11 @@ export default function AdminControl() {
                   <>
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     Saving...
+                  </>
+                ) : settingsSaved ? (
+                  <>
+                    <Check className="w-4 h-4" />
+                    Saved!
                   </>
                 ) : (
                   <>

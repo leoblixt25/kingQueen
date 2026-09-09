@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { initializeTournamentDatabase, checkDatabaseStatus } from "@/utils/tournamentInit";
 import { emergencyFix } from "@/utils/emergencyFix";
-import { toast } from "@/hooks/use-toast";
 import { Database, Play, CheckCircle, AlertTriangle } from "lucide-react";
 
 export function DatabaseInit() {
@@ -16,10 +15,6 @@ export function DatabaseInit() {
     setIsInitializing(true);
     try {
       await initializeTournamentDatabase();
-      toast({
-        title: "Database Initialized!",
-        description: "Tournament is now ready for player registration.",
-      });
       
       // Check status after initialization
       await handleCheckStatus();
@@ -52,10 +47,6 @@ export function DatabaseInit() {
     setIsFixing(true);
     try {
       await emergencyFix();
-      toast({
-        title: "Emergency Fix Complete!",
-        description: "Database has been repaired and is ready for registration.",
-      });
       
       // Check status after fix
       await handleCheckStatus();

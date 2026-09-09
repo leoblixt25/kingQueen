@@ -7,7 +7,6 @@ import { db } from "@/config/firebase";
 import { signOut } from "@/utils/authUtils";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { Clock, Mail, ArrowLeft, LogOut } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
 import TournamentFinished from "@/components/TournamentFinished";
 import { useTournamentFinished } from "@/hooks/useTournamentFinished";
 
@@ -31,10 +30,6 @@ export default function PendingApproval() {
       await signOut();
       localStorage.removeItem('tournament_registered_email');
       localStorage.removeItem('tournament_registered_name');
-      toast({
-        title: "Signed Out",
-        description: "You've been signed out successfully.",
-      });
       navigate('/player-access');
     } catch (error) {
       console.error('Sign out error:', error);
@@ -63,10 +58,6 @@ export default function PendingApproval() {
         
         if (playerData.status === 'approved' || playerData.is_confirmed === true) {
           setStatus("approved");
-          toast({
-            title: "Registration Approved!",
-            description: "You can now access the tournament.",
-          });
           setTimeout(() => {
             navigate(`/tournament/${playerData.gender}`);
           }, 2000);

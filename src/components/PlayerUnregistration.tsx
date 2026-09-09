@@ -33,11 +33,6 @@ export function PlayerUnregistration({ onClose, onSuccess }: PlayerUnregistratio
       // Use the new unregistration system
       await unregisterPlayer(email);
 
-      toast({
-        title: "Registration Cancelled",
-        description: "Your tournament registration has been cancelled successfully. Your slot is now available for other players.",
-      });
-
       onSuccess();
       onClose();
 

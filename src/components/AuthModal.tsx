@@ -95,10 +95,6 @@ export function AuthModal({ onClose, onSuccess, availableSpots, googleUser, show
       const result = await signInWithEmail(signInData.email, signInData.password);
       
       if (result.success) {
-        toast({
-          title: "Welcome Back!",
-          description: "You've successfully signed in.",
-        });
         onSuccess(result.user);
       } else {
         toast({
@@ -169,15 +165,8 @@ export function AuthModal({ onClose, onSuccess, availableSpots, googleUser, show
       
       if (result.success) {
         if (result.needsConfirmation) {
-          toast({
-            title: "Registration Successful!",
-            description: "Please check your email and click the confirmation link to complete your registration.",
-          });
+          // Registration sent — user must click the confirmation link in their email.
         } else {
-          toast({
-            title: "Registration Complete!",
-            description: `Welcome to the tournament, ${signUpData.name}!`,
-          });
           onSuccess(result.user);
         }
       } else {
@@ -297,10 +286,6 @@ export function AuthModal({ onClose, onSuccess, availableSpots, googleUser, show
       const result = await adminSignIn(adminData.username, adminData.password);
       
       if (result.success) {
-        toast({
-          title: "Admin Access Granted",
-          description: "Welcome, Administrator!",
-        });
         onSuccess(result.user, true);
       } else {
         toast({
@@ -350,11 +335,6 @@ export function AuthModal({ onClose, onSuccess, availableSpots, googleUser, show
         googleRegData.gender as 'male' | 'female'
       );
       
-      toast({
-        title: "Registration Complete!",
-        description: `Welcome to the tournament, ${googleRegData.name}!`,
-      });
-      
       onSuccess(googleUser);
     } catch (error: any) {
       toast({
@@ -383,15 +363,8 @@ export function AuthModal({ onClose, onSuccess, availableSpots, googleUser, show
         
         if (result.success) {
           if (result.needsConfirmation) {
-            toast({
-              title: "Registration Successful!",
-              description: "Payment completed! Please check your email and click the confirmation link to complete your registration.",
-            });
+            // Payment completed — user must click the confirmation link in their email.
           } else {
-            toast({
-              title: "Registration Complete!",
-              description: `Welcome to the tournament, ${pendingRegistrationData.name}!`,
-            });
             onSuccess(result.user);
           }
         } else {
@@ -408,11 +381,6 @@ export function AuthModal({ onClose, onSuccess, availableSpots, googleUser, show
           googleRegData.email, 
           googleRegData.gender as 'male' | 'female'
         );
-        
-        toast({
-          title: "Registration Complete!",
-          description: `Welcome to the tournament, ${googleRegData.name}!`,
-        });
         
         onSuccess(googleUser);
       }

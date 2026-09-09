@@ -37,11 +37,6 @@ export function PlayerReplacer({ femalePlayers, malePlayers, onClose, onSuccess 
     try {
       await replacePlayerName(selectedPlayer, newName.trim(), selectedGender);
       
-      toast({
-        title: "Player Replaced",
-        description: `Successfully replaced ${selectedPlayer} with ${newName}`,
-      });
-
       onSuccess();
       onClose();
     } catch (error) {

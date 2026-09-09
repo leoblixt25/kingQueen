@@ -121,12 +121,6 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
       batch.delete(playerRef);
       await batch.commit();
 
-      toast({
-        title: "Player Removed",
-        description: `${playerName} has been removed from the tournament`,
-      });
-
-
       await loadAdminData();
     } catch (error) {
       console.error('Error removing player:', error);
@@ -197,12 +191,6 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
           batch.delete(doc(db, 'players', player.id));
           await batch.commit();
 
-          toast({
-            title: "Player Approved",
-            description: `${player.name} has been approved into slot ${slotData.position ?? ''} in the ${player.gender} division`,
-          });
-
-
           await loadAdminData();
           return;
         }
@@ -227,11 +215,6 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
         approved_at: new Date().toISOString()
       });
 
-      toast({
-        title: "Player Approved",
-        description: `${player.name} has been approved and added to the tournament`,
-      });
-
       // TODO: Send approval email here if email service is configured
       // await sendApprovalEmail(playerEmail, playerName);
 
@@ -250,12 +233,6 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
   const handleRemovePendingPlayer = async (player: PendingPlayer) => {
     try {
       await removePendingPlayer(player);
-
-      toast({
-        title: "Registration Removed",
-        description: `${player.name}'s registration has been removed. The slot is now available.`,
-      });
-
 
       await loadAdminData();
     } catch (error) {
@@ -276,12 +253,6 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
         is_confirmed: false,
         approved_at: null
       });
-
-      toast({
-        title: "Player Set Back to Pending",
-        description: `${playerName} has been moved back to pending registrations`,
-      });
-
 
       await loadAdminData();
     } catch (error) {
@@ -307,12 +278,6 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
           is_reserve: true,
           approved_at: null
         });
-
-        toast({
-          title: "Moved to Reserve",
-          description: `${player.name} has been moved back to reserve.`,
-        });
-
 
         await loadAdminData();
         return;
@@ -351,12 +316,6 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
         total_scores: 0,
         matches_played: 0
       });
-
-      toast({
-        title: "Moved to Reserve",
-        description: `${player.name} has been moved to reserve. Their slot is now free.`,
-      });
-
 
       await loadAdminData();
     } catch (error) {
@@ -469,11 +428,6 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
         tournamentCity: tournamentCity,
         finalMatch
       });
-      
-      toast({
-        title: "PDF Exported",
-        description: "Matchups have been exported to PDF successfully",
-      });
     } catch (error) {
       console.error('Error exporting PDF:', error);
       toast({
@@ -490,11 +444,6 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
     try {
       setIsLoading(true);
       await resetPlayersToPlaceholders();
-      
-      toast({
-        title: "Players Reset",
-        description: "All players have been reset to placeholder names. Registration can now begin fresh.",
-      });
       
       setConfirmingReset(false);
       await loadAdminData();
@@ -516,11 +465,6 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
       // Initialize Firebase database
       await initializePlayers();
       await initializeMatches();
-      
-      toast({
-        title: "Database Initialized",
-        description: "Tournament database has been set up with placeholder players and is ready for registration.",
-      });
       
       setConfirmingInit(false);
       await loadAdminData();

@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, CreditCard, Check, X } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
 
 interface PaymentFormProps {
   amount: number; // in cents
@@ -93,10 +92,6 @@ export function PaymentForm({
         });
       } else if (paymentIntent.status === 'succeeded') {
         setPaymentSuccess(true);
-        toast({
-          title: "Payment Successful!",
-          description: "Your tournament registration payment has been processed.",
-        });
         
         // Call success callback after a short delay to show success state
         setTimeout(() => {

@@ -10,7 +10,7 @@ import { auth, db } from "@/config/firebase";
 import { getDocs, collection, query, where } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
-import { Crown, Users, Calendar, AlertCircle, CheckCircle, LogIn, UserPlus, Mail, Info } from "lucide-react";
+import { Crown, Users, Calendar, AlertCircle, CheckCircle, LogIn, UserPlus, Mail, Info, Check } from "lucide-react";
 import { registerPlayerToSlot } from "@/utils/placeholderUtils";
 import { AuthModal } from "@/components/AuthModal";
 import { signInWithGoogle, registerWithEmailPassword, registerWithGoogle } from "@/utils/authUtils";
@@ -41,6 +41,7 @@ export default function Register() {
     gender: ""
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [registrationSubmitted, setRegistrationSubmitted] = useState(false);
   const [availableSpots, setAvailableSpots] = useState<AvailableSpots[]>([]);
   const [settings, setSettings] = useState<TournamentSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -83,17 +84,9 @@ export default function Register() {
     if (player.name) localStorage.setItem('tournament_registered_name', player.name);
 
     if (player.status === 'approved' || player.is_confirmed === true) {
-      toast({
-        title: "Welcome Back!",
-        description: "You're already registered. Redirecting to tournament...",
-      });
       setTimeout(() => navigate(`/tournament/${player.gender}`), 1000);
     } else {
       // Pending or reserve — keep showing the pending/status message
-      toast({
-        title: "Registration Pending",
-        description: "Your registration is pending approval. Taking you to your status page...",
-      });
       setTimeout(() => navigate('/pending-approval'), 1000);
     }
   };
@@ -171,10 +164,6 @@ export default function Register() {
             handleExistingRegistration(player);
           } else {
             // Player is not registered, show a message and allow registration
-            toast({
-              title: "Account Signed In!",
-              description: "You're signed in but not registered for this tournament. Please complete registration.",
-            });
             
             // Keep user on the registration page to complete registration
             if (user.email && !formData.email) {
@@ -209,10 +198,6 @@ export default function Register() {
   const handleSignOut = () => {
     setCurrentUser(null);
     setUserIsAdmin(false);
-    toast({
-      title: "Signed Out",
-      description: "You've been successfully signed out.",
-    });
   };
 
   const handleGoogleSignUp = async () => {
@@ -225,10 +210,6 @@ export default function Register() {
           email: result.user.email
         }));
         setCurrentUser(result.user);
-        toast({
-          title: "Google Account Connected!",
-          description: `Signed in as ${result.user.email}. Complete your registration below — your email is locked to this account.`,
-        });
       } else if (result.error) {
         toast({
           title: "Authentication Error",
@@ -249,13 +230,8 @@ export default function Register() {
       if (player) {
         handleExistingRegistration(player);
       } else {
-        // Player is not registered, show a message and allow registration
-        toast({
-          title: "Account Signed In!",
-          description: "You're signed in but not registered for this tournament. Please complete registration.",
-        });
+        // Player is not registered — keep user on the registration page to complete registration
         
-        // Keep user on the registration page to complete registration
         // The registration form will be pre-filled with their email
         if (user.email && !formData.email) {
           setFormData(prev => ({
@@ -267,10 +243,6 @@ export default function Register() {
     } catch (error) {
       console.error('Error checking tournament registration:', error);
       // If there's an error, allow registration
-      toast({
-        title: "Account Signed In!",
-        description: "You're signed in but not registered for this tournament. Please complete registration.",
-      });
       
       // Keep user on the registration page
       if (user.email && !formData.email) {
@@ -453,20 +425,7 @@ export default function Register() {
         // Store registration in localStorage
         localStorage.setItem('tournament_registered_email', formData.email.trim().toLowerCase());
         localStorage.setItem('tournament_registered_name', formData.name.trim());
-
-        if (result.isReserve) {
-          const spot = availableSpots.find(s => s.gender === formData.gender);
-          const reservePos = (spot?.reserve_count ?? 0) + 1;
-          toast({
-            title: "Reserve Registration Submitted!",
-            description: `The ${formData.gender} division is full right now, but we will keep you as a reserve player. Your position: #${reservePos} on the waiting list.`,
-          });
-        } else {
-          toast({
-            title: "Registration Pending Approval!",
-            description: `Your registration has been submitted. Please wait for admin approval before accessing the tournament.`,
-          });
-        }
+        setRegistrationSubmitted(true);
 
         // Refresh available spots to reflect the new registration
         if (settings) {
@@ -727,13 +686,18 @@ export default function Register() {
               <div className="flex gap-3 pt-4">
                 <Button
                   type="submit"
-                  disabled={isSubmitting || !canRegister()}
+                  disabled={isSubmitting || registrationSubmitted || !canRegister()}
                   className="flex-1 touch-target bg-ocean hover:bg-ocean-dark text-white font-semibold py-3 transition-all duration-300"
                 >
                   {isSubmitting ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
                       Registering...
+                    </>
+                  ) : registrationSubmitted ? (
+                    <>
+                      <Check className="w-4 h-4 mr-2" />
+                      Registration Submitted!
                     </>
                   ) : (
                     <>
@@ -746,7 +710,7 @@ export default function Register() {
                   type="button"
                   variant="outline"
                   onClick={handleCancel}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || registrationSubmitted}
                   className="flex-1 touch-target bg-white/70 hover:bg-coral hover:text-white border-coral/30 text-coral transition-all duration-300"
                 >
                   Cancel

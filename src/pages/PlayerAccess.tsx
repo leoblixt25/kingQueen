@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Users, LogIn, UserPlus, Info, ArrowLeft } from "lucide-react";
+import { Users, LogIn, UserPlus, Info } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { auth, db } from "@/config/firebase";
 import { signOut } from "@/utils/authUtils";
@@ -117,17 +117,6 @@ export default function PlayerAccess() {
           <MainTitle />
         </div>
 
-        <Button
-          variant="outline"
-          onClick={() => navigate('/')}
-          className="w-full touch-target bg-white/70 hover:bg-ocean hover:text-white border-ocean/30 text-ocean transition-all duration-300 mb-8"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Home
-        </Button>
-        
-
-        
         <div className="space-y-6">
           <Card className="bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach">
             <CardHeader>

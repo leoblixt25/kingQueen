@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Crown, ArrowLeft, Trophy, Check } from "lucide-react";
+import { Crown, Trophy, Check } from "lucide-react";
 import { db } from "@/config/firebase";
 import { collection, onSnapshot, getDocs, doc, getDoc } from "firebase/firestore";
 import { Player, Match } from "@/types";
@@ -401,7 +400,6 @@ function FinalMatchTab({ finalMatchData, femalePlayers, malePlayers, tournamentC
 }
 
 export default function LiveRanking() {
-  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'female' | 'male' | 'final'>('female');
   const [femalePlayers, setFemalePlayers] = useState<Player[]>([]);
   const [malePlayers, setMalePlayers] = useState<Player[]>([]);
@@ -573,14 +571,6 @@ export default function LiveRanking() {
           <p className="text-foreground/70 leading-relaxed">
             The live ranking will be available here once the tournament draw is complete.
           </p>
-          <Button
-            variant="outline"
-            onClick={() => navigate('/')}
-            className="w-full touch-target bg-white/70 hover:bg-ocean hover:text-white border-ocean/30 text-ocean transition-all duration-300"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Home
-          </Button>
         </div>
       </div>
     );
@@ -591,15 +581,6 @@ export default function LiveRanking() {
       <div className="max-w-lg mx-auto space-y-6 animate-fade-in">
         {/* Header */}
         <header className="text-center space-y-4">
-          <Button
-            variant="outline"
-            onClick={() => navigate('/')}
-            className="w-full touch-target bg-white/70 hover:bg-ocean hover:text-white border-ocean/30 text-ocean transition-all duration-300"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Home
-          </Button>
-
           <div className="pt-4">
             <div className="text-5xl mb-3 animate-bounce-gentle">🏆</div>
             <h1 className="text-3xl md:text-4xl font-bold text-transparent bg-beach-gradient bg-clip-text drop-shadow-sm">

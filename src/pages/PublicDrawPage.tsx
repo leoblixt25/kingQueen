@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { db } from '@/config/firebase';
 import { collection, getDocs, doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { FC, MC, paintCanvas } from '@/utils/drawWheel';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Target, ChevronLeft, CheckCircle2, Timer } from 'lucide-react';
+import { Target, CheckCircle2, Timer } from 'lucide-react';
 import TournamentFinished from '@/components/TournamentFinished';
 import { useTournamentFinished } from '@/hooks/useTournamentFinished';
 
@@ -19,7 +18,6 @@ function sameArray(a: string[], b: string[]) {
 }
 
 export default function PublicDrawPage() {
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [drawStarted, setDrawStarted] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -252,14 +250,6 @@ export default function PublicDrawPage() {
               </p>
             </CardContent>
           </Card>
-          <Button
-            onClick={() => navigate('/')}
-            variant="outline"
-            className="w-full touch-target"
-          >
-            <ChevronLeft className="w-4 h-4 mr-2" />
-            Back to Home
-          </Button>
         </div>
       </div>
     );
@@ -385,18 +375,7 @@ export default function PublicDrawPage() {
                 {renderMatchGrid(mMatches, `${mMatches.length} Male Matches`)}
               </>
             )}
-          </div>
-
-          <div className="text-center pt-2 pb-4">
-            <Button
-              onClick={() => navigate('/')}
-              variant="outline"
-              className="w-full sm:w-auto touch-target"
-            >
-              <ChevronLeft className="w-4 h-4 mr-2" />
-              Back to Home
-            </Button>
-          </div>
+</div>
         </div>
       </div>
     </div>
@@ -420,7 +399,6 @@ interface LiveDrawViewProps {
  * and late joiners see the current progress immediately.
  */
 function LiveDrawView({ liveActive, orderF, orderM, picksF, picksM, fallbackF, fallbackM }: LiveDrawViewProps) {
-  const navigate = useNavigate();
   const [tab, setTab] = useState<'female' | 'male'>(liveActive === 'm' ? 'male' : 'female');
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const angleRef = useRef(0);
@@ -620,16 +598,6 @@ function LiveDrawView({ liveActive, orderF, orderM, picksF, picksM, fallbackF, f
             )}
           </div>
 
-          <div className="text-center pt-2 pb-4">
-            <Button
-              onClick={() => navigate('/')}
-              variant="outline"
-              className="w-full sm:w-auto touch-target"
-            >
-              <ChevronLeft className="w-4 h-4 mr-2" />
-              Back to Home
-            </Button>
-          </div>
         </div>
       </div>
     </div>

@@ -301,12 +301,13 @@ export default function Register() {
 
       const countOccupied = (snap: any) => snap.docs.filter((doc: any) => {
         const p = doc.data();
-        return p.status === 'approved' && p.is_reserve !== true;
+        // Approved AND pending (non-reserve) players hold a slot
+        return (p.status === 'approved' || p.status === 'pending') && p.is_reserve !== true;
       }).length;
 
       const countReserve = (snap: any) => snap.docs.filter((doc: any) => {
         const p = doc.data();
-        return p.status === 'approved' && p.is_reserve === true;
+        return (p.status === 'approved' || p.status === 'pending') && p.is_reserve === true;
       }).length;
 
       const maleRegisteredCount = countOccupied(maleSnap);
@@ -388,15 +389,6 @@ export default function Register() {
         variant: "destructive",
       });
       return;
-    }
-
-    if (isGenderFull(formData.gender)) {
-      const spot = availableSpots.find(s => s.gender === formData.gender);
-      const reservePos = (spot?.reserve_count ?? 0) + 1;
-      toast({
-        title: "Reserve Registration",
-        description: `${formData.gender} division is full right now, but we will keep you as a reserve player. Your position: #${reservePos} on the waiting list.`,
-      });
     }
 
     if (!canRegister()) {

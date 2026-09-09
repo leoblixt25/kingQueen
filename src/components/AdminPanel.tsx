@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { db } from "@/config/firebase";
-import { collection, getDocs, query, where, doc, getDoc, setDoc, writeBatch, orderBy, limit, updateDoc, addDoc } from "firebase/firestore";
+import { collection, getDocs, query, where, doc, getDoc, setDoc, writeBatch, orderBy, limit, updateDoc, addDoc, deleteDoc } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 import { Calendar, Users, Trash2, Settings, Crown, Mail, CheckCircle, FileText, Clock, Shuffle, RotateCcw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -114,12 +114,33 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
     }
   };
 
-  const handleRemovePlayer = async (playerId: string, playerName: string) => {
+  const handleRemovePlayer = async (playerId: string, playerName: string, gender?: string, position?: number) => {
     try {
-      const playerRef = doc(db, 'players', playerId);
-      const batch = writeBatch(db);
-      batch.delete(playerRef);
-      await batch.commit();
+      // An approved player occupies a numbered slot doc (position 1-8). Deleting
+      // that doc outright would leave the division with a missing slot and no
+      // placeholder for a reserve to be approved into later. Instead we recycle
+      // the slot back into an open placeholder. Approved reserve docs have no
+      // slot (position == null) and are simply deleted.
+      if (position != null) {
+        const placeholderName = gender === 'male'
+          ? `Male Player ${position}`.trim()
+          : `Female Player ${position}`.trim();
+        const playerRef = doc(db, 'players', playerId);
+        await updateDoc(playerRef, {
+          name: placeholderName,
+          email: null,
+          is_confirmed: false,
+          status: null,
+          approved_at: null,
+          registered_at: null,
+          points: 0,
+          total_scores: 0,
+          matches_played: 0
+        });
+      } else {
+        const playerRef = doc(db, 'players', playerId);
+        await deleteDoc(playerRef);
+      }
 
       await loadAdminData();
     } catch (error) {
@@ -806,7 +827,7 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
                       <Button
                         variant="destructive"
                         size="sm"
-                        onClick={() => handleRemovePlayer(player.id, player.name)}
+                        onClick={() => handleRemovePlayer(player.id, player.name, player.gender, player.position)}
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -59,6 +59,49 @@ export default function KingQueenOfTheBeach() {
   const tournamentFinished = useTournamentFinished();
   
   const [editingMatchId, setEditingMatchId] = useState<string | null>(null);
+
+  // Track the latest resolved matches so delayed auto-advance reads fresh data
+  // (avoids stale closures from nested/time-delayed handlers).
+  const matchesRef = useRef<ResolvedMatch[]>([]);
+
+  // Single ref-managed timer for auto-advance (avoids nested setTimeouts and
+  // lets us cancel cleanly on manual navigation / unmount).
+  const advanceTimerRef = useRef<number | null>(null);
+
+  const clearAdvanceTimer = () => {
+    if (advanceTimerRef.current !== null) {
+      window.clearTimeout(advanceTimerRef.current);
+      advanceTimerRef.current = null;
+    }
+  };
+
+  // After a successful score submit, jump to the next un-submitted match for
+  // this gender. Reads the latest data via matchesRef so the navigation target
+  // reflects current Firestore state, never a stale render closure.
+  const scheduleAdvance = (fromIndex: number, submittedGender: Gender) => {
+    clearAdvanceTimer();
+    advanceTimerRef.current = window.setTimeout(() => {
+      advanceTimerRef.current = null;
+      const currentMatches = matchesRef.current;
+      const nextUnfinishedIndex = currentMatches.findIndex(
+        (m, idx) => idx > fromIndex && !m.isSubmitted
+      );
+      const targetIndex = nextUnfinishedIndex !== -1
+        ? nextUnfinishedIndex
+        : currentMatches.findIndex(m => !m.isSubmitted);
+
+      if (targetIndex !== -1) {
+        setCurrentMatchIndex(targetIndex);
+        localStorage.setItem(`lastMatchIndex_${submittedGender}`, String(targetIndex));
+        console.log('⏭️ [SUBMIT] Auto-advanced to match', targetIndex);
+      }
+    }, 3000);
+  };
+
+  // Cancel any pending auto-advance when the component unmounts.
+  useEffect(() => {
+    return () => clearAdvanceTimer();
+  }, []);
 
   const {
     femalePlayers,
@@ -145,6 +188,10 @@ export default function KingQueenOfTheBeach() {
   }
   const matches = gender === 'female' ? resolvedFemaleMatches : resolvedMaleMatches
 
+  // Keep a latest-value mirror so the delayed auto-advance timer never works
+  // with a stale closure.
+  matchesRef.current = matches;
+
   // HARD SAFETY CHECK: If draw is completed but no matches exist, log CRITICAL ERROR
   // NOTE: This must NOT throw — draw_completed can become true (settings snapshot)
   // before matches finish loading, and a throw during render would blank the whole page.
@@ -217,21 +264,38 @@ export default function KingQueenOfTheBeach() {
     }
   }, [matches, isLoading, drawCompleted, loadTournamentData]);
 
-  // Auto-jump to next unfinished match when matches load
+  // Auto-position within the match list, but ONLY when a fresh list loads
+  // (first load / new draw / gender switch). Realtime score updates reload the
+  // same-length list repeatedly; re-positioning there would clobber any match
+  // the admin is currently viewing/navigating.
+  const positionedGenderCountRef = useRef<{ female: number | null; male: number | null }>({
+    female: null,
+    male: null,
+  });
+
   useEffect(() => {
     if (!matches || matches.length === 0) return;
 
+    const count = matches.length;
+    if (positionedGenderCountRef.current[gender] === count) {
+      // Same list as before - only guard the index against going out of bounds.
+      setCurrentMatchIndex(prev => Math.min(prev, Math.max(0, count - 1)));
+      return;
+    }
+    positionedGenderCountRef.current[gender] = count;
+
     const savedIndex = localStorage.getItem(`lastMatchIndex_${gender}`);
-    if (savedIndex) {
-      setCurrentMatchIndex(Number(savedIndex));
+    const parsed = savedIndex !== null ? Number(savedIndex) : NaN;
+    if (Number.isInteger(parsed) && parsed >= 0 && parsed < count) {
+      setCurrentMatchIndex(parsed);
+      console.log('⏭️ [AUTO-NAV] Restored saved match index:', parsed);
       return;
     }
 
     const nextUnfinishedIndex = matches.findIndex(m => !m.isSubmitted);
-    if (nextUnfinishedIndex !== -1) {
-      setCurrentMatchIndex(nextUnfinishedIndex);
-      console.log('⏭️ [AUTO-NAV] Jumped to next unfinished match:', nextUnfinishedIndex);
-    }
+    const target = nextUnfinishedIndex !== -1 ? nextUnfinishedIndex : 0;
+    setCurrentMatchIndex(target);
+    console.log('⏭️ [AUTO-NAV] Positioned at match:', target);
   }, [matches, gender]);
 
   // Update gender based on URL if it changes
@@ -373,6 +437,7 @@ export default function KingQueenOfTheBeach() {
     setScore1('');
     setScore2('');
     setShowFinalMatch(false);
+    clearAdvanceTimer();
   };
 
   const handleScoreSubmit = async () => {
@@ -428,31 +493,12 @@ export default function KingQueenOfTheBeach() {
       setScore2('');
       console.log('🧹 [SUBMIT] Score inputs cleared');
 
-      // Auto-advance to next unfinished match after 3 seconds
-      setTimeout(async () => {
-        await loadMatchesData(); // Reload fresh match data
-        
-        setTimeout(() => {
-          const currentMatches = gender === 'female' ? resolvedFemaleMatches : resolvedMaleMatches;
-          const nextUnfinishedIndex = currentMatches.findIndex(
-            (m, idx) => idx > currentMatchIndex && !m.isSubmitted
-          );
-          
-          if (nextUnfinishedIndex !== -1) {
-            setCurrentMatchIndex(nextUnfinishedIndex);
-            localStorage.setItem(`lastMatchIndex_${gender}`, nextUnfinishedIndex.toString());
-            console.log('⏭️ [SUBMIT] Auto-advanced to match', nextUnfinishedIndex);
-          } else {
-            // Wrap around to first unfinished match
-            const firstUnfinishedIndex = currentMatches.findIndex(m => !m.isSubmitted);
-            if (firstUnfinishedIndex !== -1) {
-              setCurrentMatchIndex(firstUnfinishedIndex);
-              localStorage.setItem(`lastMatchIndex_${gender}`, firstUnfinishedIndex.toString());
-              console.log('⏭️ [SUBMIT] Wrapped to first unfinished match', firstUnfinishedIndex);
-            }
-          }
-        }, 500); // Wait for data to update
-      }, 3000);
+      // Auto-advance to next unfinished match after 3 seconds.
+      // Only scheduled on SUCCESS; the timer is cancelled on manual navigation
+      // or when the user switches gender.
+      const submittedIndex = currentMatchIndex;
+      const submittedGender = gender;
+      scheduleAdvance(submittedIndex, submittedGender);
     } catch (error) {
       console.error('❌ [SUBMIT] Score submission failed:', error);
       toast({
@@ -484,6 +530,8 @@ export default function KingQueenOfTheBeach() {
       setScore2('');
       setShowScoreResetModal(false);
       setIsResettingScores(false);
+      // Forget the saved position so the next fresh load starts at the first unfinished match
+      localStorage.removeItem(`lastMatchIndex_${gender}`);
     } catch (error) {
       console.error('❌ [SCORE RESET] Score reset failed:', error);
       setIsResettingScores(false);
@@ -533,6 +581,10 @@ export default function KingQueenOfTheBeach() {
       setShowFinalMatch(false);
       setShowResetModal(false);
       setIsResetting(false);
+      // Forget the saved positions so the next fresh load starts fresh
+      localStorage.removeItem(`lastMatchIndex_female`);
+      localStorage.removeItem(`lastMatchIndex_male`);
+      clearAdvanceTimer();
     } catch (error) {
       console.error('❌ [FULL RESET] Error:', error);
       // Just close the modal and reset state - no error message
@@ -555,6 +607,7 @@ export default function KingQueenOfTheBeach() {
   };
 
   const handleEditMatch = (match: any, matchIndex: number) => {
+    clearAdvanceTimer();
     setEditingMatchId(match.id);
     setCurrentMatchIndex(matchIndex);
     setScore1(match.score1.toString());
@@ -671,6 +724,7 @@ export default function KingQueenOfTheBeach() {
   }
 
   const handlePreviousMatch = () => {
+    clearAdvanceTimer();
     if (currentMatchIndex > 0) {
       const newIndex = currentMatchIndex - 1;
       setCurrentMatchIndex(newIndex);
@@ -682,6 +736,7 @@ export default function KingQueenOfTheBeach() {
   };
 
   const handleNextMatch = () => {
+    clearAdvanceTimer();
     if (currentMatchIndex < matches.length - 1) {
       const newIndex = currentMatchIndex + 1;
       setCurrentMatchIndex(newIndex);

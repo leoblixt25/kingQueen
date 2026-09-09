@@ -37,10 +37,15 @@ export const useTournamentActions = ({
         const duration = Date.now() - startTime;
         console.log(`🏐 Data reloaded immediately with updated rankings (total: ${duration}ms)`);
       } else {
-        console.error('Failed to update match score - no match ID returned');
+        // updateMatchScore throws instead of returning null, so this should be
+        // unreachable - kept as a safety net.
+        throw new Error('Failed to update match score - no match ID returned');
       }
     } catch (error) {
       console.error('Error in updateMatchScore:', error);
+      // Rethrow so Index's submit/edit handlers surface the failure to the user
+      // instead of silently losing the score entry.
+      throw error;
     }
   };
 

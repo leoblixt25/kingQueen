@@ -1,6 +1,6 @@
 import { auth, db, googleProvider } from '@/config/firebase';
 import { signInWithPopup, signOut as firebaseSignOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, deleteUser } from 'firebase/auth';
-import { doc, setDoc, getDoc, collection, query, where, updateDoc, getDocs, addDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, query, where, updateDoc, getDocs, addDoc, runTransaction } from 'firebase/firestore';
 
 export interface AuthResult {
   success: boolean;
@@ -51,6 +51,102 @@ export const signInWithEmail = async (email: string, password: string): Promise<
 };
 
 /**
+ * Claim a registration slot inside a single Firestore transaction.
+ *
+ * Reads the players list atomically, then either:
+ *  - updates the first open placeholder with the player's details, or
+ *  - creates a reserve record when every slot for the division is taken.
+ *
+ * Doing the duplicate-email check AND the slot claim inside one transaction
+ * prevents the previous race where two people registering at the same moment
+ * both read the same placeholder as free and both tried to claim it.
+ */
+type ClaimResult =
+  | { type: 'slot'; position: number; playerId: string }
+  | { type: 'reserve'; playerId: string };
+
+const claimRegistrationSlot = async (
+  gender: string,
+  normalizedEmail: string,
+  name: string,
+  uid: string
+): Promise<ClaimResult> => {
+  const playersRef = collection(db, 'players');
+  const placeholderPrefix = gender === 'male' ? 'Male Player' : 'Female Player';
+
+  // Enumerate the candidate documents for this division (the transaction itself
+  // can only read by document reference, not by query).
+  const playersQuery = query(playersRef, where('gender', '==', gender));
+  const candidates = await getDocs(playersQuery);
+
+  // Fast-fail duplicate check (authoritative re-check happens inside the tx).
+  const preDuplicate = candidates.docs.find(
+    (docSnap) => (docSnap.data().email || '').toLowerCase() === normalizedEmail
+  );
+  if (preDuplicate) {
+    throw new Error('EMAIL_ALREADY_EXISTS');
+  }
+
+  const candidateRefs = candidates.docs.map(docSnap => docSnap.ref);
+
+  return runTransaction(db, async (tx) => {
+    // Re-read every candidate INSIDE the transaction. If two registrations race,
+    // the slower one's transaction retries and reads the faster one's update, so
+    // it can no longer claim the same placeholder.
+    const freshSnapshots = candidateRefs.length > 0
+      ? await Promise.all(candidateRefs.map(ref => tx.get(ref)))
+      : [];
+
+    // Authoritative duplicate-email check INSIDE the transaction.
+    const duplicate = freshSnapshots.find(
+      (docSnap) => (docSnap.data()?.email || '').toLowerCase() === normalizedEmail
+    );
+    if (duplicate) {
+      throw new Error('EMAIL_ALREADY_EXISTS');
+    }
+
+    const availableSlots = freshSnapshots
+      .map(docSnap => ({ id: docSnap.ref.id, ...(docSnap.data() as any) }))
+      .filter((player: any) => {
+        const isPlaceholder = player.name.startsWith(placeholderPrefix);
+        const isUnconfirmed = !player.is_confirmed || player.is_confirmed === false;
+        return isPlaceholder && isUnconfirmed;
+      })
+      .sort((a: any, b: any) => (a.position || 0) - (b.position || 0));
+
+    if (availableSlots.length === 0) {
+      // Division is full - register as a reserve player instead of blocking
+      const reserveRef = doc(playersRef);
+      tx.set(reserveRef, {
+        name: name.trim(),
+        email: normalizedEmail,
+        gender,
+        is_confirmed: false,
+        status: 'pending',
+        is_reserve: true,
+        points: 0,
+        total_scores: 0,
+        registered_at: new Date().toISOString(),
+        uid
+      });
+      return { type: 'reserve', playerId: reserveRef.id };
+    }
+
+    const placeholder = availableSlots[0] as any;
+    const playerRef = doc(db, 'players', placeholder.id);
+    tx.update(playerRef, {
+      name: name.trim(),
+      email: normalizedEmail,
+      is_confirmed: false,
+      status: 'pending',
+      registered_at: new Date().toISOString(),
+      uid
+    });
+    return { type: 'slot', position: placeholder.position, playerId: placeholder.id };
+  });
+};
+
+/**
  * Register new user with email and password for tournament
  * Creates Firebase Auth account + saves to Firestore players collection
  */
@@ -75,24 +171,6 @@ export const registerWithEmailPassword = async (
     };
   }
 
-  // Find next available placeholder slot
-  const placeholderPrefix = gender === 'male' ? 'Male Player' : 'Female Player';
-  const playersQuery = query(
-    playersRef,
-    where('gender', '==', gender)
-  );
-  const playersSnapshot = await getDocs(playersQuery);
-
-  // Find first unconfirmed placeholder
-  const availableSlots = playersSnapshot.docs
-    .map(docSnap => ({ id: docSnap.id, ...(docSnap.data() as any) }))
-    .filter((player: any) => {
-      const isPlaceholder = player.name.startsWith(placeholderPrefix);
-      const isUnconfirmed = !player.is_confirmed || player.is_confirmed === false;
-      return isPlaceholder && isUnconfirmed;
-    })
-    .sort((a: any, b: any) => (a.position || 0) - (b.position || 0));
-
   let createdUser: any = null;
 
   try {
@@ -106,50 +184,21 @@ export const registerWithEmailPassword = async (
       displayName: name
     });
 
-    if (availableSlots.length === 0) {
-      // Division is full - register as a reserve player instead of blocking
-      const reserveData = {
-        name: name.trim(),
-        email: normalizedEmail,
-        gender,
-        is_confirmed: false,
-        status: 'pending',
-        is_reserve: true,
-        points: 0,
-        total_scores: 0,
-        registered_at: new Date().toISOString()
-      };
-      const reserveRef = await addDoc(playersRef, reserveData);
-      console.log('✅ [REGISTER] Registered as RESERVE player:', reserveRef.id);
+    // Claim the slot atomically inside a transaction. The authoritative
+    // duplicate check lives in the transaction, so a concurrent registration
+    // cannot double-claim a placeholder (previous race condition).
+    const claim = await claimRegistrationSlot(gender, normalizedEmail, name, user.uid);
 
-      return {
-        success: true,
-        isReserve: true,
-        user: {
-          ...user,
-          email: user.email,
-          displayName: name
-        }
-      };
+    if (claim.type === 'reserve') {
+      console.log('✅ [REGISTER] Registered as RESERVE player:', claim.playerId);
+    } else {
+      console.log('✅ Registration Success:', user.email);
+      console.log('✅ Player saved to Firestore at position:', claim.position);
     }
-
-    const placeholder = availableSlots[0] as any;
-
-    // Update the placeholder with real player info
-    const playerRef = doc(db, 'players', placeholder.id);
-    await updateDoc(playerRef, {
-      name: name.trim(),
-      email: normalizedEmail,
-      is_confirmed: false,
-      status: 'pending',
-      registered_at: new Date().toISOString()
-    });
-
-    console.log('✅ Registration Success:', user.email);
-    console.log('✅ Player saved to Firestore at position:', placeholder.position);
 
     return {
       success: true,
+      isReserve: claim.type === 'reserve' ? true : undefined,
       user: {
         ...user,
         email: user.email,
@@ -209,77 +258,20 @@ export const registerWithGoogle = async (
 
     const email = user.email.toLowerCase();
 
-    // Check if email already exists in Firestore
-    const playersRef = collection(db, 'players');
-    const q = query(playersRef, where('email', '==', email));
-    const snapshot = await getDocs(q);
+    // Claim the slot atomically inside a transaction (authoritative duplicate
+    // check + slot claim under one read, preventing concurrent double-claims).
+    const claim = await claimRegistrationSlot(gender, email, name, user.uid);
 
-    if (!snapshot.empty) {
-      throw new Error('EMAIL_ALREADY_EXISTS');
+    if (claim.type === 'reserve') {
+      console.log('✅ [REGISTER] Registered as RESERVE player:', claim.playerId);
+    } else {
+      console.log('✅ Google Registration Success:', email);
+      console.log('✅ Player saved to Firestore at position:', claim.position);
     }
-
-    // Find next available placeholder slot
-    const placeholderPrefix = gender === 'male' ? 'Male Player' : 'Female Player';
-    const playersQuery = query(
-      playersRef,
-      where('gender', '==', gender)
-    );
-    const playersSnapshot = await getDocs(playersQuery);
-
-    // Find first unconfirmed placeholder
-    const availableSlots = playersSnapshot.docs
-      .map(docSnap => ({ id: docSnap.id, ...(docSnap.data() as any) }))
-      .filter((player: any) => {
-        const isPlaceholder = player.name.startsWith(placeholderPrefix);
-        const isUnconfirmed = !player.is_confirmed || player.is_confirmed === false;
-        return isPlaceholder && isUnconfirmed;
-      })
-      .sort((a: any, b: any) => (a.position || 0) - (b.position || 0));
-
-    if (availableSlots.length === 0) {
-      // Division is full - register as a reserve player instead of blocking
-      const reserveData = {
-        name: name.trim(),
-        email,
-        gender,
-        is_confirmed: false,
-        status: 'pending',
-        is_reserve: true,
-        points: 0,
-        total_scores: 0,
-        registered_at: new Date().toISOString()
-      };
-      const reserveRef = await addDoc(playersRef, reserveData);
-      console.log('✅ [REGISTER] Registered as RESERVE player:', reserveRef.id);
-
-      return {
-        success: true,
-        isReserve: true,
-        user: {
-          ...user,
-          email: user.email,
-          displayName: name
-        }
-      };
-    }
-
-    const placeholder = availableSlots[0] as any;
-
-    // Update the placeholder with real player info
-    const playerRef = doc(db, 'players', placeholder.id);
-    await updateDoc(playerRef, {
-      name: name.trim(),
-      email,
-      is_confirmed: false,
-      status: 'pending',
-      registered_at: new Date().toISOString()
-    });
-
-    console.log('✅ Google Registration Success:', email);
-    console.log('✅ Player saved to Firestore at position:', placeholder.position);
 
     return {
       success: true,
+      isReserve: claim.type === 'reserve' ? true : undefined,
       user: {
         ...user,
         email: user.email,

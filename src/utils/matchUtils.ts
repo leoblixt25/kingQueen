@@ -12,17 +12,17 @@ export const updateMatchScore = async (matchIndex: number, score1: number, score
   // VALIDATION: Ensure scores are valid numbers
   if (score1 === null || score1 === undefined || score2 === null || score2 === undefined) {
     console.error('❌ [SCORE UPDATE] Invalid scores - scores cannot be empty');
-    return null;
+    throw new Error('Invalid scores - scores cannot be empty');
   }
   
   if (isNaN(score1) || isNaN(score2)) {
     console.error('❌ [SCORE UPDATE] Invalid scores - scores must be numbers');
-    return null;
+    throw new Error('Invalid scores - scores must be numbers');
   }
   
   if (score1 < 0 || score2 < 0) {
     console.error('❌ [SCORE UPDATE] Invalid scores - scores cannot be negative');
-    return null;
+    throw new Error('Invalid scores - scores cannot be negative');
   }
   
   try {
@@ -37,7 +37,7 @@ export const updateMatchScore = async (matchIndex: number, score1: number, score
 
     if (snapshot.empty) {
       console.error('❌ [SCORE UPDATE] Match not found. gender:', gender, 'match_number:', matchIndex + 1);
-      return null;
+      throw new Error(`Match ${matchIndex + 1} (${gender}) not found - scores were NOT saved`);
     }
 
     const matchId = snapshot.docs[0].id;
@@ -65,6 +65,8 @@ export const updateMatchScore = async (matchIndex: number, score1: number, score
     return matchId;
   } catch (error) {
     console.error('❌ [SCORE UPDATE] Unexpected error:', error);
-    return null;
+    // Rethrow so callers know the scores were NOT saved and can surface the error
+    // (previously this silently returned null and callers thought the save worked).
+    throw error;
   }
 };

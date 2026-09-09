@@ -239,29 +239,9 @@ export default function DrawPage() {
   async function saveDraw() {
     setSaving(true);
     try {
-      // Bug 1: STEP 1 - Delete ALL existing matches first with verification
-      console.log('🗑️ [SAVE] Deleting existing matches...');
-      const existing = await getDocs(collection(db, 'matches'));
-      console.log(`🗑️ [SAVE] Found ${existing.docs.length} existing matches to delete`);
-      
-      if (!existing.empty) {
-        const delBatch = writeBatch(db);
-        existing.docs.forEach(d => delBatch.delete(d.ref));
-        await delBatch.commit();
-        
-        // Bug 1: STEP 2 - Wait for Firestore consistency
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Bug 1: STEP 3 - Verify deletion worked
-        const verify = await getDocs(collection(db, 'matches'));
-        if (!verify.empty) {
-          console.error('❌ [SAVE] Deletion incomplete! Still have', verify.docs.length, 'matches');
-          alert('Failed to clear existing matches. Please try again.');
-          setSaving(false);
-          return;
-        }
-      }
-      console.log('✅ [SAVE] All existing matches deleted');
+      // STEP 0: Load players for name -> id resolution (read-only).
+      // Existing match documents are deleted INSIDE the final atomic batch, so
+      // a half-written draw can never be left behind.
 
       // Bug 2: Load players with detailed logging
       const playerSnap = await getDocs(collection(db, 'players'));
@@ -292,6 +272,11 @@ export default function DrawPage() {
 
       const wb = writeBatch(db);
       const matchesRef = collection(db, 'matches');
+
+      // Delete ALL existing matches within the same atomic batch as the writes.
+      const existing = await getDocs(matchesRef);
+      console.log(`🗑️ [SAVE] Deleting ${existing.docs.length} existing matches in the atomic batch`);
+      existing.docs.forEach(d => wb.delete(d.ref));
       
       // Bug 2: Wrap in try/catch for name errors
       try {
@@ -354,7 +339,9 @@ export default function DrawPage() {
         // STEP 3: Write exactly 14 female + 14 male = 28 total matches
         // Already validated - these IDs are guaranteed valid
         femaleMatchStructs.forEach(match => {
-          wb.set(doc(matchesRef), {
+          // Deterministic doc ID prevents duplicates on re-save and makes the
+          // collection self-healing after a concurrent/resumed save.
+          wb.set(doc(matchesRef, `female_match_${match.match_number}`), {
             match_number: match.match_number,
             gender: match.gender,
             player1_id: match.teamA[0],
@@ -368,7 +355,7 @@ export default function DrawPage() {
         });
 
         maleMatchStructs.forEach(match => {
-          wb.set(doc(matchesRef), {
+          wb.set(doc(matchesRef, `male_match_${match.match_number}`), {
             match_number: match.match_number,
             gender: match.gender,
             player1_id: match.teamA[0],

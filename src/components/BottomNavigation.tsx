@@ -14,9 +14,9 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: "Home", icon: Home, path: "/", match: (p) => p === "/" },
   { label: "Player", icon: Users, path: "/player", match: (p) => p.startsWith("/player") },
+  { label: "Draw", icon: Shuffle, path: "/tournament-draw", match: (p) => p.startsWith("/draw") || p.startsWith("/tournament-draw") },
+  { label: "Ranking", icon: Trophy, path: "/live-ranking", match: (p) => p.startsWith("/live-ranking") },
   { label: "Info", icon: Info, path: "/info", match: (p) => p.startsWith("/info") },
-  { label: "Tournament Draw", icon: Shuffle, path: "/tournament-draw", match: (p) => p.startsWith("/draw") || p.startsWith("/tournament-draw") },
-  { label: "Live Ranking", icon: Trophy, path: "/live-ranking", match: (p) => p.startsWith("/live-ranking") },
   { label: "Admin", icon: Crown, path: "/admin", match: (p) => p.startsWith("/admin") },
 ];
 
@@ -56,7 +56,7 @@ export default function BottomNavigation() {
                 active ? "bg-beach-gradient text-white shadow-beach" : "bg-transparent"
               }`}>
                 <Icon className="w-5 h-5" />
-                {item.label === "Live Ranking" && isLiveActive && (
+                {item.label === "Ranking" && isLiveActive && (
                   <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_6px_rgba(239,68,68,0.8)] border-2 border-white" />
                 )}
               </span>

@@ -581,6 +581,14 @@ Draw Wheel:               Data Loading:
 * ⚠️ `sandy-scorekeeper-workers.leoblixt25.workers.dev` does **NOT** resolve — the worker only exists on the `leo-blixt77` account subdomain.
 * Worker source is tracked in `workers/delete-firebase-users.js` + `wrangler.toml` (worker name `sandy-scorekeeper-workers`); deployed bundle matches repo (EU `WEB_API_KEY`, `GITHUB_REPO='leoblixt25/kingQueen'`). wrangler OAuth token has only read scopes — secret writes need the Cloudflare dashboard or a Workers-edit token.
 
+### ⚠️ USER MANDATE (Sep 2026): NEVER remove/unbind the `GH_PAT` secret
+* The `GH_PAT` secret on worker `sandy-scorekeeper-workers` MUST STAY BOUND at all times. The user had to re-add it manually — do not let it go missing again.
+* ❌ NEVER run `wrangler deploy` / `wrangler secrets delete` / `wrangler secret put` / delete or recreate the worker as part of any app change, deploy, or maintenance.
+* ❌ NEVER claim a secret is "gone" without first proving it via the `/status` probe AND `wrangler secret list` (read-only).
+* ✅ Any app deployment in this repo is **Firebase Hosting only** (`firebase deploy --only hosting --project kingqueen-eu`) + git push. Verified: no `.bat`/`.ps1`/CI workflow in this repo runs wrangler; `wrangler` is only a devDependency.
+* ✅ Worker secret changes happen ONLY via the Cloudflare dashboard (Settings → Variables and Secrets) or with the user's explicit written request.
+* ✅ Preserve secret on redeploys: `wrangler deploy` keeps bound secrets; secrets are only lost when the worker is deleted/recreated or moved between accounts — never do either.
+
 ## 13w. GH_PAT Security Decision (supersedes 13r revoke advice)
 
 * 13r advised revoking the leaked PAT. **User explicitly declined** — the key is to stay in Cloudflare and everywhere. Current `GH_PAT` = the same PAT from the earlier session, re-bound to the worker Sep 2026.

@@ -1,7 +1,7 @@
 import { Outlet, useLocation } from "react-router-dom";
 import BottomNavigation from "@/components/BottomNavigation";
 
-const HIDDEN_PATHS = ['/sign-in', '/register', '/'];
+const HIDDEN_PATHS = ['/sign-in', '/register'];
 
 export default function Layout() {
   const { pathname } = useLocation();

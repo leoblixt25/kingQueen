@@ -64,7 +64,7 @@ export default function Landing() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-sand-light via-sand to-ocean-light/20 px-4 pt-24 pb-8 flex items-start justify-center">
       <div className="w-full max-w-md mx-auto text-center animate-fade-in">
-        <div className="mb-4 animate-bounce-gentle inline-block rounded-3xl bg-white/40 backdrop-blur-sm p-2 shadow-[0_15px_35px_-15px_rgba(0,0,0,0.35)] ring-1 ring-sand-dark/30">
+        <div className="mb-4 animate-bounce-gentle inline-block rounded-3xl p-2 shadow-[0_15px_35px_-15px_rgba(11,35,74,0.5)] ring-1 ring-[#e9c35c]/60">
           <img
             src="/icon-192.png"
             alt="King & Queen of the Beach"

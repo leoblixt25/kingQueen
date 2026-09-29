@@ -4,7 +4,7 @@ import { db } from '@/config/firebase';
 import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Timer, ChevronLeft } from 'lucide-react';
+import { Timer, ChevronLeft, CheckCircle } from 'lucide-react';
 
 export default function WaitingForDraw({ onDrawComplete }: { onDrawComplete: () => void }) {
   const navigate = useNavigate();
@@ -57,13 +57,21 @@ export default function WaitingForDraw({ onDrawComplete }: { onDrawComplete: () 
         </h1>
         <Card className="bg-white/80 backdrop-blur-sm border border-ocean/20 shadow-beach">
           <CardContent className="p-8 space-y-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-palm/15 text-palm-dark border border-palm/30 text-xs font-semibold">
+              <CheckCircle size={14} />
+              Registration Approved
+            </div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber/20 text-amber-700 text-xs font-semibold">
               <Timer size={14} />
               Not started yet
             </div>
             <p className="text-foreground/70 leading-relaxed">
-              The tournament draw has not started yet. The live draw and matchups will be available in
-              Tournament draw page the day before the tournament. Once it's completed, you will have access
+              Congratulations! Your registration has been approved and your spot in the{' '}
+              <span className="font-semibold">King &amp; Queen of the Beach</span> tournament is confirmed. 🏖️
+            </p>
+            <p className="text-foreground/70 leading-relaxed">
+              The tournament draw has not started yet. The live draw and matchups will be available on the
+              Tournament Draw page the day before the tournament. Once it's completed, you will have access
               to your matchups division to be able to submit your matches scores and to see your ranking in real time.
             </p>
 

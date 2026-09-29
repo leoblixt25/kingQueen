@@ -53,7 +53,7 @@ export default function WaitingForDraw({ onDrawComplete }: { onDrawComplete: () 
       <div className="w-full max-w-md mx-auto text-center space-y-6">
         <div className="text-6xl">🎟️</div>
         <h1 className="text-2xl sm:text-3xl font-bold bg-ocean-gradient bg-clip-text text-transparent">
-          Tournament Draw
+          You are in. Draw opens soon!
         </h1>
         <Card className="bg-white/80 backdrop-blur-sm border border-ocean/20 shadow-beach">
           <CardContent className="p-8 space-y-4">

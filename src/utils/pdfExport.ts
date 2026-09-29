@@ -38,10 +38,10 @@ interface Match {
 
 export interface FinalMatchInfo {
   isCompleted: boolean;
-  /** Bracket Team 1 = Male #1 & Female #2 */
+  /** Bracket Team 1 = Male #1 & Female #1 */
   teamAMale: string;
   teamAFemale: string;
-  /** Bracket Team 2 = Male #2 & Female #1 */
+  /** Bracket Team 2 = Male #2 & Female #2 */
   teamBMale: string;
   teamBFemale: string;
   setsTeamA: (number | null)[];

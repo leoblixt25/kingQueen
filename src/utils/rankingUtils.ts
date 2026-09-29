@@ -174,8 +174,8 @@ const updateFinalMatchBracket = async () => {
     console.log(`  Female #2: ${rank2Female.name} (${rank2Female.points} pts)`);
     
     // Create teams:
-    // Team 1: Rank 1 Male + Rank 2 Female
-    // Team 2: Rank 2 Male + Rank 1 Female
+    // Team 1: Rank 1 Male + Rank 1 Female
+    // Team 2: Rank 2 Male + Rank 2 Female
     const finalMatchRef = doc(db, 'finalMatches', 'current');
     
     // Check if final match already exists and is completed
@@ -188,9 +188,9 @@ const updateFinalMatchBracket = async () => {
     // Update/create final match bracket
     await setDoc(finalMatchRef, {
       male_king_id: rank1Male.id,
-      female_queen_id: rank2Female.id,
+      female_queen_id: rank1Female.id,
       male_prince_id: rank2Male.id,
-      female_princess_id: rank1Female.id,
+      female_princess_id: rank2Female.id,
       team1_score: 0,
       team2_score: 0,
       team1_set1: null,
@@ -205,13 +205,13 @@ const updateFinalMatchBracket = async () => {
     }, { merge: true });
     
     console.log('✅ [FINAL MATCH BRACKET] Bracket updated successfully');
-    console.log(`  Team 1: ${rank1Male.name} + ${rank2Female.name}`);
-    console.log(`  Team 2: ${rank2Male.name} + ${rank1Female.name}`);
+    console.log(`  Team 1: ${rank1Male.name} + ${rank1Female.name}`);
+    console.log(`  Team 2: ${rank2Male.name} + ${rank2Female.name}`);
     console.log('📊 [FINAL MATCH BRACKET] Player IDs stored in Firebase:');
     console.log(`  male_king_id: ${rank1Male.id}`);
-    console.log(`  female_queen_id: ${rank2Female.id}`);
+    console.log(`  female_queen_id: ${rank1Female.id}`);
     console.log(`  male_prince_id: ${rank2Male.id}`);
-    console.log(`  female_princess_id: ${rank1Female.id}`);
+    console.log(`  female_princess_id: ${rank2Female.id}`);
     
   } catch (error) {
     console.error('❌ [FINAL MATCH BRACKET] Error updating bracket:', error);

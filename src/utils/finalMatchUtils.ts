@@ -77,24 +77,24 @@ export const updateFinalMatch = async (scores: FinalMatchScores, malePlayers: Pl
     
     if (team1Wins > team2Wins) {
       winnerTeam = 1;
-      // Team 1: Rank #1 Male + Rank #2 Female
-      // Team 2: Rank #2 Male + Rank #1 Female
+      // Team 1: Rank #1 Male + Rank #1 Female
+      // Team 2: Rank #2 Male + Rank #2 Female
       maleKingId = getPlayerId(malePlayers[0]?.name, 'male');
-      femaleQueenId = getPlayerId(femalePlayers[1]?.name, 'female');
+      femaleQueenId = getPlayerId(femalePlayers[0]?.name, 'female');
       malePrinceId = getPlayerId(malePlayers[1]?.name, 'male');
-      femalePrincessId = getPlayerId(femalePlayers[0]?.name, 'female');
+      femalePrincessId = getPlayerId(femalePlayers[1]?.name, 'female');
       
-      console.log('🏆 [FINAL MATCH] Team 1 WINS - King: Male #1, Queen: Female #2');
-      console.log('🏆 [FINAL MATCH] Prince: Male #2, Princess: Female #1');
+      console.log('🏆 [FINAL MATCH] Team 1 WINS - King: Male #1, Queen: Female #1');
+      console.log('🏆 [FINAL MATCH] Prince: Male #2, Princess: Female #2');
     } else if (team2Wins > team1Wins) {
       winnerTeam = 2;
       maleKingId = getPlayerId(malePlayers[1]?.name, 'male');
-      femaleQueenId = getPlayerId(femalePlayers[0]?.name, 'female');
+      femaleQueenId = getPlayerId(femalePlayers[1]?.name, 'female');
       malePrinceId = getPlayerId(malePlayers[0]?.name, 'male');
-      femalePrincessId = getPlayerId(femalePlayers[1]?.name, 'female');
+      femalePrincessId = getPlayerId(femalePlayers[0]?.name, 'female');
       
-      console.log('🏆 [FINAL MATCH] Team 2 WINS - King: Male #2, Queen: Female #1');
-      console.log('🏆 [FINAL MATCH] Prince: Male #1, Princess: Female #2');
+      console.log('🏆 [FINAL MATCH] Team 2 WINS - King: Male #2, Queen: Female #2');
+      console.log('🏆 [FINAL MATCH] Prince: Male #1, Princess: Female #1');
     }
   }
 

@@ -164,8 +164,8 @@ export default function KingQueenOfTheBeach() {
   // Log Championship Final pairings for debugging
   if (malePlayers.length >= 2 && femalePlayers.length >= 2) {
     console.log('🏆 [CHAMPIONSHIP FINAL] Current pairings (updated):');
-    console.log('  Team 1 - Male #1:', malePlayers[0]?.name, `(${malePlayers[0]?.points}pts)`, '& Female #2:', femalePlayers[1]?.name, `(${femalePlayers[1]?.points}pts)`);
-    console.log('  Team 2 - Female #1:', femalePlayers[0]?.name, `(${femalePlayers[0]?.points}pts)`, '& Male #2:', malePlayers[1]?.name, `(${malePlayers[1]?.points}pts)`);
+    console.log('  Team 1 - Male #1:', malePlayers[0]?.name, `(${malePlayers[0]?.points}pts)`, '& Female #1:', femalePlayers[0]?.name, `(${femalePlayers[0]?.points}pts)`);
+    console.log('  Team 2 - Female #2:', femalePlayers[1]?.name, `(${femalePlayers[1]?.points}pts)`, '& Male #2:', malePlayers[1]?.name, `(${malePlayers[1]?.points}pts)`);
     console.log('  🕐 Updated at:', new Date().toLocaleTimeString());
   }
   
@@ -1125,7 +1125,7 @@ export default function KingQueenOfTheBeach() {
                       </CardTitle>
                       <div className="text-center">
                         <p className="text-xl text-ocean-dark font-semibold">
-                          {malePlayers[0]?.name} & {femalePlayers[1]?.name}
+                          {malePlayers[0]?.name} & {femalePlayers[0]?.name}
                         </p>
                       </div>
                     </CardHeader>
@@ -1172,7 +1172,7 @@ export default function KingQueenOfTheBeach() {
                       </CardTitle>
                       <div className="text-center">
                         <p className="text-xl text-sunset-dark font-semibold">
-                          {femalePlayers[0]?.name} & {malePlayers[1]?.name}
+                          {malePlayers[1]?.name} & {femalePlayers[1]?.name}
                         </p>
                       </div>
                     </CardHeader>
@@ -1275,7 +1275,7 @@ export default function KingQueenOfTheBeach() {
                                       <p className="text-lg font-bold mb-1 opacity-95 flex items-center justify-center gap-2">
                                         <span className="text-2xl">👑</span> Queen <span className="text-2xl">👑</span>
                                       </p>
-                                      <p className="text-2xl font-extrabold tracking-wide text-center">{femalePlayers[1]?.name || 'Unknown'}</p>
+                                      <p className="text-2xl font-extrabold tracking-wide text-center">{femalePlayers[0]?.name || 'Unknown'}</p>
                                     </div>
                                   </>
                                 ) : (
@@ -1290,7 +1290,7 @@ export default function KingQueenOfTheBeach() {
                                       <p className="text-lg font-bold mb-1 opacity-95 flex items-center justify-center gap-2">
                                         <span className="text-2xl">👑</span> Queen <span className="text-2xl">👑</span>
                                       </p>
-                                      <p className="text-2xl font-extrabold tracking-wide text-center">{femalePlayers[0]?.name || 'Unknown'}</p>
+                                      <p className="text-2xl font-extrabold tracking-wide text-center">{femalePlayers[1]?.name || 'Unknown'}</p>
                                     </div>
                                   </>
                                 )}
@@ -1306,30 +1306,30 @@ export default function KingQueenOfTheBeach() {
                                   <>
                                     <div className="bg-white/10 rounded-lg p-3 border border-white/15">
                                       <p className="text-sm font-bold text-white/80 mb-1 flex items-center justify-center gap-1">
-                                        <span className="text-lg">🤴</span> Prince <span className="text-lg">🤴</span>
-                                      </p>
-                                      <p className="text-lg font-bold text-white text-center">{malePlayers[1]?.name || 'Unknown'}</p>
-                                    </div>
-                                    <div className="bg-white/10 rounded-lg p-3 border border-white/15">
-                                      <p className="text-sm font-bold text-white/80 mb-1 flex items-center justify-center gap-1">
-                                        <span className="text-lg">👸</span> Princess <span className="text-lg">👸</span>
-                                      </p>
-                                      <p className="text-lg font-bold text-white text-center">{femalePlayers[0]?.name || 'Unknown'}</p>
+<span className="text-lg">🤴</span> Prince <span className="text-lg">🤴</span>
+                                        </p>
+                                        <p className="text-lg font-bold text-white text-center">{malePlayers[1]?.name || 'Unknown'}</p>
+                                      </div>
+                                      <div className="bg-white/10 rounded-lg p-3 border border-white/15">
+                                        <p className="text-sm font-bold text-white/80 mb-1 flex items-center justify-center gap-1">
+                                          <span className="text-lg">👸</span> Princess <span className="text-lg">👸</span>
+                                        </p>
+                                        <p className="text-lg font-bold text-white text-center">{femalePlayers[1]?.name || 'Unknown'}</p>
                                     </div>
                                   </>
                                 ) : (
                                   <>
                                     <div className="bg-white/10 rounded-lg p-3 border border-white/15">
                                       <p className="text-sm font-bold text-white/80 mb-1 flex items-center justify-center gap-1">
-                                        <span className="text-lg">🤴</span> Prince <span className="text-lg">🤴</span>
-                                      </p>
-                                      <p className="text-lg font-bold text-white text-center">{malePlayers[0]?.name || 'Unknown'}</p>
-                                    </div>
-                                    <div className="bg-white/10 rounded-lg p-3 border border-white/15">
-                                      <p className="text-sm font-bold text-white/80 mb-1 flex items-center justify-center gap-1">
-                                        <span className="text-lg">👸</span> Princess <span className="text-lg">👸</span>
-                                      </p>
-                                      <p className="text-lg font-bold text-white text-center">{femalePlayers[1]?.name || 'Unknown'}</p>
+<span className="text-lg">🤴</span> Prince <span className="text-lg">🤴</span>
+                                        </p>
+                                        <p className="text-lg font-bold text-white text-center">{malePlayers[0]?.name || 'Unknown'}</p>
+                                      </div>
+                                      <div className="bg-white/10 rounded-lg p-3 border border-white/15">
+                                        <p className="text-sm font-bold text-white/80 mb-1 flex items-center justify-center gap-1">
+                                          <span className="text-lg">👸</span> Princess <span className="text-lg">👸</span>
+                                        </p>
+                                        <p className="text-lg font-bold text-white text-center">{femalePlayers[0]?.name || 'Unknown'}</p>
                                     </div>
                                   </>
                                 )}

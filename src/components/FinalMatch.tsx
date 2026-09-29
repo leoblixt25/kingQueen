@@ -45,7 +45,7 @@ export function FinalMatch({
           {/* Team 1 */}
           <div className="flex items-center space-x-4">
             <div>
-              <p className="text-lg font-semibold">Team 1: {malePlayers[0].name} & {femalePlayers[1].name}</p>
+              <p className="text-lg font-semibold">Team 1: {malePlayers[0].name} & {femalePlayers[0].name}</p>
             </div>
             {[0, 1, 2].map((setIndex) => (
               <div key={setIndex} className="flex flex-col space-y-2">
@@ -72,7 +72,7 @@ export function FinalMatch({
           {/* Team 2 */}
           <div className="flex items-center space-x-4">
             <div>
-              <p className="text-lg font-semibold">Team 2: {femalePlayers[0].name} & {malePlayers[1].name}</p>
+              <p className="text-lg font-semibold">Team 2: {malePlayers[1].name} & {femalePlayers[1].name}</p>
             </div>
             {[0, 1, 2].map((setIndex) => (
               <div key={setIndex} className="flex flex-col space-y-2">

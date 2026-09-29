@@ -243,7 +243,7 @@ function FinalMatchTab({ finalMatchData, femalePlayers, malePlayers, tournamentC
             </CardTitle>
             <div className="text-center">
               <p className="text-xl text-ocean-dark font-semibold">
-                {malePlayers[0]?.name || 'TBD'} & {femalePlayers[1]?.name || 'TBD'}
+                {malePlayers[0]?.name || 'TBD'} & {femalePlayers[0]?.name || 'TBD'}
               </p>
             </div>
           </CardHeader>
@@ -276,7 +276,7 @@ function FinalMatchTab({ finalMatchData, femalePlayers, malePlayers, tournamentC
             </CardTitle>
             <div className="text-center">
               <p className="text-xl text-sunset-dark font-semibold">
-                {femalePlayers[0]?.name || 'TBD'} & {malePlayers[1]?.name || 'TBD'}
+                {malePlayers[1]?.name || 'TBD'} & {femalePlayers[1]?.name || 'TBD'}
               </p>
             </div>
           </CardHeader>
@@ -332,7 +332,7 @@ function FinalMatchTab({ finalMatchData, femalePlayers, malePlayers, tournamentC
                         <p className="text-lg font-bold mb-1 opacity-95 flex items-center justify-center gap-2">
                           <span className="text-2xl">👑</span> Queen <span className="text-2xl">👑</span>
                         </p>
-                        <p className="text-2xl font-extrabold tracking-wide text-center">{femalePlayers[1]?.name || 'Unknown'}</p>
+                        <p className="text-2xl font-extrabold tracking-wide text-center">{femalePlayers[0]?.name || 'Unknown'}</p>
                       </div>
                     </>
                   ) : (
@@ -347,7 +347,7 @@ function FinalMatchTab({ finalMatchData, femalePlayers, malePlayers, tournamentC
                         <p className="text-lg font-bold mb-1 opacity-95 flex items-center justify-center gap-2">
                           <span className="text-2xl">👑</span> Queen <span className="text-2xl">👑</span>
                         </p>
-                        <p className="text-2xl font-extrabold tracking-wide text-center">{femalePlayers[0]?.name || 'Unknown'}</p>
+                        <p className="text-2xl font-extrabold tracking-wide text-center">{femalePlayers[1]?.name || 'Unknown'}</p>
                       </div>
                     </>
                   )}
@@ -370,7 +370,7 @@ function FinalMatchTab({ finalMatchData, femalePlayers, malePlayers, tournamentC
                         <p className="text-sm font-bold text-white/80 mb-1 flex items-center justify-center gap-1">
                           <span className="text-lg">👸</span> Princess <span className="text-lg">👸</span>
                         </p>
-                        <p className="text-lg font-bold text-white text-center">{femalePlayers[0]?.name || 'Unknown'}</p>
+                        <p className="text-lg font-bold text-white text-center">{femalePlayers[1]?.name || 'Unknown'}</p>
                       </div>
                     </>
                   ) : (
@@ -385,7 +385,7 @@ function FinalMatchTab({ finalMatchData, femalePlayers, malePlayers, tournamentC
                         <p className="text-sm font-bold text-white/80 mb-1 flex items-center justify-center gap-1">
                           <span className="text-lg">👸</span> Princess <span className="text-lg">👸</span>
                         </p>
-                        <p className="text-lg font-bold text-white text-center">{femalePlayers[1]?.name || 'Unknown'}</p>
+                        <p className="text-lg font-bold text-white text-center">{femalePlayers[0]?.name || 'Unknown'}</p>
                       </div>
                     </>
                   )}

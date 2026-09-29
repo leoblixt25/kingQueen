@@ -411,19 +411,19 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
             winnerTeam = s1 > s2 ? 1 : s2 > s1 ? 2 : null;
           }
 
-          // Bracket teams: Team 1 = Male #1 & Female #2, Team 2 = Male #2 & Female #1.
+          // Bracket teams: Team 1 = Male #1 & Female #1, Team 2 = Male #2 & Female #2.
           // Stored royal IDs always reflect the final titles, so map them back to bracket sides.
           let teamAMale: string, teamAFemale: string, teamBMale: string, teamBFemale: string;
           if (winnerTeam === 2) {
-            teamAMale = prince || males[1]?.name || 'TBD';
+            teamAMale = prince || males[0]?.name || 'TBD';
             teamAFemale = princess || females[0]?.name || 'TBD';
-            teamBMale = king || males[0]?.name || 'TBD';
+            teamBMale = king || males[1]?.name || 'TBD';
             teamBFemale = queen || females[1]?.name || 'TBD';
           } else {
             teamAMale = king || males[0]?.name || 'TBD';
-            teamAFemale = queen || females[1]?.name || 'TBD';
+            teamAFemale = queen || females[0]?.name || 'TBD';
             teamBMale = prince || males[1]?.name || 'TBD';
-            teamBFemale = princess || females[0]?.name || 'TBD';
+            teamBFemale = princess || females[1]?.name || 'TBD';
           }
 
           finalMatch = {

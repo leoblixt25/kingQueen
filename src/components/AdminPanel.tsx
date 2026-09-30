@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -63,6 +63,28 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
   // Inline confirmation states
   const [confirmingReset, setConfirmingReset] = useState(false);
   const [confirmingInit, setConfirmingInit] = useState(false);
+
+  // FIFO waitlist positions per reserve player (same position the player sees)
+  const reservePositions = useMemo(() => {
+    const byGender: Record<string, PendingPlayer[]> = {};
+    for (const p of pendingPlayers) {
+      if (p.is_reserve) {
+        (byGender[p.gender] ??= []).push(p);
+      }
+    }
+    for (const gender of Object.keys(byGender)) {
+      byGender[gender].sort(
+        (a, b) => new Date(a.registered_at || 0).getTime() - new Date(b.registered_at || 0).getTime()
+      );
+    }
+    const map: Record<string, number> = {};
+    for (const gender of Object.keys(byGender)) {
+      byGender[gender].forEach((p, i) => {
+        map[p.id] = i + 1;
+      });
+    }
+    return map;
+  }, [pendingPlayers]);
 
   useEffect(() => {
     loadAdminData();
@@ -793,9 +815,19 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
                           pending
                         </span>
                         {player.is_reserve && (
+                          <>
                           <span className="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-700">
                             reserve
                           </span>
+                          {reservePositions[player.id] != null && (
+                            <span
+                              className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-purple-600 text-white text-xs font-bold shadow-sm"
+                              title="Waiting list position"
+                            >
+                              {reservePositions[player.id]}
+                            </span>
+                          )}
+                          </>
                         )}
                       </div>
                       <div className="flex items-center gap-1 text-sm text-foreground/60 min-w-0">

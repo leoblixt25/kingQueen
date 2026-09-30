@@ -68,11 +68,18 @@ export default function PendingApproval() {
         if (playerData.is_reserve) {
           const genderQuery = query(playersRef, where('gender', '==', playerData.gender));
           const genderSnap = await getDocs(genderQuery);
-          const reserveBefore = genderSnap.docs.filter((d) => {
-            const p = d.data();
-            return p.is_reserve === true && (p.status === 'approved' || p.status === 'pending') && p.email !== email.toLowerCase();
-          }).length;
-          setReservePosition(reserveBefore + 1);
+          // FIFO waiting list: position is based on registration date/time, so
+          // admin approve/reserve changes never reshuffle the queue.
+          const reserves = genderSnap.docs
+            .map((d) => ({ id: d.id, data: d.data() }))
+            .filter(({ data }) =>
+              data.is_reserve === true && (data.status === 'approved' || data.status === 'pending')
+            )
+            .sort((a, b) =>
+              new Date(a.data.registered_at || 0).getTime() - new Date(b.data.registered_at || 0).getTime()
+            );
+          const myIndex = reserves.findIndex(({ data }) => data.email === email.toLowerCase());
+          setReservePosition(myIndex === -1 ? reserves.length + 1 : myIndex + 1);
         }
       } else {
         setStatus("not_found");

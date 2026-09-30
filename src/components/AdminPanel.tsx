@@ -216,6 +216,70 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
           return;
         }
 
+        // No free placeholder slot, but the division isn't full and a pending
+        // seat-holder is holding a slot. Hand-pick: approve this reserve into
+        // that slot and move the pending seat-holder to the reserve waitlist.
+        // Their registered_at is preserved, so their FIFO position stays fair.
+        // Approved players are NEVER displaced automatically.
+        const pendingSeatHolders = genderSnap.docs
+          .filter((d) => {
+            const data = d.data();
+            return (
+              data.is_reserve !== true &&
+              data.email &&
+              data.status === 'pending' &&
+              typeof data.position === 'number'
+            );
+          })
+          .sort((a, b) => {
+            const ta = new Date(a.data().registered_at || 0).getTime();
+            const tb = new Date(b.data().registered_at || 0).getTime();
+            return ta - tb;
+          });
+
+        if (pendingSeatHolders.length > 0) {
+          const seatHolder = pendingSeatHolders[0];
+          const seatData = seatHolder.data();
+          const batch = writeBatch(db);
+          // Move the pending seat-holder into a reserve doc (with its original time)
+          batch.set(doc(db, 'players', `${seatHolder.id}__reserve`), {
+            name: (seatData.name || '').trim(),
+            email: seatData.email ? seatData.email.trim().toLowerCase() : null,
+            gender: seatData.gender,
+            is_confirmed: false,
+            status: 'pending',
+            is_reserve: true,
+            points: 0,
+            total_scores: 0,
+            registered_at: seatData.registered_at || new Date().toISOString()
+          });
+          // Approve the reserve player into the vacated slot
+          batch.set(doc(db, 'players', seatHolder.id), {
+            name: (player.name || '').trim(),
+            email: player.email ? player.email.trim().toLowerCase() : null,
+            gender: player.gender,
+            position: seatData.position ?? player.position,
+            status: 'approved',
+            is_confirmed: true,
+            is_reserve: false,
+            approved_at: new Date().toISOString(),
+            registered_at: player.registered_at || new Date().toISOString(),
+            points: 0,
+            total_scores: 0,
+            matches_played: 0
+          });
+          // Remove the old reserve doc
+          batch.delete(doc(db, 'players', player.id));
+          await batch.commit();
+
+          await loadAdminData();
+          toast({
+            title: "Player Approved",
+            description: `${player.name} approved. ${seatData.name || 'The previous seat-holder'} moved to the reserve waiting list.`,
+          });
+          return;
+        }
+
         // No real slot available for this reserve - approve in place would create a
         // phantom non-slot player. Show an error instead of silently breaking counts.
         toast({

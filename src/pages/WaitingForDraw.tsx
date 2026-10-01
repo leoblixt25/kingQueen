@@ -48,6 +48,11 @@ export default function WaitingForDraw({ onDrawComplete }: { onDrawComplete: () 
   const secs = remaining ? Math.floor((remaining % 60000) / 1000) : 0;
   const pad = (n: number) => String(n).padStart(2, '0');
 
+  // Wording switches only once the draw time has actually passed. If no draw time
+  // is configured yet (drawTarget null), we keep showing the pre-draw wording.
+  const drawTimePassed = drawTarget !== null && remaining !== null && remaining <= 0;
+  const countdownRunning = !drawTimePassed;
+
   return (
     <div className="min-h-screen bg-sand-gradient px-4 pt-8 pb-8 flex items-start justify-center">
       <div className="w-full max-w-md mx-auto text-center space-y-6">
@@ -61,18 +66,25 @@ export default function WaitingForDraw({ onDrawComplete }: { onDrawComplete: () 
               <CheckCircle size={14} />
               Registration Approved
             </div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber/20 text-amber-700 text-xs font-semibold">
+            <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold ${
+              countdownRunning ? 'bg-amber/20 text-amber-700' : 'bg-palm/20 text-palm-dark'
+            }`}>
               <Timer size={14} />
-              Not started yet
+              {countdownRunning ? 'Not started yet' : 'Draw is open'}
             </div>
             <p className="text-foreground/70 leading-relaxed">
               Congratulations! Your registration has been approved and your spot in the{' '}
               <span className="font-semibold">King &amp; Queen of the Beach</span> tournament is confirmed. 🏖️
             </p>
             <p className="text-foreground/70 leading-relaxed">
-              The tournament draw has not started yet. The live draw and matchups will be available on the
-              Tournament Draw page the day before the tournament. Once it's completed, you will have access
-              to your matchups division to be able to submit your matches scores and to see your ranking in real time.
+              {countdownRunning ? (
+                <>The tournament draw has not started yet. The live draw and matchups will be available on the
+                Tournament Draw page the day before the tournament. Once it's completed, you will have access
+                to your matchups division to be able to submit your matches scores and to see your ranking in real time.</>
+              ) : (
+                <>The draw time has arrived. The live draw will appear on the Tournament Draw page as soon as
+                the organizer runs it. This page will switch to your matchups automatically — no need to reload.</>
+              )}
             </p>
 
             {/* Countdown to the draw */}
@@ -115,7 +127,7 @@ export default function WaitingForDraw({ onDrawComplete }: { onDrawComplete: () 
             )}
 
             <p className="text-sm text-foreground/50">
-              Please check back later!
+              {countdownRunning ? 'Please check back later!' : 'Stay on this page — matchups will appear here.'}
             </p>
           </CardContent>
         </Card>

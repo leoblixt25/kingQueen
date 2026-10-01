@@ -1,5 +1,5 @@
 import { db } from '@/config/firebase';
-import { collection, getDocs, doc, setDoc, query, where, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, updateDoc } from 'firebase/firestore';
 import { FEMALE_PLAYERS, MALE_PLAYERS } from './staticMatchups';
 
 /**
@@ -83,23 +83,15 @@ export const initializePlayers = async () => {
 };
 
 /**
- * Replace a single player name without affecting match structure
+ * Replace a single player's name by document ID, without affecting match structure.
+ * Matching by ID (not by name) so players that share the same name can be
+ * replaced individually instead of all at once.
  */
-export const replacePlayerName = async (oldName: string, newName: string, gender: 'male' | 'female') => {
-  console.log(`Replacing player: ${oldName} -> ${newName} (${gender})`);
-  
+export const replacePlayerName = async (playerId: string, newName: string) => {
+  console.log(`Replacing player doc: ${playerId} -> ${newName}`);
+
   try {
-    const playersRef = collection(db, 'players');
-    const q = query(playersRef, where('name', '==', oldName), where('gender', '==', gender));
-    const snapshot = await getDocs(q);
-
-    if (snapshot.empty) {
-      console.error('Player not found:', oldName, gender);
-      throw new Error('Player not found');
-    }
-
-    const playerDoc = snapshot.docs[0];
-    await updateDoc(doc(db, 'players', playerDoc.id), { name: newName });
+    await updateDoc(doc(db, 'players', playerId), { name: newName });
 
     console.log('Player name replaced successfully');
   } catch (error) {

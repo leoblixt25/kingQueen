@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,9 +8,14 @@ import { replacePlayerName } from "@/utils/playerInitUtils";
 import { Player, Gender } from "@/types";
 import { toast } from "@/hooks/use-toast";
 
+interface ReplacerPlayer extends Player {
+  position?: number;
+  email?: string | null;
+}
+
 interface PlayerReplacerProps {
-  femalePlayers: Player[];
-  malePlayers: Player[];
+  femalePlayers: ReplacerPlayer[];
+  malePlayers: ReplacerPlayer[];
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -22,6 +27,32 @@ export function PlayerReplacer({ femalePlayers, malePlayers, onClose, onSuccess 
   const [isReplacing, setIsReplacing] = useState(false);
 
   const currentPlayers = selectedGender === "female" ? femalePlayers : malePlayers;
+
+  // Only players with a document ID can be replaced individually.
+  const selectablePlayers = useMemo(
+    () =>
+      currentPlayers.filter(
+        (player): player is ReplacerPlayer & { id: string } => Boolean(player.id)
+      ),
+    [currentPlayers]
+  );
+
+  // Names shared by more than one player get extra detail so they can be told apart.
+  const duplicateNames = useMemo(() => {
+    const counts: Record<string, number> = {};
+    selectablePlayers.forEach((player) => {
+      counts[player.name] = (counts[player.name] || 0) + 1;
+    });
+    return new Set(Object.keys(counts).filter((name) => counts[name] > 1));
+  }, [selectablePlayers]);
+
+  const getPlayerLabel = (player: ReplacerPlayer) => {
+    if (!duplicateNames.has(player.name)) return player.name;
+    const details: string[] = [];
+    if (typeof player.position === "number") details.push(`position ${player.position}`);
+    if (player.email) details.push(player.email);
+    return details.length ? `${player.name} — ${details.join(" · ")}` : player.name;
+  };
 
   const handleReplace = async () => {
     if (!selectedPlayer || !newName.trim()) {
@@ -35,7 +66,7 @@ export function PlayerReplacer({ femalePlayers, malePlayers, onClose, onSuccess 
 
     setIsReplacing(true);
     try {
-      await replacePlayerName(selectedPlayer, newName.trim(), selectedGender);
+      await replacePlayerName(selectedPlayer, newName.trim());
       
       onSuccess();
       onClose();
@@ -80,9 +111,9 @@ export function PlayerReplacer({ femalePlayers, malePlayers, onClose, onSuccess 
               <SelectValue placeholder="Choose a player..." />
             </SelectTrigger>
             <SelectContent>
-              {currentPlayers.map((player) => (
-                <SelectItem key={player.name} value={player.name}>
-                  {player.name}
+              {selectablePlayers.map((player) => (
+                <SelectItem key={player.id} value={player.id}>
+                  {getPlayerLabel(player)}
                 </SelectItem>
               ))}
             </SelectContent>

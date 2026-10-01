@@ -46,6 +46,7 @@ interface TournamentSettings {
 
 interface AdminPanelProps {
   onClose: () => void;
+  fullPage?: boolean;
   players?: (Player & { gender: string })[];
   femaleMatches?: ResolvedMatch[];
   maleMatches?: ResolvedMatch[];
@@ -53,7 +54,7 @@ interface AdminPanelProps {
   tournamentCity?: string;
 }
 
-export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tournamentDate, tournamentCity }: AdminPanelProps) {
+export function AdminPanel({ onClose, fullPage = false, players, femaleMatches, maleMatches, tournamentDate, tournamentCity }: AdminPanelProps) {
   const navigate = useNavigate();
   const [confirmedPlayers, setConfirmedPlayers] = useState<ConfirmedPlayer[]>([]);
   const [pendingPlayers, setPendingPlayers] = useState<PendingPlayer[]>([]);
@@ -110,8 +111,8 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
       const pendingSnapshot = await getDocs(pendingQuery);
       const pending = pendingSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PendingPlayer));
       
-      // Sort by registration date (oldest first)
-      pending.sort((a, b) => new Date(a.registered_at).getTime() - new Date(b.registered_at).getTime());
+      // Sort by registration date (newest first) so freshly signed-up players appear at the top
+      pending.sort((a, b) => new Date(b.registered_at).getTime() - new Date(a.registered_at).getTime());
       setPendingPlayers(pending || []);
 
       // Load tournament settings
@@ -592,7 +593,7 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
 
   if (isLoading) {
     return (
-      <div className="fixed inset-4 z-50 bg-white border-2 border-purple-200 shadow-xl rounded-lg flex items-center justify-center">
+      <div className={fullPage ? "min-h-screen bg-sand-gradient px-4 py-6 flex items-center justify-center" : "fixed inset-4 z-50 bg-white border-2 border-purple-200 shadow-xl rounded-lg flex items-center justify-center"}>
         <div className="text-center">
           <div className="text-4xl mb-4 animate-bounce-gentle">⚙️</div>
           <p className="text-lg font-semibold">Loading Admin Panel...</p>
@@ -602,19 +603,19 @@ export function AdminPanel({ onClose, players, femaleMatches, maleMatches, tourn
   }
 
   return (
-    <div className="fixed inset-4 z-50 bg-white border-2 border-purple-200 shadow-xl rounded-lg overflow-y-auto">
-      <div className="p-6 space-y-6">
-        <div className="flex items-center justify-between">
+    <div className={fullPage ? "min-h-screen bg-sand-gradient px-4 py-6" : "fixed inset-4 z-50 bg-white border-2 border-purple-200 shadow-xl rounded-lg overflow-y-auto"}>
+      <div className={fullPage ? "max-w-3xl mx-auto space-y-6" : "p-6 space-y-6"}>
+        <div className="flex items-center justify-between gap-3 flex-wrap">
           <h2 className="text-2xl font-bold text-ocean flex items-center gap-2">
             <Settings className="w-6 h-6" />
-            Admin Panel
+            {fullPage ? "Registration Panel" : "Admin Panel"}
           </h2>
           <Button
             onClick={onClose}
             variant="outline"
             className="hover:bg-coral hover:text-white"
           >
-            Close
+            {fullPage ? "Back to Admin Control" : "Close"}
           </Button>
         </div>
 

@@ -13,10 +13,6 @@ import { useTournamentFinished } from "@/hooks/useTournamentFinished";
 import { ResetConfirmationModal } from "@/components/ResetConfirmationModal";
 import { resetScoresOnly, deleteFirebaseAuthUsers } from "@/utils/resetUtils";
 import { PlayerReplacer } from "@/components/PlayerReplacer";
-import { AdminPanel } from "@/components/AdminPanel";
-import { loadMatches } from "@/utils/firebaseUtils";
-import { buildPlayersMap, resolveMatchPlayers } from "@/utils/matchPlayerResolver";
-import { Player } from "@/types";
 
 interface TournamentSettings {
   id?: string;
@@ -42,7 +38,6 @@ export default function AdminControl() {
   const [isResetting, setIsResetting] = useState(false);
   const [showScoreResetModal, setShowScoreResetModal] = useState(false);
   const [isResettingScores, setIsResettingScores] = useState(false);
-  const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [showPlayerReplacer, setShowPlayerReplacer] = useState(false);
   const tournamentFinished = useTournamentFinished();
   const [isTogglingStatus, setIsTogglingStatus] = useState(false);
@@ -51,20 +46,11 @@ export default function AdminControl() {
   const [isDeletingPlayers, setIsDeletingPlayers] = useState(false);
   const [femalePlayers, setFemalePlayers] = useState<any[]>([]);
   const [malePlayers, setMalePlayers] = useState<any[]>([]);
-  const [femaleMatches, setFemaleMatches] = useState<any[]>([]);
-  const [maleMatches, setMaleMatches] = useState<any[]>([]);
 
   useEffect(() => {
     loadTournamentSettings();
     loadPlayers();
   }, []);
-
-  // Load matches only when AdminPanel opens (lazy loading)
-  useEffect(() => {
-    if (showAdminPanel) {
-      loadMatchesData();
-    }
-  }, [showAdminPanel]);
 
   const loadTournamentSettings = async () => {
     try {
@@ -137,31 +123,6 @@ export default function AdminControl() {
       setMalePlayers(male);
     } catch (error) {
       console.error('Error loading players:', error);
-    }
-  };
-
-  const loadMatchesData = async () => {
-    try {
-      // Get fresh player data first for resolving
-      const playersRef = collection(db, 'players');
-      const snapshot = await getDocs(query(playersRef, where('status', '==', 'approved')));
-      const players = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Player));
-
-      const female = players.filter((p: any) => p.gender === 'female');
-      const male = players.filter((p: any) => p.gender === 'male');
-
-      // Build players map for resolving match player IDs
-      const playersMap = buildPlayersMap(female, male);
-
-      // Load matches and resolve player IDs to Player objects
-      const { femaleMatches, maleMatches } = await loadMatches();
-      const resolvedFemale = resolveMatchPlayers(femaleMatches, playersMap);
-      const resolvedMale = resolveMatchPlayers(maleMatches, playersMap);
-
-      setFemaleMatches(resolvedFemale);
-      setMaleMatches(resolvedMale);
-    } catch (error) {
-      console.error('Error loading matches:', error);
     }
   };
 
@@ -563,7 +524,7 @@ export default function AdminControl() {
             </Button>
             <Button
               variant="outline"
-              onClick={() => setShowAdminPanel(true)}
+              onClick={() => navigate('/admin/registration')}
               className="w-full touch-target bg-white/70 hover:bg-sunset hover:text-white border-sunset/30 text-sunset-dark transition-all duration-300"
             >
               <Users className="w-4 h-4 mr-2" />
@@ -667,20 +628,6 @@ export default function AdminControl() {
           description="Warning: This will permanently remove all registered player accounts from Firebase Authentication. The admin account will not be deleted. Continue?"
           confirmText="Delete All"
         />
-
-        {showAdminPanel && (
-          <AdminPanel
-            onClose={() => setShowAdminPanel(false)}
-            players={[
-              ...femalePlayers.map(p => ({ ...p, gender: 'female' })),
-              ...malePlayers.map(p => ({ ...p, gender: 'male' }))
-            ]}
-            femaleMatches={femaleMatches}
-            maleMatches={maleMatches}
-            tournamentDate={tournamentDate}
-            tournamentCity={tournamentCity}
-          />
-        )}
 
         {showPlayerReplacer && (
           <PlayerReplacer

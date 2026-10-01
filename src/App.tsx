@@ -10,6 +10,7 @@ import SignIn from "./pages/SignIn";
 import PlayerAccess from "./pages/PlayerAccess";
 import AdminLogin from "./pages/AdminLogin";
 import AdminControl from "./pages/AdminControl";
+import AdminRegistration from "./pages/AdminRegistration";
 import LiveRanking from "./pages/LiveRanking";
 import InfoPage from "./pages/InfoPage";
 import NotFound from "./pages/NotFound";
@@ -38,6 +39,11 @@ const App = () => (
             <Route path="/admin/control" element={
               <ProtectedRoute adminOnly={true}>
                 <AdminControl />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/registration" element={
+              <ProtectedRoute adminOnly={true}>
+                <AdminRegistration />
               </ProtectedRoute>
             } />
             <Route path="/draw" element={

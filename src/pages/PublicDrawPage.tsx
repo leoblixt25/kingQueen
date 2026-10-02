@@ -179,7 +179,7 @@ export default function PublicDrawPage() {
     const remaining = hasUpcoming ? msLeft : null;
     const days = remaining ? Math.floor(remaining / 86400000) : 0;
     const hours = remaining ? Math.floor((remaining % 86400000) / 3600000) : 0;
-    const mins = remaining ? Math.floor((remaining % 60000) / 60000) : 0;
+    const mins = remaining ? Math.floor((remaining % 3600000) / 60000) : 0;
     const secs = remaining ? Math.floor((remaining % 60000) / 1000) : 0;
     const pad = (n: number) => String(n).padStart(2, '0');
 

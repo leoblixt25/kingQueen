@@ -212,7 +212,7 @@ export default function KingQueenOfTheBeach() {
   const finalLocked =
     !qualificationComplete || malePlayers.length < 2 || femalePlayers.length < 2;
 
-  // Names stay blank until the first 2 matches of this division are done.
+  // Names stay blank until the first match result of this division is submitted.
   const showPlayerNames = areRankingsVisible(matches, gender);
 
   // HARD SAFETY CHECK: If draw is completed but no matches exist, log CRITICAL ERROR

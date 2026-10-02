@@ -1,16 +1,15 @@
 /**
  * Ranking visibility gate.
  *
- * A division has 8 players playing 2v2, so the first TWO completed matches
- * involve every player in that division (4 players + 4 players). Until both are
- * finished the ranking order is an artefact of the tiebreaker fallback rather
- * than real results, so names and positions stay hidden until then.
+ * With no matches played the ranking order is purely an artefact of the
+ * tiebreaker fallback, so it should not be presented as a result. Names stay
+ * blank until the first match of the division has been played and submitted.
  *
  * This module is deliberately read-only: it never mutates players, matches or
  * points, it only decides whether the existing ranking list may be revealed.
  */
 
-export const RANKINGS_REVEAL_MATCHES = 2;
+export const RANKINGS_REVEAL_MATCHES = 1;
 
 export type MatchCompletionLike = {
   gender?: string;

@@ -61,13 +61,8 @@ describe('areRankingsVisible', () => {
     expect(areRankingsVisible([match(), match(), match()], 'male')).toBe(false);
   });
 
-  it('stays hidden with only one finished match', () => {
-    expect(areRankingsVisible([match({ isSubmitted: true }), match()], 'male')).toBe(false);
-  });
-
-  it('reveals once two matches are finished', () => {
-    const matches = [match({ isSubmitted: true }), match({ isSubmitted: true }), match()];
-    expect(areRankingsVisible(matches, 'male')).toBe(true);
+  it('reveals as soon as one match is finished', () => {
+    expect(areRankingsVisible([match({ isSubmitted: true }), match()], 'male')).toBe(true);
   });
 
   it('does not let another division unlock this one', () => {
@@ -85,7 +80,7 @@ describe('areRankingsVisible', () => {
     expect(areRankingsVisible([], 'male')).toBe(false);
   });
 
-  it('uses a threshold of 2 matches', () => {
-    expect(RANKINGS_REVEAL_MATCHES).toBe(2);
+  it('uses a threshold of 1 match', () => {
+    expect(RANKINGS_REVEAL_MATCHES).toBe(1);
   });
 });

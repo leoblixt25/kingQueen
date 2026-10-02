@@ -27,7 +27,7 @@ function RankingsTab({ activeTab, currentPlayers, matches }: { activeTab: string
   // (points, total scores, point differential, head-to-head, opponents, id)
   const sortedPlayers = sortPlayersWithTiebreakers(currentPlayers, matches);
 
-  // Names stay blank until the first 2 matches are done, so nobody sees a
+  // Names stay blank until the first match result is submitted, so nobody sees a
   // ranking order that is really just a tiebreaker fallback.
   const showPlayerNames = finishedMatches >= RANKINGS_REVEAL_MATCHES;
   

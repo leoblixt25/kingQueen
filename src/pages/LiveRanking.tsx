@@ -27,10 +27,9 @@ function RankingsTab({ activeTab, currentPlayers, matches }: { activeTab: string
   // (points, total scores, point differential, head-to-head, opponents, id)
   const sortedPlayers = sortPlayersWithTiebreakers(currentPlayers, matches);
 
-  // Until the opening matches are done the order below is an artefact of the
-  // tiebreaker fallback, not real results — so names and positions stay hidden.
-  // Reuses finishedMatches so the counter and the gate can never disagree.
-  const rankingsVisible = finishedMatches >= RANKINGS_REVEAL_MATCHES;
+  // Names stay blank until the first 2 matches are done, so nobody sees a
+  // ranking order that is really just a tiebreaker fallback.
+  const showPlayerNames = finishedMatches >= RANKINGS_REVEAL_MATCHES;
   
   // Detect which tiebreaker was used
   const getTiebreakerForPlayer = (index: number): string | null => {
@@ -77,27 +76,18 @@ function RankingsTab({ activeTab, currentPlayers, matches }: { activeTab: string
           </div>
         ) : (
           <div className="space-y-3">
-            {!rankingsVisible && (
-              <p className="text-sm text-center text-foreground/60 px-2 pb-1">
-                Rankings stay hidden until the first {RANKINGS_REVEAL_MATCHES} matches are played, so every player has competed once.
-              </p>
-            )}
             {sortedPlayers.map((player, index) => {
-              const tiebreaker = rankingsVisible ? getTiebreakerForPlayer(index) : null;
-              // Podium styling itself would reveal the position, so suppress it while hidden.
-              const isFirst = rankingsVisible && index === 0;
-              const isSecond = rankingsVisible && index === 1;
-              const isThird = rankingsVisible && index === 2;
+              const tiebreaker = getTiebreakerForPlayer(index);
               
               return (
               <div
                 key={`${player.id || player.name}-${index}`}
                 className={`flex flex-col gap-1 p-4 rounded-xl shadow-sand transition-all duration-300 ${
-                  isFirst
+                  index === 0
                     ? 'bg-sunset-gradient text-white'
-                    : isSecond
+                    : index === 1
                     ? 'bg-ocean/20 border-2 border-ocean/30'
-                    : isThird
+                    : index === 2
                     ? 'bg-palm/20 border-2 border-palm/30'
                     : 'bg-sand-light/50'
                 }`}
@@ -106,45 +96,45 @@ function RankingsTab({ activeTab, currentPlayers, matches }: { activeTab: string
                   <div className="flex items-center gap-3">
                     <span
                       className={`text-xl font-bold ${
-                        isFirst
+                        index === 0
                           ? 'text-white'
-                          : isSecond
+                          : index === 1
                           ? 'text-ocean'
-                          : isThird
+                          : index === 2
                           ? 'text-palm'
                           : 'text-foreground'
                       }`}
                     >
-                      {rankingsVisible ? `#${index + 1}` : '#–'}
+                      #{index + 1}
                     </span>
                     <span
                       className={`font-bold text-lg ${
-                        isFirst ? 'text-white' : 'text-foreground'
+                        index === 0 ? 'text-white' : 'text-foreground'
                       }`}
                     >
-                      {rankingsVisible ? player.name : 'Player name hidden'}
+                      {showPlayerNames ? player.name : ''}
                     </span>
                   </div>
                   <div className="text-right">
                     <div
                       className={`text-lg font-bold ${
-                        isFirst ? 'text-white' : 'text-foreground'
+                        index === 0 ? 'text-white' : 'text-foreground'
                       }`}
                     >
-                      {rankingsVisible ? `${player.points} pts` : '––'}
+                      {player.points} pts
                     </div>
                     <div
                       className={`text-sm ${
-                        isFirst ? 'text-white/80' : 'text-foreground/60'
+                        index === 0 ? 'text-white/80' : 'text-foreground/60'
                       }`}
                     >
-                      {rankingsVisible ? `${player.totalScores} total` : ''}
+                      {player.totalScores} total
                     </div>
                   </div>
                 </div>
                 {tiebreaker && (
                   <div className={`text-xs text-center ${
-                    isFirst ? 'text-white/70' : 'text-foreground/50'
+                    index === 0 ? 'text-white/70' : 'text-foreground/50'
                   }`}>
                     Tiebreaker: {tiebreaker}
                   </div>

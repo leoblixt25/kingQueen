@@ -22,6 +22,7 @@ import { sortPlayersWithTiebreakers, getTiebreakerLevel } from "@/utils/rankingT
 import MainTitle from "@/components/MainTitle";
 import TournamentFinished from "@/components/TournamentFinished";
 import { useTournamentFinished } from "@/hooks/useTournamentFinished";
+import { areRankingsVisible, RANKINGS_REVEAL_MATCHES } from "@/utils/rankingVisibility";
 
 // 14 matches per division x 2 divisions (8 players each, teams of 2).
 // The Championship Final unlocks only once every one of these is completed.
@@ -210,6 +211,10 @@ export default function KingQueenOfTheBeach() {
   // Extra safety: still need a full top-2 in each gender to build the two teams.
   const finalLocked =
     !qualificationComplete || malePlayers.length < 2 || femalePlayers.length < 2;
+
+  // Until the opening matches are played the standings are a tiebreaker artefact,
+  // so this division's ranking names and positions stay hidden.
+  const rankingsVisible = areRankingsVisible(matches, gender);
 
   // HARD SAFETY CHECK: If draw is completed but no matches exist, log CRITICAL ERROR
   // NOTE: This must NOT throw — draw_completed can become true (settings snapshot)
@@ -1567,42 +1572,51 @@ export default function KingQueenOfTheBeach() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
+                      {!rankingsVisible && (
+                        <p className="text-sm text-center text-foreground/60 px-2 pb-1">
+                          Rankings stay hidden until the first {RANKINGS_REVEAL_MATCHES} matches are played, so every player has competed once.
+                        </p>
+                      )}
                       {sortedPlayers.map((player, index) => {
-                        const tiebreaker = getTiebreakerForPlayer(index);
+                        const tiebreaker = rankingsVisible ? getTiebreakerForPlayer(index) : null;
+                        // Podium styling itself would reveal the position, so suppress it while hidden.
+                        const isFirst = rankingsVisible && index === 0;
+                        const isSecond = rankingsVisible && index === 1;
+                        const isThird = rankingsVisible && index === 2;
                         
                         return (
                         <div key={`${player.name}-${index}`} className={`flex flex-col gap-1 p-4 rounded-xl shadow-sand transition-all duration-300 ${
-                          index === 0 ? 'bg-sunset-gradient text-white' : 
-                          index === 1 ? 'bg-ocean/20 border-2 border-ocean/30' : 
-                          index === 2 ? 'bg-palm/20 border-2 border-palm/30' : 
+                          isFirst ? 'bg-sunset-gradient text-white' : 
+                          isSecond ? 'bg-ocean/20 border-2 border-ocean/30' : 
+                          isThird ? 'bg-palm/20 border-2 border-palm/30' : 
                           'bg-sand-light/50'
                         }`}>
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                               <span className={`text-xl font-bold ${
-                                index === 0 ? 'text-white' : 
-                                index === 1 ? 'text-ocean' : 
-                                index === 2 ? 'text-palm' : 
+                                isFirst ? 'text-white' : 
+                                isSecond ? 'text-ocean' : 
+                                isThird ? 'text-palm' : 
                                 'text-foreground'
                               }`}>
-                                #{index + 1}
+                                {rankingsVisible ? `#${index + 1}` : '#–'}
                               </span>
                               <span className={`font-bold text-lg ${
-                                index === 0 ? 'text-white' : 'text-foreground'
-                              }`}>{player.name}</span>
+                                isFirst ? 'text-white' : 'text-foreground'
+                              }`}>{rankingsVisible ? player.name : 'Player name hidden'}</span>
                             </div>
                             <div className="text-right">
                               <div className={`text-lg font-bold ${
-                                index === 0 ? 'text-white' : 'text-foreground'
-                              }`}>{player.points} pts</div>
+                                isFirst ? 'text-white' : 'text-foreground'
+                              }`}>{rankingsVisible ? `${player.points} pts` : '––'}</div>
                               <div className={`text-sm ${
-                                index === 0 ? 'text-white/80' : 'text-foreground/60'
-                              }`}>{player.totalScores} total</div>
+                                isFirst ? 'text-white/80' : 'text-foreground/60'
+                              }`}>{rankingsVisible ? `${player.totalScores} total` : ''}</div>
                             </div>
                           </div>
                           {tiebreaker && (
                             <div className={`text-xs text-center ${
-                              index === 0 ? 'text-white/70' : 'text-foreground/50'
+                              isFirst ? 'text-white/70' : 'text-foreground/50'
                             }`}>
                               Tiebreaker: {tiebreaker}
                             </div>

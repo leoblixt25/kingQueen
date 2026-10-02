@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Fragment } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Crown, Trophy, Check } from "lucide-react";
@@ -9,7 +9,11 @@ import { getTiebreakerLevel, sortPlayersWithTiebreakers } from "@/utils/rankingT
 import { getPublicDisplayName } from "@/utils/firebaseUtils";
 import TournamentFinished from "@/components/TournamentFinished";
 import { useTournamentFinished } from "@/hooks/useTournamentFinished";
-import { RANKINGS_REVEAL_MATCHES } from "@/utils/rankingVisibility";
+import { RANKINGS_REVEAL_MATCHES, isMatchFinished } from "@/utils/rankingVisibility";
+
+// 14 matches per division x 2 divisions (8 players each, teams of 2).
+// The public can see who qualified for the final once all of these are done.
+const EXPECTED_QUALIFICATION_MATCHES = 28;
 
 // Rankings Tab Component
 function RankingsTab({ activeTab, currentPlayers, matches }: { activeTab: string; currentPlayers: Player[]; matches: Match[] }) {
@@ -150,11 +154,12 @@ function RankingsTab({ activeTab, currentPlayers, matches }: { activeTab: string
 }
 
 // Final Match Tab Component
-function FinalMatchTab({ finalMatchData, femalePlayers, malePlayers, tournamentCity }: { 
+function FinalMatchTab({ finalMatchData, femalePlayers, malePlayers, tournamentCity, matches }: { 
   finalMatchData: any; 
   femalePlayers: Player[]; 
   malePlayers: Player[];
   tournamentCity: string;
+  matches: Match[];
 }) {
   console.log('🏆 [FINAL TAB] Rendering with data:', finalMatchData);
   console.log('🏆 [FINAL TAB] Female players:', femalePlayers.length);
@@ -162,6 +167,14 @@ function FinalMatchTab({ finalMatchData, femalePlayers, malePlayers, tournamentC
   
   // Check if final match has been submitted - use actual Firebase field names
   const isSubmitted = finalMatchData?.is_completed || false;
+
+  // Read-only: the public may see WHO qualified as soon as every qualification
+  // match is done, but never any scoring controls. Teams are read from the same
+  // already-sorted lists the result view uses, so finalist selection is unchanged.
+  const qualificationComplete =
+    matches.length === EXPECTED_QUALIFICATION_MATCHES && matches.every((m) => isMatchFinished(m));
+  const finalistsKnown =
+    qualificationComplete && malePlayers.length >= 2 && femalePlayers.length >= 2;
   
   // Extract scores using actual Firebase field names: team1_set1, team1_set2, team1_set3
   const team1Scores = [
@@ -197,6 +210,79 @@ function FinalMatchTab({ finalMatchData, femalePlayers, malePlayers, tournamentC
   
   console.log('🏆 [FINAL TAB] Team 1 sets:', team1Sets, 'Team 2 sets:', team2Sets, 'Winner:', winningTeam);
   
+  // Public view: finalists are known, match not played yet. Read-only.
+  if (!isSubmitted && finalistsKnown) {
+    const teams = [
+      {
+        label: 'Team 1',
+        male: malePlayers[0]?.name || 'TBD',
+        female: femalePlayers[0]?.name || 'TBD',
+        tone: 'ocean',
+      },
+      {
+        label: 'Team 2',
+        male: malePlayers[1]?.name || 'TBD',
+        female: femalePlayers[1]?.name || 'TBD',
+        tone: 'sunset',
+      },
+    ];
+
+    return (
+      <div className="space-y-4">
+        <Card className="bg-beach-gradient text-white shadow-beach">
+          <CardContent className="p-6 text-center">
+            <h2 className="text-2xl font-bold flex items-center justify-center gap-2 mb-2">
+              <Crown className="w-6 h-6" />
+              Championship Final
+              <Crown className="w-6 h-6" />
+            </h2>
+            <div className="flex items-center justify-center gap-2">
+              <span className="font-semibold">Finalists determined — match not played yet</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {teams.map((team, i) => (
+          <Fragment key={team.label}>
+            {i === 1 && (
+              <div className="flex items-center justify-center">
+                <div className="bg-sunset-gradient text-white px-8 py-3 rounded-full font-bold text-xl shadow-beach">
+                  ⚡ VS ⚡
+                </div>
+              </div>
+            )}
+            <Card
+              className={`border-2 ${
+                team.tone === 'ocean'
+                  ? 'border-ocean/20 bg-white/80'
+                  : 'border-sunset/20 bg-white/80'
+              } backdrop-blur-sm shadow-beach`}
+            >
+              <CardHeader className="pb-3">
+                <CardTitle
+                  className={`text-center text-lg font-bold ${
+                    team.tone === 'ocean' ? 'text-ocean' : 'text-sunset'
+                  }`}
+                >
+                  🏐 {team.label}
+                </CardTitle>
+                <div className="text-center">
+                  <p
+                    className={`text-xl font-semibold ${
+                      team.tone === 'ocean' ? 'text-ocean-dark' : 'text-sunset-dark'
+                    }`}
+                  >
+                    {team.male} & {team.female}
+                  </p>
+                </div>
+              </CardHeader>
+            </Card>
+          </Fragment>
+        ))}
+      </div>
+    );
+  }
+
   if (!isSubmitted) {
     return (
       <Card className="bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach">
@@ -636,6 +722,7 @@ export default function LiveRanking() {
             femalePlayers={femalePlayers}
             malePlayers={malePlayers}
             tournamentCity={tournamentCity}
+            matches={matches}
           />
         ) : (
           <RankingsTab 

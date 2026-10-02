@@ -23,6 +23,10 @@ import MainTitle from "@/components/MainTitle";
 import TournamentFinished from "@/components/TournamentFinished";
 import { useTournamentFinished } from "@/hooks/useTournamentFinished";
 
+// 14 matches per division x 2 divisions (8 players each, teams of 2).
+// The Championship Final unlocks only once every one of these is completed.
+const EXPECTED_QUALIFICATION_MATCHES = 28;
+
 interface TournamentSettings {
   id?: string;
   tournament_date: string;
@@ -191,6 +195,21 @@ export default function KingQueenOfTheBeach() {
   // Keep a latest-value mirror so the delayed auto-advance timer never works
   // with a stale closure.
   matchesRef.current = matches;
+
+  // Championship Final gate.
+  // The final teams are built from the top-2 rankings in each gender, but those
+  // rankings are meaningless (and essentially arbitrary) while qualification
+  // matches are still unplayed. So the final stays locked until EVERY
+  // qualification match in BOTH divisions exists and has submitted scores.
+  const qualificationMatches = [...resolvedFemaleMatches, ...resolvedMaleMatches];
+  const completedQualificationCount = qualificationMatches.filter((m) => m.isSubmitted).length;
+  const qualificationComplete =
+    qualificationMatches.length === EXPECTED_QUALIFICATION_MATCHES &&
+    qualificationMatches.every((m) => m.isSubmitted);
+
+  // Extra safety: still need a full top-2 in each gender to build the two teams.
+  const finalLocked =
+    !qualificationComplete || malePlayers.length < 2 || femalePlayers.length < 2;
 
   // HARD SAFETY CHECK: If draw is completed but no matches exist, log CRITICAL ERROR
   // NOTE: This must NOT throw — draw_completed can become true (settings snapshot)
@@ -1099,7 +1118,11 @@ export default function KingQueenOfTheBeach() {
                       Championship Final
                       <Crown className="w-6 h-6" />
                     </h2>
-                    {malePlayers.length < 2 || femalePlayers.length < 2 ? (
+                    {!qualificationComplete ? (
+                      <p className="text-sm mt-2 opacity-90">
+                        Locked until all {EXPECTED_QUALIFICATION_MATCHES} qualification matches are completed.
+                      </p>
+                    ) : (malePlayers.length < 2 || femalePlayers.length < 2) ? (
                       <p className="text-sm mt-2 opacity-90">
                         Waiting for at least 2 male and 2 female players...
                       </p>
@@ -1108,12 +1131,17 @@ export default function KingQueenOfTheBeach() {
                 </div>
 
                 <div className="grid grid-cols-1 gap-4">
-                  {malePlayers.length < 2 || femalePlayers.length < 2 ? (
+                  {finalLocked ? (
                     <Card className="border-2 border-ocean/20 bg-white/80 backdrop-blur-sm shadow-beach">
-                      <CardContent className="p-8 text-center">
-                        <p className="text-lg text-foreground/60">
-                          Championship Final will be available once there are at least 2 male and 2 female players with rankings.
+                      <CardContent className="p-8 text-center space-y-3">
+                        <p className="text-lg text-foreground/70">
+                          The final match will appear here once all {EXPECTED_QUALIFICATION_MATCHES} qualification matches are completed and all scores are submitted.
                         </p>
+                        {qualificationMatches.length > 0 && (
+                          <p className="text-sm font-medium text-foreground/50">
+                            Qualification matches completed: {completedQualificationCount} of {EXPECTED_QUALIFICATION_MATCHES}
+                          </p>
+                        )}
                       </CardContent>
                     </Card>
                   ) : (
@@ -1209,7 +1237,7 @@ export default function KingQueenOfTheBeach() {
                   )}
                 </div>
 
-                {!finalMatchSubmitted ? (
+                {finalLocked ? null : !finalMatchSubmitted ? (
                   <Button 
                     onClick={handleFinalMatchSubmit} 
                     className="w-full touch-target bg-palm hover:bg-palm-dark text-white font-bold py-4 text-lg shadow-beach transition-all duration-300"

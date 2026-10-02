@@ -295,11 +295,8 @@ function FinalMatchTab({ finalMatchData, femalePlayers, malePlayers, tournamentC
         <CardContent>
           <div className="text-center py-8 space-y-4">
             <div className="text-6xl">🏐</div>
-            <p className="text-lg text-foreground/60 font-medium">
-              Final match not played yet
-            </p>
-            <p className="text-sm text-foreground/50">
-              The championship final will be displayed here once completed
+            <p className="text-lg text-foreground/70">
+              The final match will appear here once all {EXPECTED_QUALIFICATION_MATCHES} qualification matches are completed and all scores are submitted.
             </p>
           </div>
         </CardContent>

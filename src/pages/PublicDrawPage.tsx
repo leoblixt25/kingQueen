@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Target, CheckCircle2, Timer } from 'lucide-react';
 import TournamentFinished from '@/components/TournamentFinished';
 import { useTournamentFinished } from '@/hooks/useTournamentFinished';
+import { getDrawTimestamp } from '@/utils/drawTimeUtils';
 
 interface Player { id: string; name: string; gender: string; status: string; }
 interface DrawnMatch { matchNum: number; p1: string; p2: string; p3: string; p4: string; }
@@ -83,12 +84,8 @@ export default function PublicDrawPage() {
 
       if (defaultSnap.status === 'fulfilled' && defaultSnap.value.exists()) {
         const dateStr = defaultSnap.value.data().tournament_date;
-        if (dateStr) {
-          // Draw is at 9pm the day before the tournament
-          const target = new Date(`${dateStr}T21:00:00`);
-          target.setDate(target.getDate() - 1);
-          setDrawTarget(target.getTime());
-        }
+        const target = getDrawTimestamp(dateStr, defaultSnap.value.data().draw_time);
+        if (target) setDrawTarget(target);
       }
       setLoading(false);
     }

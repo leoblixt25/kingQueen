@@ -5,6 +5,7 @@ import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Timer, ChevronLeft, CheckCircle } from 'lucide-react';
+import { getDrawTimestamp } from '@/utils/drawTimeUtils';
 
 export default function WaitingForDraw({ onDrawComplete }: { onDrawComplete: () => void }) {
   const navigate = useNavigate();
@@ -18,18 +19,15 @@ export default function WaitingForDraw({ onDrawComplete }: { onDrawComplete: () 
     return () => unsub();
   }, [onDrawComplete]);
 
-  // Load the draw date (day before the tournament) for the countdown
+  // Load the draw time (day before the tournament, Barcelona time) for the countdown
   useEffect(() => {
     async function loadDrawTarget() {
       try {
         const defaultSnap = await getDoc(doc(db, 'tournamentSettings', 'default_settings'));
-        const dateStr = defaultSnap.exists() ? defaultSnap.data().tournament_date : null;
-        if (dateStr) {
-          // Draw is at 9pm the day before the tournament
-          const target = new Date(`${dateStr}T21:00:00`);
-          target.setDate(target.getDate() - 1);
-          setDrawTarget(target.getTime());
-        }
+        if (!defaultSnap.exists()) return;
+        const data = defaultSnap.data();
+        const target = getDrawTimestamp(data.tournament_date, data.draw_time);
+        if (target) setDrawTarget(target);
       } catch (e) { console.error(e); }
     }
     loadDrawTarget();

@@ -13,6 +13,7 @@ import { useTournamentFinished } from "@/hooks/useTournamentFinished";
 import { ResetConfirmationModal } from "@/components/ResetConfirmationModal";
 import { resetScoresOnly, deleteFirebaseAuthUsers } from "@/utils/resetUtils";
 import { PlayerReplacer } from "@/components/PlayerReplacer";
+import { DEFAULT_DRAW_TIME, DRAW_TIME_ZONE } from "@/utils/drawTimeUtils";
 
 interface TournamentSettings {
   id?: string;
@@ -20,6 +21,7 @@ interface TournamentSettings {
   tournament_city: string;
   max_players_per_gender: number;
   registration_cutoff_days: number;
+  draw_time?: string;
 }
 
 export default function AdminControl() {
@@ -28,6 +30,7 @@ export default function AdminControl() {
   const [tournamentCity, setTournamentCity] = useState("");
   const [maxPlayers, setMaxPlayers] = useState(8);
   const [registrationCutoff, setRegistrationCutoff] = useState(3);
+  const [drawTime, setDrawTime] = useState(DEFAULT_DRAW_TIME);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [settingsSaved, setSettingsSaved] = useState(false);
@@ -69,6 +72,7 @@ export default function AdminControl() {
         setTournamentCity(data.tournament_city || '');
         setMaxPlayers(data.max_players_per_gender || 8);
         setRegistrationCutoff(data.registration_cutoff_days || 3);
+        setDrawTime(data.draw_time || DEFAULT_DRAW_TIME);
         setExistingSettingsId('default_settings');
         console.log('Set existingSettingsId to: default_settings');
       } else {
@@ -78,6 +82,7 @@ export default function AdminControl() {
         setTournamentCity('Da Nang');
         setMaxPlayers(8);
         setRegistrationCutoff(3);
+        setDrawTime(DEFAULT_DRAW_TIME);
         setExistingSettingsId('default_settings');
       }
       console.log('=== LOAD COMPLETED ===');
@@ -139,6 +144,7 @@ export default function AdminControl() {
         tournament_city: tournamentCity,
         max_players_per_gender: maxPlayers,
         registration_cutoff_days: registrationCutoff,
+        draw_time: drawTime,
         updated_at: new Date().toISOString(),
       };
 
@@ -430,6 +436,21 @@ export default function AdminControl() {
                     <SelectItem value="12">12 Players</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="drawTime">Draw Time (Day Before Tournament)</Label>
+                <input
+                  id="drawTime"
+                  type="time"
+                  value={drawTime}
+                  onChange={(e) => setDrawTime(e.target.value || DEFAULT_DRAW_TIME)}
+                  className="w-full px-3 py-2 border border-sand-dark/30 rounded-md bg-white/70 focus:border-ocean focus:outline-none"
+                />
+                <p className="text-xs text-foreground/60">
+                  Shown on the countdown for players and on the public draw page. Always interpreted as{' '}
+                  {DRAW_TIME_ZONE.replace('_', ' ')} time, so everyone sees the same hour.
+                </p>
               </div>
 
               <div className="space-y-2">

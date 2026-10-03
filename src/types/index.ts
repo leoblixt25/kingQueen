@@ -19,6 +19,8 @@ export type Match = {
   score2: number;
   isSubmitted: boolean;
   is_completed?: boolean;
+  /** Admin net override for this matchup. Absent means use the automatic net. */
+  net?: number;
 };
 
 // Resolved match with full player objects
@@ -32,6 +34,8 @@ export type ResolvedMatch = {
   score1: number;
   score2: number;
   isSubmitted: boolean;
+  /** Admin net override for this matchup. Absent means use the automatic net. */
+  net?: number;
 };
 
 export type FinalMatchScores = {

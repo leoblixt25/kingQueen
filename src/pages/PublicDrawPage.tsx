@@ -9,6 +9,8 @@ import TournamentFinished from '@/components/TournamentFinished';
 import { useTournamentFinished } from '@/hooks/useTournamentFinished';
 import { getDrawTimestamp } from '@/utils/drawTimeUtils';
 import { buildMatchScoreMap, matchScoreKey } from '@/utils/matchScores';
+import MatchNetBadge from '@/components/MatchNetBadge';
+import { buildNetMap, resolveNet, type NetNumber } from '@/utils/netAssignment';
 import TournamentTimer from '@/components/TournamentTimer';
 
 interface Player { id: string; name: string; gender: string; status: string; }
@@ -34,6 +36,8 @@ export default function PublicDrawPage() {
   // Submitted scores keyed by `${gender}_${match_number}` so each draw card can
   // show the result beside its teams. Read-only: this page never writes scores.
   const [matchScores, setMatchScores] = useState<Record<string, { s1: number; s2: number }>>({});
+  // Net per matchup. Automatic unless an admin moved it.
+  const [matchNets, setMatchNets] = useState<Record<string, NetNumber>>({});
 
   // LIVE MIRROR state (fed by the admin draw page pick-by-pick)
   const [liveRunning, setLiveRunning] = useState(false);
@@ -129,6 +133,7 @@ export default function PublicDrawPage() {
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'matches'), (snap) => {
       setMatchScores(buildMatchScoreMap(snap.docs.map(d => d.data())));
+      setMatchNets(buildNetMap(snap.docs.map(d => d.data())));
     }, (error) => { console.error('Failed to subscribe to match scores:', error); });
     return () => unsub();
   }, []);
@@ -183,6 +188,7 @@ export default function PublicDrawPage() {
           picksM={livePicksM}
           fallbackF={femalePlayers.map(p => p.name)}
           fallbackM={malePlayers.map(p => p.name)}
+          matchNets={matchNets}
         />
       );
     }
@@ -280,10 +286,12 @@ export default function PublicDrawPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 lg:gap-3">
           {matches.map((m) => {
             const result = matchScores[matchScoreKey(gender, m.matchNum)];
+            const net = matchNets[matchScoreKey(gender, m.matchNum)] ?? resolveNet(m.matchNum);
             return (
             <div key={m.matchNum} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden flex flex-col">
-              <div className="bg-gray-100 px-3 py-1.5 border-b border-gray-200">
+              <div className="bg-gray-100 px-3 py-1.5 border-b border-gray-200 flex items-center justify-between gap-1">
                 <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">Match {m.matchNum}</span>
+                <MatchNetBadge net={net} />
               </div>
               <div className="p-2 flex flex-col gap-1">
                 <div className={`${PDF_BLUE} text-white rounded-md py-1 px-1.5 flex items-center gap-1`}>
@@ -414,6 +422,7 @@ interface LiveDrawViewProps {
   picksM: string[];
   fallbackF: string[];
   fallbackM: string[];
+  matchNets: Record<string, NetNumber>;
 }
 
 /**
@@ -422,7 +431,7 @@ interface LiveDrawViewProps {
  * state comes straight from Firestore, so every device stays in sync
  * and late joiners see the current progress immediately.
  */
-function LiveDrawView({ liveActive, orderF, orderM, picksF, picksM, fallbackF, fallbackM }: LiveDrawViewProps) {
+function LiveDrawView({ liveActive, orderF, orderM, picksF, picksM, fallbackF, fallbackM, matchNets }: LiveDrawViewProps) {
   const [tab, setTab] = useState<'female' | 'male'>(liveActive === 'm' ? 'male' : 'female');
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const angleRef = useRef(0);
@@ -599,8 +608,9 @@ function LiveDrawView({ liveActive, orderF, orderM, picksF, picksM, fallbackF, f
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 lg:gap-3">
                   {matches.map((m) => (
                     <div key={m.matchNum} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden flex flex-col">
-                      <div className="bg-gray-100 px-3 py-1.5 border-b border-gray-200">
+                      <div className="bg-gray-100 px-3 py-1.5 border-b border-gray-200 flex items-center justify-between gap-1">
                         <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">Match {m.matchNum}</span>
+                        <MatchNetBadge net={matchNets[matchScoreKey(isFemale ? 'female' : 'male', m.matchNum)] ?? resolveNet(m.matchNum)} />
                       </div>
                       <div className="p-2 flex flex-col gap-1">
                         <div className={`${PDF_BLUE} text-white rounded-md py-1 px-1.5`}>

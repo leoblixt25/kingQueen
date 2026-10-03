@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Check, Edit, Trash, Crown, ChevronLeft, ChevronRight, Home, Users, RotateCcw, UserPlus, LogOut, Loader2, Settings } from "lucide-react";
+import MatchNetBadge from "@/components/MatchNetBadge";
+import { resolveNet } from "@/utils/netAssignment";
 import { Gender, FinalMatchScores, ResolvedMatch } from "@/types";
 import { useTournamentData } from "@/hooks/useTournamentData";
 import { useTournamentRealtimeSubscriptions } from "@/hooks/useTournamentRealtimeSubscriptions";
@@ -1444,10 +1446,13 @@ export default function KingQueenOfTheBeach() {
               <>
                 <Card className="bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach">
                   <CardHeader>
-                    <div className="flex flex-col items-center gap-3">
+                    <div className="flex flex-col items-center gap-1.5">
                       <CardTitle className="text-xl font-bold text-center bg-ocean-gradient bg-clip-text text-transparent">
                         🏐 {gender.charAt(0).toUpperCase() + gender.slice(1)} Match {currentMatchIndex + 1} of {matches.length}
                       </CardTitle>
+                      <MatchNetBadge
+                        net={resolveNet(currentMatchIndex + 1, currentMatch.net)}
+                      />
                       <div className="flex items-center gap-2 w-full">
                         <Button
                           variant="outline"

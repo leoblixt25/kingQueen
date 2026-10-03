@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '@/config/firebase';
-import { collection, getDocs, doc, writeBatch, setDoc, getDoc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, writeBatch, setDoc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { generateMatchesFromOrder, shuffleArray } from '@/utils/staticMatchups';
 import { validateMatches, buildValidationMap } from '@/utils/matchValidation';
 import { FC, MC, paintCanvas } from '@/utils/drawWheel';
@@ -9,12 +9,19 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ChevronRight, RotateCcw, Target, CheckCircle2 } from 'lucide-react';
 import { ResetConfirmationModal } from '@/components/ResetConfirmationModal';
+import MatchNetBadge from '@/components/MatchNetBadge';
+import { buildNetMap, netKey, resolveNet, type NetNumber } from '@/utils/netAssignment';
+import { toggleMatchNet } from '@/utils/netAssignmentFirestore';
 
 interface Player { id: string; name: string; gender: string; status: string; }
 interface DrawnMatch { matchNum: number; p1: string; p2: string; p3: string; p4: string; }
 
 export default function DrawPage() {
   const navigate = useNavigate();
+  // Net per matchup, keyed `${gender}_${match_number}`. Automatic unless the
+  // admin moved a match, so nothing has to be written at draw time.
+  const [matchNets, setMatchNets]     = useState<Record<string, NetNumber>>({});
+  const [busyNetKey, setBusyNetKey]   = useState<string | null>(null);
   const [femalePlayers, setFemalePlayers] = useState<Player[]>([]);
   const [malePlayers, setMalePlayers]     = useState<Player[]>([]);
   const [loading, setLoading]             = useState(true);
@@ -59,6 +66,31 @@ export default function DrawPage() {
   }
 
   useEffect(() => { loadPlayers(); }, []);
+
+  // Keep the admin net labels in sync with Firestore so an override shows up
+  // here and on the player/public pages at the same time.
+  useEffect(() => {
+    const unsub = onSnapshot(
+      collection(db, 'matches'),
+      (snap) => setMatchNets(buildNetMap(snap.docs.map((d) => d.data()))),
+      (error) => console.error('Failed to load match nets:', error)
+    );
+    return () => unsub();
+  }, []);
+
+  async function handleToggleNet(gender: 'female' | 'male', matchNumber: number) {
+    const key = `${gender}_${matchNumber}`;
+    const current = matchNets[key] ?? resolveNet(matchNumber);
+    setBusyNetKey(key);
+    try {
+      await toggleMatchNet(gender, matchNumber, current);
+    } catch (error) {
+      console.error('Failed to update net:', error);
+      alert('Could not update the net. Please try again.');
+    } finally {
+      setBusyNetKey(null);
+    }
+  }
 
   useEffect(() => {
     function resize() {
@@ -547,6 +579,7 @@ export default function DrawPage() {
 
   function renderMatchGrid(matches: DrawnMatch[], gender: 'f' | 'm') {
     if (matches.length === 0) return null;
+    const adminGender = gender === 'f' ? 'female' : 'male';
 
     return (
       <div className="w-full">
@@ -560,11 +593,16 @@ export default function DrawPage() {
               key={m.matchNum}
               className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden flex flex-col"
             >
-              {/* Header - MATCH X */}
-              <div className="bg-gray-100 px-3 py-1.5 border-b border-gray-200">
+              {/* Header - MATCH X + Net */}
+              <div className="bg-gray-100 px-3 py-1.5 border-b border-gray-200 flex items-center justify-between gap-1">
                 <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">
                   Match {m.matchNum}
                 </span>
+                <MatchNetBadge
+                  net={matchNets[netKey(adminGender, m.matchNum)] ?? resolveNet(m.matchNum)}
+                  busy={busyNetKey === `${adminGender}_${m.matchNum}`}
+                  onToggle={() => handleToggleNet(adminGender, m.matchNum)}
+                />
               </div>
 
               {/* Card Body */}

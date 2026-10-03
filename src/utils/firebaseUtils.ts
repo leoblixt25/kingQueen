@@ -292,7 +292,8 @@ export const loadMatches = async (femalePlayers?: any[], malePlayers?: any[]) =>
         teamB: [m.player3_id, m.player4_id] as [string, string],
         score1: m.score1 || 0,
         score2: m.score2 || 0,
-        isSubmitted: m.is_completed || false
+        isSubmitted: m.is_completed || false,
+        net: m.net
       }))
       .sort((a: any, b: any) => Number(a.match_number) - Number(b.match_number));
 
@@ -306,7 +307,8 @@ export const loadMatches = async (femalePlayers?: any[], malePlayers?: any[]) =>
         teamB: [m.player3_id, m.player4_id] as [string, string],
         score1: m.score1 || 0,
         score2: m.score2 || 0,
-        isSubmitted: m.is_completed || false
+        isSubmitted: m.is_completed || false,
+        net: m.net
       }))
       .sort((a: any, b: any) => Number(a.match_number) - Number(b.match_number));
 

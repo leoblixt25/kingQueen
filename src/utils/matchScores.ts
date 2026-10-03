@@ -18,6 +18,7 @@ export type MatchScoreDoc = {
   is_completed?: unknown;
   score1?: unknown;
   score2?: unknown;
+  net?: unknown;
 };
 
 /** Lookup key for a draw card: the card's gender plus its match number. */

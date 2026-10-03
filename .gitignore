@@ -26,6 +26,3 @@ dist-ssr
 
 # Firebase CLI cache
 .firebase/
-
-# TypeScript incremental build info
-*.tsbuildinfo

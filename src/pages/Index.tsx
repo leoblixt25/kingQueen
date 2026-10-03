@@ -651,6 +651,13 @@ export default function KingQueenOfTheBeach() {
   }
 
   const handleSaveMatchEdit = async () => {
+    if (!submissionOpen) {
+      toast({
+        title: "Score submission is closed",
+        description: "Wait for the admin to start the tournament.",
+      });
+      return;
+    }
     if (isSavingScore || !editingMatchId) return;
     
     const scoreValue1 = parseInt(score1, 10) || 0;

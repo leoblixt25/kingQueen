@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { db } from '@/config/firebase';
 import { collection, getDocs, doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { FC, MC, paintCanvas } from '@/utils/drawWheel';
@@ -10,6 +10,11 @@ import { useTournamentFinished } from '@/hooks/useTournamentFinished';
 import { getDrawTimestamp } from '@/utils/drawTimeUtils';
 import { buildMatchScoreMap, matchScoreKey } from '@/utils/matchScores';
 import TournamentTimer from '@/components/TournamentTimer';
+import {
+  resolveTournamentWinners,
+  winnerNameClass,
+  type WinnerNames,
+} from '@/utils/tournamentWinners';
 
 interface Player { id: string; name: string; gender: string; status: string; }
 interface DrawnMatch { matchNum: number; p1: string; p2: string; p3: string; p4: string; }
@@ -43,6 +48,15 @@ export default function PublicDrawPage() {
   const [livePicksF, setLivePicksF] = useState<string[]>([]);
   const [livePicksM, setLivePicksM] = useState<string[]>([]);
   const tournamentFinished = useTournamentFinished();
+
+  // King/Queen highlight. Driven entirely by the submitted final document, so
+  // it stays inert until the tournament is decided and needs no admin action.
+  const [finalResult, setFinalResult] = useState<Record<string, unknown> | null>(null);
+  const winners = useMemo<WinnerNames>(
+    () => resolveTournamentWinners(finalResult as never, [...femalePlayers, ...malePlayers]),
+    [finalResult, femalePlayers, malePlayers]
+  );
+  const winnerCls = (name: string) => winnerNameClass(name, winners);
 
   const fCanvasRef = useRef<HTMLCanvasElement>(null);
   const mCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -133,6 +147,14 @@ export default function PublicDrawPage() {
     return () => unsub();
   }, []);
 
+  // Live: the submitted final, which carries the King and Queen ids.
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, 'finalMatches', 'current'), (snap) => {
+      setFinalResult(snap.exists() ? (snap.data() as Record<string, unknown>) : null);
+    }, (error) => { console.error('Failed to subscribe to final result:', error); });
+    return () => unsub();
+  }, []);
+
   useEffect(() => {
     function paint() {
       (['f', 'm'] as const).forEach(d => {
@@ -183,6 +205,7 @@ export default function PublicDrawPage() {
           picksM={livePicksM}
           fallbackF={femalePlayers.map(p => p.name)}
           fallbackM={malePlayers.map(p => p.name)}
+          winners={winners}
         />
       );
     }
@@ -288,7 +311,7 @@ export default function PublicDrawPage() {
               <div className="p-2 flex flex-col gap-1">
                 <div className={`${PDF_BLUE} text-white rounded-md py-1 px-1.5 flex items-center gap-1`}>
                   <div className="flex-1 text-[14px] font-medium leading-tight text-center" style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.15' }}>
-                    {m.p1} & {m.p2}
+                    <span className={winnerCls(m.p1)}>{m.p1}</span> & <span className={winnerCls(m.p2)}>{m.p2}</span>
                   </div>
                   {result && (
                     <span className="text-[15px] font-bold tabular-nums leading-none">{result.s1}</span>
@@ -297,7 +320,7 @@ export default function PublicDrawPage() {
                 <div className="text-[10px] font-bold text-gray-400 text-center py-0.5">VS</div>
                 <div className={`${PDF_ORANGE} text-white rounded-md py-1 px-1.5 flex items-center gap-1`}>
                   <div className="flex-1 text-[14px] font-medium leading-tight text-center" style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.15' }}>
-                    {m.p3} & {m.p4}
+                    <span className={winnerCls(m.p3)}>{m.p3}</span> & <span className={winnerCls(m.p4)}>{m.p4}</span>
                   </div>
                   {result && (
                     <span className="text-[15px] font-bold tabular-nums leading-none">{result.s2}</span>
@@ -414,6 +437,7 @@ interface LiveDrawViewProps {
   picksM: string[];
   fallbackF: string[];
   fallbackM: string[];
+  winners: WinnerNames;
 }
 
 /**
@@ -422,7 +446,8 @@ interface LiveDrawViewProps {
  * state comes straight from Firestore, so every device stays in sync
  * and late joiners see the current progress immediately.
  */
-function LiveDrawView({ liveActive, orderF, orderM, picksF, picksM, fallbackF, fallbackM }: LiveDrawViewProps) {
+function LiveDrawView({ liveActive, orderF, orderM, picksF, picksM, fallbackF, fallbackM, winners }: LiveDrawViewProps) {
+  const winnerCls = (name: string) => winnerNameClass(name, winners);
   const [tab, setTab] = useState<'female' | 'male'>(liveActive === 'm' ? 'male' : 'female');
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const angleRef = useRef(0);
@@ -605,13 +630,13 @@ function LiveDrawView({ liveActive, orderF, orderM, picksF, picksM, fallbackF, f
                       <div className="p-2 flex flex-col gap-1">
                         <div className={`${PDF_BLUE} text-white rounded-md py-1 px-1.5`}>
                           <div className="text-[14px] font-medium leading-tight text-center" style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.15' }}>
-                            {m.p1} & {m.p2}
+                            <span className={winnerCls(m.p1)}>{m.p1}</span> & <span className={winnerCls(m.p2)}>{m.p2}</span>
                           </div>
                         </div>
                         <div className="text-[10px] font-bold text-gray-400 text-center py-0.5">VS</div>
                         <div className={`${PDF_ORANGE} text-white rounded-md py-1 px-1.5`}>
                           <div className="text-[14px] font-medium leading-tight text-center" style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.15' }}>
-                            {m.p3} & {m.p4}
+                            <span className={winnerCls(m.p3)}>{m.p3}</span> & <span className={winnerCls(m.p4)}>{m.p4}</span>
                           </div>
                         </div>
                       </div>

@@ -9,6 +9,7 @@ import TournamentFinished from '@/components/TournamentFinished';
 import { useTournamentFinished } from '@/hooks/useTournamentFinished';
 import { getDrawTimestamp } from '@/utils/drawTimeUtils';
 import { buildMatchScoreMap, matchScoreKey } from '@/utils/matchScores';
+import TournamentTimer from '@/components/TournamentTimer';
 
 interface Player { id: string; name: string; gender: string; status: string; }
 interface DrawnMatch { matchNum: number; p1: string; p2: string; p3: string; p4: string; }
@@ -355,6 +356,9 @@ export default function PublicDrawPage() {
           <p className="text-sm text-foreground/60 mt-1">
             {saved ? 'Draw completed' : 'Draw in progress'}
           </p>
+          <div className="mt-3 flex justify-center">
+            <TournamentTimer showStatus />
+          </div>
         </div>
 
         {/* Tabs */}

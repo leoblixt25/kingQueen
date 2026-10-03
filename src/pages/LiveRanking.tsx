@@ -10,6 +10,7 @@ import { getPublicDisplayName } from "@/utils/firebaseUtils";
 import TournamentFinished from "@/components/TournamentFinished";
 import { useTournamentFinished } from "@/hooks/useTournamentFinished";
 import { RANKINGS_REVEAL_MATCHES, isMatchFinished } from "@/utils/rankingVisibility";
+import TournamentTimer from "@/components/TournamentTimer";
 
 // 14 matches per division x 2 divisions (8 players each, teams of 2).
 // The public can see who qualified for the final once all of these are done.
@@ -675,6 +676,9 @@ export default function LiveRanking() {
               Live Ranking
             </h1>
             <div className="w-16 h-1 bg-sunset mx-auto rounded-full mt-3"></div>
+          </div>
+          <div className="flex justify-center">
+            <TournamentTimer showStatus />
           </div>
         </header>
 

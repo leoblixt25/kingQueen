@@ -1,6 +1,7 @@
 import { db } from '@/config/firebase';
 import { FinalMatchScores, Player } from '@/types';
 import { collection, getDocs, query, where, doc, setDoc, getDoc } from 'firebase/firestore';
+import { finishTournamentClock } from './tournamentControlFirestore';
 
 export const updateFinalMatch = async (scores: FinalMatchScores, malePlayers: Player[], femalePlayers: Player[], tournamentType: string) => {
   console.log('🏆 [FINAL MATCH] Starting final match update...');
@@ -118,6 +119,14 @@ export const updateFinalMatch = async (scores: FinalMatchScores, malePlayers: Pl
   }, { merge: true });
 
   console.log('✅ Final match saved successfully with individual set scores');
+
+  // Freeze the tournament clock. Best-effort and non-blocking: the result is
+  // already stored, so a failure here must never fail the submission.
+  try {
+    await finishTournamentClock();
+  } catch (error) {
+    console.warn('⚠️ [FINAL MATCH] Could not freeze tournament clock:', error);
+  }
 };
 
 // Function to automatically create final match bracket based on rankings

@@ -23,6 +23,8 @@ import MainTitle from "@/components/MainTitle";
 import TournamentFinished from "@/components/TournamentFinished";
 import { useTournamentFinished } from "@/hooks/useTournamentFinished";
 import { areRankingsVisible } from "@/utils/rankingVisibility";
+import TournamentTimer from "@/components/TournamentTimer";
+import { useTournamentControl } from "@/hooks/useTournamentControl";
 
 // 14 matches per division x 2 divisions (8 players each, teams of 2).
 // The Championship Final unlocks only once every one of these is completed.
@@ -128,6 +130,10 @@ export default function KingQueenOfTheBeach() {
     loadMatchesData,
     loadFinalMatchData
   } = useTournamentData();
+
+  const { scoreSubmissionEnabled, loading: controlLoading } = useTournamentControl();
+  // Fail closed: until the control state loads, treat submission as disabled.
+  const submissionOpen = !controlLoading && scoreSubmissionEnabled;
 
   // Use the individual loaders from the hook (already wrapped in useCallback)
   useTournamentRealtimeSubscriptions({
@@ -465,6 +471,13 @@ export default function KingQueenOfTheBeach() {
 
   const handleScoreSubmit = async () => {
     if (isSubmittingScore) return;
+    if (!submissionOpen) {
+      toast({
+        title: "Score submission is closed",
+        description: "Wait for the admin to start the tournament.",
+      });
+      return;
+    }
     console.log('🏐 [SUBMIT] Score submit clicked');
     console.log('📊 [SUBMIT] Current scores:', { score1, score2 });
     
@@ -669,6 +682,13 @@ export default function KingQueenOfTheBeach() {
   }
 
   const handleFinalMatchSubmit = async () => {
+    if (!submissionOpen) {
+      toast({
+        title: "Score submission is closed",
+        description: "Wait for the admin to start the tournament.",
+      });
+      return;
+    }
     console.log('🏆 [FINAL SUBMIT] Button clicked!');
     console.log('🏆 [FINAL SUBMIT] Current scores:', finalMatchScores);
     console.log('🏆 [FINAL SUBMIT] Current submitted state:', finalMatchSubmitted);
@@ -708,6 +728,13 @@ export default function KingQueenOfTheBeach() {
   }
 
   const handleFinalMatchEditSubmit = async () => {
+    if (!submissionOpen) {
+      toast({
+        title: "Score submission is closed",
+        description: "Wait for the admin to start the tournament.",
+      });
+      return;
+    }
     setIsEditingFinalMatch(false);
     try {
       await updateFinalMatchData(finalMatchScores);
@@ -991,6 +1018,9 @@ export default function KingQueenOfTheBeach() {
                   <MainTitle />
                 </div>
                 <div className="w-16 h-1 bg-sunset mx-auto rounded-full"></div>
+                <div className="mt-4 flex justify-center">
+                  <TournamentTimer showStatus />
+                </div>
               </div>
             </div>
 
@@ -1183,7 +1213,7 @@ export default function KingQueenOfTheBeach() {
                               className="text-center font-bold text-xl touch-target border-ocean/30 focus:border-ocean bg-white/70"
                               inputMode="numeric"
                               pattern="\d*"
-                              disabled={finalMatchSubmitted && !isEditingFinalMatch}
+                              disabled={!submissionOpen || (finalMatchSubmitted && !isEditingFinalMatch)}
                             />
                           </div>
                         ))}
@@ -1230,7 +1260,7 @@ export default function KingQueenOfTheBeach() {
                               className="text-center font-bold text-xl touch-target border-sunset/30 focus:border-sunset bg-white/70"
                               inputMode="numeric"
                               pattern="\d*"
-                              disabled={finalMatchSubmitted && !isEditingFinalMatch}
+                              disabled={!submissionOpen || (finalMatchSubmitted && !isEditingFinalMatch)}
                             />
                           </div>
                         ))}
@@ -1367,7 +1397,7 @@ export default function KingQueenOfTheBeach() {
                                 )}
                               </div>
                             </div>
-                          </div>
+</div>
                         </CardContent>
                       </Card>
                     )}
@@ -1455,7 +1485,7 @@ export default function KingQueenOfTheBeach() {
                               className="w-24 mx-auto text-center text-2xl font-bold touch-target border-ocean/30 focus:border-ocean bg-white/80"
                               inputMode="numeric"
                               pattern="\d*"
-                              disabled={currentMatch.isSubmitted && editingMatchId !== currentMatch.id}
+                              disabled={!submissionOpen || (currentMatch.isSubmitted && editingMatchId !== currentMatch.id)}
                               placeholder="0"
                             />
                           ) : (
@@ -1489,7 +1519,7 @@ export default function KingQueenOfTheBeach() {
                               className="w-24 mx-auto text-center text-2xl font-bold touch-target border-sunset/30 focus:border-sunset bg-white/80"
                               inputMode="numeric"
                               pattern="\d*"
-                              disabled={currentMatch.isSubmitted && editingMatchId !== currentMatch.id}
+                              disabled={!submissionOpen || (currentMatch.isSubmitted && editingMatchId !== currentMatch.id)}
                               placeholder="0"
                             />
                           ) : (
@@ -1504,7 +1534,7 @@ export default function KingQueenOfTheBeach() {
                     {!currentMatch.isSubmitted && editingMatchId !== currentMatch.id ? (
                       <Button 
                         onClick={handleScoreSubmit} 
-                        disabled={isSubmittingScore}
+                        disabled={isSubmittingScore || !submissionOpen}
                         className="w-full touch-target bg-palm hover:bg-palm-dark text-white font-bold py-4 text-lg shadow-beach transition-all duration-300"
                       >
                         {isSubmittingScore ? (
@@ -1520,7 +1550,7 @@ export default function KingQueenOfTheBeach() {
                       <div className="flex gap-3">
                         <Button 
                           onClick={handleSaveMatchEdit} 
-                          disabled={isSavingScore}
+                          disabled={isSavingScore || !submissionOpen}
                           className="flex-1 touch-target bg-palm hover:bg-palm-dark text-white transition-all duration-300"
                         >
                           {isSavingScore ? (
@@ -1562,6 +1592,18 @@ export default function KingQueenOfTheBeach() {
                     )}
                   </CardContent>
                 </Card>
+
+                {!controlLoading && !submissionOpen && (
+                  <Card className="mt-6 border-2 border-sunset/30 bg-sunset/10 backdrop-blur-sm">
+                    <CardContent className="p-4 text-center">
+                      <p className="font-semibold text-sunset-dark">Score submission is closed</p>
+                      <p className="text-sm text-foreground/70">
+                        Matchups and rankings stay visible. The admin will open score submission when
+                        the tournament starts.
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
 
                 <Card className="mt-6 bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach">
                   <CardHeader>

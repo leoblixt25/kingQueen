@@ -14,6 +14,9 @@ import { ResetConfirmationModal } from "@/components/ResetConfirmationModal";
 import { resetScoresOnly, deleteFirebaseAuthUsers } from "@/utils/resetUtils";
 import { PlayerReplacer } from "@/components/PlayerReplacer";
 import { DEFAULT_DRAW_TIME, DRAW_TIME_ZONE } from "@/utils/drawTimeUtils";
+import TournamentTimer from "@/components/TournamentTimer";
+import { useTournamentControl } from "@/hooks/useTournamentControl";
+import { startTournament, stopScoreSubmission } from "@/utils/tournamentControlFirestore";
 
 interface TournamentSettings {
   id?: string;
@@ -26,6 +29,11 @@ interface TournamentSettings {
 
 export default function AdminControl() {
   const navigate = useNavigate();
+  const {
+    scoreSubmissionEnabled,
+    loading: controlLoading,
+  } = useTournamentControl();
+  const [isTogglingControl, setIsTogglingControl] = useState(false);
   const [tournamentDate, setTournamentDate] = useState("");
   const [tournamentCity, setTournamentCity] = useState("");
   const [maxPlayers, setMaxPlayers] = useState(8);
@@ -227,6 +235,48 @@ export default function AdminControl() {
     }
   };
 
+  const handleStartTournament = async () => {
+    if (isTogglingControl) return;
+    setIsTogglingControl(true);
+    try {
+      await startTournament();
+      toast({
+        title: "Tournament started",
+        description: "Score submission is open and the timer is running.",
+      });
+    } catch (error) {
+      console.error("Failed to start tournament:", error);
+      toast({
+        title: "Could not start tournament",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsTogglingControl(false);
+    }
+  };
+
+  const handleStopSubmission = async () => {
+    if (isTogglingControl) return;
+    setIsTogglingControl(true);
+    try {
+      await stopScoreSubmission();
+      toast({
+        title: "Score submission stopped",
+        description: "Existing scores are unchanged. The timer keeps running.",
+      });
+    } catch (error) {
+      console.error("Failed to stop score submission:", error);
+      toast({
+        title: "Could not stop score submission",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsTogglingControl(false);
+    }
+  };
+
   const handleResetScores = async () => {
     console.log('🔄 [SCORE RESET] User clicked reset scores button, showing modal');
     setShowScoreResetModal(true);
@@ -344,6 +394,62 @@ export default function AdminControl() {
             Admin Control Panel
           </h1>
         </header>
+
+        <Card className="bg-white/80 backdrop-blur-sm border-2 border-ocean/30 shadow-beach">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-ocean">
+              <PowerOff className="w-5 h-5" />
+              Tournament Control
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="text-sm">
+                <p className="font-semibold text-foreground">
+                  Score submission is{' '}
+                  {controlLoading ? (
+                    <span className="text-foreground/60">loading…</span>
+                  ) : (
+                    <span className={scoreSubmissionEnabled ? 'text-palm-dark' : 'text-sunset-dark'}>
+                      {scoreSubmissionEnabled ? 'OPEN' : 'CLOSED'}
+                    </span>
+                  )}
+                </p>
+                <p className="text-foreground/60">
+                  {scoreSubmissionEnabled
+                    ? 'Players can enter and submit scores.'
+                    : 'Matchups and rankings stay visible, but score inputs and submit buttons are disabled.'}
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <TournamentTimer showStatus />
+                {scoreSubmissionEnabled ? (
+                  <Button
+                    onClick={handleStopSubmission}
+                    disabled={isTogglingControl}
+                    className="bg-sunset hover:bg-sunset-dark text-white font-semibold py-3 px-5 transition-all duration-300 flex items-center justify-center gap-2"
+                  >
+                    <PowerOff className="w-4 h-4" />
+                    Stop Score Submission
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={handleStartTournament}
+                    disabled={isTogglingControl}
+                    className="bg-palm hover:bg-palm-dark text-white font-semibold py-3 px-5 transition-all duration-300 flex items-center justify-center gap-2"
+                  >
+                    <Check className="w-4 h-4" />
+                    Start Tournament
+                  </Button>
+                )}
+              </div>
+            </div>
+            <p className="text-xs text-foreground/60">
+              Starting also starts the tournament timer. The timer freezes automatically when the
+              final match result is submitted.
+            </p>
+          </CardContent>
+        </Card>
 
         <Card className="bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach">
           <CardHeader>

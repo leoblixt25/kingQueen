@@ -8,6 +8,7 @@ import { Target, CheckCircle2, Timer } from 'lucide-react';
 import TournamentFinished from '@/components/TournamentFinished';
 import { useTournamentFinished } from '@/hooks/useTournamentFinished';
 import { getDrawTimestamp } from '@/utils/drawTimeUtils';
+import { buildMatchScoreMap, matchScoreKey } from '@/utils/matchScores';
 
 interface Player { id: string; name: string; gender: string; status: string; }
 interface DrawnMatch { matchNum: number; p1: string; p2: string; p3: string; p4: string; }
@@ -29,6 +30,9 @@ export default function PublicDrawPage() {
   const [drawTarget, setDrawTarget] = useState<number | null>(null);
   const [now, setNow] = useState(new Date());
   const [activeTab, setActiveTab] = useState<'female' | 'male'>('female');
+  // Submitted scores keyed by `${gender}_${match_number}` so each draw card can
+  // show the result beside its teams. Read-only: this page never writes scores.
+  const [matchScores, setMatchScores] = useState<Record<string, { s1: number; s2: number }>>({});
 
   // LIVE MIRROR state (fed by the admin draw page pick-by-pick)
   const [liveRunning, setLiveRunning] = useState(false);
@@ -116,6 +120,16 @@ export default function PublicDrawPage() {
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(t);
+  }, []);
+
+  // Live: submitted match results, so spectators can follow progress here
+  // instead of switching to the rankings. A result is shown only once the match
+  // is marked completed AND both scores are real numbers.
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'matches'), (snap) => {
+      setMatchScores(buildMatchScoreMap(snap.docs.map(d => d.data())));
+    }, (error) => { console.error('Failed to subscribe to match scores:', error); });
+    return () => unsub();
   }, []);
 
   useEffect(() => {
@@ -255,7 +269,7 @@ export default function PublicDrawPage() {
   const PDF_BLUE = 'bg-[#0077B6]';
   const PDF_ORANGE = 'bg-[#FF7F50]';
 
-  function renderMatchGrid(matches: DrawnMatch[], title: string) {
+  function renderMatchGrid(matches: DrawnMatch[], title: string, gender: 'female' | 'male') {
     if (matches.length === 0) return null;
     return (
       <div className="mt-4 w-full">
@@ -263,26 +277,35 @@ export default function PublicDrawPage() {
           {title}
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 lg:gap-3">
-          {matches.map((m) => (
+          {matches.map((m) => {
+            const result = matchScores[matchScoreKey(gender, m.matchNum)];
+            return (
             <div key={m.matchNum} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden flex flex-col">
               <div className="bg-gray-100 px-3 py-1.5 border-b border-gray-200">
                 <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">Match {m.matchNum}</span>
               </div>
               <div className="p-2 flex flex-col gap-1">
-                <div className={`${PDF_BLUE} text-white rounded-md py-1 px-1.5`}>
-                  <div className="text-[14px] font-medium leading-tight text-center" style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.15' }}>
+                <div className={`${PDF_BLUE} text-white rounded-md py-1 px-1.5 flex items-center gap-1`}>
+                  <div className="flex-1 text-[14px] font-medium leading-tight text-center" style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.15' }}>
                     {m.p1} & {m.p2}
                   </div>
+                  {result && (
+                    <span className="text-[15px] font-bold tabular-nums leading-none">{result.s1}</span>
+                  )}
                 </div>
                 <div className="text-[10px] font-bold text-gray-400 text-center py-0.5">VS</div>
-                <div className={`${PDF_ORANGE} text-white rounded-md py-1 px-1.5`}>
-                  <div className="text-[14px] font-medium leading-tight text-center" style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.15' }}>
+                <div className={`${PDF_ORANGE} text-white rounded-md py-1 px-1.5 flex items-center gap-1`}>
+                  <div className="flex-1 text-[14px] font-medium leading-tight text-center" style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.15' }}>
                     {m.p3} & {m.p4}
                   </div>
+                  {result && (
+                    <span className="text-[15px] font-bold tabular-nums leading-none">{result.s2}</span>
+                  )}
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     );
@@ -363,13 +386,13 @@ export default function PublicDrawPage() {
             {activeTab === 'female' && (
               <>
                 {renderWheel('f', fMatches, femalePlayers)}
-                {renderMatchGrid(fMatches, `${fMatches.length} Female Matches`)}
+                {renderMatchGrid(fMatches, `${fMatches.length} Female Matches`, 'female')}
               </>
             )}
             {activeTab === 'male' && (
               <>
                 {renderWheel('m', mMatches, malePlayers)}
-                {renderMatchGrid(mMatches, `${mMatches.length} Male Matches`)}
+                {renderMatchGrid(mMatches, `${mMatches.length} Male Matches`, 'male')}
               </>
             )}
 </div>

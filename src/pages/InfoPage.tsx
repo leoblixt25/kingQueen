@@ -2,10 +2,17 @@ import { useEffect, useState } from "react";
 
 type Language = "en" | "es";
 
+type InfoBlock =
+  | { kind: "p"; text: string }
+  | { kind: "list"; items: string[] };
+
 type InfoSection = {
   title: string;
   emoji: string;
+  /** Single-paragraph text. Ignored when `blocks` is provided. */
   content: string;
+  /** For sections that need several paragraphs or a list. */
+  blocks?: InfoBlock[];
 };
 
 const CONTENT: Record<Language, { title: string; intro: string; sections: InfoSection[] }> = {
@@ -83,8 +90,26 @@ const CONTENT: Record<Language, { title: string; intro: string; sections: InfoSe
       {
         title: "Final Match & Titles",
         emoji: "👑",
-        content:
-          "After the initial 7 matches, the top 2 ranked females and top 2 ranked males qualify for the final mixed match, which is the 8th match. The final is best of 3 sets. The first two sets are played to 21 points. If needed, the third set is played to 15 points. The winning team in the final match will be crowned King and Queen of the Beach. The losing team will be named Prince and Princess of the Beach."
+        content: "",
+        blocks: [
+          {
+            kind: "p",
+            text: "After the initial 7 matches, the top 2 ranked females and top 2 ranked males qualify for the final mixed match, which is the 8th match."
+          },
+          { kind: "p", text: "The final teams are formed as follows:" },
+          {
+            kind: "list",
+            items: ["1st ranked male + 1st ranked female", "2nd ranked male + 2nd ranked female"]
+          },
+          {
+            kind: "p",
+            text: "The final is played as a best-of-3 sets match. The first two sets are played to 21 points. If needed, the third set is played to 15 points."
+          },
+          {
+            kind: "p",
+            text: "The winning team in the final match will be crowned King and Queen of the Beach. The losing team will be named Prince and Princess of the Beach."
+          }
+        ]
       }
     ]
   },
@@ -162,8 +187,26 @@ const CONTENT: Record<Language, { title: string; intro: string; sections: InfoSe
       {
         title: "Final y Títulos",
         emoji: "👑",
-        content:
-          "Tras los 7 partidos iniciales, las 2 mejores clasificadas femeninas y los 2 mejores clasificados masculinos se clasifican para la final mixta, que es el octavo partido. La final se juega al mejor de 3 sets. Los dos primeros sets se juegan a 21 puntos. Si es necesario, el tercer set se juega a 15 puntos. El equipo ganador de la final será coronado Rey y Reina de la Playa. El equipo perdedor será nombrado Príncipe y Princesa de la Playa."
+        content: "",
+        blocks: [
+          {
+            kind: "p",
+            text: "Tras los 7 partidos iniciales, las 2 mejores clasificadas femeninas y los 2 mejores clasificados masculinos se clasifican para la final mixta, que es el octavo partido."
+          },
+          { kind: "p", text: "Los equipos de la final se forman de la siguiente manera:" },
+          {
+            kind: "list",
+            items: ["Masculino 1.º + Femenino 1.ª", "Masculino 2.º + Femenino 2.ª"]
+          },
+          {
+            kind: "p",
+            text: "La final se juega al mejor de 3 sets. Los dos primeros sets se juegan a 21 puntos. Si es necesario, el tercer set se juega a 15 puntos."
+          },
+          {
+            kind: "p",
+            text: "El equipo ganador de la final será coronado Rey y Reina de la Playa. El equipo perdedor será nombrado Príncipe y Princesa de la Playa."
+          }
+        ]
       }
     ]
   }
@@ -254,9 +297,35 @@ export default function InfoPage() {
                 <span className="text-2xl">{section.emoji}</span>
                 {section.title}
               </h2>
-              <p className="text-base leading-relaxed text-foreground">
-                {section.content}
-              </p>
+              {section.blocks ? (
+                <div className="space-y-3">
+                  {section.blocks.map((block, blockIndex) =>
+                    block.kind === "list" ? (
+                      <ul
+                        key={blockIndex}
+                        className="list-disc pl-6 space-y-1 marker:text-ocean"
+                      >
+                        {block.items.map((item) => (
+                          <li
+                            key={item}
+                            className="text-base leading-relaxed text-foreground"
+                          >
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p key={blockIndex} className="text-base leading-relaxed text-foreground">
+                        {block.text}
+                      </p>
+                    )
+                  )}
+                </div>
+              ) : (
+                <p className="text-base leading-relaxed text-foreground">
+                  {section.content}
+                </p>
+              )}
             </div>
           ))}
         </div>

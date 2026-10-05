@@ -276,6 +276,14 @@ export default function PublicDrawPage() {
   const PDF_BLUE = 'bg-[#0077B6]';
   const PDF_ORANGE = 'bg-[#FF7F50]';
 
+  // Winning team's names and score turn green; their weight and size stay
+  // exactly as the losing side's. The green is deliberately pale: the two team
+  // bars are dark blue (#0077B6) and light orange (#FF7F50), and every mid or
+  // dark green fails contrast against one bar or the other. A dark text-shadow
+  // rescues the pale-green-on-orange case, so the winner stays readable
+  // whichever bar they sit on.
+  const WINNER_TEXT = 'text-[#D9FFB3] [text-shadow:0_1px_2px_rgba(0,0,0,0.9)]';
+
   function renderMatchGrid(matches: DrawnMatch[], title: string, gender: 'female' | 'male') {
     if (matches.length === 0) return null;
     return (
@@ -290,9 +298,9 @@ export default function PublicDrawPage() {
             const winner = result ? scoreWinner(result.s1, result.s2) : 0;
             const teamWin = (side: 1 | 2) => winner === side;
             const teamText = (side: 1 | 2) =>
-              `flex-1 text-[14px] leading-tight text-center ${teamWin(side) ? 'font-black' : 'font-normal opacity-70'}`;
+              `flex-1 text-[14px] font-medium leading-tight text-center ${teamWin(side) ? WINNER_TEXT : ''}`;
             const scoreText = (side: 1 | 2) =>
-              `tabular-nums leading-none ${teamWin(side) ? 'font-black text-[18px]' : 'font-normal text-[13px] opacity-70'}`;
+              `text-[15px] font-bold tabular-nums leading-none ${teamWin(side) ? WINNER_TEXT : ''}`;
             return (
             <div key={m.matchNum} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden flex flex-col">
               <div className="bg-gray-100 px-3 py-1.5 border-b border-gray-200 flex items-center justify-between gap-1">
@@ -300,7 +308,7 @@ export default function PublicDrawPage() {
                 <MatchNetBadge net={net} />
               </div>
               <div className="p-2 flex flex-col gap-1">
-                <div className={`${PDF_BLUE} text-white rounded-md py-1 px-1.5 flex items-center gap-1.5 ${teamWin(1) ? 'ring-2 ring-white' : ''}`}>
+                <div className={`${PDF_BLUE} text-white rounded-md py-1 px-1.5 flex items-center gap-1`}>
                   <div className={teamText(1)} style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.15' }}>
                     {m.p1} & {m.p2}
                   </div>
@@ -309,7 +317,7 @@ export default function PublicDrawPage() {
                   )}
                 </div>
                 <div className="text-[10px] font-bold text-gray-400 text-center py-0.5">VS</div>
-                <div className={`${PDF_ORANGE} text-white rounded-md py-1 px-1.5 flex items-center gap-1.5 ${teamWin(2) ? 'ring-2 ring-white' : ''}`}>
+                <div className={`${PDF_ORANGE} text-white rounded-md py-1 px-1.5 flex items-center gap-1`}>
                   <div className={teamText(2)} style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.15' }}>
                     {m.p3} & {m.p4}
                   </div>

@@ -150,7 +150,7 @@ KingQueen_EU/
 
 ### Verification baseline (Oct 2026) — check before shipping
 * Typecheck: `npx tsc -b --force` → **22 errors is the BASELINE, not zero.** Pre-existing in `AuthModal`, `DatabaseInit`, `FinalMatch`, `MatchCard`, `AdminControl`, `AdminLogin`, `PublicDrawPage` (2× `unknown[]`), `addAdminUser`, `liveRankingRepro.test` (2×), `staticMatchups.test`. Never "fix" these as a side effect of other work.
-* Tests: `npx vitest run` → **87 passing / 9 files** at `bf1f2d5`.
+* Tests: `npx vitest run` → **87 passing / 9 files** at `d8d04a6`.
 * Browser check: `--dump-dom` exits before Firestore connects (realtime listener is a long-lived socket). Use CDP with a real 20s wait instead.
 
 ### Hosting cache gotcha
@@ -686,9 +686,11 @@ Draw Wheel:               Data Loading:
 * Every card renders both scores at `font-bold`, so `14-21` and `21-18` were visually indistinguishable - you had to compare digits.
 * `scoreWinner(s1, s2): 0 | 1 | 2` added to **`matchScores.ts`** (not a new file - that module already owns the submitted-result rules). Returns 1 = team A, 2 = team B, **0 = tie**.
 * **Ties intentionally style both sides identically** so no winner is implied. Beach volleyball to 21 makes a real tie impossible, but a stray `21-21` entry should not get a fake winner.
-* Styling: winner gets `font-bold` names + `font-black text-[18px]` score + `ring-2 ring-white` on the team bar; loser drops to `font-semibold text-[13px] opacity-75`.
+* Final styling (`d8d04a6`): winner = **900 weight** names + **900 weight `text-[18px]`** score + `ring-2 ring-white` on the team bar, fully opaque. Loser = **400 weight**, `text-[13px]` score, `opacity-70`. Winner and loser names stay at the same `text-[14px]` so the two rows keep equal height and the emphasis comes from weight, not layout shift.
 * Only the **main draw grid** changed. `LiveDrawView` renders no scores at all (the live draw is mid-generation), so there was nothing to emphasise there.
-* **Verified by computed style, not eyeballing:** a CDP script asserted `font-weight === 900` on the winning score and `600` on the loser for all **28 cards** (14 female + 14 male), plus ring-on-winner/ring-off-loser. 28/28 correct, 0 problems. Live bundle `index-yTwNE1UI.js`.
+* **Lesson - a passing assertion is not the same as a visible change.** The first attempt (`bf1f2d5`) used `font-bold`/`font-medium` (700 vs 500) and my check asserted only `weight > 600`, so it "passed" 28/28 - but the user still saw only the score emphasised, because 200 weight steps at 14px white-on-blue is near-invisible next to a 900 score. **Assert the perceptual delta you actually intend** (here: winner `>= 900` *and* opaque, loser `<= 400` *and* `<= 0.75` opacity), not a threshold that happens to pass.
+* Verified with a strict CDP script across all **28 cards** (14 female + 14 male): **28/28**, min weight gap 500 on both names and scores, 0 failures. Live bundle `index-LeMG7vB9.js`.
+* ⚠️ **Re-verifying after a deploy needs a fresh browser profile.** `max-age=3600` means a long-lived headless profile serves the *old* `index.html` and reports stale weights even though the deploy succeeded. Confirm by diffing the bundle filename in live `index.html` against `dist/index.html`, then relaunch Chrome with a new `--user-data-dir` before trusting computed styles.
 
 ## 14. Deployment URLs
 
@@ -719,9 +721,9 @@ git push origin main
 
 ⚠️ `DEPLOY_CLOUDFLARE_WORKER_FREE.md`, `FUNCTIONS_DEPLOYMENT_GUIDE.md` and other older guides describe the ABANDONED direct-worker / Firebase Functions approaches. The working architecture is section 13k.
 
-### Live data snapshot (Oct 2026, verified at `9d34bb2`)
+### Live data snapshot (Oct 2026, verified at `d8d04a6`)
 * **19 players**, **28 matches** (14 female + 14 male), all 28 scored/completed.
 * 1 final match, completed. Match docs have **no `net` field** — the automatic odd/even rule supplies it (see 13aa). Do not backfill unless asked.
 * `tournamentSettings/tournament_control`: submission **closed**, `tournamentStarted: true`, `end = 2026-10-03T10:26:41.258Z` → all pages show `03:56 Final`.
-* Live bundle at `bf1f2d5`: `assets/index-yTwNE1UI.js`.
+* Live bundle at `d8d04a6`: `assets/index-LeMG7vB9.js`.
 * Do not modify production Firestore data without explicit user approval — the net override was deliberately never tested against production for this reason.

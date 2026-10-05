@@ -3,6 +3,7 @@ import { auth } from '@/config/firebase';
 import { collection, getDocs, writeBatch, doc, query, setDoc } from 'firebase/firestore';
 import { initializePlayers } from './playerInitUtils';
 import { initializeMatches } from './matchInitUtils';
+import { clearTournamentControl } from './tournamentControlFirestore';
 import { getCurrentUser } from '@/utils/authUtils';
 
 /**
@@ -36,6 +37,10 @@ export const resetScoresOnly = async () => {
     });
     
     await batch.commit();
+
+    // Run control is a separate document, so it is not covered by the batch
+    // above and must be cleared explicitly - see fullTournamentReset.
+    await clearTournamentControl();
 
     console.log('Scores reset successfully');
   } catch (error) {
@@ -222,6 +227,13 @@ export const fullTournamentReset = async () => {
     // No tournament day confirmed yet — countdown reappears once a new date is set
     await setDoc(doc(db, 'tournamentSettings', 'default_settings'), { tournament_date: '' }, { merge: true });
     console.log('🧹 [RESET] Public draw state cleared');
+
+    // Tournament run control lives in its OWN document, so the batch above never
+    // touched it. Without this the previous season's start/end timestamps survive
+    // and the timer keeps showing the old final duration (e.g. "03:56 Final") on a
+    // freshly reset tournament, and the clock cannot be restarted.
+    await clearTournamentControl();
+    console.log('⏱️  [RESET] Tournament timer and submission gate cleared');
     
     // Reinitialize players first
     await initializePlayers();

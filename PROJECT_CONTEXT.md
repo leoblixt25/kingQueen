@@ -150,7 +150,7 @@ KingQueen_EU/
 
 ### Verification baseline (Oct 2026) — check before shipping
 * Typecheck: `npx tsc -b --force` → **22 errors is the BASELINE, not zero.** Pre-existing in `AuthModal`, `DatabaseInit`, `FinalMatch`, `MatchCard`, `AdminControl`, `AdminLogin`, `PublicDrawPage` (2× `unknown[]`), `addAdminUser`, `liveRankingRepro.test` (2×), `staticMatchups.test`. Never "fix" these as a side effect of other work.
-* Tests: `npx vitest run` → **83 passing / 9 files** at `9d34bb2`.
+* Tests: `npx vitest run` → **87 passing / 9 files** at `bf1f2d5`.
 * Browser check: `--dump-dom` exits before Firestore connects (realtime listener is a long-lived socket). Use CDP with a real 20s wait instead.
 
 ### Hosting cache gotcha
@@ -681,6 +681,15 @@ Draw Wheel:               Data Loading:
 * To support this, `InfoSection` gained `blocks?: InfoBlock[]` (`{ kind: "p" }` or `{ kind: "list" }`). Only the Final Match section uses `blocks` — **the other 11 sections still use the single `content` string and are untouched.**
 * Spanish updated to match the new structure (`Masculino 1.º + Femenino 1.ª`), since leaving the old wording would have contradicted the English.
 
+## 13ae. Public Draw - winning team bolded (commit `bf1f2d5`, Oct 2026)
+
+* Every card renders both scores at `font-bold`, so `14-21` and `21-18` were visually indistinguishable - you had to compare digits.
+* `scoreWinner(s1, s2): 0 | 1 | 2` added to **`matchScores.ts`** (not a new file - that module already owns the submitted-result rules). Returns 1 = team A, 2 = team B, **0 = tie**.
+* **Ties intentionally style both sides identically** so no winner is implied. Beach volleyball to 21 makes a real tie impossible, but a stray `21-21` entry should not get a fake winner.
+* Styling: winner gets `font-bold` names + `font-black text-[18px]` score + `ring-2 ring-white` on the team bar; loser drops to `font-semibold text-[13px] opacity-75`.
+* Only the **main draw grid** changed. `LiveDrawView` renders no scores at all (the live draw is mid-generation), so there was nothing to emphasise there.
+* **Verified by computed style, not eyeballing:** a CDP script asserted `font-weight === 900` on the winning score and `600` on the loser for all **28 cards** (14 female + 14 male), plus ring-on-winner/ring-off-loser. 28/28 correct, 0 problems. Live bundle `index-yTwNE1UI.js`.
+
 ## 14. Deployment URLs
 
 ### EU Project (KingQueen_EU — LIVE)
@@ -714,5 +723,5 @@ git push origin main
 * **19 players**, **28 matches** (14 female + 14 male), all 28 scored/completed.
 * 1 final match, completed. Match docs have **no `net` field** — the automatic odd/even rule supplies it (see 13aa). Do not backfill unless asked.
 * `tournamentSettings/tournament_control`: submission **closed**, `tournamentStarted: true`, `end = 2026-10-03T10:26:41.258Z` → all pages show `03:56 Final`.
-* Live bundle at `9d34bb2`: `assets/index-DX6MkU8I.js`.
+* Live bundle at `bf1f2d5`: `assets/index-yTwNE1UI.js`.
 * Do not modify production Firestore data without explicit user approval — the net override was deliberately never tested against production for this reason.

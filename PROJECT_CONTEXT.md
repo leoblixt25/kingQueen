@@ -150,7 +150,7 @@ KingQueen_EU/
 
 ### Verification baseline (Oct 2026) — check before shipping
 * Typecheck: `npx tsc -b --force` → **22 errors is the BASELINE, not zero.** Pre-existing in `AuthModal`, `DatabaseInit`, `FinalMatch`, `MatchCard`, `AdminControl`, `AdminLogin`, `PublicDrawPage` (2× `unknown[]`), `addAdminUser`, `liveRankingRepro.test` (2×), `staticMatchups.test`. Never "fix" these as a side effect of other work.
-* Tests: `npx vitest run` → **87 passing / 9 files** at `2398285`.
+* Tests: `npx vitest run` → **87 passing / 9 files** at `c3f7ae2`.
 * Browser check: `--dump-dom` exits before Firestore connects (realtime listener is a long-lived socket). Use CDP with a real 20s wait instead.
 
 ### Hosting cache gotcha
@@ -686,12 +686,12 @@ Draw Wheel:               Data Loading:
 * Every card renders both scores at `font-bold`, so `14-21` and `21-18` were visually indistinguishable - you had to compare digits.
 * `scoreWinner(s1, s2): 0 | 1 | 2` added to **`matchScores.ts`** (not a new file - that module already owns the submitted-result rules). Returns 1 = team A, 2 = team B, **0 = tie**.
 * **Ties intentionally style both sides identically** so no winner is implied. Beach volleyball to 21 makes a real tie impossible, but a stray `21-21` entry should not get a fake winner.
-* **Final styling is colour-only (`2398285`)** - the weight/size escalation in `d8d04a6` was reverted as cluttered. Winner and loser now share identical weight (`font-medium` names), size (`text-[14px]` names, `text-[15px]` score) and opacity (`1`); **only the colour differs**: winner `text-[#D9FFB3]` (pale green) + `text-shadow 0 1px 2px rgba(0,0,0,0.9)`, loser stays `text-white`. No ring.
-* **Why a pale green and not a saturated one:** the team bars are dark blue `#0077B6` and light orange `#FF7F50`. Contrast was measured for 15 greens - every mid/dark green fails badly on one bar (`#22C55E` = 1.1:1 on orange, `#008000` = 1.06:1 on blue). Even the best saturated green only reaches ~2.25:1 worst case, worse than the white text it replaces. The dark text-shadow lifts pale green past 4:1 on the darkened bar, so the winner is legible on **either** colour. **Any future colour change to these bars must be contrast-checked against both `#0077B6` and `#FF7F50`, not just one.**
-* Three attempts at this one feature (weight → heavier weight → colour) before it looked right. **Ask which visual channel the user wants (weight / size / colour) before iterating on emphasis** - guessing wrong costs a full build+deploy cycle each time.
+* **SHIPPED TREATMENT (`c3f7ae2`): only the winning SCORE is marked** - green text (`#15803D`) inside a solid white circle (`w-7 h-7 rounded-full bg-white`, same `#FFFFFF` as the surrounding text). **Team names are completely untouched** (white, `font-medium`, `text-[14px]`) and the losing score stays plain white text on the bar. Font size stays `text-[15px]` on both sides.
+* **The circle is filled, not an outline, and that is load-bearing.** The team bars are dark blue `#0077B6` and light orange `#FF7F50`. Contrast was measured across 15 saturated greens - every one fails against one of the two bars (`#22C55E` = 1.1:1 on orange, `#008000` = 1.06:1 on blue), worse than the white text it would replace. Painting the green onto **white** instead clears AA and works identically on either bar. **Do not "simplify" this back to green text or a bare ring on the bar - it will be unreadable for one gender.**
+* **Two earlier attempts were reverted as ugly** (`d8d04a6` heavier weight + size, then `2398285` green names): (a) weight/size escalation - cluttered, and 500→700 at 14px was imperceptible next to a 900 score; (b) colour-only names - needed a pale `#D9FFB3` green plus a dark text-shadow to survive the orange bar, and read as washed out. **Lesson: confirm with the user *which element* to mark (score vs names) and *how* (weight / size / colour) BEFORE building** - four build+deploy cycles were spent guessing.
 * Only the **main draw grid** changed. `LiveDrawView` renders no scores at all (the live draw is mid-generation), so there was nothing to emphasise there.
 * **Lesson - a passing assertion is not the same as a visible change.** The first attempt (`bf1f2d5`) used `font-bold`/`font-medium` (700 vs 500) and my check asserted only `weight > 600`, so it "passed" 28/28 - but the user still saw only the score emphasised, because 200 weight steps at 14px white-on-blue is near-invisible next to a 900 score. **Assert the perceptual delta you actually intend** (here: winner `>= 900` *and* opaque, loser `<= 400` *and* `<= 0.75` opacity), not a threshold that happens to pass.
-* Verified with a strict CDP script across all **28 cards** (14 female + 14 male): **28/28** on colour - winner green, loser white, and weight/size/opacity proven *identical* between the two sides so only colour distinguishes them. Live bundle `index-DTWuXMUX.js`.
+* Verified with a strict CDP script across all **28 cards** (14 female + 14 male): **28/28** - winner score is `rgb(21,128,61)` green on a 28x28px `border-radius:9999px` white circle, loser is plain white, and the names are provably untouched (weight 500, 14px, white). Live bundle `index-DGC1-tcD.js`.
 * ⚠️ **Re-verifying after a deploy needs a fresh browser profile.** `max-age=3600` means a long-lived headless profile serves the *old* `index.html` and reports stale weights even though the deploy succeeded. Confirm by diffing the bundle filename in live `index.html` against `dist/index.html`, then relaunch Chrome with a new `--user-data-dir` before trusting computed styles.
 
 ## 14. Deployment URLs
@@ -723,9 +723,9 @@ git push origin main
 
 ⚠️ `DEPLOY_CLOUDFLARE_WORKER_FREE.md`, `FUNCTIONS_DEPLOYMENT_GUIDE.md` and other older guides describe the ABANDONED direct-worker / Firebase Functions approaches. The working architecture is section 13k.
 
-### Live data snapshot (Oct 2026, verified at `2398285`)
+### Live data snapshot (Oct 2026, verified at `c3f7ae2`)
 * **19 players**, **28 matches** (14 female + 14 male), all 28 scored/completed.
 * 1 final match, completed. Match docs have **no `net` field** — the automatic odd/even rule supplies it (see 13aa). Do not backfill unless asked.
 * `tournamentSettings/tournament_control`: submission **closed**, `tournamentStarted: true`, `end = 2026-10-03T10:26:41.258Z` → all pages show `03:56 Final`.
-* Live bundle at `2398285`: `assets/index-DTWuXMUX.js`.
+* Live bundle at `c3f7ae2`: `assets/index-DGC1-tcD.js`.
 * Do not modify production Firestore data without explicit user approval — the net override was deliberately never tested against production for this reason.

@@ -290,9 +290,9 @@ export default function PublicDrawPage() {
             const winner = result ? scoreWinner(result.s1, result.s2) : 0;
             const teamWin = (side: 1 | 2) => winner === side;
             const teamText = (side: 1 | 2) =>
-              `flex-1 text-[14px] leading-tight text-center ${teamWin(side) ? 'font-bold' : 'font-medium'}`;
+              `flex-1 text-[14px] leading-tight text-center ${teamWin(side) ? 'font-black' : 'font-normal opacity-70'}`;
             const scoreText = (side: 1 | 2) =>
-              `tabular-nums leading-none ${teamWin(side) ? 'font-black text-[18px]' : 'font-semibold text-[13px] opacity-75'}`;
+              `tabular-nums leading-none ${teamWin(side) ? 'font-black text-[18px]' : 'font-normal text-[13px] opacity-70'}`;
             return (
             <div key={m.matchNum} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden flex flex-col">
               <div className="bg-gray-100 px-3 py-1.5 border-b border-gray-200 flex items-center justify-between gap-1">

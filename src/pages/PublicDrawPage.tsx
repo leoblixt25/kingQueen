@@ -286,8 +286,16 @@ export default function PublicDrawPage() {
   // 1.1:1). Painting the green onto white instead lifts it well past AA, so the
   // same green works identically on both bars. White here is the same #FFFFFF as
   // the surrounding text.
+  //
+  // `my-[-3px]` is what keeps the original look. A circle big enough to hold the
+  // 15px score needs ~22px, but the bar's own `py-1` padding plus the 16px name
+  // line is only ~24px tall, so an in-flow 22px circle would stretch the winning
+  // bar to 30px and visibly unbalance the card. Pulling the circle 3px up and
+  // down cancels that out: it eats into the bar's existing 4px padding instead
+  // of adding to it, so BOTH bars stay at the original ~24px. The bar has no
+  // `overflow-hidden`, so the circle is not clipped.
   const WINNER_SCORE =
-    'shrink-0 w-7 h-7 rounded-full bg-white text-[#15803D] text-[15px] font-bold tabular-nums leading-none flex items-center justify-center';
+    'shrink-0 w-[22px] h-[22px] my-[-3px] rounded-full bg-white text-[#15803D] text-[15px] font-bold tabular-nums leading-none flex items-center justify-center';
 
   function renderMatchGrid(matches: DrawnMatch[], title: string, gender: 'female' | 'male') {
     if (matches.length === 0) return null;

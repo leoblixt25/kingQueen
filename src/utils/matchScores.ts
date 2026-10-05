@@ -12,6 +12,19 @@
 
 export type MatchScore = { s1: number; s2: number };
 
+/** Which side won a submitted result: 1 = team A, 2 = team B, 0 = tie. */
+export type ScoreSide = 0 | 1 | 2;
+
+/**
+ * Which team won, so the draw page can emphasise the winning score.
+ * Ties return 0 and leave both scores styled the same.
+ */
+export const scoreWinner = (s1: number, s2: number): ScoreSide => {
+  if (s1 > s2) return 1;
+  if (s2 > s1) return 2;
+  return 0;
+};
+
 export type MatchScoreDoc = {
   gender?: unknown;
   match_number?: unknown;

@@ -8,7 +8,7 @@ import { Target, CheckCircle2, Timer } from 'lucide-react';
 import TournamentFinished from '@/components/TournamentFinished';
 import { useTournamentFinished } from '@/hooks/useTournamentFinished';
 import { getDrawTimestamp } from '@/utils/drawTimeUtils';
-import { buildMatchScoreMap, matchScoreKey } from '@/utils/matchScores';
+import { buildMatchScoreMap, matchScoreKey, scoreWinner } from '@/utils/matchScores';
 import MatchNetBadge from '@/components/MatchNetBadge';
 import { buildNetMap, resolveNet, type NetNumber } from '@/utils/netAssignment';
 import TournamentTimer from '@/components/TournamentTimer';
@@ -287,6 +287,12 @@ export default function PublicDrawPage() {
           {matches.map((m) => {
             const result = matchScores[matchScoreKey(gender, m.matchNum)];
             const net = matchNets[matchScoreKey(gender, m.matchNum)] ?? resolveNet(m.matchNum);
+            const winner = result ? scoreWinner(result.s1, result.s2) : 0;
+            const teamWin = (side: 1 | 2) => winner === side;
+            const teamText = (side: 1 | 2) =>
+              `flex-1 text-[14px] leading-tight text-center ${teamWin(side) ? 'font-bold' : 'font-medium'}`;
+            const scoreText = (side: 1 | 2) =>
+              `tabular-nums leading-none ${teamWin(side) ? 'font-black text-[18px]' : 'font-semibold text-[13px] opacity-75'}`;
             return (
             <div key={m.matchNum} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden flex flex-col">
               <div className="bg-gray-100 px-3 py-1.5 border-b border-gray-200 flex items-center justify-between gap-1">
@@ -294,21 +300,21 @@ export default function PublicDrawPage() {
                 <MatchNetBadge net={net} />
               </div>
               <div className="p-2 flex flex-col gap-1">
-                <div className={`${PDF_BLUE} text-white rounded-md py-1 px-1.5 flex items-center gap-1`}>
-                  <div className="flex-1 text-[14px] font-medium leading-tight text-center" style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.15' }}>
+                <div className={`${PDF_BLUE} text-white rounded-md py-1 px-1.5 flex items-center gap-1.5 ${teamWin(1) ? 'ring-2 ring-white' : ''}`}>
+                  <div className={teamText(1)} style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.15' }}>
                     {m.p1} & {m.p2}
                   </div>
                   {result && (
-                    <span className="text-[15px] font-bold tabular-nums leading-none">{result.s1}</span>
+                    <span className={scoreText(1)}>{result.s1}</span>
                   )}
                 </div>
                 <div className="text-[10px] font-bold text-gray-400 text-center py-0.5">VS</div>
-                <div className={`${PDF_ORANGE} text-white rounded-md py-1 px-1.5 flex items-center gap-1`}>
-                  <div className="flex-1 text-[14px] font-medium leading-tight text-center" style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.15' }}>
+                <div className={`${PDF_ORANGE} text-white rounded-md py-1 px-1.5 flex items-center gap-1.5 ${teamWin(2) ? 'ring-2 ring-white' : ''}`}>
+                  <div className={teamText(2)} style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.15' }}>
                     {m.p3} & {m.p4}
                   </div>
                   {result && (
-                    <span className="text-[15px] font-bold tabular-nums leading-none">{result.s2}</span>
+                    <span className={scoreText(2)}>{result.s2}</span>
                   )}
                 </div>
               </div>

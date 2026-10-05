@@ -3,6 +3,7 @@ import {
   buildMatchScoreMap,
   hasSubmittedScore,
   matchScoreKey,
+  scoreWinner,
 } from './matchScores';
 
 const match = (over: Record<string, unknown> = {}) => ({
@@ -109,5 +110,32 @@ describe('buildMatchScoreMap', () => {
   it('tolerates an empty or missing collection', () => {
     expect(buildMatchScoreMap([])).toEqual({});
     expect(buildMatchScoreMap(undefined as never)).toEqual({});
+  });
+});
+
+describe('scoreWinner', () => {
+  it('picks team A when it scored more', () => {
+    expect(scoreWinner(21, 14)).toBe(1);
+    expect(scoreWinner(22, 20)).toBe(1);
+    expect(scoreWinner(15, 0)).toBe(1);
+  });
+
+  it('picks team B when it scored more', () => {
+    expect(scoreWinner(14, 21)).toBe(2);
+    expect(scoreWinner(20, 22)).toBe(2);
+    expect(scoreWinner(0, 15)).toBe(2);
+  });
+
+  it('returns 0 for a tie so neither side is emphasised', () => {
+    expect(scoreWinner(21, 21)).toBe(0);
+    expect(scoreWinner(0, 0)).toBe(0);
+  });
+
+  it('handles the real two-set finals from the tournament', () => {
+    expect(scoreWinner(7, 21)).toBe(2);
+    expect(scoreWinner(21, 7)).toBe(1);
+    expect(scoreWinner(14, 16)).toBe(2);
+    expect(scoreWinner(9, 21)).toBe(2);
+    expect(scoreWinner(21, 9)).toBe(1);
   });
 });

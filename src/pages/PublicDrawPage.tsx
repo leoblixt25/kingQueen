@@ -276,13 +276,18 @@ export default function PublicDrawPage() {
   const PDF_BLUE = 'bg-[#0077B6]';
   const PDF_ORANGE = 'bg-[#FF7F50]';
 
-  // Winning team's names and score turn green; their weight and size stay
-  // exactly as the losing side's. The green is deliberately pale: the two team
-  // bars are dark blue (#0077B6) and light orange (#FF7F50), and every mid or
-  // dark green fails contrast against one bar or the other. A dark text-shadow
-  // rescues the pale-green-on-orange case, so the winner stays readable
-  // whichever bar they sit on.
-  const WINNER_TEXT = 'text-[#D9FFB3] [text-shadow:0_1px_2px_rgba(0,0,0,0.9)]';
+  // The winning SCORE only is marked: green text inside a solid white circle.
+  // Nothing else about the card changes - names keep their original white and
+  // original weight/size, and the losing score is untouched plain white text.
+  //
+  // The circle is filled rather than an outline on purpose. The team bars are
+  // dark blue (#0077B6) and light orange (#FF7F50), and a saturated green drawn
+  // straight onto either bar is unreadable on one of them (measured as low as
+  // 1.1:1). Painting the green onto white instead lifts it well past AA, so the
+  // same green works identically on both bars. White here is the same #FFFFFF as
+  // the surrounding text.
+  const WINNER_SCORE =
+    'shrink-0 w-7 h-7 rounded-full bg-white text-[#15803D] text-[15px] font-bold tabular-nums leading-none flex items-center justify-center';
 
   function renderMatchGrid(matches: DrawnMatch[], title: string, gender: 'female' | 'male') {
     if (matches.length === 0) return null;
@@ -297,10 +302,9 @@ export default function PublicDrawPage() {
             const net = matchNets[matchScoreKey(gender, m.matchNum)] ?? resolveNet(m.matchNum);
             const winner = result ? scoreWinner(result.s1, result.s2) : 0;
             const teamWin = (side: 1 | 2) => winner === side;
-            const teamText = (side: 1 | 2) =>
-              `flex-1 text-[14px] font-medium leading-tight text-center ${teamWin(side) ? WINNER_TEXT : ''}`;
+            const TEAM_TEXT = 'flex-1 text-[14px] font-medium leading-tight text-center';
             const scoreText = (side: 1 | 2) =>
-              `text-[15px] font-bold tabular-nums leading-none ${teamWin(side) ? WINNER_TEXT : ''}`;
+              teamWin(side) ? WINNER_SCORE : 'text-[15px] font-bold tabular-nums leading-none';
             return (
             <div key={m.matchNum} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden flex flex-col">
               <div className="bg-gray-100 px-3 py-1.5 border-b border-gray-200 flex items-center justify-between gap-1">
@@ -309,7 +313,7 @@ export default function PublicDrawPage() {
               </div>
               <div className="p-2 flex flex-col gap-1">
                 <div className={`${PDF_BLUE} text-white rounded-md py-1 px-1.5 flex items-center gap-1`}>
-                  <div className={teamText(1)} style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.15' }}>
+                  <div className={TEAM_TEXT} style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.15' }}>
                     {m.p1} & {m.p2}
                   </div>
                   {result && (
@@ -318,7 +322,7 @@ export default function PublicDrawPage() {
                 </div>
                 <div className="text-[10px] font-bold text-gray-400 text-center py-0.5">VS</div>
                 <div className={`${PDF_ORANGE} text-white rounded-md py-1 px-1.5 flex items-center gap-1`}>
-                  <div className={teamText(2)} style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.15' }}>
+                  <div className={TEAM_TEXT} style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.15' }}>
                     {m.p3} & {m.p4}
                   </div>
                   {result && (

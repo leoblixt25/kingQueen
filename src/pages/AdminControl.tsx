@@ -16,7 +16,7 @@ import { PlayerReplacer } from "@/components/PlayerReplacer";
 import { DEFAULT_DRAW_TIME, DRAW_TIME_ZONE } from "@/utils/drawTimeUtils";
 import TournamentTimer from "@/components/TournamentTimer";
 import { useTournamentControl } from "@/hooks/useTournamentControl";
-import { startTournament, stopScoreSubmission } from "@/utils/tournamentControlFirestore";
+import { startTournament, stopScoreSubmission, resetTournamentClock } from "@/utils/tournamentControlFirestore";
 
 interface TournamentSettings {
   id?: string;
@@ -49,6 +49,8 @@ export default function AdminControl() {
   const [isResetting, setIsResetting] = useState(false);
   const [showScoreResetModal, setShowScoreResetModal] = useState(false);
   const [isResettingScores, setIsResettingScores] = useState(false);
+  const [showClockResetModal, setShowClockResetModal] = useState(false);
+  const [isResettingClock, setIsResettingClock] = useState(false);
   const [showPlayerReplacer, setShowPlayerReplacer] = useState(false);
   const tournamentFinished = useTournamentFinished();
   const [isTogglingStatus, setIsTogglingStatus] = useState(false);
@@ -256,6 +258,28 @@ export default function AdminControl() {
     }
   };
 
+  const handleResetClock = async () => {
+    if (isResettingClock) return;
+    setIsResettingClock(true);
+    try {
+      await resetTournamentClock();
+      toast({
+        title: "Tournament clock reset",
+        description: "The timer is cleared. The next Start begins at 00:00.",
+      });
+      setShowClockResetModal(false);
+    } catch (error) {
+      console.error("Failed to reset the tournament clock:", error);
+      toast({
+        title: "Could not reset the clock",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsResettingClock(false);
+    }
+  };
+
   const handleStopSubmission = async () => {
     if (isTogglingControl) return;
     setIsTogglingControl(true);
@@ -442,11 +466,21 @@ export default function AdminControl() {
                     Start Tournament
                   </Button>
                 )}
+                <Button
+                  variant="outline"
+                  onClick={() => setShowClockResetModal(true)}
+                  disabled={isTogglingControl || isResettingClock}
+                  className="border-sand-dark/30 text-foreground font-semibold py-3 px-5 transition-all duration-300 flex items-center justify-center gap-2"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  Reset Clock
+                </Button>
               </div>
             </div>
             <p className="text-xs text-foreground/60">
               Starting also starts the tournament timer. The timer freezes automatically when the
-              final match result is submitted.
+              final match result is submitted. Reset Clock clears the timer on its own and leaves
+              players, matches and scores untouched.
             </p>
           </CardContent>
         </Card>
@@ -718,6 +752,16 @@ export default function AdminControl() {
           onClose={handleCloseResetModal}
           onConfirm={handleConfirmReset}
           isResetting={isResetting}
+        />
+
+        <ResetConfirmationModal
+          isOpen={showClockResetModal}
+          onClose={() => !isResettingClock && setShowClockResetModal(false)}
+          onConfirm={handleResetClock}
+          isResetting={isResettingClock}
+          title="Reset Tournament Clock?"
+          description="This clears the timer and sets the recorded duration back to zero. Players, matches and scores are not affected."
+          confirmText="Reset Clock"
         />
 
         <ResetConfirmationModal

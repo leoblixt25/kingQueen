@@ -150,7 +150,7 @@ KingQueen_EU/
 
 ### Verification baseline (Oct 2026) — check before shipping
 * Typecheck: `npx tsc -b --force` → **22 errors is the BASELINE, not zero.** Pre-existing in `AuthModal`, `DatabaseInit`, `FinalMatch`, `MatchCard`, `AdminControl`, `AdminLogin`, `PublicDrawPage` (2× `unknown[]`), `addAdminUser`, `liveRankingRepro.test` (2×), `staticMatchups.test`. Never "fix" these as a side effect of other work.
-* Tests: `npx vitest run` → **87 passing / 9 files** at `b5e331a`.
+* Tests: `npx vitest run` → **92 passing / 9 files** at `e0cb977`.
 * Browser check: `--dump-dom` exits before Firestore connects (realtime listener is a long-lived socket). Use CDP with a real 20s wait instead.
 
 ### Hosting cache gotcha
@@ -644,6 +644,18 @@ Draw Wheel:               Data Loading:
 * Firestore was backfilled for the real start time: `start = 2026-10-03T06:30:00Z`, `end = 2026-10-03T10:26:41.258Z`.
 * Firestore rules were NOT modified for this feature.
 
+### 13y-b. Timer survived reset / clock could not restart - FIXED (`e0cb977`, Oct 2026)
+
+Three bugs, all from run control living in its **own** document that other code paths did not account for:
+
+1. **Neither reset touched `tournamentSettings/tournament_control`.** A full reset deleted players, matches and final matches, but the previous season's `tournamentStartTime`/`tournamentEndTime` survived, so the timer kept rendering `03:56 Final` on a freshly reset tournament and the clock could never run again. Fixed by adding `clearTournamentControl()` and calling it from **both** `resetScoresOnly` and `fullTournamentReset`.
+2. **`startTournament` never cleared `tournamentEndTime`.** Since `isTimerRunning` requires the end time to be `null`, pressing Start after the final had frozen the clock left the reading pinned forever. It now writes `tournamentEndTime: null`, so Start **resumes from the true elapsed total** (it still reuses the original start time) rather than resetting to zero mid-tournament.
+3. **`stopScoreSubmission` used `updateDoc`, which throws if the document does not exist** - so the button failed outright on a season that had never started a tournament. Switched to `setDoc` with merge.
+
+* ⚠️ **When adding a new top-level document, audit every reset/delete path for it.** A dedicated document is the right design for isolation (it cannot interfere with draw/ranking data), but it is invisible to `writeBatch` loops over `players`/`matches` and will be silently orphaned. Grep the reset utils by hand.
+* 5 regression tests added to `tournamentControl.test.ts`, including one that reproduces the exact `03:56 Final` reading and asserts the cleared document hides the timer again.
+* Intended behaviour after a reset: **timer hidden**, submission disabled, until the admin presses Start (then it begins at `00:00`).
+
 ## 13z. King/Queen Highlight on Draw Page — REVERTED (`3fb1888` → `9e85951`, Oct 2026)
 
 * Bolded the tournament King and Queen names on the Public Draw page.
@@ -724,9 +736,9 @@ git push origin main
 
 ⚠️ `DEPLOY_CLOUDFLARE_WORKER_FREE.md`, `FUNCTIONS_DEPLOYMENT_GUIDE.md` and other older guides describe the ABANDONED direct-worker / Firebase Functions approaches. The working architecture is section 13k.
 
-### Live data snapshot (Oct 2026, verified at `b5e331a`)
-* **19 players**, **28 matches** (14 female + 14 male), all 28 scored/completed.
-* 1 final match, completed. Match docs have **no `net` field** — the automatic odd/even rule supplies it (see 13aa). Do not backfill unless asked.
-* `tournamentSettings/tournament_control`: submission **closed**, `tournamentStarted: true`, `end = 2026-10-03T10:26:41.258Z` → all pages show `03:56 Final`.
-* Live bundle at `b5e331a`: `assets/index-MWaLMCQ-.js`.
-* Do not modify production Firestore data without explicit user approval — the net override was deliberately never tested against production for this reason.
+### Live data snapshot (Oct 2026, verified at `e0cb977`)
+* The user ran a **full tournament reset** on Oct 2026. The figures below are the **pre-reset** state — they were wiped and re-initialised by that reset.
+* Pre-reset: **19 players**, **28 matches** (14 female + 14 male), all 28 scored/completed, 1 completed final match. Match docs had **no `net` field** — the automatic odd/even rule supplies it (see 13aa).
+* ⚠️ **`tournamentSettings/tournament_control` still held the OLD tournament's timestamps after that reset** (`start = 2026-10-03T06:30:00Z`, `end = 2026-10-03T10:26:41.258Z`), which is why the timer kept showing `03:56 Final`. Fixed in code by `e0cb977`, but **the live document still needs clearing**: press either reset button again (both now call `clearTournamentControl()`). Until then, pressing Start resumes from the stale October start time instead of `00:00`.
+* Live bundle at `e0cb977`: `assets/index-DTEWfgV2.js`.
+* Do not modify production Firestore data without explicit user approval.

@@ -48,10 +48,14 @@ export const resetScoresOnly = async () => {
  * Wait for the "Delete registered players" GitHub Action run to finish.
  * Status is polled through the Cloudflare Worker (the repo is private, so
  * the browser cannot query the GitHub API anonymously).
+ *
+ * NOTE: intentionally unused. Kept only as a diagnostic helper for manually
+ * checking a run's status; nothing calls it. See the comment in
+ * `deleteFirebaseAuthUsers` for why the reset no longer blocks on it.
  */
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
-async function waitForGithubRunCompletion(workerUrl: string, startedAtIso: string): Promise<string> {
+export async function waitForGithubRunCompletion(workerUrl: string, startedAtIso: string): Promise<string> {
   // Poll every 5s for up to 4 minutes
   for (let i = 0; i < 48; i++) {
     await sleep(5000);
@@ -64,13 +68,13 @@ async function waitForGithubRunCompletion(workerUrl: string, startedAtIso: strin
       const data = await resp.json();
       if (data.status === 'none' || data.status === 'error') continue;
 
-      console.log(`⏳ [AUTH] GitHub Action status: ${data.status}`);
+      console.log(`? [AUTH] GitHub Action status: ${data.status}`);
       if (data.status === 'completed') return data.conclusion;
     } catch {
-      // transient network hiccup — keep polling
+      // transient network hiccup - keep polling
     }
   }
-  throw new Error('Timed out waiting for the deletion to finish (check the repo Actions tab)');
+throw new Error('Timed out waiting for the deletion to finish (check the repo Actions tab)');
 }
 
 /**
@@ -139,18 +143,20 @@ export const deleteFirebaseAuthUsers = async () => {
         return result;
       }
 
-      // Relay accepted the request — wait for the GitHub Action to finish
-      console.log('🚀 [AUTH] Deletion dispatched to GitHub Actions, waiting for completion...');
-      const conclusion = await waitForGithubRunCompletion(workerUrl, startedAtIso);
-
-      if (conclusion !== 'success') {
-        throw new Error(
-          `GitHub deletion finished with "${conclusion}" — see the repository's Actions tab`
-        );
-      }
-
-      console.log('✅ [AUTH] GitHub Action completed successfully');
-      return { success: true, message: 'Deleted via GitHub Actions' };
+      // Relay accepted the request and queued the GitHub Action.
+      //
+      // We deliberately do NOT wait for the run to finish. The action is
+      // dispatched to the repo's own runners and can sit in `queued` for the
+      // full 4-minute poll budget when those runners are busy, which used to
+      // freeze this button on "Resetting..." with no feedback. Auth deletion is
+      // independent of the Firestore wipe, and the caller already treats a
+      // failure here as non-fatal, so blocking bought nothing.
+      console.log('🚀 [AUTH] Deletion dispatched to GitHub Actions, continuing without waiting...');
+      return {
+        success: true,
+        message: 'Deletion queued in GitHub Actions (not awaited)',
+        startedAt: startedAtIso,
+      };
     }
 
     throw lastError instanceof Error ? lastError : new Error('Worker unreachable');

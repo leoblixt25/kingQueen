@@ -61,6 +61,9 @@
 * UI updates: Real-time data reload after database writes
 * PDF export: Uses jsPDF with manual text/drawing (no autoTable plugin)
 * Match grid layout (admin DrawPage): 5 matchups per row on desktop; PDF uses 2-column grid
+* Net/court assignment: pure function of `match_number` (odd=Net 1, even=Net 2), stored `net` field overrides. Never persisted automatically
+* Match docs are keyed `${gender}_match_${n}`; draw cards join to them via `${gender}_${match_number}` (`matchScoreKey` / `netKey`)
+* Per-page translations: keep strings local to the page with a localStorage-backed toggle. Do NOT add an app-wide context for a single page
 
 ## 6. How to Use This File
 
@@ -84,18 +87,22 @@ KingQueen_EU/
 │   │   ├── PlayerReplacer.tsx   # Replace players functionality
 │   │   ├── PlayerUnregistration.tsx # Player cancellation
 │   │   ├── ResetConfirmationModal.tsx # Reset confirmation dialog
-│   │   └── ScoreResetConfirmationModal.tsx # Score reset dialog
+│   │   ├── ScoreResetConfirmationModal.tsx # Score reset dialog
+│   │   ├── TournamentTimer.tsx     # Countdown/uptime timer display
+│   │   └── MatchNetBadge.tsx       # Net 1/Net 2 label; button when onToggle passed
 │   ├── hooks/          # Custom React hooks
 │   │   ├── useTournamentData.ts     # Tournament data loading
 │   │   ├── useTournamentActions.ts   # Tournament actions (reset, etc.)
-│   │   └── useTournamentState.ts     # Tournament state management
+│   │   ├── useTournamentState.ts     # Tournament state management
+│   │   └── useTournamentRealtimeSubscriptions.ts # Realtime match/score listeners
 │   ├── pages/          # Route pages
 │   │   ├── Index.tsx            # Main tournament page
 │   │   ├── AdminControl.tsx     # Admin configuration & controls
-│   │   ├── DrawPage.tsx         # Tournament draw wheel (compact, live clock)
-│   │   ├── PublicDrawPage.tsx   # Public draw view + countdown before start
+│   │   ├── DrawPage.tsx         # Tournament draw wheel + net overrides (route /draw)
+│   │   ├── PublicDrawPage.tsx   # Public draw view (/draw-live, /tournament-draw)
 │   │   ├── LiveRanking.tsx      # Live rankings display
 │   │   ├── Landing.tsx          # Landing/home page (draw button = beach-gradient)
+│   │   ├── InfoPage.tsx         # Bilingual EN/ES rules (route /info)
 │   │   ├── PendingApproval.tsx  # Pending registration approval page
 │   │   ├── InstallPage.tsx      # PWA install page
 │   │   └── WaitingForDraw.tsx   # Waiting screen before draw
@@ -107,12 +114,17 @@ KingQueen_EU/
 │   │   ├── matchPlayerResolver.ts # Resolves player IDs to Player objects in matches
 │   │   ├── matchValidation.ts  # Match validation utilities
 │   │   ├── matchInitUtils.ts    # Match initialization with deterministic IDs
+│   │   ├── matchScores.ts       # `${gender}_${match_number}` score map for draw cards
+│   │   ├── netAssignment.ts     # Net 1/Net 2 rules (odd=1, even=2) + override fallback
+│   │   ├── netAssignmentFirestore.ts # Writes ONLY the `net` field on a match doc
+│   │   ├── tournamentControl.ts  # Start/stop + timer state
+│   │   ├── tournamentControlFirestore.ts # Firestore read/write for tournament_control
 │   │   ├── staticMatchups.ts    # SINGLE SOURCE OF TRUTH: 14 match combinations (Whist-8)
 │   │   ├── rankingTiebreaker.ts # Tiebreaker calculation for rankings
 │   │   ├── authUtils.ts         # Authentication and registration logic
 │   │   └── placeholderUtils.ts  # Placeholder player management
 │   ├── types/          # TypeScript type definitions
-│   │   └── index.ts     # Match, Player, ResolvedMatch types
+│   │   └── index.ts     # Match, Player, ResolvedMatch types (+ optional `net`)
 │   └── config/         # Firebase configuration (firebase.ts — kingqueen-eu)
 ├── public/             # Static assets (manifest.json, sw.js service worker, auth/callback.html)
 ├── scripts/            # Local utilities (Delete-Players.bat one-click deletion)
@@ -135,6 +147,18 @@ KingQueen_EU/
 * Small delays may be needed for Firebase write completion
 * Real-time subscriptions for live data updates
 * All changes committed and pushed to GitHub (`leoblixt25/kingQueen`)
+
+### Verification baseline (Oct 2026) — check before shipping
+* Typecheck: `npx tsc -b --force` → **22 errors is the BASELINE, not zero.** Pre-existing in `AuthModal`, `DatabaseInit`, `FinalMatch`, `MatchCard`, `AdminControl`, `AdminLogin`, `PublicDrawPage` (2× `unknown[]`), `addAdminUser`, `liveRankingRepro.test` (2×), `staticMatchups.test`. Never "fix" these as a side effect of other work.
+* Tests: `npx vitest run` → **83 passing / 9 files** at `9d34bb2`.
+* Browser check: `--dump-dom` exits before Firestore connects (realtime listener is a long-lived socket). Use CDP with a real 20s wait instead.
+
+### Hosting cache gotcha
+* `index.html` + assets are served with `Cache-Control: max-age=3600`. After any deploy the old page can persist for an hour — tell the user to hard refresh (**Ctrl+F5**). Do not change cache headers without approval.
+
+### Firestore security — known weakness (NOT changed)
+* `match /matches/{matchId}` is `allow write: if request.auth != null` → any signed-in player can already write **any** match field (scores, and now `net`). `tournamentSettings` likewise.
+* Net toggles in `DrawPage` are admin-gated by **UI only**, not by rules. Tightening these rules would risk breaking player score submission — leave alone unless the user explicitly asks.
 
 ## 9. Player Registration System
 
@@ -608,6 +632,55 @@ Draw Wheel:               Data Loading:
 * Deployed; user confirms Android install **works and the icon stays black** like iPhone.
 * Gotcha: after icon changes the phone may show the previous icon — remove the installed app, reopen the site so the SW re-registers, then reinstall.
 
+## 13y. Tournament Control — Timer + Start/Stop Score Gating (commits `93bc2a3`, `2cc93df`, Oct 2026)
+
+* Admin gets a **Start / Stop tournament** control that opens and closes score submission app-wide, plus a **timer** (elapsed during play, `Final` once stopped).
+* Single source of truth: `tournamentSettings/tournament_control` — `tournamentStarted`, `scoreSubmissionEnabled`, `start`/`end` ISO timestamps.
+* New files: `src/utils/tournamentControl.ts` (pure helpers), `src/utils/tournamentControlFirestore.ts` (read/write), `src/components/TournamentTimer.tsx` (display).
+* `Index.tsx` gates every score input, the Previous/Next match buttons, and `handleSaveMatchEdit` on `scoreSubmissionEnabled`.
+* ⚠️ **Bug found and fixed in `2cc93df`**: `handleSaveMatchEdit` was missing the submission guard — the UI was disabled but the save handler still wrote. **When gating a control, gate the handler too.**
+* Timer added to player page, admin control, and both Public Draw surfaces.
+* One-time final freeze: the final match result can be recorded only once.
+* Firestore was backfilled for the real start time: `start = 2026-10-03T06:30:00Z`, `end = 2026-10-03T10:26:41.258Z`.
+* Firestore rules were NOT modified for this feature.
+
+## 13z. King/Queen Highlight on Draw Page — REVERTED (`3fb1888` → `9e85951`, Oct 2026)
+
+* Bolded the tournament King and Queen names on the Public Draw page.
+* **Reverted by the user.** `9e85951` restored the tree to pre-highlight (`2cc93df`) and was deployed.
+* Do NOT reintroduce `src/utils/tournamentWinners.ts`, its test, or the name wrappers in `PublicDrawPage`. Tree hash after revert was identical to `2cc93df` (bundle `index-Bk9cMvhS.js`).
+* Likely cause: user was viewing a cached page (see the hosting cache gotcha in section 8), so the change appeared broken.
+
+## 13aa. Net 1 / Net 2 Assignment (commit `5df900b`, Oct 2026)
+
+* Every qualification matchup now shows which net it plays on, in **three** places: admin `DrawPage`, player `Index`, and `PublicDrawPage` (both the main grid **and** the separate `LiveDrawView` component — both paths needed the badge).
+* **Automatic rule**: odd `match_number` → Net 1, even → Net 2. It is a **pure function of the immutable match number**, so the assignment is fixed once the draw is generated and **nothing is written at draw time**. No migration, no change to the draw-save batch.
+* **Manual override**: clicking the badge on the admin draw page stores an explicit `net` on that match doc, which then wins over the automatic value. Numbering **restarts per gender** (`female_1` and `male_1` are both Net 1) because the divisions are drawn and played separately.
+* ⚠️ `loadMatches` in `firebaseUtils.ts` explicitly maps fields, so unknown keys are **dropped** — `net` had to be added to both the female and male mappings or the player page would never see an override.
+* Override writes use `updateDoc(ref, { net })` — that field only; scores, players and the draw are untouched.
+* Display-only. No effect on seeding, scoring, ranking or the final.
+* Verified live: 14 cards per division, 7× Net 1 + 7× Net 2, alternating.
+
+## 13ab. App-wide EN/ES i18n attempt — REVERTED (`42b0238` → `95f8ad4`, Oct 2026)
+
+* First attempt built app-wide infrastructure: `src/i18n/LanguageContext.tsx`, `LanguageSelector.tsx`, `en.ts`, `es.ts`, plus a provider wrap in **`src/main.tsx`** and a Landing page translation.
+* **Reverted** — replaced by the single-file approach in 13ac.
+* Lesson: for a one-page language need, **do not** wrap the whole app in a context or touch `main.tsx`. Keep translations local to the page. Do not resurrect `src/i18n/`.
+
+## 13ac. Info Page Bilingual EN/ES (commit `10b0191`, Oct 2026)
+
+* `/info` now has an **EN | ES** toggle under the page title; any visitor can switch, no login.
+* Scope is **exactly one file** — `src/pages/InfoPage.tsx`. No provider, no `main.tsx` change, and confirmed 0 language buttons on `/`, `/draw-live`, `/ranking`.
+* All 12 sections + the title + the intro paragraph are translated. English wording kept **verbatim** so English readers see no change.
+* Choice persisted in `localStorage` key `kq-info-language`; first visit falls back to `navigator.language` (Spanish browsers get Spanish, everyone else English). `try/catch` around storage so private mode still works.
+* Sets `document.documentElement.lang` and uses `aria-pressed` on the toggle for screen readers.
+
+## 13ad. Info Page — Final Match section rewritten (commit `9d34bb2`, Oct 2026)
+
+* "Final Match & Titles" now reads as **4 separate paragraphs** with the two team pairings as a real `<ul>` bullet list.
+* To support this, `InfoSection` gained `blocks?: InfoBlock[]` (`{ kind: "p" }` or `{ kind: "list" }`). Only the Final Match section uses `blocks` — **the other 11 sections still use the single `content` string and are untouched.**
+* Spanish updated to match the new structure (`Masculino 1.º + Femenino 1.ª`), since leaving the old wording would have contradicted the English.
+
 ## 14. Deployment URLs
 
 ### EU Project (KingQueen_EU — LIVE)
@@ -636,3 +709,10 @@ git push origin main
 ⚠️ **Migration done**: All Firestore data (16 players, 28 matches, 24 tournamentSettings) and the single admin auth user migrated from `kingqueen-c3543` to `kingqueen-eu` via `scripts-firebase-tools/migrate-data.mjs`. Service-account JSON keys are NOT stored in the repo — re-generate as needed (`firebase deploy` uses interactive `firebase login`).
 
 ⚠️ `DEPLOY_CLOUDFLARE_WORKER_FREE.md`, `FUNCTIONS_DEPLOYMENT_GUIDE.md` and other older guides describe the ABANDONED direct-worker / Firebase Functions approaches. The working architecture is section 13k.
+
+### Live data snapshot (Oct 2026, verified at `9d34bb2`)
+* **19 players**, **28 matches** (14 female + 14 male), all 28 scored/completed.
+* 1 final match, completed. Match docs have **no `net` field** — the automatic odd/even rule supplies it (see 13aa). Do not backfill unless asked.
+* `tournamentSettings/tournament_control`: submission **closed**, `tournamentStarted: true`, `end = 2026-10-03T10:26:41.258Z` → all pages show `03:56 Final`.
+* Live bundle at `9d34bb2`: `assets/index-DX6MkU8I.js`.
+* Do not modify production Firestore data without explicit user approval — the net override was deliberately never tested against production for this reason.

@@ -644,7 +644,9 @@ Draw Wheel:               Data Loading:
 * Firestore was backfilled for the real start time: `start = 2026-10-03T06:30:00Z`, `end = 2026-10-03T10:26:41.258Z`.
 * Firestore rules were NOT modified for this feature.
 
-### 13y-b. Timer survived reset / clock could not restart - FIXED (`e0cb977`, Oct 2026)
+### 13y-b. Timer survived reset / clock could not restart - FIXED (`e0cb977`) then REVERTED (`4e138ac`, Oct 2026)
+
+⚠️ **SUPERSEDED - see 13af. `e0cb977` was reverted by the user; `clearTournamentControl()` no longer exists and neither reset path touches the control document.** The reasoning below is kept because the reset-path lesson is still valid, but the "intended behaviour after a reset" line at the bottom is **no longer true**.
 
 Three bugs, all from run control living in its **own** document that other code paths did not account for:
 
@@ -652,9 +654,9 @@ Three bugs, all from run control living in its **own** document that other code 
 2. **`startTournament` never cleared `tournamentEndTime`.** Since `isTimerRunning` requires the end time to be `null`, pressing Start after the final had frozen the clock left the reading pinned forever. It now writes `tournamentEndTime: null`, so Start **resumes from the true elapsed total** (it still reuses the original start time) rather than resetting to zero mid-tournament.
 3. **`stopScoreSubmission` used `updateDoc`, which throws if the document does not exist** - so the button failed outright on a season that had never started a tournament. Switched to `setDoc` with merge.
 
-* ⚠️ **When adding a new top-level document, audit every reset/delete path for it.** A dedicated document is the right design for isolation (it cannot interfere with draw/ranking data), but it is invisible to `writeBatch` loops over `players`/`matches` and will be silently orphaned. Grep the reset utils by hand.
-* 5 regression tests added to `tournamentControl.test.ts`, including one that reproduces the exact `03:56 Final` reading and asserts the cleared document hides the timer again.
-* Intended behaviour after a reset: **timer hidden**, submission disabled, until the admin presses Start (then it begins at `00:00`).
+* ⚠️ **When adding a new top-level document, audit every reset/delete path for it.** A dedicated document is the right design for isolation (it cannot interfere with draw/ranking data), but it is invisible to `writeBatch` loops over `players`/`matches` and will be silently orphaned. Grep the reset utils by hand. **(Still true. The user chose to handle the clock manually instead - see 13af.)**
+* 5 regression tests added to `tournamentControl.test.ts`, including one that reproduces the exact `03:56 Final` reading and asserts the cleared document hides the timer again. **(Also reverted.)**
+* ~~Intended behaviour after a reset: **timer hidden**, submission disabled, until the admin presses Start (then it begins at `00:00`).~~ **NO LONGER TRUE** - a reset now leaves the clock exactly as it was, by design.
 
 ## 13z. King/Queen Highlight on Draw Page — REVERTED (`3fb1888` → `9e85951`, Oct 2026)
 
@@ -707,6 +709,35 @@ Three bugs, all from run control living in its **own** document that other code 
 * Verified with a strict CDP script across all **28 cards** (14 female + 14 male): **28/28** - winner score is `rgb(21,128,61)` green on a 22x22px `border-radius:9999px` white circle, loser is plain white, the names are provably untouched (weight 500, 14px, white, zero property diffs vs the losing side), and **both bars are an identical 24.09px tall**. 28/28 cards, both genders. Live bundle `index-MWaLMCQ-.js`.
 * ⚠️ **Re-verifying after a deploy needs a fresh browser profile.** `max-age=3600` means a long-lived headless profile serves the *old* `index.html` and reports stale weights even though the deploy succeeded. Confirm by diffing the bundle filename in live `index.html` against `dist/index.html`, then relaunch Chrome with a new `--user-data-dir` before trusting computed styles.
 
+## 13af. Reset Clock separated from Reset Everything (`4e138ac`, Oct 2026)
+
+**User decision: the tournament clock is controlled ONLY by its own button. Reset Everything must never touch it.**
+
+* Reverts `e0cb977` entirely (13y-b). `clearTournamentControl()` is **deleted**; `resetScoresOnly` and `fullTournamentReset` no longer import `tournamentControlFirestore` at all and contain **zero** timer references. Both reset paths are byte-for-byte back to their `b5e331a` behaviour: a pure data wipe.
+* New `resetTournamentClock()` in `tournamentControlFirestore.ts` writes **only** `tournamentStarted: false`, `tournamentStartTime: null`, `tournamentEndTime: null`. It does **not** touch `scoreSubmissionEnabled`, so clearing the clock does not close score submission mid-tournament.
+* New **Reset Clock** button in `AdminControl.tsx`, sitting in the same flex row as `TournamentTimer` and Start/Stop Score Submission (not in the destructive Danger Zone card). Uses the existing `ResetConfirmationModal` with its own `showClockResetModal` / `isResettingClock` state and a `handleResetClock` wrapper mirroring the start/stop handlers.
+* Consequence to remember: because Reset Everything no longer clears the clock, **a reset will still show the previous tournament's duration** until Reset Clock is pressed. That is intended, not a regression.
+* `stopScoreSubmission` went back to `updateDoc` with the revert. **Known sharp edge carried over from 13y-b item 3:** `updateDoc` throws if `tournament_control` does not exist. It is safe today only because the live document exists; a brand-new season with no control doc would make the Stop button fail. Fix with `setDoc(..., { merge: true })` if that ever bites.
+
+## 13ag. Reset Everything no longer blocks on the Auth-deletion GitHub Action (`8f7398f`, Oct 2026)
+
+* `fullTournamentReset` step 1 dispatched the "Delete registered players" workflow via the Cloudflare Worker, then **awaited** `waitForGithubRunCompletion()` — 48 polls x 5s = a **240-second** hard ceiling.
+* Verified live: the worker's `/status` endpoint returned `{"status":"queued"}` continuously for 160s straight. When the repo's GitHub-hosted runners are busy the run never leaves the queue, so the button sat on "Resetting..." with **zero progress feedback** and no way to tell a slow run from a hung one.
+* The poll was **pointless**: `fullTournamentReset` already wrapped the call in `try/catch` and continued the Firestore wipe regardless of success, timeout, or failure. The reset was gating on a result it then discarded.
+* Fix: the dispatch and its 3-attempt retry are unchanged, but the function now returns immediately once the worker accepts the request (`message: 'Deletion queued in GitHub Actions (not awaited)'`). `waitForGithubRunCompletion` is kept as an **exported diagnostic helper** for manually checking a run — nothing awaits it.
+* User confirmed Reset Everything "worked without delay" and the tournament loaded correctly afterwards.
+* ⚠️ **Two side effects to keep in mind:** (1) Auth deletion is now genuinely **eventual** — Firestore data is wiped immediately while auth accounts may linger for minutes. A player who re-registers inside that window could have their new account deleted by the in-flight run. (2) The workflow genuinely was stuck in `queued`, so **account deletion may not be completing at all**. Check the repository's Actions tab; this is unrelated to the app and was not investigated further.
+
+## 13ah. "Loading Tournament Data..." hang was stale data, not a code regression (Oct 2026)
+
+* Symptom: **View Tournament** from Admin Control hung on "Loading Tournament Data..." with no error, after the 13ag deploy.
+* Traced to `Index.tsx:865`. `resolveMatchPlayers` throws on any unknown player ID, `Index.tsx:196-200` catches it and sets both match lists to `[]`, and the empty-match gate renders the loading screen **forever** — there is no recovery path.
+* Root cause was an **ID mismatch in Firestore**: the 28 matches referenced `female_1..female_8` / `male_1..male_8`, while `players` held 16 docs with **random Firestore auto-IDs** (`o9HNT3Cl38Wq9Uq1e9Zo` etc.), 112 broken references total. Those docs also had **no `created_at`**, proving they were not written by `initializePlayers` (which always sets it and uses fixed IDs) - they were leftovers.
+* **Confirmed NOT caused by `4e138ac`:** empty diffs against `b5e331a` for `Index.tsx`, `playerInitUtils.ts`, `matchInitUtils.ts`, `matchPlayerResolver.ts`, `staticMatchups.ts`. Deployed rules were verified correct (public read on `players`/`matches`, serving ruleset `76a6a751`), and anonymous REST reads succeeded.
+* **Resolved itself:** the user's next Reset Everything re-seeded players with the deterministic IDs the matches already expected. Verified live: 16 players, 28 matches, **0 broken references**.
+* ⚠️ **Lesson - this failure mode is invisible in code review and silent in the UI.** The resolver's strict validation is correct (it prevents blank pages), but converting a throw into `[]` produces an **eternal loading screen** rather than an error. If orphaned-ID data is ever seen again, check that `matches.player*_id` values exist in `players` before touching any component.
+* Real registered players and their scores were **lost** in that reset and are **not recoverable** from current Firestore state (only from history or a prior export).
+
 ## 14. Deployment URLs
 
 ### EU Project (KingQueen_EU — LIVE)
@@ -736,9 +767,10 @@ git push origin main
 
 ⚠️ `DEPLOY_CLOUDFLARE_WORKER_FREE.md`, `FUNCTIONS_DEPLOYMENT_GUIDE.md` and other older guides describe the ABANDONED direct-worker / Firebase Functions approaches. The working architecture is section 13k.
 
-### Live data snapshot (Oct 2026, verified at `e0cb977`)
-* The user ran a **full tournament reset** on Oct 2026. The figures below are the **pre-reset** state — they were wiped and re-initialised by that reset.
-* Pre-reset: **19 players**, **28 matches** (14 female + 14 male), all 28 scored/completed, 1 completed final match. Match docs had **no `net` field** — the automatic odd/even rule supplies it (see 13aa).
-* ⚠️ **`tournamentSettings/tournament_control` still held the OLD tournament's timestamps after that reset** (`start = 2026-10-03T06:30:00Z`, `end = 2026-10-03T10:26:41.258Z`), which is why the timer kept showing `03:56 Final`. Fixed in code by `e0cb977`, but **the live document still needs clearing**: press either reset button again (both now call `clearTournamentControl()`). Until then, pressing Start resumes from the stale October start time instead of `00:00`.
-* Live bundle at `e0cb977`: `assets/index-DTEWfgV2.js`.
+### Live data snapshot (Oct 2026, verified at `8f7398f`)
+* **Current, healthy state.** The user ran Reset Everything again after the 13ah fix and the user reported everything working "as before": View Tournament loads, players show as Player 1..8 per gender.
+* Verified by read-only query: **16 players** (`female_1..female_8`, `male_1..male_8`), **28 matches** (14 female + 14 male), **0 broken `player*_id` references**, `finalMatches` empty.
+* `tournamentSettings/tournament_control` is **clean**: `tournamentStarted: false`, `scoreSubmissionEnabled: false`, both timestamps `null`, `tournament_date` blank. Timer is hidden until Start.
+* ⚠️ **These are the seeded placeholder players, not a real roster.** Real registrations and all match scores were lost in the resets (13ah) and are not recoverable from current state.
+* Live bundle at `8f7398f`: `assets/index-D7_rWbrW.js`.
 * Do not modify production Firestore data without explicit user approval.

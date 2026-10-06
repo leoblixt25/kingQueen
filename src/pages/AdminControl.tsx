@@ -16,7 +16,7 @@ import { PlayerReplacer } from "@/components/PlayerReplacer";
 import { DEFAULT_DRAW_TIME, DRAW_TIME_ZONE } from "@/utils/drawTimeUtils";
 import TournamentTimer from "@/components/TournamentTimer";
 import { useTournamentControl } from "@/hooks/useTournamentControl";
-import { startTournament, stopScoreSubmission, resetTournamentClock } from "@/utils/tournamentControlFirestore";
+import { startTournament, stopScoreSubmission, resetTournamentClock, clearTournamentHistory } from "@/utils/tournamentControlFirestore";
 import { formatDuration } from "@/utils/tournamentControl";
 
 interface TournamentSettings {
@@ -53,6 +53,8 @@ export default function AdminControl() {
   const [isResettingScores, setIsResettingScores] = useState(false);
   const [showClockResetModal, setShowClockResetModal] = useState(false);
   const [isResettingClock, setIsResettingClock] = useState(false);
+  const [showHistoryClearModal, setShowHistoryClearModal] = useState(false);
+  const [isClearingHistory, setIsClearingHistory] = useState(false);
   const [showPlayerReplacer, setShowPlayerReplacer] = useState(false);
   const tournamentFinished = useTournamentFinished();
   const [isTogglingStatus, setIsTogglingStatus] = useState(false);
@@ -282,6 +284,28 @@ export default function AdminControl() {
     }
   };
 
+  const handleClearHistory = async () => {
+    if (isClearingHistory) return;
+    setIsClearingHistory(true);
+    try {
+      await clearTournamentHistory();
+      toast({
+        title: "History cleared",
+        description: "The archived durations are removed. The running clock is not affected.",
+      });
+      setShowHistoryClearModal(false);
+    } catch (error) {
+      console.error("Failed to clear tournament history:", error);
+      toast({
+        title: "Could not clear history",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsClearingHistory(false);
+    }
+  };
+
   const handleStopSubmission = async () => {
     if (isTogglingControl) return;
     setIsTogglingControl(true);
@@ -487,9 +511,23 @@ export default function AdminControl() {
 
         <Card className="bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-palm">
-              <History className="w-5 h-5" />
-              Previous Tournaments
+            <CardTitle className="flex items-center justify-between gap-2 text-palm">
+              <span className="flex items-center gap-2">
+                <History className="w-5 h-5" />
+                Previous Tournaments
+              </span>
+              {history.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowHistoryClearModal(true)}
+                  disabled={isClearingHistory}
+                  className="border-sand-dark/30 text-foreground/80 font-semibold flex items-center gap-1.5"
+                >
+                  <Trash className="w-3.5 h-3.5" />
+                  Clear History
+                </Button>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -536,6 +574,7 @@ export default function AdminControl() {
             )}
             <p className="text-xs text-foreground/60">
               Archived automatically by Reset Clock. The most recent tournament is listed first.
+              The oldest rows are dropped once 50 are stored.
             </p>
           </CardContent>
         </Card>
@@ -817,6 +856,16 @@ export default function AdminControl() {
           title="Reset Tournament Clock?"
           description="This clears the timer and sets the recorded duration back to zero. Players, matches and scores are not affected."
           confirmText="Reset Clock"
+        />
+
+        <ResetConfirmationModal
+          isOpen={showHistoryClearModal}
+          onClose={() => !isClearingHistory && setShowHistoryClearModal(false)}
+          onConfirm={handleClearHistory}
+          isResetting={isClearingHistory}
+          title="Clear History?"
+          description="This deletes the archived durations listed under Previous Tournaments. The running clock, players, matches and scores are not affected."
+          confirmText="Clear History"
         />
 
         <ResetConfirmationModal

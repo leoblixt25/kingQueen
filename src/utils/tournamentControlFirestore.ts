@@ -105,3 +105,20 @@ export const resetTournamentClock = async () => {
     { merge: true }
   );
 };
+
+/**
+ * Empty the archived history list. Writes only the `history` field: the live
+ * clock, `scoreSubmissionEnabled` and everything else in `tournament_control`
+ * are left untouched, so clearing old rows can never stop or start a running
+ * tournament.
+ */
+export const clearTournamentHistory = async () => {
+  await setDoc(
+    controlRef(),
+    {
+      history: [],
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
+};

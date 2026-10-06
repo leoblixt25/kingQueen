@@ -8,7 +8,7 @@ import { toast } from "@/hooks/use-toast";
 import { db } from "@/config/firebase";
 import { collection, getDocs, query, orderBy, limit, doc, setDoc, getDoc, updateDoc, where } from "firebase/firestore";
 import { signOut } from "@/utils/authUtils";
-import { LogOut, Save, Crown, Users, AlertTriangle, Settings, RotateCcw, Trash, PowerOff, UserX, Check } from "lucide-react";
+import { LogOut, Save, Crown, Users, AlertTriangle, Settings, RotateCcw, Trash, PowerOff, UserX, Check, History } from "lucide-react";
 import { useTournamentFinished } from "@/hooks/useTournamentFinished";
 import { ResetConfirmationModal } from "@/components/ResetConfirmationModal";
 import { resetScoresOnly, deleteFirebaseAuthUsers } from "@/utils/resetUtils";
@@ -17,6 +17,7 @@ import { DEFAULT_DRAW_TIME, DRAW_TIME_ZONE } from "@/utils/drawTimeUtils";
 import TournamentTimer from "@/components/TournamentTimer";
 import { useTournamentControl } from "@/hooks/useTournamentControl";
 import { startTournament, stopScoreSubmission, resetTournamentClock } from "@/utils/tournamentControlFirestore";
+import { formatDuration } from "@/utils/tournamentControl";
 
 interface TournamentSettings {
   id?: string;
@@ -31,6 +32,7 @@ export default function AdminControl() {
   const navigate = useNavigate();
   const {
     scoreSubmissionEnabled,
+    history,
     loading: controlLoading,
   } = useTournamentControl();
   const [isTogglingControl, setIsTogglingControl] = useState(false);
@@ -481,6 +483,61 @@ export default function AdminControl() {
               Starting also starts the tournament timer. The timer freezes automatically when the
               final match result is submitted. Reset Clock clears the timer on its own and leaves
               players, matches and scores untouched.
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-palm">
+              <History className="w-5 h-5" />
+              Previous Tournaments
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {history.length === 0 ? (
+              <p className="text-sm text-foreground/60">
+                {controlLoading
+                  ? "Loading history…"
+                  : "No archived tournaments yet. Each duration is recorded here when you press Reset Clock."}
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-foreground/60 border-b border-sand-dark/20">
+                      <th className="py-2 pr-4 font-medium">Date</th>
+                      <th className="py-2 pr-4 font-medium">Started</th>
+                      <th className="py-2 pr-4 font-medium">Duration</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {history
+                      .slice()
+                      .reverse()
+                      .map((entry) => (
+                        <tr
+                          key={`${entry.startedAt}-${entry.archivedAt}`}
+                          className="border-b border-sand-dark/10 last:border-0"
+                        >
+                          <td className="py-2 pr-4 whitespace-nowrap">
+                            {new Date(entry.startedAt).toLocaleDateString()}
+                          </td>
+                          <td className="py-2 pr-4 whitespace-nowrap text-foreground/70">
+                            {new Date(entry.startedAt).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </td>
+                          <td className="py-2 pr-4 font-semibold">{formatDuration(entry.durationMs)}</td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <p className="text-xs text-foreground/60">
+              Archived automatically by Reset Clock. The most recent tournament is listed first.
             </p>
           </CardContent>
         </Card>

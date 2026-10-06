@@ -101,3 +101,104 @@ export const isTimerRunning = (state: TournamentControlState): boolean =>
 /** Format the current timer reading. */
 export const formatElapsed = (state: TournamentControlState, nowMs: number): string =>
   formatDuration(elapsedMs(state, nowMs));
+
+/* ------------------------------------------------------------------------ *
+ * Archived history
+ *
+ * Separated from `TournamentControlState` on purpose: the live timer must keep
+ * working exactly as before, so history is parsed by its own function and is
+ * never consulted by `elapsedMs`, `isTimerRunning`, `formatElapsed` or
+ * `normalizeControlState`. A malformed history array can therefore only make
+ * rows disappear from the admin table - it can never change a timer reading or
+ * enable score submission.
+ * ------------------------------------------------------------------------ */
+
+/** One completed tournament clock, archived when the admin clears it. */
+export type TournamentHistoryEntry = {
+  /** Epoch ms when the clock started. */
+  startedAt: number;
+  /** Epoch ms when the clock froze, or null if it was still running. */
+  endedAt: number | null;
+  /** Final duration in ms, so the row never needs to re-derive it. */
+  durationMs: number;
+  /** Epoch ms when this entry was archived (the reset press). */
+  archivedAt: number;
+};
+
+/**
+ * Hard cap on archived rows. Keeps `tournament_control` well under the 1MB
+ * document limit no matter how many tournaments run: at ~100 bytes a row,
+ * 50 rows is ~5KB. Oldest rows are dropped first.
+ */
+export const MAX_HISTORY_ENTRIES = 50;
+
+/**
+ * Parse whatever is in the `history` array into well-formed entries.
+ *
+ * Defensive by design: a missing array yields `[]`, entries with an unusable
+ * start time or duration are skipped rather than coerced, and the list is
+ * capped. Nothing here can throw.
+ */
+export const normalizeHistory = (raw: unknown): TournamentHistoryEntry[] => {
+  if (!Array.isArray(raw)) return [];
+
+  const entries: TournamentHistoryEntry[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue;
+    const data = item as Record<string, unknown>;
+
+    const startedAt = toMillis(data.startedAt);
+    const durationMs = toMillis(data.durationMs);
+    // A duration has no usable value unless it is a finite, non-negative number.
+    if (startedAt === null || durationMs === null || durationMs < 0) continue;
+
+    entries.push({
+      startedAt,
+      endedAt: toMillis(data.endedAt),
+      durationMs,
+      archivedAt: toMillis(data.archivedAt) ?? startedAt,
+    });
+  }
+
+  // Keep chronological order stable, then cap.
+  entries.sort((a, b) => a.startedAt - b.startedAt);
+  return entries.slice(-MAX_HISTORY_ENTRIES);
+};
+
+/**
+ * Build the row to archive for the current clock, or null when there is nothing
+ * worth recording (the clock was never started).
+ *
+ * An end time of null means the clock was still running when it was cleared;
+ * the elapsed reading at that moment becomes the duration.
+ */
+export const buildHistoryEntry = (
+  state: TournamentControlState,
+  nowMs: number
+): TournamentHistoryEntry | null => {
+  if (state.tournamentStartTime === null) return null;
+  const endedAt = state.tournamentEndTime;
+  const endMs = endedAt ?? nowMs;
+  if (!Number.isFinite(endMs)) return null;
+
+  const durationMs = Math.max(0, endMs - state.tournamentStartTime);
+  return {
+    startedAt: state.tournamentStartTime,
+    endedAt,
+    durationMs,
+    archivedAt: nowMs,
+  };
+};
+
+/**
+ * Append an entry, newest last, dropping the oldest rows beyond the cap.
+ * Passing null leaves the list unchanged, so a clock that was never started
+ * never writes history at all.
+ */
+export const appendHistory = (
+  existing: TournamentHistoryEntry[],
+  entry: TournamentHistoryEntry | null
+): TournamentHistoryEntry[] => {
+  if (!entry) return existing;
+  return [...existing, entry].slice(-MAX_HISTORY_ENTRIES);
+};

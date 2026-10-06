@@ -1,11 +1,16 @@
 import { describe, it, expect } from 'vitest';
 import {
   DEFAULT_CONTROL_STATE,
+  MAX_HISTORY_ENTRIES,
+  appendHistory,
+  buildHistoryEntry,
   elapsedMs,
   formatDuration,
   formatElapsed,
   isTimerRunning,
   normalizeControlState,
+  normalizeHistory,
+  type TournamentHistoryEntry,
 } from './tournamentControl';
 
 const ts = (ms: number) => ({ toMillis: () => ms });
@@ -138,5 +143,129 @@ describe('formatElapsed', () => {
 
   it('shows the placeholder before the tournament starts', () => {
     expect(formatElapsed(DEFAULT_CONTROL_STATE, 5_000_000)).toBe('--:--');
+  });
+});
+
+describe('history does not affect the timer', () => {
+  it('normalizeControlState ignores history entirely', () => {
+    const withHistory = normalizeControlState({ tournamentStartTime: 1_000, history: 'garbage' });
+    const withoutHistory = normalizeControlState({ tournamentStartTime: 1_000 });
+    expect(withHistory).toEqual(withoutHistory);
+    expect(withHistory).toEqual(normalizeControlState(withoutHistory));
+  });
+
+  it('a malformed history array never changes elapsed time or submission state', () => {
+    const state = normalizeControlState({ scoreSubmissionEnabled: true, tournamentStartTime: 1_000 });
+    expect(elapsedMs(state, 61_000)).toBe(60_000);
+    expect(state.scoreSubmissionEnabled).toBe(true);
+    // The same input still parses safely through the history reader.
+    expect(normalizeHistory([null, 7, 'x', {}, { startedAt: 'bad' }])).toEqual([]);
+  });
+});
+
+describe('buildHistoryEntry', () => {
+  it('records nothing when the clock never started', () => {
+    expect(buildHistoryEntry(DEFAULT_CONTROL_STATE, 999_999)).toBeNull();
+  });
+
+  it('uses the frozen end time for a finished tournament', () => {
+    const entry = buildHistoryEntry(
+      { ...DEFAULT_CONTROL_STATE, tournamentStartTime: 1_000, tournamentEndTime: 61_000 },
+      500_000
+    );
+    expect(entry).toEqual({
+      startedAt: 1_000,
+      endedAt: 61_000,
+      durationMs: 60_000,
+      archivedAt: 500_000,
+    });
+  });
+
+  it('captures the running reading when a still-running clock is cleared', () => {
+    const entry = buildHistoryEntry(
+      { ...DEFAULT_CONTROL_STATE, tournamentStartTime: 1_000 },
+      121_000
+    );
+    expect(entry).toMatchObject({ startedAt: 1_000, endedAt: null, durationMs: 120_000 });
+  });
+
+  it('never records a negative duration', () => {
+    const entry = buildHistoryEntry(
+      { ...DEFAULT_CONTROL_STATE, tournamentStartTime: 10_000, tournamentEndTime: 1_000 },
+      5_000
+    );
+    expect(entry?.durationMs).toBe(0);
+  });
+});
+
+describe('normalizeHistory', () => {
+  const entry = (startedAt: number): TournamentHistoryEntry => ({
+    startedAt,
+    endedAt: startedAt + 60_000,
+    durationMs: 60_000,
+    archivedAt: startedAt + 60_000,
+  });
+
+  it('returns an empty list for anything that is not a usable array', () => {
+    expect(normalizeHistory(undefined)).toEqual([]);
+    expect(normalizeHistory(null)).toEqual([]);
+    expect(normalizeHistory('history')).toEqual([]);
+    expect(normalizeHistory({})).toEqual([]);
+    expect(normalizeHistory([null, 3, 'x'])).toEqual([]);
+  });
+
+  it('reads Firestore Timestamps inside entries', () => {
+    expect(
+      normalizeHistory([
+        { startedAt: ts(1_000), endedAt: ts(61_000), durationMs: 60_000, archivedAt: ts(61_000) },
+      ])
+    ).toEqual([{ startedAt: 1_000, endedAt: 61_000, durationMs: 60_000, archivedAt: 61_000 }]);
+  });
+
+  it('drops entries without a usable start time or duration', () => {
+    expect(normalizeHistory([{ startedAt: 'bad', durationMs: 1 }])).toEqual([]);
+    expect(normalizeHistory([{ durationMs: 1 }])).toEqual([]);
+    expect(normalizeHistory([{ startedAt: 1_000, durationMs: -5 }])).toEqual([]);
+    expect(normalizeHistory([{ startedAt: 1_000, durationMs: NaN }])).toEqual([]);
+    expect(normalizeHistory([{ startedAt: 1_000, durationMs: '1h' }])).toEqual([]);
+  });
+
+  it('keeps order stable and caps at the limit, dropping the oldest', () => {
+    const rows = Array.from({ length: MAX_HISTORY_ENTRIES + 5 }, (_, i) => entry(i * 1_000));
+    const shuffled = [...rows].reverse();
+    const parsed = normalizeHistory(shuffled);
+    expect(parsed).toHaveLength(MAX_HISTORY_ENTRIES);
+    // Oldest 5 dropped, order restored chronologically.
+    expect(parsed[0].startedAt).toBe(5_000);
+    expect(parsed.at(-1)?.startedAt).toBe((MAX_HISTORY_ENTRIES + 4) * 1_000);
+  });
+
+  it('defaults a missing archivedAt to the start time', () => {
+    expect(normalizeHistory([{ startedAt: 1_000, durationMs: 500 }])).toEqual([
+      { startedAt: 1_000, endedAt: null, durationMs: 500, archivedAt: 1_000 },
+    ]);
+  });
+});
+
+describe('appendHistory', () => {
+  const entry = (startedAt: number): TournamentHistoryEntry => ({
+    startedAt,
+    endedAt: null,
+    durationMs: 1,
+    archivedAt: startedAt,
+  });
+
+  it('leaves the list untouched when there is nothing to archive', () => {
+    const existing = [entry(1_000)];
+    expect(appendHistory(existing, null)).toBe(existing);
+    expect(appendHistory([], null)).toEqual([]);
+  });
+
+  it('appends newest last and drops the oldest beyond the cap', () => {
+    const existing = Array.from({ length: MAX_HISTORY_ENTRIES }, (_, i) => entry(i * 1_000));
+    const next = appendHistory(existing, entry(MAX_HISTORY_ENTRIES * 1_000));
+    expect(next).toHaveLength(MAX_HISTORY_ENTRIES);
+    expect(next.at(-1)?.startedAt).toBe(MAX_HISTORY_ENTRIES * 1_000);
+    expect(next[0].startedAt).toBe(1_000);
   });
 });

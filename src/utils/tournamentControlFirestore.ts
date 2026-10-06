@@ -6,7 +6,13 @@
  */
 import { doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/config/firebase';
-import { CONTROL_DOC_PATH } from './tournamentControl';
+import {
+  appendHistory,
+  buildHistoryEntry,
+  CONTROL_DOC_PATH,
+  normalizeControlState,
+  normalizeHistory,
+} from './tournamentControl';
 
 const [collectionId, documentId] = CONTROL_DOC_PATH.split('/');
 const controlRef = () => doc(db, collectionId, documentId);
@@ -75,14 +81,25 @@ export const finishTournamentClock = async () => {
  *
  * Clears the start and end timestamps, so the timer hides again and the next
  * `startTournament()` begins a fresh duration from 00:00.
+ *
+ * Before clearing, the current duration is appended to the control document's
+ * `history` array so previous tournaments are never lost. The archive write and
+ * the clearing happen in a single `setDoc`, so a failed call can never wipe the
+ * clock without also preserving it. A clock that was never started archives
+ * nothing.
  */
 export const resetTournamentClock = async () => {
+  const raw = await loadTournamentControl();
+  const entry = buildHistoryEntry(normalizeControlState(raw), Date.now());
+  const history = appendHistory(normalizeHistory(raw?.history), entry);
+
   await setDoc(
     controlRef(),
     {
       tournamentStarted: false,
       tournamentStartTime: null,
       tournamentEndTime: null,
+      history,
       updatedAt: serverTimestamp(),
     },
     { merge: true }

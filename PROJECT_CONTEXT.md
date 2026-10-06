@@ -758,6 +758,8 @@ Three bugs, all from run control living in its **own** document that other code 
 * Deliberately **not** hooked into `finishTournamentClock()` or either reset path: Reset Clock is the single transition point (13af), which keeps one archive per tournament and guarantees no double-entries.
 
 **UI:** new **Previous Tournaments** card in `AdminControl.tsx` (between Tournament Control and Current Configuration). Columns Date / Started / Duration, **newest first**, using the existing `formatDuration` (HH:MM). Shows "No archived tournaments yet…" while empty or loading.
+* **Retention: 50 rows, self-cleaning.** `MAX_HISTORY_ENTRIES = 50` (`tournamentControl.ts:133`); `appendHistory()` and `normalizeHistory()` both slice to the last 50, so the oldest row is dropped automatically on every archive. ~5KB worst case, far under the 1MB doc limit.
+* **Manual cleanup (`caa5aa4`):** a **Clear History** button in the Previous Tournaments card header, rendered **only when rows exist**, behind the existing `ResetConfirmationModal`. New `clearTournamentHistory()` (`tournamentControlFirestore.ts`) does `setDoc(..., { history: [] }, { merge: true })` — it writes **only** `history`, so it can never stop/start the clock, flip `scoreSubmissionEnabled`, or touch players/matches.
 * **Layout fix (`4378e82`):** the timer + Start/Stop + Reset Clock used to sit in one **non-wrapping** flex item inside a `flex-wrap` row, so the ~460px group overflowed the card on narrower screens and Reset Clock appeared to sit outside the Tournament Control card. The controls now form their own `flex-wrap` row below the submission status, separated by a divider.
 * **Confirmed user decision (Oct 2026): the clock stops at only two moments** — (1) automatically when the final match result is submitted (`finalMatchUtils.ts:126` → `finishTournamentClock()`), or (2) manually via Reset Clock. **Stop Score Submission does not stop the clock** and never has; pausing submission must not shorten the recorded duration. User was explicitly asked and chose to keep this behaviour rather than add a Stop Clock button.
 
@@ -798,10 +800,10 @@ git push origin main
 
 ⚠️ `DEPLOY_CLOUDFLARE_WORKER_FREE.md`, `FUNCTIONS_DEPLOYMENT_GUIDE.md` and other older guides describe the ABANDONED direct-worker / Firebase Functions approaches. The working architecture is section 13k.
 
-### Live data snapshot (Oct 2026, verified at `4378e82`)
+### Live data snapshot (Oct 2026, verified at `caa5aa4`)
 * **Current, healthy state.** The user ran Reset Everything again after the 13ah fix and the user reported everything working "as before": View Tournament loads, players show as Player 1..8 per gender.
 * Verified by read-only query: **16 players** (`female_1..female_8`, `male_1..male_8`), **28 matches** (14 female + 14 male), **0 broken `player*_id` references**, `finalMatches` empty.
 * `tournamentSettings/tournament_control` is **clean**: `tournamentStarted: false`, `scoreSubmissionEnabled: false`, both timestamps `null`, `tournament_date` blank. Timer is hidden until Start.
 * ⚠️ **These are the seeded placeholder players, not a real roster.** Real registrations and all match scores were lost in the resets (13ah) and are not recoverable from current state.
-* Live bundle at `4378e82`: `assets/index-Bq474vN5.js` (previously `index-ftXMMC23.js` at `e717fc8`, `index-D7_rWbrW.js` at `8f7398f`). The `history` array does not exist on `tournament_control` yet — it is created on the first Reset Clock press.
+* Live bundle at `caa5aa4`: `assets/index-W0qkNLCb.js` (previously `index-Bq474vN5.js` at `4378e82`, `index-ftXMMC23.js` at `e717fc8`, `index-D7_rWbrW.js` at `8f7398f`). The `history` array does not exist on `tournament_control` yet — it is created on the first Reset Clock press.
 * Do not modify production Firestore data without explicit user approval.

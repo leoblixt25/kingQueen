@@ -738,6 +738,35 @@ Three bugs, all from run control living in its **own** document that other code 
 * ⚠️ **Lesson - this failure mode is invisible in code review and silent in the UI.** The resolver's strict validation is correct (it prevents blank pages), but converting a throw into `[]` produces an **eternal loading screen** rather than an error. If orphaned-ID data is ever seen again, check that `matches.player*_id` values exist in `players` before touching any component.
 * Real registered players and their scores were **lost** in that reset and are **not recoverable** from current Firestore state (only from history or a prior export).
 
+## 13ai. Tournament duration history (option A) + "Previous Tournaments" table (`e717fc8`, Oct 2026)
+
+**Problem:** `tournament_control` held the only record of a tournament's duration. `resetTournamentClock()` overwrote both timestamps with `null`, so every previous tournament's duration was destroyed permanently.
+
+**Design: option A — a `history` array field on the existing `tournamentSettings/tournament_control` document.**
+* Chosen over option B (a new top-level `tournamentHistory` collection) precisely because **`match /tournamentSettings/{settingId}` does not cascade to subcollections**, so option B would have required a **Firestore rules deploy**. Option A needs **zero rules changes** — it writes to a path that is already writable. `firestore.rules` was **not** touched.
+
+**Why it cannot break the app (the important part):**
+* History lives in `src/utils/tournamentControl.ts` as its own block, **entirely outside `TournamentControlState`**. `elapsedMs`, `isTimerRunning`, `formatElapsed` and `normalizeControlState` are byte-for-byte unchanged and **never read `history`**.
+* `normalizeHistory()` is separately defensive: a missing/non-array `history` yields `[]`, entries without a usable start time or duration are **skipped rather than coerced**, and nothing in it can throw. It is capped at `MAX_HISTORY_ENTRIES = 50` (~5KB, far under the 1MB doc limit), oldest rows dropped first.
+* A test asserts `normalizeControlState({ tournamentStartTime, history: 'garbage' })` deep-equals the same input without `history`, so **corrupt history can only make admin rows disappear — it can never change a timer reading or flip `scoreSubmissionEnabled`** (which still fails closed).
+* `useTournamentControl` reads `history` via a **separate `normalizeHistory(raw?.history)` call**, not through `normalizeControlState`. Its error path falls back to `history: []`, keeping the fail-closed behaviour intact.
+
+**Archive hook — `resetTournamentClock()` (`src/utils/tournamentControlFirestore.ts:89`):**
+* Now reads the current clock, builds the entry, and writes `history` **in the same single `setDoc` that clears the timestamps**. Atomic by construction: a failed call can never wipe the clock without also preserving it.
+* `buildHistoryEntry()` returns **`null` when `tournamentStartTime` is null**, and `appendHistory(list, null)` returns the list unchanged — so a clock that was never started archives nothing and writes no junk rows.
+* A **still-running** clock cleared by Reset Clock is recorded with `endedAt: null` and the elapsed reading at that moment as `durationMs`, so even an interrupted tournament keeps its duration.
+* Deliberately **not** hooked into `finishTournamentClock()` or either reset path: Reset Clock is the single transition point (13af), which keeps one archive per tournament and guarantees no double-entries.
+
+**UI:** new **Previous Tournaments** card in `AdminControl.tsx` (between Tournament Control and Current Configuration). Columns Date / Started / Duration, **newest first**, using the existing `formatDuration` (HH:MM). Shows "No archived tournaments yet…" while empty or loading.
+
+**Verification (all passed):**
+* `npx vitest run` — **100 tests, 9 files** (87 baseline + 13 new covering history).
+* `npx tsc -b --force` — **22 errors, identical to baseline** (two pre-existing `AdminControl.tsx` `() => void` vs `() => Promise<void>` errors only shifted 780/793 → 837/850 from added lines).
+* `npx vite build` — succeeded; `npx eslint` on the 5 touched files — only pre-existing `no-explicit-any` findings, none on added lines.
+* Deployed and verified: live `index.html` references `assets/index-ftXMMC23.js`, which matches local `dist/` and returns HTTP 200.
+
+**Note:** history only begins accumulating from this deploy onward. Nothing prior was archived, because until now there was no record to archive.
+
 ## 14. Deployment URLs
 
 ### EU Project (KingQueen_EU — LIVE)
@@ -767,10 +796,10 @@ git push origin main
 
 ⚠️ `DEPLOY_CLOUDFLARE_WORKER_FREE.md`, `FUNCTIONS_DEPLOYMENT_GUIDE.md` and other older guides describe the ABANDONED direct-worker / Firebase Functions approaches. The working architecture is section 13k.
 
-### Live data snapshot (Oct 2026, verified at `8f7398f`)
+### Live data snapshot (Oct 2026, verified at `e717fc8`)
 * **Current, healthy state.** The user ran Reset Everything again after the 13ah fix and the user reported everything working "as before": View Tournament loads, players show as Player 1..8 per gender.
 * Verified by read-only query: **16 players** (`female_1..female_8`, `male_1..male_8`), **28 matches** (14 female + 14 male), **0 broken `player*_id` references**, `finalMatches` empty.
 * `tournamentSettings/tournament_control` is **clean**: `tournamentStarted: false`, `scoreSubmissionEnabled: false`, both timestamps `null`, `tournament_date` blank. Timer is hidden until Start.
 * ⚠️ **These are the seeded placeholder players, not a real roster.** Real registrations and all match scores were lost in the resets (13ah) and are not recoverable from current state.
-* Live bundle at `8f7398f`: `assets/index-D7_rWbrW.js`.
+* Live bundle at `e717fc8`: `assets/index-ftXMMC23.js` (previously `index-D7_rWbrW.js` at `8f7398f`). The `history` array does not exist on `tournament_control` yet — it is created on the first Reset Clock press.
 * Do not modify production Firestore data without explicit user approval.

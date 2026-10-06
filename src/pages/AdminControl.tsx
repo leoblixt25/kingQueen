@@ -429,55 +429,53 @@ export default function AdminControl() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="text-sm">
-                <p className="font-semibold text-foreground">
-                  Score submission is{' '}
-                  {controlLoading ? (
-                    <span className="text-foreground/60">loading…</span>
-                  ) : (
-                    <span className={scoreSubmissionEnabled ? 'text-palm-dark' : 'text-sunset-dark'}>
-                      {scoreSubmissionEnabled ? 'OPEN' : 'CLOSED'}
-                    </span>
-                  )}
-                </p>
-                <p className="text-foreground/60">
-                  {scoreSubmissionEnabled
-                    ? 'Players can enter and submit scores.'
-                    : 'Matchups and rankings stay visible, but score inputs and submit buttons are disabled.'}
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <TournamentTimer showStatus />
-                {scoreSubmissionEnabled ? (
-                  <Button
-                    onClick={handleStopSubmission}
-                    disabled={isTogglingControl}
-                    className="bg-sunset hover:bg-sunset-dark text-white font-semibold py-3 px-5 transition-all duration-300 flex items-center justify-center gap-2"
-                  >
-                    <PowerOff className="w-4 h-4" />
-                    Stop Score Submission
-                  </Button>
+            <div className="text-sm">
+              <p className="font-semibold text-foreground">
+                Score submission is{' '}
+                {controlLoading ? (
+                  <span className="text-foreground/60">loading…</span>
                 ) : (
-                  <Button
-                    onClick={handleStartTournament}
-                    disabled={isTogglingControl}
-                    className="bg-palm hover:bg-palm-dark text-white font-semibold py-3 px-5 transition-all duration-300 flex items-center justify-center gap-2"
-                  >
-                    <Check className="w-4 h-4" />
-                    Start Tournament
-                  </Button>
+                  <span className={scoreSubmissionEnabled ? 'text-palm-dark' : 'text-sunset-dark'}>
+                    {scoreSubmissionEnabled ? 'OPEN' : 'CLOSED'}
+                  </span>
                 )}
+              </p>
+              <p className="text-foreground/60">
+                {scoreSubmissionEnabled
+                  ? 'Players can enter and submit scores.'
+                  : 'Matchups and rankings stay visible, but score inputs and submit buttons are disabled.'}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3 border-t border-sand-dark/20 pt-4">
+              <TournamentTimer showStatus />
+              {scoreSubmissionEnabled ? (
                 <Button
-                  variant="outline"
-                  onClick={() => setShowClockResetModal(true)}
-                  disabled={isTogglingControl || isResettingClock}
-                  className="border-sand-dark/30 text-foreground font-semibold py-3 px-5 transition-all duration-300 flex items-center justify-center gap-2"
+                  onClick={handleStopSubmission}
+                  disabled={isTogglingControl}
+                  className="bg-sunset hover:bg-sunset-dark text-white font-semibold py-3 px-5 transition-all duration-300 flex items-center justify-center gap-2"
                 >
-                  <RotateCcw className="w-4 h-4" />
-                  Reset Clock
+                  <PowerOff className="w-4 h-4" />
+                  Stop Score Submission
                 </Button>
-              </div>
+              ) : (
+                <Button
+                  onClick={handleStartTournament}
+                  disabled={isTogglingControl}
+                  className="bg-palm hover:bg-palm-dark text-white font-semibold py-3 px-5 transition-all duration-300 flex items-center justify-center gap-2"
+                >
+                  <Check className="w-4 h-4" />
+                  Start Tournament
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                onClick={() => setShowClockResetModal(true)}
+                disabled={isTogglingControl || isResettingClock}
+                className="border-sand-dark/30 text-foreground font-semibold py-3 px-5 transition-all duration-300 flex items-center justify-center gap-2"
+              >
+                <RotateCcw className="w-4 h-4" />
+                Reset Clock
+              </Button>
             </div>
             <p className="text-xs text-foreground/60">
               Starting also starts the tournament timer. The timer freezes automatically when the

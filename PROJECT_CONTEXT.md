@@ -796,11 +796,18 @@ Three bugs, all from run control living in its **own** document that other code 
 
 **Verification:** code committed (f9725b2) and pushed. Hosting unchanged.
 
-## 13ak. PublicDrawPage wheel collapse — REVERTED (8458025, reverted)
+## 13ak. PublicDrawPage wheel collapse with show/hide toggle (Oct 2026)
 
-**Status: reverted.** A short-lived change made the public draw page lead with the match grid and hide the wheel behind a `Show/Hide draw wheel` toggle once the draw was saved. Per request, the public page has been restored to its original layout: the wheel always renders (with the match grid below it) for both the female and male tabs, and there is no toggle button. (An even earlier attempt had wrongly targeted the admin `DrawPage.tsx`; that was also reverted.)
+**Behavior:** On the public draw page, once the draw is saved (`saved === true`), the wheel is collapsed and the match grid leads. A `Show draw wheel` / `Hide draw wheel` outline button sits at the top of the tab content (where the wheel used to be); revealing it repaints the wheel with names above the match grid. While the draw is still in progress (`saved === false`), the layout is unchanged: wheel first, then match grid.
 
-**Current behavior:** `src/pages/PublicDrawPage.tsx` renders `renderWheel(...)` then `renderMatchGrid(...)` per tab, unchanged from before the experiment. No `showWheel` state.
+**Changes (src/pages/PublicDrawPage.tsx):** Presentational only — no data/timer logic touched.
+- New `showWheel` state (default `false`), reset to `false` when switching Female/Male tabs.
+- Saved branch: toggle button at top → `{showWheel && renderWheel(...)}` → `renderMatchGrid(...)` (gender-tinted button: sunset for female, ocean for male).
+- `showWheel` added to the wheel paint effect deps so the canvas repaints when revealed.
+
+**Earlier attempts (reverted):** first applied to admin `DrawPage.tsx` (wrong surface); then public page with the button below the grid and no top animation — both rolled back in favour of this top-button version.
+
+**Verification:** `npx vitest run` — 100/100 (9 files). `npx tsc -b --force` — 22 errors, identical to baseline (two pre-existing `PublicDrawPage.tsx` errors 62/63 shifted, none added). `npx vite build` — succeeded.
 
 ## 14. Deployment URLs
 

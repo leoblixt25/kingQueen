@@ -185,9 +185,16 @@ async function getInstallationToken(env) {
     const match =
       installations.find(
         (i) => i.account && String(i.account.login).toLowerCase() === GITHUB_OWNER.toLowerCase()
-      ) || installations[0];
-    if (!match) throw new Error('GitHub App is not installed on ' + GITHUB_OWNER);
-    installationId = match.id;
+      );
+    if (match) {
+      installationId = match.id;
+    } else if (installations.length > 0 && env.GH_APP_INSTALLATION_ID) {
+      installationId = env.GH_APP_INSTALLATION_ID;
+    } else if (installations.length > 0) {
+      installationId = installations[0].id;
+    } else {
+      throw new Error('GitHub App is not installed on ' + GITHUB_OWNER + ' (found 0 installations)');
+    }
   }
 
   const tokenResp = await fetch(

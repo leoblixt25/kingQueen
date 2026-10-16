@@ -1,4 +1,4 @@
-# PROJECT CONTEXT
+﻿# PROJECT CONTEXT
 ## 0. TOKEN RULES (CRITICAL)
 
 * Keep output short and direct
@@ -25,21 +25,21 @@
 * **Frontend**: React + TypeScript + Vite
 * **Styling**: Tailwind CSS
 
-⚠️ THIS STACK IS FIXED. NEVER REPLACE OR MIGRATE THESE SERVICES.
+âš ï¸ THIS STACK IS FIXED. NEVER REPLACE OR MIGRATE THESE SERVICES.
 
 ## 3. Core Rules (CRITICAL)
 
-* ❌ Do NOT replace Firebase with any other database
-* ❌ Do NOT replace Firebase Hosting with any other hosting service (no Cloudflare)
-* ❌ Do NOT replace GitHub with any other version control
-* ❌ Do NOT introduce new backend services (AWS, Supabase, etc.)
-* ❌ Do NOT change database structure unless explicitly requested
-* ❌ Do NOT leave changes uncommitted to GitHub
-* ❌ Do NOT make local changes without pushing to GitHub
-* ✅ Always build on top of existing logic
-* ✅ Always check existing code before making changes
-* ✅ Assume Firebase is the only database solution and hosting platform
-* ✅ Always commit and push changes to GitHub after each update
+* âŒ Do NOT replace Firebase with any other database
+* âŒ Do NOT replace Firebase Hosting with any other hosting service (no Cloudflare)
+* âŒ Do NOT replace GitHub with any other version control
+* âŒ Do NOT introduce new backend services (AWS, Supabase, etc.)
+* âŒ Do NOT change database structure unless explicitly requested
+* âŒ Do NOT leave changes uncommitted to GitHub
+* âŒ Do NOT make local changes without pushing to GitHub
+* âœ… Always build on top of existing logic
+* âœ… Always check existing code before making changes
+* âœ… Assume Firebase is the only database solution and hosting platform
+* âœ… Always commit and push changes to GitHub after each update
 
 ## 4. Editing Guidelines
 
@@ -80,62 +80,62 @@
 
 ```
 KingQueen_EU/
-├── src/
-│   ├── components/     # React components
-│   │   ├── AdminPanel.tsx       # Admin controls (approval, PDF export, settings)
-│   │   ├── AdminControls.tsx    # Admin control buttons component
-│   │   ├── PlayerReplacer.tsx   # Replace players functionality
-│   │   ├── PlayerUnregistration.tsx # Player cancellation
-│   │   ├── ResetConfirmationModal.tsx # Reset confirmation dialog
-│   │   ├── ScoreResetConfirmationModal.tsx # Score reset dialog
-│   │   ├── TournamentTimer.tsx     # Countdown/uptime timer display
-│   │   └── MatchNetBadge.tsx       # Net 1/Net 2 label; button when onToggle passed
-│   ├── hooks/          # Custom React hooks
-│   │   ├── useTournamentData.ts     # Tournament data loading
-│   │   ├── useTournamentActions.ts   # Tournament actions (reset, etc.)
-│   │   ├── useTournamentState.ts     # Tournament state management
-│   │   └── useTournamentRealtimeSubscriptions.ts # Realtime match/score listeners
-│   ├── pages/          # Route pages
-│   │   ├── Index.tsx            # Main tournament page
-│   │   ├── AdminControl.tsx     # Admin configuration & controls
-│   │   ├── DrawPage.tsx         # Tournament draw wheel + net overrides (route /draw)
-│   │   ├── PublicDrawPage.tsx   # Public draw view (/draw-live, /tournament-draw)
-│   │   ├── LiveRanking.tsx      # Live rankings display
-│   │   ├── Landing.tsx          # Landing/home page (draw button = beach-gradient)
-│   │   ├── InfoPage.tsx         # Bilingual EN/ES rules (route /info)
-│   │   ├── PendingApproval.tsx  # Pending registration approval page
-│   │   ├── InstallPage.tsx      # PWA install page
-│   │   └── WaitingForDraw.tsx   # Waiting screen before draw
-│   ├── utils/          # Utility functions (Firebase operations)
-│   │   ├── pdfExport.ts         # PDF generation with football-style layout
-│   │   ├── firebaseUtils.ts    # Firebase Firestore data loading (matches, players)
-│   │   ├── resetUtils.ts       # Tournament reset functions
-│   │   ├── matchSortUtils.ts   # Shared match sorting utilities (getOrderedMatches)
-│   │   ├── matchPlayerResolver.ts # Resolves player IDs to Player objects in matches
-│   │   ├── matchValidation.ts  # Match validation utilities
-│   │   ├── matchInitUtils.ts    # Match initialization with deterministic IDs
-│   │   ├── matchScores.ts       # `${gender}_${match_number}` score map for draw cards
-│   │   ├── netAssignment.ts     # Net 1/Net 2 rules (odd=1, even=2) + override fallback
-│   │   ├── netAssignmentFirestore.ts # Writes ONLY the `net` field on a match doc
-│   │   ├── tournamentControl.ts  # Start/stop + timer state
-│   │   ├── tournamentControlFirestore.ts # Firestore read/write for tournament_control
-│   │   ├── staticMatchups.ts    # SINGLE SOURCE OF TRUTH: 14 match combinations (Whist-8)
-│   │   ├── rankingTiebreaker.ts # Tiebreaker calculation for rankings
-│   │   ├── authUtils.ts         # Authentication and registration logic
-│   │   └── placeholderUtils.ts  # Placeholder player management
-│   ├── types/          # TypeScript type definitions
-│   │   └── index.ts     # Match, Player, ResolvedMatch types (+ optional `net`)
-│   └── config/         # Firebase configuration (firebase.ts — kingqueen-eu)
-├── public/             # Static assets (manifest.json, sw.js service worker, auth/callback.html)
-├── scripts/            # Local utilities (Delete-Players.bat one-click deletion)
-├── scripts-firebase-tools/ # Standalone Firebase admin scripts (NO functions/ name!)
-│   ├── delete-auth-users.mjs          # Local one-shot deletion (firebase-admin)
-│   ├── delete-users-github-action.mjs # GitHub Actions deletion script (calls admin SDK)
-│   └── migrate-data.mjs               # Firestore + Auth data migration script
-├── .github/workflows/  # GitHub Actions workflows
-├── firebase.json       # Hosting (site: kingqueen-eu) + firestore rules config
-├── firestore.rules     # Firestore security rules
-└── package.json        # Dependencies
+â”œâ”€â”€ src/
+â”‚   â”œâ”€â”€ components/     # React components
+â”‚   â”‚   â”œâ”€â”€ AdminPanel.tsx       # Admin controls (approval, PDF export, settings)
+â”‚   â”‚   â”œâ”€â”€ AdminControls.tsx    # Admin control buttons component
+â”‚   â”‚   â”œâ”€â”€ PlayerReplacer.tsx   # Replace players functionality
+â”‚   â”‚   â”œâ”€â”€ PlayerUnregistration.tsx # Player cancellation
+â”‚   â”‚   â”œâ”€â”€ ResetConfirmationModal.tsx # Reset confirmation dialog
+â”‚   â”‚   â”œâ”€â”€ ScoreResetConfirmationModal.tsx # Score reset dialog
+â”‚   â”‚   â”œâ”€â”€ TournamentTimer.tsx     # Countdown/uptime timer display
+â”‚   â”‚   â””â”€â”€ MatchNetBadge.tsx       # Net 1/Net 2 label; button when onToggle passed
+â”‚   â”œâ”€â”€ hooks/          # Custom React hooks
+â”‚   â”‚   â”œâ”€â”€ useTournamentData.ts     # Tournament data loading
+â”‚   â”‚   â”œâ”€â”€ useTournamentActions.ts   # Tournament actions (reset, etc.)
+â”‚   â”‚   â”œâ”€â”€ useTournamentState.ts     # Tournament state management
+â”‚   â”‚   â””â”€â”€ useTournamentRealtimeSubscriptions.ts # Realtime match/score listeners
+â”‚   â”œâ”€â”€ pages/          # Route pages
+â”‚   â”‚   â”œâ”€â”€ Index.tsx            # Main tournament page
+â”‚   â”‚   â”œâ”€â”€ AdminControl.tsx     # Admin configuration & controls
+â”‚   â”‚   â”œâ”€â”€ DrawPage.tsx         # Tournament draw wheel + net overrides (route /draw)
+â”‚   â”‚   â”œâ”€â”€ PublicDrawPage.tsx   # Public draw view (/draw-live, /tournament-draw)
+â”‚   â”‚   â”œâ”€â”€ LiveRanking.tsx      # Live rankings display
+â”‚   â”‚   â”œâ”€â”€ Landing.tsx          # Landing/home page (draw button = beach-gradient)
+â”‚   â”‚   â”œâ”€â”€ InfoPage.tsx         # Bilingual EN/ES rules (route /info)
+â”‚   â”‚   â”œâ”€â”€ PendingApproval.tsx  # Pending registration approval page
+â”‚   â”‚   â”œâ”€â”€ InstallPage.tsx      # PWA install page
+â”‚   â”‚   â””â”€â”€ WaitingForDraw.tsx   # Waiting screen before draw
+â”‚   â”œâ”€â”€ utils/          # Utility functions (Firebase operations)
+â”‚   â”‚   â”œâ”€â”€ pdfExport.ts         # PDF generation with football-style layout
+â”‚   â”‚   â”œâ”€â”€ firebaseUtils.ts    # Firebase Firestore data loading (matches, players)
+â”‚   â”‚   â”œâ”€â”€ resetUtils.ts       # Tournament reset functions
+â”‚   â”‚   â”œâ”€â”€ matchSortUtils.ts   # Shared match sorting utilities (getOrderedMatches)
+â”‚   â”‚   â”œâ”€â”€ matchPlayerResolver.ts # Resolves player IDs to Player objects in matches
+â”‚   â”‚   â”œâ”€â”€ matchValidation.ts  # Match validation utilities
+â”‚   â”‚   â”œâ”€â”€ matchInitUtils.ts    # Match initialization with deterministic IDs
+â”‚   â”‚   â”œâ”€â”€ matchScores.ts       # `${gender}_${match_number}` score map for draw cards
+â”‚   â”‚   â”œâ”€â”€ netAssignment.ts     # Net 1/Net 2 rules (odd=1, even=2) + override fallback
+â”‚   â”‚   â”œâ”€â”€ netAssignmentFirestore.ts # Writes ONLY the `net` field on a match doc
+â”‚   â”‚   â”œâ”€â”€ tournamentControl.ts  # Start/stop + timer state
+â”‚   â”‚   â”œâ”€â”€ tournamentControlFirestore.ts # Firestore read/write for tournament_control
+â”‚   â”‚   â”œâ”€â”€ staticMatchups.ts    # SINGLE SOURCE OF TRUTH: 14 match combinations (Whist-8)
+â”‚   â”‚   â”œâ”€â”€ rankingTiebreaker.ts # Tiebreaker calculation for rankings
+â”‚   â”‚   â”œâ”€â”€ authUtils.ts         # Authentication and registration logic
+â”‚   â”‚   â””â”€â”€ placeholderUtils.ts  # Placeholder player management
+â”‚   â”œâ”€â”€ types/          # TypeScript type definitions
+â”‚   â”‚   â””â”€â”€ index.ts     # Match, Player, ResolvedMatch types (+ optional `net`)
+â”‚   â””â”€â”€ config/         # Firebase configuration (firebase.ts â€” kingqueen-eu)
+â”œâ”€â”€ public/             # Static assets (manifest.json, sw.js service worker, auth/callback.html)
+â”œâ”€â”€ scripts/            # Local utilities (Delete-Players.bat one-click deletion)
+â”œâ”€â”€ scripts-firebase-tools/ # Standalone Firebase admin scripts (NO functions/ name!)
+â”‚   â”œâ”€â”€ delete-auth-users.mjs          # Local one-shot deletion (firebase-admin)
+â”‚   â”œâ”€â”€ delete-users-github-action.mjs # GitHub Actions deletion script (calls admin SDK)
+â”‚   â””â”€â”€ migrate-data.mjs               # Firestore + Auth data migration script
+â”œâ”€â”€ .github/workflows/  # GitHub Actions workflows
+â”œâ”€â”€ firebase.json       # Hosting (site: kingqueen-eu) + firestore rules config
+â”œâ”€â”€ firestore.rules     # Firestore security rules
+â””â”€â”€ package.json        # Dependencies
 ```
 
 ## 8. Important Notes
@@ -148,23 +148,23 @@ KingQueen_EU/
 * Real-time subscriptions for live data updates
 * All changes committed and pushed to GitHub (`leoblixt25/kingQueen`)
 
-### Verification baseline (Oct 2026) — check before shipping
-* Typecheck: `npx tsc -b --force` → **22 errors is the BASELINE, not zero.** Pre-existing in `AuthModal`, `DatabaseInit`, `FinalMatch`, `MatchCard`, `AdminControl`, `AdminLogin`, `PublicDrawPage` (2× `unknown[]`), `addAdminUser`, `liveRankingRepro.test` (2×), `staticMatchups.test`. Never "fix" these as a side effect of other work.
-* Tests: `npx vitest run` → **92 passing / 9 files** at `e0cb977`.
+### Verification baseline (Oct 2026) â€” check before shipping
+* Typecheck: `npx tsc -b --force` â†’ **22 errors is the BASELINE, not zero.** Pre-existing in `AuthModal`, `DatabaseInit`, `FinalMatch`, `MatchCard`, `AdminControl`, `AdminLogin`, `PublicDrawPage` (2Ã— `unknown[]`), `addAdminUser`, `liveRankingRepro.test` (2Ã—), `staticMatchups.test`. Never "fix" these as a side effect of other work.
+* Tests: `npx vitest run` â†’ **92 passing / 9 files** at `e0cb977`.
 * Browser check: `--dump-dom` exits before Firestore connects (realtime listener is a long-lived socket). Use CDP with a real 20s wait instead.
 
 ### Hosting cache gotcha
-* `index.html` + assets are served with `Cache-Control: max-age=3600`. After any deploy the old page can persist for an hour — tell the user to hard refresh (**Ctrl+F5**). Do not change cache headers without approval.
+* `index.html` + assets are served with `Cache-Control: max-age=3600`. After any deploy the old page can persist for an hour â€” tell the user to hard refresh (**Ctrl+F5**). Do not change cache headers without approval.
 
-### Firestore security — known weakness (NOT changed)
-* `match /matches/{matchId}` is `allow write: if request.auth != null` → any signed-in player can already write **any** match field (scores, and now `net`). `tournamentSettings` likewise.
-* Net toggles in `DrawPage` are admin-gated by **UI only**, not by rules. Tightening these rules would risk breaking player score submission — leave alone unless the user explicitly asks.
+### Firestore security â€” known weakness (NOT changed)
+* `match /matches/{matchId}` is `allow write: if request.auth != null` â†’ any signed-in player can already write **any** match field (scores, and now `net`). `tournamentSettings` likewise.
+* Net toggles in `DrawPage` are admin-gated by **UI only**, not by rules. Tightening these rules would risk breaking player score submission â€” leave alone unless the user explicitly asks.
 
 ## 9. Player Registration System
 
 ### Player Status Flow
 ```
-null (placeholder) → pending → approved
+null (placeholder) â†’ pending â†’ approved
 ```
 
 ### Registration Process
@@ -203,26 +203,26 @@ null (placeholder) → pending → approved
 * Players sorted alphabetically within each division
 
 ### Content Rules
-* ✅ Player names only (NO emails)
-* ✅ Match number (MATCH 1, MATCH 2, etc.)
-* ✅ Team A vs Team B format
-* ✅ Scores aligned to right (ONLY if completed)
-* ✅ Names resolved via player objects (not IDs)
-* ❌ NO "TBD" placeholder for incomplete matches
-* ❌ NO score display if match not played
+* âœ… Player names only (NO emails)
+* âœ… Match number (MATCH 1, MATCH 2, etc.)
+* âœ… Team A vs Team B format
+* âœ… Scores aligned to right (ONLY if completed)
+* âœ… Names resolved via player objects (not IDs)
+* âŒ NO "TBD" placeholder for incomplete matches
+* âŒ NO score display if match not played
 
 ### Match Ordering (CRITICAL)
 * `match_number` is coerced to `Number` at mapping stage in `firebaseUtils.ts`
 * This prevents lexicographic sorting (1, 10, 11... 2, 3) when Firestore stores as string
 * Shared `getOrderedMatches()` function used in both UI and PDF for consistency
 * Sort: `Number(match_number ?? 9999) - Number(match_number ?? 9999)`
-* ❌ NEVER rely on array index, insertion order, or object key order
-* ❌ NEVER split/re-append matches without preserving order
-* ❌ NEVER re-sort after initial getOrderedMatches call
+* âŒ NEVER rely on array index, insertion order, or object key order
+* âŒ NEVER split/re-append matches without preserving order
+* âŒ NEVER re-sort after initial getOrderedMatches call
 
 ### Data Flow for PDF
-1. `firebaseUtils.loadMatches()` → raw matches with `player1_id` etc. (sorted by Number(match_number))
-2. `matchPlayerResolver.resolveMatchPlayers()` → resolved matches with full Player objects
+1. `firebaseUtils.loadMatches()` â†’ raw matches with `player1_id` etc. (sorted by Number(match_number))
+2. `matchPlayerResolver.resolveMatchPlayers()` â†’ resolved matches with full Player objects
 3. `Index.tsx` passes `resolvedFemaleMatches`/`resolvedMaleMatches` to `AdminPanel`
 4. `AdminPanel` passes resolved matches to `exportMatchupsToPDF()`
 5. `pdfExport.ts` applies `getOrderedMatches()` as final safety net before rendering
@@ -241,12 +241,12 @@ null (placeholder) → pending → approved
 
 ### Match Card Structure
 ```
-┌─────────────────────┐
-│ MATCH 1             │
-│ Player1 & Player2 10│
-│        vs           │
-│ Player3 & Player4 21│
-└─────────────────────┘
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚ MATCH 1             â”‚
+â”‚ Player1 & Player2 10â”‚
+â”‚        vs           â”‚
+â”‚ Player3 & Player4 21â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 ```
 
 ## 11. Admin Panel Features
@@ -256,27 +256,27 @@ Admin Controls moved from Tournament page (Index.tsx) to AdminControl.tsx.
 Admins now see all controls immediately after login.
 
 ### Removed Features
-* ❌ Tournament Date Update (moved to Tournament Configuration page)
-* ❌ `window.confirm()` popups (replaced with inline confirmation UI)
-* ❌ Admin Controls section from Tournament page (moved to Admin page)
+* âŒ Tournament Date Update (moved to Tournament Configuration page)
+* âŒ `window.confirm()` popups (replaced with inline confirmation UI)
+* âŒ Admin Controls section from Tournament page (moved to Admin page)
 
 ### Active Features (AdminControl.tsx)
-* ✅ Configure Tournament (toggle settings panel)
-* ✅ Registration Panel (open AdminPanel modal)
-* ✅ Replace Players (open PlayerReplacer modal)
-* ✅ Reset Scores Only (with confirmation modal)
-* ✅ Reset Everything (with confirmation modal)
-* ✅ Approve pending player registrations (inline confirmation)
-* ✅ Move approved player back to pending (inline confirmation)
-* ✅ Export tournament PDF (football-style layout)
-* ✅ View player counts (male/female)
-* ✅ Navigate to Tournament page
+* âœ… Configure Tournament (toggle settings panel)
+* âœ… Registration Panel (open AdminPanel modal)
+* âœ… Replace Players (open PlayerReplacer modal)
+* âœ… Reset Scores Only (with confirmation modal)
+* âœ… Reset Everything (with confirmation modal)
+* âœ… Approve pending player registrations (inline confirmation)
+* âœ… Move approved player back to pending (inline confirmation)
+* âœ… Export tournament PDF (football-style layout)
+* âœ… View player counts (male/female)
+* âœ… Navigate to Tournament page
 
 ### Navigation
-* Tournament page shows "← Back to Admin" button for admin users
+* Tournament page shows "â† Back to Admin" button for admin users
 * Draw page buttons navigate to /tournament (not /)
 * Admin page has "View Tournament" button (placed between "Current Configuration" card and "Admin Controls" card)
-* Admin page has "← Back to Home" button above the page title (navigates to /)
+* Admin page has "â† Back to Home" button above the page title (navigates to /)
 
 ## 12. Match Generation System (Single Source of Truth)
 
@@ -284,7 +284,7 @@ Admins now see all controls immediately after login.
 The match generation system ensures **consistent, deterministic matchups** between the draw wheel and saved tournament data.
 
 ### Single Source of Truth
-* `staticMatchups.ts` → `STATIC_MATCHUPS` array contains exactly 14 match combinations
+* `staticMatchups.ts` â†’ `STATIC_MATCHUPS` array contains exactly 14 match combinations
 * All match generation flows through this one definition
 * `generateMatchesFromOrder(playerOrder, gender)` creates matches from any player order
 * Matches are generated ONCE in DrawPage, saved ONCE to Firestore, then ONLY read
@@ -308,12 +308,12 @@ The match generation system ensures **consistent, deterministic matchups** betwe
 ### Match Generation Flow
 ```
 Draw Wheel:               Data Loading:
-├─ Shuffle players        ├─ Load from collection(db, 'matches')
-├─ Pre-generate 14        ├─ Map to teamA/teamB structure
-│  matches ONCE           ├─ Validate all player IDs exist
-├─ Animate wheel          └─ Return to UI (no regeneration)
-│  (visualization only)
-└─ Save exact matches
+â”œâ”€ Shuffle players        â”œâ”€ Load from collection(db, 'matches')
+â”œâ”€ Pre-generate 14        â”œâ”€ Map to teamA/teamB structure
+â”‚  matches ONCE           â”œâ”€ Validate all player IDs exist
+â”œâ”€ Animate wheel          â””â”€ Return to UI (no regeneration)
+â”‚  (visualization only)
+â””â”€ Save exact matches
    to Firestore
 ```
 
@@ -328,11 +328,11 @@ Draw Wheel:               Data Loading:
 * `staticMatchups.ts` - Match generation logic
 
 ### Critical Rules
-❌ **NEVER** recompute or reshuffle matches after initial generation
-❌ **NEVER** use drawn_*_matches or saved_*_matches for rendering
-❌ **NEVER** silently fallback to generated matches if load fails
-✅ Always use the pre-generated matches for display and storage
-✅ Throw error if validation fails (no silent data loss)
+âŒ **NEVER** recompute or reshuffle matches after initial generation
+âŒ **NEVER** use drawn_*_matches or saved_*_matches for rendering
+âŒ **NEVER** silently fallback to generated matches if load fails
+âœ… Always use the pre-generated matches for display and storage
+âœ… Throw error if validation fails (no silent data loss)
 
 ## 13. Recent Changes (May 2026)
 
@@ -356,11 +356,11 @@ Draw Wheel:               Data Loading:
 
 ### DrawPage UI Refinements
 * Wheel text positioning moved inward (r - 15) for better spacing from outer edge
-* Match card player names center-aligned with increased font size (11px → 10px)
+* Match card player names center-aligned with increased font size (11px â†’ 10px)
 * Desktop layout: 7 cards per row with equal width distribution
-* Reduced vertical spacing between wheel and matches (mt-8 → mt-4)
+* Reduced vertical spacing between wheel and matches (mt-8 â†’ mt-4)
 * Player names support wrapping instead of aggressive truncation
-* Wider container (max-w-md → max-w-7xl) for better desktop readability
+* Wider container (max-w-md â†’ max-w-7xl) for better desktop readability
 * Reduced card padding and internal spacing to maximize usable width
 
 ### Data Integrity & Empty Tournament Fix
@@ -385,7 +385,7 @@ Draw Wheel:               Data Loading:
 
 ### Navigation Fixes
 * DrawPage.tsx: "Go to Tournament" and "Back to Tournament" buttons now navigate to /tournament (not /)
-* Index.tsx (Tournament): Added "← Back to Admin" button for admin users
+* Index.tsx (Tournament): Added "â† Back to Admin" button for admin users
 
 ### UI Updates
 * Male draw wheel colors updated to consistent ocean blues
@@ -393,14 +393,14 @@ Draw Wheel:               Data Loading:
 
 ## 13c. Draw Recording REMOVED
 
-* ❌ The draw-video recording system is **removed** — the admin screen-records the draw and shares via WhatsApp instead.
-* ⚠️ Video storage via GitHub repo `leoblixt25/sandy-draw-videos` is NO LONGER USED.
+* âŒ The draw-video recording system is **removed** â€” the admin screen-records the draw and shares via WhatsApp instead.
+* âš ï¸ Video storage via GitHub repo `leoblixt25/sandy-draw-videos` is NO LONGER USED.
 
 ## 13d. Admin Draw Page UI (Aug 2026)
 
-* Compact single-line header: `[Female/Male Division badge] Tournament Draw` + live ticking date/time clock (pulses every second — proof the draw is real/live during screen recording)
+* Compact single-line header: `[Female/Male Division badge] Tournament Draw` + live ticking date/time clock (pulses every second â€” proof the draw is real/live during screen recording)
 * Wheel restored to original size (300px mobile / 320px desktop) with glow + colored shadow; player names drawn at ~17px inside segments
-* Match grid: original card styling, **5 matchups per row** on desktop (14 matches per division — 8 players, STATIC_MATCHUPS)
+* Match grid: original card styling, **5 matchups per row** on desktop (14 matches per division â€” 8 players, STATIC_MATCHUPS)
 * Wheel (left, sticky) + matchups (right) side-by-side grid so all matches stay visible while the wheel spins
 
 ## 13e. Public Draw Page Countdown (Aug 2026)
@@ -408,37 +408,37 @@ Draw Wheel:               Data Loading:
 * "Not started yet" card shows a **live countdown** to the draw time
 * Reads `tournament_date` from `tournamentSettings/default_settings`, target = **9pm (21:00) the day before the tournament** (e.g. Fri 21:00 when the tournament is Sat)
 * Ticks every second; boxes for days / hours / minutes / seconds
-* At zero: shows "The draw is starting now — refresh to watch live!"
+* At zero: shows "The draw is starting now â€” refresh to watch live!"
 * No countdown shown if `tournament_date` is unset
 * Same 9pm-target countdown is used on `WaitingForDraw.tsx` for approved players
 
 ## 13g. Public Draw Page Division Tabs (Aug 2026)
 
-* Female and Male draw results shown in **separate tabs** on the public draw page (same style as Live Ranking tabs: 👩 Female / 👨 Male)
+* Female and Male draw results shown in **separate tabs** on the public draw page (same style as Live Ranking tabs: ðŸ‘© Female / ðŸ‘¨ Male)
 * Only the active division's wheel + match grid renders
 * The wheel paint effect depends on `activeTab` so the newly-mounted canvas is painted immediately on tab switch (otherwise it stays empty until a resize)
 
 ## 13h. Draw Save Name Collision Fix (Aug 2026)
 
 * `DrawPage.tsx` `byName()` previously matched player names across ALL players and returned the first hit
-* Bug: duplicate names (e.g. approved `male_8` "moon" + pending female reserve "moon") caused the wrong ID to be saved into matches → tournament page couldn't resolve the pending/reserve ID → stuck on "Loading Tournament Data..."
+* Bug: duplicate names (e.g. approved `male_8` "moon" + pending female reserve "moon") caused the wrong ID to be saved into matches â†’ tournament page couldn't resolve the pending/reserve ID â†’ stuck on "Loading Tournament Data..."
 * Fix: `byName(name, gender)` now only matches **approved** players of the **same gender**
 
 ## 13i. Tournament Page Stability Fixes (Aug 2026)
 
-* Blank/stuck tournament page after saving the draw was caused by render-time throws (no error boundary → blank page)
-* Removed the `throw` in Index.tsx "HARD SAFETY CHECK" (draw completed but matches empty) — now logs CRITICAL ERROR only
+* Blank/stuck tournament page after saving the draw was caused by render-time throws (no error boundary â†’ blank page)
+* Removed the `throw` in Index.tsx "HARD SAFETY CHECK" (draw completed but matches empty) â€” now logs CRITICAL ERROR only
 * `resolveMatchPlayers()` is now guarded at the call site in `Index.tsx`: only resolves when the player map is non-empty, and wraps resolution in try/catch so a mismatch logs instead of blanking the page
 
 ## 13j. Approved-Player Waiting Page Fix (Aug 2026)
 
-* `Index.tsx` auto-retry (reload tournament data when matches empty) is now gated on `drawCompleted` — while the draw is pending, empty matches are normal for approved players on `WaitingForDraw`, so retrying caused the page to blink between loading screen and countdown every few seconds
-* `WaitingForDraw.tsx` top padding reduced (`pt-24` → `pt-12`) to move content up
+* `Index.tsx` auto-retry (reload tournament data when matches empty) is now gated on `drawCompleted` â€” while the draw is pending, empty matches are normal for approved players on `WaitingForDraw`, so retrying caused the page to blink between loading screen and countdown every few seconds
+* `WaitingForDraw.tsx` top padding reduced (`pt-24` â†’ `pt-12`) to move content up
 
 ## 13f. Landing Page (Aug 2026)
 
 * Tournament Draw button now uses `bg-beach-gradient` (matches Live Ranking button style) instead of dark navy gradient
-* Top spacing tightened: page `py-4`, ball `mb-4`, title `mb-6`, buttons `space-y-4` — ball/buttons moved up
+* Top spacing tightened: page `py-4`, ball `mb-4`, title `mb-6`, buttons `space-y-4` â€” ball/buttons moved up
 
 ## 13b. Registration Approval Name Masking
 
@@ -448,52 +448,52 @@ Draw Wheel:               Data Loading:
   * Returns real name only if `status === 'approved'` OR `is_confirmed === true`
   * Otherwise reconstructs placeholder name from `gender` + `position`
 * Applied in:
-  * `firebaseUtils.loadPlayers()` (both mapping paths) — feeds Index/tournament page
+  * `firebaseUtils.loadPlayers()` (both mapping paths) â€” feeds Index/tournament page
   * `LiveRanking.tsx` realtime snapshot handler
 * DrawPage and AdminControl already filter `status === 'approved'` before loading
 * Real-time subscription auto-refreshes names after approval (no reload needed)
 
-## 13k. Player Account Deletion (Firebase Admin SDK) — WORKING
+## 13k. Player Account Deletion (Firebase Admin SDK) â€” WORKING
 
 ### Two deletion paths
-1. **GitHub Actions** (`scripts-firebase-tools/delete-users-github-action.mjs`) — zero-dependency script (global fetch + node:crypto) invoked via `.github/workflows/delete-users.yml`. Verifies the caller's Firebase ID token with Google (Identity Toolkit) and aborts unless it belongs to `ADMIN_EMAIL`. Deletes ONLY Auth accounts except the admin. Never touches Firestore.
-2. **Local one-shot** (`scripts/Delete-Players.bat` → `scripts-firebase-tools/delete-auth-users.mjs`) — uses firebase-admin, reads the service-account JSON from `%USERPROFILE%\Downloads\`. Proven: deleted 24 accounts flawlessly.
+1. **GitHub Actions** (`scripts-firebase-tools/delete-users-github-action.mjs`) â€” zero-dependency script (global fetch + node:crypto) invoked via `.github/workflows/delete-users.yml`. Verifies the caller's Firebase ID token with Google (Identity Toolkit) and aborts unless it belongs to `ADMIN_EMAIL`. Deletes ONLY Auth accounts except the admin. Never touches Firestore.
+2. **Local one-shot** (`scripts/Delete-Players.bat` â†’ `scripts-firebase-tools/delete-auth-users.mjs`) â€” uses firebase-admin, reads the service-account JSON from `%USERPROFILE%\Downloads\`. Proven: deleted 24 accounts flawlessly.
 
 ### Required secrets (rotate periodically)
-* Repo Actions secret `FIREBASE_SERVICE_ACCOUNT_JSON` — full service-account JSON contents
+* Repo Actions secret `FIREBASE_SERVICE_ACCOUNT_JSON` â€” full service-account JSON contents
 * Local `.bat` reads key JSON from `%USERPROFILE%\Downloads\<service-account-file>.json`
 
 ### Cloudflare Worker relay (for the new EU app)
 * Worker **`sandy-scorekeeper-workers`** live at `https://sandy-scorekeeper-workers.leo-blixt77.workers.dev` relays the "Delete All Registered Players" request from the browser to GitHub Actions (`repository_dispatch`).
-* The worker verifies the caller's Firebase ID token with Google then dispatches to GitHub. **Source is NOT in this repo** — it's edited directly in the Cloudflare dashboard (Quick Edit).
-* Deployed worker code must contain (edit these constants in the Cloudflare Quick Edit editor — they are separate from the Settings Variables):
+* The worker verifies the caller's Firebase ID token with Google then dispatches to GitHub. **Source is NOT in this repo** â€” it's edited directly in the Cloudflare dashboard (Quick Edit).
+* Deployed worker code must contain (edit these constants in the Cloudflare Quick Edit editor â€” they are separate from the Settings Variables):
   * `GITHUB_REPO = 'leoblixt25/kingQueen'` (was `sandy-scorekeeper` after EU migration)
   * `ADMIN_EMAIL = 'leo.blixt77@gmail.com'`
-  * `WEB_API_KEY = 'AIzaSyBmLIUYNdvR1DIlVPjVpkU003zC6UyRzgY'` (the **EU** project key — the old `AIzaSyB59...` key caused "Unauthorized: Invalid or expired token")
-* Cloudflare Worker Settings → Variables and Secrets:
-  * `GH_PAT` — GitHub PAT able to `repository_dispatch` on `kingQueen` (fine-grained: Actions write).
-  * (A `FIREBASE_SERVICE_ACCOUNT` variable also exists but is NOT used by the deletion verification path — the worker uses `WEB_API_KEY` instead.)
+  * `WEB_API_KEY = 'AIzaSyBmLIUYNdvR1DIlVPjVpkU003zC6UyRzgY'` (the **EU** project key â€” the old `AIzaSyB59...` key caused "Unauthorized: Invalid or expired token")
+* Cloudflare Worker Settings â†’ Variables and Secrets:
+  * `GH_PAT` â€” GitHub PAT able to `repository_dispatch` on `kingQueen` (fine-grained: Actions write).
+  * (A `FIREBASE_SERVICE_ACCOUNT` variable also exists but is NOT used by the deletion verification path â€” the worker uses `WEB_API_KEY` instead.)
 
 ### EU migration deltas (verified working Sep 2026)
-* Repo moved `leoblixt25/sandy-scorekeeper` → `leoblixt25/kingQueen`. The workflow file + script now live in `kingQueen` and the dispatch goes to `kingQueen`.
+* Repo moved `leoblixt25/sandy-scorekeeper` â†’ `leoblixt25/kingQueen`. The workflow file + script now live in `kingQueen` and the dispatch goes to `kingQueen`.
 * Secret `FIREBASE_SERVICE_ACCOUNT_JSON` set in `leoblixt25/kingQueen` (service account `kingqueen-eu-firebase-adminsdk-fbsvc-246e9b4a36.json`).
 * `delete-users-github-action.mjs` uses `PROJECT_ID='kingqueen-eu'` and `WEB_API_KEY='AIzaSyBmLIUYNdvR1DIlVPjVpkU003zC6UyRzgY'`.
 
 ### Gotchas (CRITICAL)
-* ❌ **NEVER create a `functions/` directory at repo root** — it breaks the build. Local scripts live in `scripts-firebase-tools/`.
+* âŒ **NEVER create a `functions/` directory at repo root** â€” it breaks the build. Local scripts live in `scripts-firebase-tools/`.
 * `projects.accounts:batchGet` is a **GET** method (query params). POSTing it returns Google's HTML 404 page.
-* `accounts:batchDelete` body uses camelCase **`localIds`** (legacy lowercase `localids` → LOCAL_ID_LIST_EXCEEDS_LIMIT 400).
-* Old frontend cached in browser can fake "Success" — always hard-refresh / incognito when testing deploys.
+* `accounts:batchDelete` body uses camelCase **`localIds`** (legacy lowercase `localids` â†’ LOCAL_ID_LIST_EXCEEDS_LIMIT 400).
+* Old frontend cached in browser can fake "Success" â€” always hard-refresh / incognito when testing deploys.
 * Changing `GITHUB_REPO`/`WEB_API_KEY` in the Cloudflare worker requires editing the **code constants** in Quick Edit AND pressing **Save and Deploy** (Settings-only variable changes do NOT fix token/repo errors). Wait ~60s for edge propagation.
 
 ## 13l. PDF Export Updates (Aug 2026)
 
 ### Final Standings fix
-* Firestore players store snake_case `total_scores`; export previously read camelCase only → scores missing/wrong order
-* Shared ranking comparator exported from pdfExport.ts: points desc → total_scores desc → id compare (use everywhere)
+* Firestore players store snake_case `total_scores`; export previously read camelCase only â†’ scores missing/wrong order
+* Shared ranking comparator exported from pdfExport.ts: points desc â†’ total_scores desc â†’ id compare (use everywhere)
 
 ### Championship Final page (new last page)
-* Data: `finalMatches/current` doc — team1_set1..3, team2_set2..3, winner_team, male_king_id/female_queen_id/male_prince_id/female_princess_id
+* Data: `finalMatches/current` doc â€” team1_set1..3, team2_set2..3, winner_team, male_king_id/female_queen_id/male_prince_id/female_princess_id
 * Bracket mapping: Team 1 = Male#1 + Female#2, Team 2 = Male#2 + Female#1; royal IDs remapped to bracket sides based on winner_team
 * Gold-themed cards + CHAMPIONS badge + Honours panel (King/Queen/Prince/Princess); names resolved by stored IDs with ranking fallbacks
 
@@ -503,142 +503,142 @@ Draw Wheel:               Data Loading:
 ## 13m. Switch-Off UX + Reset Everything Cleanup (Aug 2026)
 
 * `/player-access` now renders `TournamentFinished` when Switch Off Mode is on (same gate as LiveRanking/PublicDrawPage). Signed-in registered players still auto-redirect, but their destination pages respect the switch-off too.
-* ❌ Browser `window.confirm()` popups are being phased out (blocked by some browsers). Replaced with in-app `ResetConfirmationModal` instances:
-  * **Switch Off Tournament Mode** (AdminControl) — explains pages get disabled, nothing deleted, restorable.
-  * ✅ **Delete All Registered Players** (AdminControl) — exact warning text preserved; confirm button "Delete All".
-  * ✅ **Final Match Reset** (Index) — "Reset Final Match?" with description of what gets cleared.
-  * ✅ **Restart Draw** (DrawPage) — "Restart Draw?" with warning about clearing all match data.
-  * ✅ All browser `window.confirm()` popups in the app are now replaced — none remain.
+* âŒ Browser `window.confirm()` popups are being phased out (blocked by some browsers). Replaced with in-app `ResetConfirmationModal` instances:
+  * **Switch Off Tournament Mode** (AdminControl) â€” explains pages get disabled, nothing deleted, restorable.
+  * âœ… **Delete All Registered Players** (AdminControl) â€” exact warning text preserved; confirm button "Delete All".
+  * âœ… **Final Match Reset** (Index) â€” "Reset Final Match?" with description of what gets cleared.
+  * âœ… **Restart Draw** (DrawPage) â€” "Restart Draw?" with warning about clearing all match data.
+  * âœ… All browser `window.confirm()` popups in the app are now replaced â€” none remain.
 * **Reset Everything** (`fullTournamentReset` in resetUtils.ts) now ALSO:
-  * Clears `tournamentSettings/settings` draw state: `draw_completed:false`, empty `drawn_*_matches`/`saved_*_matches`, live-mirror fields reset to idle — otherwise the public draw page kept showing stale matchups forever
+  * Clears `tournamentSettings/settings` draw state: `draw_completed:false`, empty `drawn_*_matches`/`saved_*_matches`, live-mirror fields reset to idle â€” otherwise the public draw page kept showing stale matchups forever
   * Sets `tournament_status:'active'` so public pages are visible again for the new season
   * Clears `tournamentSettings/default_settings.tournament_date` (no stale countdown from last season)
 * PublicDrawPage pre-draw view now has three states:
-  * No confirmed date → "**The draw is not ready yet.** Once the tournament day is confirmed, the countdown for the draw will appear here."
-  * Date set & upcoming → countdown boxes (unchanged)
-  * Date reached → "draw is starting now" pulse pill (unchanged)
+  * No confirmed date â†’ "**The draw is not ready yet.** Once the tournament day is confirmed, the countdown for the draw will appear here."
+  * Date set & upcoming â†’ countdown boxes (unchanged)
+  * Date reached â†’ "draw is starting now" pulse pill (unchanged)
 * Countdown reappears automatically once a new date is saved via Configure Tournament.
 
 ## 13n. PWA + Install Page (Aug 2026)
 
-* App is now a **Progressive Web App (PWA)** — users can "Add to Home Screen" on iOS/Android and it behaves like a native app (full screen, home screen icon, offline shell cache).
+* App is now a **Progressive Web App (PWA)** â€” users can "Add to Home Screen" on iOS/Android and it behaves like a native app (full screen, home screen icon, offline shell cache).
 * Service worker (`public/sw.js`) uses **network-first** strategy: normal speed when online, falls back to cached shell only when offline. Firebase API traffic is never intercepted or cached.
 * `public/manifest.json` defines app name, icon (`icon.png`), theme color (`#0077B6`), standalone display mode.
 * `index.html` updated with manifest link, `theme-color` meta, `apple-mobile-web-app-capable` meta.
 * **`/install` page** (`src/pages/InstallPage.tsx`): platform-aware install page with:
-  * Android → one-tap install via `beforeinstallprompt` (native browser prompt, single button)
-  * iOS → step-by-step visual guide with Share button icon
-  * Desktop → QR code (via `api.qrserver.com`) for scanning with phone camera
+  * Android â†’ one-tap install via `beforeinstallprompt` (native browser prompt, single button)
+  * iOS â†’ step-by-step visual guide with Share button icon
+  * Desktop â†’ QR code (via `api.qrserver.com`) for scanning with phone camera
 * Service worker registration is production-only (`import.meta.env.PROD`) so dev/hot-reload is unaffected.
 
 ## 13o. Spot Counter + Reserve Position UX (Aug 2026)
 
 * Registration page spots display changed from "X / Y spots" to "**X spots available**" (simpler, less confusing).
-* Spots count **only approved players** — pending registrations don't reduce the available count (was a bug during earlier refactors).
-* Spots refresh every 5 seconds via `setInterval` + `getDocs` polling (real-time `onSnapshot` approach was attempted but failed silently — Firestore composite index issue on the `where('gender','==',...)` query).
+* Spots count **only approved players** â€” pending registrations don't reduce the available count (was a bug during earlier refactors).
+* Spots refresh every 5 seconds via `setInterval` + `getDocs` polling (real-time `onSnapshot` approach was attempted but failed silently â€” Firestore composite index issue on the `where('gender','==',...)` query).
 * **Reserve position** shown in:
   * Toast messages after registration: "Your position: #2 on the waiting list"
   * **Pending-approval page** (`PendingApproval.tsx`): calculates position by counting existing reserve players of same gender + 1, displayed as "Your position on the waiting list: **#2**"
-* `reserve_count` field added to `AvailableSpots` interface in Register.tsx — used for position calculation only, not for display on spots cards.
+* `reserve_count` field added to `AvailableSpots` interface in Register.tsx â€” used for position calculation only, not for display on spots cards.
 
 ## 13p. Whist-8 Match Generation (Aug 2026)
 
 * `STATIC_MATCHUPS` in `src/utils/staticMatchups.ts` replaced with a **verified cyclic Whist-8 (Wh(8)) matrix**.
-* **14 matches across 7 rounds × 2 courts** — same match count as before, mathematically balanced:
+* **14 matches across 7 rounds Ã— 2 courts** â€” same match count as before, mathematically balanced:
   * Every player partners with each other player exactly **1 time**
   * Every player opposes each other player exactly **2 times**
   * Each player plays in exactly **7 matches**
-* Draw process unchanged: Fisher-Yates shuffle → `generateMatchesFromOrder()` → same `GeneratedMatch[]` output → same Firestore schema.
-* `GeneratedMatch` now includes optional `round` and `court` fields (backward-compatible — existing consumers ignore them).
-* `verifyWhist8Integrity()` exported from `staticMatchups.ts` — verifies all 4 guarantees programmatically.
+* Draw process unchanged: Fisher-Yates shuffle â†’ `generateMatchesFromOrder()` â†’ same `GeneratedMatch[]` output â†’ same Firestore schema.
+* `GeneratedMatch` now includes optional `round` and `court` fields (backward-compatible â€” existing consumers ignore them).
+* `verifyWhist8Integrity()` exported from `staticMatchups.ts` â€” verifies all 4 guarantees programmatically.
 * Standalone check script: `scripts/verify-whist8.ts` (run via `npx tsx scripts/verify-whist8.ts`).
-* All existing consumers (`DrawPage.tsx`, `firebaseMigration.ts`, `tournamentReset.ts`, `matchInitUtils.ts`) work unchanged — they iterate `STATIC_MATCHUPS` with the same `[p1,p2,p3,p4]` destructuring pattern.
+* All existing consumers (`DrawPage.tsx`, `firebaseMigration.ts`, `tournamentReset.ts`, `matchInitUtils.ts`) work unchanged â€” they iterate `STATIC_MATCHUPS` with the same `[p1,p2,p3,p4]` destructuring pattern.
 
 ## 13q. AdminPanel One-Click Actions (Sep 2026)
 
 * Removed the two-step in-row confirmation for player actions in the Registration panel (`AdminPanel.tsx`). Approve / Delete-pending / Pending / Reserve / Delete-confirmed now act immediately on first click.
 * Kept confirmations ONLY for the global destructive actions (Initialize Tournament Database, Reset Players Only).
 * Per-row confirmation state variables (`confirmingApproveId`, `confirmingRemoveId`, `confirmingPendingRemoveId`, `confirmingUnapproveId`, `confirmingMoveToReserveId`) removed.
-* **Bug fixed**: Reserve button failed for TEST players — test players created by DrawPage have NO `email` field, so `player.email.trim()` threw a `TypeError`. Now `email: player.email ? player.email.trim().toLowerCase() : null` (and `name` guarded with `(player.name || '').trim()`). Same guard applied to `handleApprovePlayer`'s reserve→slot claim path. Real registered players always have email → behavior unchanged.
-* After moving to reserve: real player → new `pending`/`is_reserve` doc + old slot reverts to placeholder (no email, status null). Test player → same but `email: null` on the reserve doc.
+* **Bug fixed**: Reserve button failed for TEST players â€” test players created by DrawPage have NO `email` field, so `player.email.trim()` threw a `TypeError`. Now `email: player.email ? player.email.trim().toLowerCase() : null` (and `name` guarded with `(player.name || '').trim()`). Same guard applied to `handleApprovePlayer`'s reserveâ†’slot claim path. Real registered players always have email â†’ behavior unchanged.
+* After moving to reserve: real player â†’ new `pending`/`is_reserve` doc + old slot reverts to placeholder (no email, status null). Test player â†’ same but `email: null` on the reserve doc.
 
 ## 13r. LiveRanking Tiebreaker Sort + Points-Persistence Fix (Sep 2026)
 
 * Commit `3232961` fixed `LiveRanking` tiebreaker sort direction and installed **Vitest** (`vitest run` for `npm test`; Vite 5.4.21 requires Vitest v3, not v5).
 * Commit `518e160`: `loadTestPlayers()` now uses random real names (Camila, Sofia, etc.) instead of "Male/Female Player N".
-* **Ranking "doesn't work" incident** (reported after above commits) — root cause was **DATA, not sort**:
-  * All 16 player docs had `points:0`/`total_scores:0` despite 10 completed female matches with real scores → standings correctly showed all-zero tie.
-  * Deployed bundle verified: `sortPlayersWithTiebreakers` (`XK`/`x6`) + `calculateRankingsFromMatches` both correctly wired (`updateMatchScore` → dynamic `import("./rankingUtils")` → calc).
-  * Likely cause: stale cached `index.html` → dynamic-import of the old `rankingUtils-*.js` chunk failed silently → match score still saved, player points never written.
+* **Ranking "doesn't work" incident** (reported after above commits) â€” root cause was **DATA, not sort**:
+  * All 16 player docs had `points:0`/`total_scores:0` despite 10 completed female matches with real scores â†’ standings correctly showed all-zero tie.
+  * Deployed bundle verified: `sortPlayersWithTiebreakers` (`XK`/`x6`) + `calculateRankingsFromMatches` both correctly wired (`updateMatchScore` â†’ dynamic `import("./rankingUtils")` â†’ calc).
+  * Likely cause: stale cached `index.html` â†’ dynamic-import of the old `rankingUtils-*.js` chunk failed silently â†’ match score still saved, player points never written.
   * Fix applied **directly to live Firestore** (Admin SDK one-shot, no code change): points now Sofia 9/101, Mia 8/89, Elena 8/93, Emma 8/92, Ava 7/91, Isabella 7/90, Olivia 7/95, Camila 6/87. Males stay 0 (no completed male matches).
-  * ⚠️ Reminder: hard-refresh (Ctrl+Shift+R) after deploys — sw.js network-first + stale index.html hid the fix.
-* Deployed Firestore rules verified **identical to repo** (Auth required for writes; public reads) — rules were NOT the blocker.
-* Tests: `src/utils/liveRankingRepro.test.ts` (LiveRanking-shaped sort regression), `rankingTiebreaker.test.ts`, `staticMatchups.test.ts` — 9 pass.
-* ⚠️ GitHub PAT was leaked in chat — **revoke + regenerate** in GitHub, then update the `GH_PAT` secret in the Cloudflare Worker (`sandy-scorekeeper-workers`).
+  * âš ï¸ Reminder: hard-refresh (Ctrl+Shift+R) after deploys â€” sw.js network-first + stale index.html hid the fix.
+* Deployed Firestore rules verified **identical to repo** (Auth required for writes; public reads) â€” rules were NOT the blocker.
+* Tests: `src/utils/liveRankingRepro.test.ts` (LiveRanking-shaped sort regression), `rankingTiebreaker.test.ts`, `staticMatchups.test.ts` â€” 9 pass.
+* âš ï¸ GitHub PAT was leaked in chat â€” **revoke + regenerate** in GitHub, then update the `GH_PAT` secret in the Cloudflare Worker (`sandy-scorekeeper-workers`).
 
-## 13s. Score-Submission Gating Attempt — REVERTED (Sep 2026)
+## 13s. Score-Submission Gating Attempt â€” REVERTED (Sep 2026)
 
 * Attempted to restrict score submission to the two playing participants and gate auto-advance to admins. **User rejected it** ("no need these rules, i already have a working app").
 * `firestore.rules` restored to the original committed permissive version (any authenticated user writes; admins collection read-only) via `git checkout -- firestore.rules`.
 * All admins-gating removed from `Index.tsx` (score submit, final-match submit/edit, final inputs, submit button). Auto-advance is unconditional again. No permission-denied toast.
 * Only the **non-restricting** fixes below were kept.
 
-## 13t. Kept Fixes (Sep 2026) — commits `b1ccb95`/`d1fa385` → `0c38b8a`
+## 13t. Kept Fixes (Sep 2026) â€” commits `b1ccb95`/`d1fa385` â†’ `0c38b8a`
 
-* **#2 Transactional registration**: `authUtils.claimRegistrationSlot()` runs in a Firestore transaction and sets `uid` on the player doc — no race-condition double-claims.
+* **#2 Transactional registration**: `authUtils.claimRegistrationSlot()` runs in a Firestore transaction and sets `uid` on the player doc â€” no race-condition double-claims.
 * **#3 Score-save errors now surface**: `matchUtils`/`useTournamentActions` THROW on failure instead of silent success; duplicate submission guarded with a loading state on Submit/Save buttons.
 * **#4 Navigation/auto-advance fixes** in `Index.tsx`: `matchesRef`, `advanceTimerRef`, `clearAdvanceTimer()`, `scheduleAdvance()`, `positionedGenderCountRef`, localStorage cleanup.
 * **#10 Atomic draw**: `saveDraw()` in `DrawPage.tsx` writes all matches atomically with deterministic IDs `female_match_N` / `male_match_N`.
 * Verified: tsc = 22 pre-existing errors / **0 new**; vitest 9/9; build passes.
 
-## 13u. Player Removal Slot Recycling + Reserve Toast Fix (commit `0c38b8a` — Sep 2026)
+## 13u. Player Removal Slot Recycling + Reserve Toast Fix (commit `0c38b8a` â€” Sep 2026)
 
-* `AdminPanel.handleRemovePlayer`: removing an approved slot player (`position != null`) now **recycles the slot doc** back to a placeholder (name "Female/Male Player N", email null, status null, points/scores reset) instead of deleting it. Deleting left the slot with no placeholder → re-approving a new player failed with "list is full". Only **slot-less approved reserves** (`position == null`) are hard-deleted. Call site passes `(id, name, gender, position)`; `deleteDoc` imported.
-* `Register.tsx`: removed the premature "Reserve Registration" toast (fired immediately on click, duplicating the pending-approval page). `loadAvailableSpots` now counts **pending** registrations in occupancy (occupied = `approved` OR `pending` non-reserve; reserve = `approved` OR `pending` reserves) — matches real capacity.
+* `AdminPanel.handleRemovePlayer`: removing an approved slot player (`position != null`) now **recycles the slot doc** back to a placeholder (name "Female/Male Player N", email null, status null, points/scores reset) instead of deleting it. Deleting left the slot with no placeholder â†’ re-approving a new player failed with "list is full". Only **slot-less approved reserves** (`position == null`) are hard-deleted. Call site passes `(id, name, gender, position)`; `deleteDoc` imported.
+* `Register.tsx`: removed the premature "Reserve Registration" toast (fired immediately on click, duplicating the pending-approval page). `loadAvailableSpots` now counts **pending** registrations in occupancy (occupied = `approved` OR `pending` non-reserve; reserve = `approved` OR `pending` reserves) â€” matches real capacity.
 
 ## 13v. Cloudflare Worker GH_PAT Rebound (Sep 2026)
 
-* Symptom: "Delete All Registered Players" → 500 `{"error":"Worker misconfigured: GH_PAT secret is missing"}`.
-* Root cause: worker `sandy-scorekeeper-workers` had **zero secrets** bound (`npx wrangler secret list --name sandy-scorekeeper-workers` → `[]`). A `GET /status?since=...` probe returned the generic fallback — that `/status` branch only activates when `env.GH_PAT` exists — proving the secret was unset on the live worker.
-* Hunted: GitHub repo secrets (`kingQueen` + `sandy-scorekeeper`) only contain `FIREBASE_SERVICE_ACCOUNT_JSON` variants — no `GH_PAT`; none committed locally (`ghp_/GH_PAT` grep = 0 hits). The value was recovered from the earlier session and re-added via the Cloudflare dashboard (Settings → Variables and Secrets → Add secret → `GH_PAT`).
-* Verified working: `GET https://sandy-scorekeeper-workers.leo-blixt77.workers.dev/status?since=...` → `{"status":"completed","conclusion":"success"}`. Delete-all flow confirmed working by user.
-* ⚠️ `sandy-scorekeeper-workers.leoblixt25.workers.dev` does **NOT** resolve — the worker only exists on the `leo-blixt77` account subdomain.
-* Worker source is tracked in `workers/delete-firebase-users.js` + `wrangler.toml` (worker name `sandy-scorekeeper-workers`); deployed bundle matches repo (EU `WEB_API_KEY`, `GITHUB_REPO='leoblixt25/kingQueen'`). wrangler OAuth token has only read scopes — secret writes need the Cloudflare dashboard or a Workers-edit token.
+* Symptom: "Delete All Registered Players" â†’ 500 `{"error":"Worker misconfigured: GH_PAT secret is missing"}`.
+* Root cause: worker `sandy-scorekeeper-workers` had **zero secrets** bound (`npx wrangler secret list --name sandy-scorekeeper-workers` â†’ `[]`). A `GET /status?since=...` probe returned the generic fallback â€” that `/status` branch only activates when `env.GH_PAT` exists â€” proving the secret was unset on the live worker.
+* Hunted: GitHub repo secrets (`kingQueen` + `sandy-scorekeeper`) only contain `FIREBASE_SERVICE_ACCOUNT_JSON` variants â€” no `GH_PAT`; none committed locally (`ghp_/GH_PAT` grep = 0 hits). The value was recovered from the earlier session and re-added via the Cloudflare dashboard (Settings â†’ Variables and Secrets â†’ Add secret â†’ `GH_PAT`).
+* Verified working: `GET https://sandy-scorekeeper-workers.leo-blixt77.workers.dev/status?since=...` â†’ `{"status":"completed","conclusion":"success"}`. Delete-all flow confirmed working by user.
+* âš ï¸ `sandy-scorekeeper-workers.leoblixt25.workers.dev` does **NOT** resolve â€” the worker only exists on the `leo-blixt77` account subdomain.
+* Worker source is tracked in `workers/delete-firebase-users.js` + `wrangler.toml` (worker name `sandy-scorekeeper-workers`); deployed bundle matches repo (EU `WEB_API_KEY`, `GITHUB_REPO='leoblixt25/kingQueen'`). wrangler OAuth token has only read scopes â€” secret writes need the Cloudflare dashboard or a Workers-edit token.
 
-### ⚠️ USER MANDATE (Sep 2026): NEVER remove/unbind the `GH_PAT` secret
-* The `GH_PAT` secret on worker `sandy-scorekeeper-workers` MUST STAY BOUND at all times. The user had to re-add it manually — do not let it go missing again.
-* ❌ NEVER run `wrangler deploy` / `wrangler secrets delete` / `wrangler secret put` / delete or recreate the worker as part of any app change, deploy, or maintenance.
-* ❌ NEVER claim a secret is "gone" without first proving it via the `/status` probe AND `wrangler secret list` (read-only).
-* ✅ Any app deployment in this repo is **Firebase Hosting only** (`firebase deploy --only hosting --project kingqueen-eu`) + git push. Verified: no `.bat`/`.ps1`/CI workflow in this repo runs wrangler; `wrangler` is only a devDependency.
-* ✅ Worker secret changes happen ONLY via the Cloudflare dashboard (Settings → Variables and Secrets) or with the user's explicit written request.
-* ✅ Preserve secret on redeploys: `wrangler deploy` keeps bound secrets; secrets are only lost when the worker is deleted/recreated or moved between accounts — never do either.
+### âš ï¸ USER MANDATE (Sep 2026): NEVER remove/unbind the `GH_PAT` secret
+* The `GH_PAT` secret on worker `sandy-scorekeeper-workers` MUST STAY BOUND at all times. The user had to re-add it manually â€” do not let it go missing again.
+* âŒ NEVER run `wrangler deploy` / `wrangler secrets delete` / `wrangler secret put` / delete or recreate the worker as part of any app change, deploy, or maintenance.
+* âŒ NEVER claim a secret is "gone" without first proving it via the `/status` probe AND `wrangler secret list` (read-only).
+* âœ… Any app deployment in this repo is **Firebase Hosting only** (`firebase deploy --only hosting --project kingqueen-eu`) + git push. Verified: no `.bat`/`.ps1`/CI workflow in this repo runs wrangler; `wrangler` is only a devDependency.
+* âœ… Worker secret changes happen ONLY via the Cloudflare dashboard (Settings â†’ Variables and Secrets) or with the user's explicit written request.
+* âœ… Preserve secret on redeploys: `wrangler deploy` keeps bound secrets; secrets are only lost when the worker is deleted/recreated or moved between accounts â€” never do either.
 
 ## 13w. GH_PAT Security Decision (supersedes 13r revoke advice)
 
-* 13r advised revoking the leaked PAT. **User explicitly declined** — the key is to stay in Cloudflare and everywhere. Current `GH_PAT` = the same PAT from the earlier session, re-bound to the worker Sep 2026.
+* 13r advised revoking the leaked PAT. **User explicitly declined** â€” the key is to stay in Cloudflare and everywhere. Current `GH_PAT` = the same PAT from the earlier session, re-bound to the worker Sep 2026.
 * Do **NOT** remove or rotate the GH_PAT secret unless the user explicitly asks.
 
-## 13x. PWA Android Install Fix — exact-size black icons (8570163 → 4eb0f3c → 5e68ce8, Sep 2026)
+## 13x. PWA Android Install Fix â€” exact-size black icons (8570163 â†’ 4eb0f3c â†’ 5e68ce8, Sep 2026)
 
-* Root cause: `public/icon.png` is **1254×1254, fully opaque, dark-navy artwork** (border ≈ `#010000`–`#071F47`), but `manifest.json` declared it as `192x192`, `512x512`, and `512x512 maskable`. Play/Chrome uses declared dimensions to render the install icon — the mismatch made Android install unreliable ("installed but no icon" / wouldn't install), while iOS (`apple-touch-icon`) was unaffected.
-* Attempt 1 (`8570163`): generated 192/512/maskable icons on a **sand/white** background → Android installed but the icon now had a white background — user disliked it.
+* Root cause: `public/icon.png` is **1254Ã—1254, fully opaque, dark-navy artwork** (border â‰ˆ `#010000`â€“`#071F47`), but `manifest.json` declared it as `192x192`, `512x512`, and `512x512 maskable`. Play/Chrome uses declared dimensions to render the install icon â€” the mismatch made Android install unreliable ("installed but no icon" / wouldn't install), while iOS (`apple-touch-icon`) was unaffected.
+* Attempt 1 (`8570163`): generated 192/512/maskable icons on a **sand/white** background â†’ Android installed but the icon now had a white background â€” user disliked it.
 * Revert (`4eb0f3c`): restored original manifest + `icon.png`.
 * Final fix (`5e68ce8`): regenerated exact-size icons **from the original navy artwork** (no sand):
-  - `public/icon-192.png` — 192x192, full art
-  - `public/icon-512.png` — 512x512, full art
-  - `public/icon-maskable-512.png` — 512x512, navy safe-zone padding, content at 72%
-  - `manifest.json`: real icons with exact sizes + correct `purpose` (`any`/`maskable`), added `scope:"/"`, `id:"/"`, `background_color` → `#020d23` (navy).
-  - `index.html`: `apple-touch-icon` → `/icon-192.png`.
+  - `public/icon-192.png` â€” 192x192, full art
+  - `public/icon-512.png` â€” 512x512, full art
+  - `public/icon-maskable-512.png` â€” 512x512, navy safe-zone padding, content at 72%
+  - `manifest.json`: real icons with exact sizes + correct `purpose` (`any`/`maskable`), added `scope:"/"`, `id:"/"`, `background_color` â†’ `#020d23` (navy).
+  - `index.html`: `apple-touch-icon` â†’ `/icon-192.png`.
 * Deployed; user confirms Android install **works and the icon stays black** like iPhone.
-* Gotcha: after icon changes the phone may show the previous icon — remove the installed app, reopen the site so the SW re-registers, then reinstall.
+* Gotcha: after icon changes the phone may show the previous icon â€” remove the installed app, reopen the site so the SW re-registers, then reinstall.
 
-## 13y. Tournament Control — Timer + Start/Stop Score Gating (commits `93bc2a3`, `2cc93df`, Oct 2026)
+## 13y. Tournament Control â€” Timer + Start/Stop Score Gating (commits `93bc2a3`, `2cc93df`, Oct 2026)
 
 * Admin gets a **Start / Stop tournament** control that opens and closes score submission app-wide, plus a **timer** (elapsed during play, `Final` once stopped).
-* Single source of truth: `tournamentSettings/tournament_control` — `tournamentStarted`, `scoreSubmissionEnabled`, `start`/`end` ISO timestamps.
+* Single source of truth: `tournamentSettings/tournament_control` â€” `tournamentStarted`, `scoreSubmissionEnabled`, `start`/`end` ISO timestamps.
 * New files: `src/utils/tournamentControl.ts` (pure helpers), `src/utils/tournamentControlFirestore.ts` (read/write), `src/components/TournamentTimer.tsx` (display).
 * `Index.tsx` gates every score input, the Previous/Next match buttons, and `handleSaveMatchEdit` on `scoreSubmissionEnabled`.
-* ⚠️ **Bug found and fixed in `2cc93df`**: `handleSaveMatchEdit` was missing the submission guard — the UI was disabled but the save handler still wrote. **When gating a control, gate the handler too.**
+* âš ï¸ **Bug found and fixed in `2cc93df`**: `handleSaveMatchEdit` was missing the submission guard â€” the UI was disabled but the save handler still wrote. **When gating a control, gate the handler too.**
 * Timer added to player page, admin control, and both Public Draw surfaces.
 * One-time final freeze: the final match result can be recorded only once.
 * Firestore was backfilled for the real start time: `start = 2026-10-03T06:30:00Z`, `end = 2026-10-03T10:26:41.258Z`.
@@ -646,7 +646,7 @@ Draw Wheel:               Data Loading:
 
 ### 13y-b. Timer survived reset / clock could not restart - FIXED (`e0cb977`) then REVERTED (`4e138ac`, Oct 2026)
 
-⚠️ **SUPERSEDED - see 13af. `e0cb977` was reverted by the user; `clearTournamentControl()` no longer exists and neither reset path touches the control document.** The reasoning below is kept because the reset-path lesson is still valid, but the "intended behaviour after a reset" line at the bottom is **no longer true**.
+âš ï¸ **SUPERSEDED - see 13af. `e0cb977` was reverted by the user; `clearTournamentControl()` no longer exists and neither reset path touches the control document.** The reasoning below is kept because the reset-path lesson is still valid, but the "intended behaviour after a reset" line at the bottom is **no longer true**.
 
 Three bugs, all from run control living in its **own** document that other code paths did not account for:
 
@@ -654,11 +654,11 @@ Three bugs, all from run control living in its **own** document that other code 
 2. **`startTournament` never cleared `tournamentEndTime`.** Since `isTimerRunning` requires the end time to be `null`, pressing Start after the final had frozen the clock left the reading pinned forever. It now writes `tournamentEndTime: null`, so Start **resumes from the true elapsed total** (it still reuses the original start time) rather than resetting to zero mid-tournament.
 3. **`stopScoreSubmission` used `updateDoc`, which throws if the document does not exist** - so the button failed outright on a season that had never started a tournament. Switched to `setDoc` with merge.
 
-* ⚠️ **When adding a new top-level document, audit every reset/delete path for it.** A dedicated document is the right design for isolation (it cannot interfere with draw/ranking data), but it is invisible to `writeBatch` loops over `players`/`matches` and will be silently orphaned. Grep the reset utils by hand. **(Still true. The user chose to handle the clock manually instead - see 13af.)**
+* âš ï¸ **When adding a new top-level document, audit every reset/delete path for it.** A dedicated document is the right design for isolation (it cannot interfere with draw/ranking data), but it is invisible to `writeBatch` loops over `players`/`matches` and will be silently orphaned. Grep the reset utils by hand. **(Still true. The user chose to handle the clock manually instead - see 13af.)**
 * 5 regression tests added to `tournamentControl.test.ts`, including one that reproduces the exact `03:56 Final` reading and asserts the cleared document hides the timer again. **(Also reverted.)**
 * ~~Intended behaviour after a reset: **timer hidden**, submission disabled, until the admin presses Start (then it begins at `00:00`).~~ **NO LONGER TRUE** - a reset now leaves the clock exactly as it was, by design.
 
-## 13z. King/Queen Highlight on Draw Page — REVERTED (`3fb1888` → `9e85951`, Oct 2026)
+## 13z. King/Queen Highlight on Draw Page â€” REVERTED (`3fb1888` â†’ `9e85951`, Oct 2026)
 
 * Bolded the tournament King and Queen names on the Public Draw page.
 * **Reverted by the user.** `9e85951` restored the tree to pre-highlight (`2cc93df`) and was deployed.
@@ -667,33 +667,33 @@ Three bugs, all from run control living in its **own** document that other code 
 
 ## 13aa. Net 1 / Net 2 Assignment (commit `5df900b`, Oct 2026)
 
-* Every qualification matchup now shows which net it plays on, in **three** places: admin `DrawPage`, player `Index`, and `PublicDrawPage` (both the main grid **and** the separate `LiveDrawView` component — both paths needed the badge).
-* **Automatic rule**: odd `match_number` → Net 1, even → Net 2. It is a **pure function of the immutable match number**, so the assignment is fixed once the draw is generated and **nothing is written at draw time**. No migration, no change to the draw-save batch.
+* Every qualification matchup now shows which net it plays on, in **three** places: admin `DrawPage`, player `Index`, and `PublicDrawPage` (both the main grid **and** the separate `LiveDrawView` component â€” both paths needed the badge).
+* **Automatic rule**: odd `match_number` â†’ Net 1, even â†’ Net 2. It is a **pure function of the immutable match number**, so the assignment is fixed once the draw is generated and **nothing is written at draw time**. No migration, no change to the draw-save batch.
 * **Manual override**: clicking the badge on the admin draw page stores an explicit `net` on that match doc, which then wins over the automatic value. Numbering **restarts per gender** (`female_1` and `male_1` are both Net 1) because the divisions are drawn and played separately.
-* ⚠️ `loadMatches` in `firebaseUtils.ts` explicitly maps fields, so unknown keys are **dropped** — `net` had to be added to both the female and male mappings or the player page would never see an override.
-* Override writes use `updateDoc(ref, { net })` — that field only; scores, players and the draw are untouched.
+* âš ï¸ `loadMatches` in `firebaseUtils.ts` explicitly maps fields, so unknown keys are **dropped** â€” `net` had to be added to both the female and male mappings or the player page would never see an override.
+* Override writes use `updateDoc(ref, { net })` â€” that field only; scores, players and the draw are untouched.
 * Display-only. No effect on seeding, scoring, ranking or the final.
-* Verified live: 14 cards per division, 7× Net 1 + 7× Net 2, alternating.
+* Verified live: 14 cards per division, 7Ã— Net 1 + 7Ã— Net 2, alternating.
 
-## 13ab. App-wide EN/ES i18n attempt — REVERTED (`42b0238` → `95f8ad4`, Oct 2026)
+## 13ab. App-wide EN/ES i18n attempt â€” REVERTED (`42b0238` â†’ `95f8ad4`, Oct 2026)
 
 * First attempt built app-wide infrastructure: `src/i18n/LanguageContext.tsx`, `LanguageSelector.tsx`, `en.ts`, `es.ts`, plus a provider wrap in **`src/main.tsx`** and a Landing page translation.
-* **Reverted** — replaced by the single-file approach in 13ac.
+* **Reverted** â€” replaced by the single-file approach in 13ac.
 * Lesson: for a one-page language need, **do not** wrap the whole app in a context or touch `main.tsx`. Keep translations local to the page. Do not resurrect `src/i18n/`.
 
 ## 13ac. Info Page Bilingual EN/ES (commit `10b0191`, Oct 2026)
 
 * `/info` now has an **EN | ES** toggle under the page title; any visitor can switch, no login.
-* Scope is **exactly one file** — `src/pages/InfoPage.tsx`. No provider, no `main.tsx` change, and confirmed 0 language buttons on `/`, `/draw-live`, `/ranking`.
+* Scope is **exactly one file** â€” `src/pages/InfoPage.tsx`. No provider, no `main.tsx` change, and confirmed 0 language buttons on `/`, `/draw-live`, `/ranking`.
 * All 12 sections + the title + the intro paragraph are translated. English wording kept **verbatim** so English readers see no change.
 * Choice persisted in `localStorage` key `kq-info-language`; first visit falls back to `navigator.language` (Spanish browsers get Spanish, everyone else English). `try/catch` around storage so private mode still works.
 * Sets `document.documentElement.lang` and uses `aria-pressed` on the toggle for screen readers.
 
-## 13ad. Info Page — Final Match section rewritten (commit `9d34bb2`, Oct 2026)
+## 13ad. Info Page â€” Final Match section rewritten (commit `9d34bb2`, Oct 2026)
 
 * "Final Match & Titles" now reads as **4 separate paragraphs** with the two team pairings as a real `<ul>` bullet list.
-* To support this, `InfoSection` gained `blocks?: InfoBlock[]` (`{ kind: "p" }` or `{ kind: "list" }`). Only the Final Match section uses `blocks` — **the other 11 sections still use the single `content` string and are untouched.**
-* Spanish updated to match the new structure (`Masculino 1.º + Femenino 1.ª`), since leaving the old wording would have contradicted the English.
+* To support this, `InfoSection` gained `blocks?: InfoBlock[]` (`{ kind: "p" }` or `{ kind: "list" }`). Only the Final Match section uses `blocks` â€” **the other 11 sections still use the single `content` string and are untouched.**
+* Spanish updated to match the new structure (`Masculino 1.Âº + Femenino 1.Âª`), since leaving the old wording would have contradicted the English.
 
 ## 13ae. Public Draw - winning team bolded (commit `bf1f2d5`, Oct 2026)
 
@@ -701,13 +701,13 @@ Three bugs, all from run control living in its **own** document that other code 
 * `scoreWinner(s1, s2): 0 | 1 | 2` added to **`matchScores.ts`** (not a new file - that module already owns the submitted-result rules). Returns 1 = team A, 2 = team B, **0 = tie**.
 * **Ties intentionally style both sides identically** so no winner is implied. Beach volleyball to 21 makes a real tie impossible, but a stray `21-21` entry should not get a fake winner.
 * **SHIPPED TREATMENT (`b5e331a`): only the winning SCORE is marked** - green text (`#15803D`) inside a solid white circle (`w-[22px] h-[22px] my-[-3px] rounded-full bg-white`, same `#FFFFFF` as the surrounding text). **Team names are completely untouched** (white, `font-medium`, `text-[14px]`) and the losing score stays plain white text on the bar. Font size stays `text-[15px]` on both sides.
-* ⚠️ **`my-[-3px]` on the winner circle is load-bearing - do not remove it.** The bar is `py-1` + a 16px name line = ~24px, but a circle large enough to hold the 15px score is ~22px, so an in-flow circle would stretch the winning bar to 36px while the loser stayed at 24px and the card looked lopsided. The negative margin makes the circle eat the bar's existing 4px padding instead of adding to it. Verified: **both bars measure 24.09px**, names sit at the same 4px offset on both sides, and the bar has no `overflow-hidden` so nothing clips. An earlier 28px circle (`c3f7ae2`) caused exactly this 36px/24px imbalance.
+* âš ï¸ **`my-[-3px]` on the winner circle is load-bearing - do not remove it.** The bar is `py-1` + a 16px name line = ~24px, but a circle large enough to hold the 15px score is ~22px, so an in-flow circle would stretch the winning bar to 36px while the loser stayed at 24px and the card looked lopsided. The negative margin makes the circle eat the bar's existing 4px padding instead of adding to it. Verified: **both bars measure 24.09px**, names sit at the same 4px offset on both sides, and the bar has no `overflow-hidden` so nothing clips. An earlier 28px circle (`c3f7ae2`) caused exactly this 36px/24px imbalance.
 * **The circle is filled, not an outline, and that is load-bearing.** The team bars are dark blue `#0077B6` and light orange `#FF7F50`. Contrast was measured across 15 saturated greens - every one fails against one of the two bars (`#22C55E` = 1.1:1 on orange, `#008000` = 1.06:1 on blue), worse than the white text it would replace. Painting the green onto **white** instead clears AA and works identically on either bar. **Do not "simplify" this back to green text or a bare ring on the bar - it will be unreadable for one gender.**
-* **Two earlier attempts were reverted as ugly** (`d8d04a6` heavier weight + size, then `2398285` green names): (a) weight/size escalation - cluttered, and 500→700 at 14px was imperceptible next to a 900 score; (b) colour-only names - needed a pale `#D9FFB3` green plus a dark text-shadow to survive the orange bar, and read as washed out. **Lesson: confirm with the user *which element* to mark (score vs names) and *how* (weight / size / colour) BEFORE building** - four build+deploy cycles were spent guessing.
+* **Two earlier attempts were reverted as ugly** (`d8d04a6` heavier weight + size, then `2398285` green names): (a) weight/size escalation - cluttered, and 500â†’700 at 14px was imperceptible next to a 900 score; (b) colour-only names - needed a pale `#D9FFB3` green plus a dark text-shadow to survive the orange bar, and read as washed out. **Lesson: confirm with the user *which element* to mark (score vs names) and *how* (weight / size / colour) BEFORE building** - four build+deploy cycles were spent guessing.
 * Only the **main draw grid** changed. `LiveDrawView` renders no scores at all (the live draw is mid-generation), so there was nothing to emphasise there.
 * **Lesson - a passing assertion is not the same as a visible change.** The first attempt (`bf1f2d5`) used `font-bold`/`font-medium` (700 vs 500) and my check asserted only `weight > 600`, so it "passed" 28/28 - but the user still saw only the score emphasised, because 200 weight steps at 14px white-on-blue is near-invisible next to a 900 score. **Assert the perceptual delta you actually intend** (here: winner `>= 900` *and* opaque, loser `<= 400` *and* `<= 0.75` opacity), not a threshold that happens to pass.
 * Verified with a strict CDP script across all **28 cards** (14 female + 14 male): **28/28** - winner score is `rgb(21,128,61)` green on a 22x22px `border-radius:9999px` white circle, loser is plain white, the names are provably untouched (weight 500, 14px, white, zero property diffs vs the losing side), and **both bars are an identical 24.09px tall**. 28/28 cards, both genders. Live bundle `index-MWaLMCQ-.js`.
-* ⚠️ **Re-verifying after a deploy needs a fresh browser profile.** `max-age=3600` means a long-lived headless profile serves the *old* `index.html` and reports stale weights even though the deploy succeeded. Confirm by diffing the bundle filename in live `index.html` against `dist/index.html`, then relaunch Chrome with a new `--user-data-dir` before trusting computed styles.
+* âš ï¸ **Re-verifying after a deploy needs a fresh browser profile.** `max-age=3600` means a long-lived headless profile serves the *old* `index.html` and reports stale weights even though the deploy succeeded. Confirm by diffing the bundle filename in live `index.html` against `dist/index.html`, then relaunch Chrome with a new `--user-data-dir` before trusting computed styles.
 
 ## 13af. Reset Clock separated from Reset Everything (`4e138ac`, Oct 2026)
 
@@ -721,59 +721,84 @@ Three bugs, all from run control living in its **own** document that other code 
 
 ## 13ag. Reset Everything no longer blocks on the Auth-deletion GitHub Action (`8f7398f`, Oct 2026)
 
-* `fullTournamentReset` step 1 dispatched the "Delete registered players" workflow via the Cloudflare Worker, then **awaited** `waitForGithubRunCompletion()` — 48 polls x 5s = a **240-second** hard ceiling.
+* `fullTournamentReset` step 1 dispatched the "Delete registered players" workflow via the Cloudflare Worker, then **awaited** `waitForGithubRunCompletion()` â€” 48 polls x 5s = a **240-second** hard ceiling.
 * Verified live: the worker's `/status` endpoint returned `{"status":"queued"}` continuously for 160s straight. When the repo's GitHub-hosted runners are busy the run never leaves the queue, so the button sat on "Resetting..." with **zero progress feedback** and no way to tell a slow run from a hung one.
 * The poll was **pointless**: `fullTournamentReset` already wrapped the call in `try/catch` and continued the Firestore wipe regardless of success, timeout, or failure. The reset was gating on a result it then discarded.
-* Fix: the dispatch and its 3-attempt retry are unchanged, but the function now returns immediately once the worker accepts the request (`message: 'Deletion queued in GitHub Actions (not awaited)'`). `waitForGithubRunCompletion` is kept as an **exported diagnostic helper** for manually checking a run — nothing awaits it.
+* Fix: the dispatch and its 3-attempt retry are unchanged, but the function now returns immediately once the worker accepts the request (`message: 'Deletion queued in GitHub Actions (not awaited)'`). `waitForGithubRunCompletion` is kept as an **exported diagnostic helper** for manually checking a run â€” nothing awaits it.
 * User confirmed Reset Everything "worked without delay" and the tournament loaded correctly afterwards.
-* ⚠️ **Two side effects to keep in mind:** (1) Auth deletion is now genuinely **eventual** — Firestore data is wiped immediately while auth accounts may linger for minutes. A player who re-registers inside that window could have their new account deleted by the in-flight run. (2) The workflow genuinely was stuck in `queued`, so **account deletion may not be completing at all**. Check the repository's Actions tab; this is unrelated to the app and was not investigated further.
+* âš ï¸ **Two side effects to keep in mind:** (1) Auth deletion is now genuinely **eventual** â€” Firestore data is wiped immediately while auth accounts may linger for minutes. A player who re-registers inside that window could have their new account deleted by the in-flight run. (2) The workflow genuinely was stuck in `queued`, so **account deletion may not be completing at all**. Check the repository's Actions tab; this is unrelated to the app and was not investigated further.
 
 ## 13ah. "Loading Tournament Data..." hang was stale data, not a code regression (Oct 2026)
 
 * Symptom: **View Tournament** from Admin Control hung on "Loading Tournament Data..." with no error, after the 13ag deploy.
-* Traced to `Index.tsx:865`. `resolveMatchPlayers` throws on any unknown player ID, `Index.tsx:196-200` catches it and sets both match lists to `[]`, and the empty-match gate renders the loading screen **forever** — there is no recovery path.
+* Traced to `Index.tsx:865`. `resolveMatchPlayers` throws on any unknown player ID, `Index.tsx:196-200` catches it and sets both match lists to `[]`, and the empty-match gate renders the loading screen **forever** â€” there is no recovery path.
 * Root cause was an **ID mismatch in Firestore**: the 28 matches referenced `female_1..female_8` / `male_1..male_8`, while `players` held 16 docs with **random Firestore auto-IDs** (`o9HNT3Cl38Wq9Uq1e9Zo` etc.), 112 broken references total. Those docs also had **no `created_at`**, proving they were not written by `initializePlayers` (which always sets it and uses fixed IDs) - they were leftovers.
 * **Confirmed NOT caused by `4e138ac`:** empty diffs against `b5e331a` for `Index.tsx`, `playerInitUtils.ts`, `matchInitUtils.ts`, `matchPlayerResolver.ts`, `staticMatchups.ts`. Deployed rules were verified correct (public read on `players`/`matches`, serving ruleset `76a6a751`), and anonymous REST reads succeeded.
 * **Resolved itself:** the user's next Reset Everything re-seeded players with the deterministic IDs the matches already expected. Verified live: 16 players, 28 matches, **0 broken references**.
-* ⚠️ **Lesson - this failure mode is invisible in code review and silent in the UI.** The resolver's strict validation is correct (it prevents blank pages), but converting a throw into `[]` produces an **eternal loading screen** rather than an error. If orphaned-ID data is ever seen again, check that `matches.player*_id` values exist in `players` before touching any component.
+* âš ï¸ **Lesson - this failure mode is invisible in code review and silent in the UI.** The resolver's strict validation is correct (it prevents blank pages), but converting a throw into `[]` produces an **eternal loading screen** rather than an error. If orphaned-ID data is ever seen again, check that `matches.player*_id` values exist in `players` before touching any component.
 * Real registered players and their scores were **lost** in that reset and are **not recoverable** from current Firestore state (only from history or a prior export).
 
 ## 13ai. Tournament duration history (option A) + "Previous Tournaments" table (`e717fc8`, Oct 2026)
 
 **Problem:** `tournament_control` held the only record of a tournament's duration. `resetTournamentClock()` overwrote both timestamps with `null`, so every previous tournament's duration was destroyed permanently.
 
-**Design: option A — a `history` array field on the existing `tournamentSettings/tournament_control` document.**
-* Chosen over option B (a new top-level `tournamentHistory` collection) precisely because **`match /tournamentSettings/{settingId}` does not cascade to subcollections**, so option B would have required a **Firestore rules deploy**. Option A needs **zero rules changes** — it writes to a path that is already writable. `firestore.rules` was **not** touched.
+**Design: option A â€” a `history` array field on the existing `tournamentSettings/tournament_control` document.**
+* Chosen over option B (a new top-level `tournamentHistory` collection) precisely because **`match /tournamentSettings/{settingId}` does not cascade to subcollections**, so option B would have required a **Firestore rules deploy**. Option A needs **zero rules changes** â€” it writes to a path that is already writable. `firestore.rules` was **not** touched.
 
 **Why it cannot break the app (the important part):**
 * History lives in `src/utils/tournamentControl.ts` as its own block, **entirely outside `TournamentControlState`**. `elapsedMs`, `isTimerRunning`, `formatElapsed` and `normalizeControlState` are byte-for-byte unchanged and **never read `history`**.
 * `normalizeHistory()` is separately defensive: a missing/non-array `history` yields `[]`, entries without a usable start time or duration are **skipped rather than coerced**, and nothing in it can throw. It is capped at `MAX_HISTORY_ENTRIES = 50` (~5KB, far under the 1MB doc limit), oldest rows dropped first.
-* A test asserts `normalizeControlState({ tournamentStartTime, history: 'garbage' })` deep-equals the same input without `history`, so **corrupt history can only make admin rows disappear — it can never change a timer reading or flip `scoreSubmissionEnabled`** (which still fails closed).
+* A test asserts `normalizeControlState({ tournamentStartTime, history: 'garbage' })` deep-equals the same input without `history`, so **corrupt history can only make admin rows disappear â€” it can never change a timer reading or flip `scoreSubmissionEnabled`** (which still fails closed).
 * `useTournamentControl` reads `history` via a **separate `normalizeHistory(raw?.history)` call**, not through `normalizeControlState`. Its error path falls back to `history: []`, keeping the fail-closed behaviour intact.
 
-**Archive hook — `resetTournamentClock()` (`src/utils/tournamentControlFirestore.ts:89`):**
+**Archive hook â€” `resetTournamentClock()` (`src/utils/tournamentControlFirestore.ts:89`):**
 * Now reads the current clock, builds the entry, and writes `history` **in the same single `setDoc` that clears the timestamps**. Atomic by construction: a failed call can never wipe the clock without also preserving it.
-* `buildHistoryEntry()` returns **`null` when `tournamentStartTime` is null**, and `appendHistory(list, null)` returns the list unchanged — so a clock that was never started archives nothing and writes no junk rows.
+* `buildHistoryEntry()` returns **`null` when `tournamentStartTime` is null**, and `appendHistory(list, null)` returns the list unchanged â€” so a clock that was never started archives nothing and writes no junk rows.
 * A **still-running** clock cleared by Reset Clock is recorded with `endedAt: null` and the elapsed reading at that moment as `durationMs`, so even an interrupted tournament keeps its duration.
 * Deliberately **not** hooked into `finishTournamentClock()` or either reset path: Reset Clock is the single transition point (13af), which keeps one archive per tournament and guarantees no double-entries.
 
-**UI:** new **Previous Tournaments** card in `AdminControl.tsx` (between Tournament Control and Current Configuration). Columns Date / Started / Duration, **newest first**, using the existing `formatDuration` (HH:MM). Shows "No archived tournaments yet…" while empty or loading.
+**UI:** new **Previous Tournaments** card in `AdminControl.tsx` (between Tournament Control and Current Configuration). Columns Date / Started / Duration, **newest first**, using the existing `formatDuration` (HH:MM). Shows "No archived tournaments yetâ€¦" while empty or loading.
 * **Retention: 50 rows, self-cleaning.** `MAX_HISTORY_ENTRIES = 50` (`tournamentControl.ts:133`); `appendHistory()` and `normalizeHistory()` both slice to the last 50, so the oldest row is dropped automatically on every archive. ~5KB worst case, far under the 1MB doc limit.
-* **Manual cleanup (`caa5aa4`):** a **Clear History** button in the Previous Tournaments card header, rendered **only when rows exist**, behind the existing `ResetConfirmationModal`. New `clearTournamentHistory()` (`tournamentControlFirestore.ts`) does `setDoc(..., { history: [] }, { merge: true })` — it writes **only** `history`, so it can never stop/start the clock, flip `scoreSubmissionEnabled`, or touch players/matches.
+* **Manual cleanup (`caa5aa4`):** a **Clear History** button in the Previous Tournaments card header, rendered **only when rows exist**, behind the existing `ResetConfirmationModal`. New `clearTournamentHistory()` (`tournamentControlFirestore.ts`) does `setDoc(..., { history: [] }, { merge: true })` â€” it writes **only** `history`, so it can never stop/start the clock, flip `scoreSubmissionEnabled`, or touch players/matches.
 * **Layout fix (`4378e82`):** the timer + Start/Stop + Reset Clock used to sit in one **non-wrapping** flex item inside a `flex-wrap` row, so the ~460px group overflowed the card on narrower screens and Reset Clock appeared to sit outside the Tournament Control card. The controls now form their own `flex-wrap` row below the submission status, separated by a divider.
-* **Confirmed user decision (Oct 2026): the clock stops at only two moments** — (1) automatically when the final match result is submitted (`finalMatchUtils.ts:126` → `finishTournamentClock()`), or (2) manually via Reset Clock. **Stop Score Submission does not stop the clock** and never has; pausing submission must not shorten the recorded duration. User was explicitly asked and chose to keep this behaviour rather than add a Stop Clock button.
+* **Confirmed user decision (Oct 2026): the clock stops at only two moments** â€” (1) automatically when the final match result is submitted (`finalMatchUtils.ts:126` â†’ `finishTournamentClock()`), or (2) manually via Reset Clock. **Stop Score Submission does not stop the clock** and never has; pausing submission must not shorten the recorded duration. User was explicitly asked and chose to keep this behaviour rather than add a Stop Clock button.
 
 **Verification (all passed):**
-* `npx vitest run` — **100 tests, 9 files** (87 baseline + 13 new covering history).
-* `npx tsc -b --force` — **22 errors, identical to baseline** (two pre-existing `AdminControl.tsx` `() => void` vs `() => Promise<void>` errors only shifted 780/793 → 837/850 from added lines).
-* `npx vite build` — succeeded; `npx eslint` on the 5 touched files — only pre-existing `no-explicit-any` findings, none on added lines.
+* `npx vitest run` â€” **100 tests, 9 files** (87 baseline + 13 new covering history).
+* `npx tsc -b --force` â€” **22 errors, identical to baseline** (two pre-existing `AdminControl.tsx` `() => void` vs `() => Promise<void>` errors only shifted 780/793 â†’ 837/850 from added lines).
+* `npx vite build` â€” succeeded; `npx eslint` on the 5 touched files â€” only pre-existing `no-explicit-any` findings, none on added lines.
 * Deployed and verified: live `index.html` references `assets/index-ftXMMC23.js`, which matches local `dist/` and returns HTTP 200.
 
 **Note:** history only begins accumulating from this deploy onward. Nothing prior was archived, because until now there was no record to archive.
 
+
+## 13aj. Worker: GitHub App installation tokens for permanent delete-players auth (f9725b2, Oct 2026)
+
+**Problem:** "Delete All Registered Players" kept returning 401 (Bad credentials). The worker /status returned {"status":"error","detail":"github_api_401"}, confirming GH_PAT was bound but rejected by GitHub (expiry/auto-revocation).
+
+**Solution (permanent):** Rewrote workers/delete-firebase-users.js to use a GitHub App installation token (private key never expires). Falls back to GH_PAT if App secrets absent.
+
+**Key changes (workers/delete-firebase-users.js):**
+- Accepts GH_APP_ID, GH_APP_PRIVATE_KEY (PEM; PKCS#1 auto-converted to PKCS#8). Optional GH_APP_INSTALLATION_ID to skip discovery.
+- Signs JWT (RS256) with App private key (iss=app id, exp=now+540s), exchanges for 1h installation token, caches per isolate.
+- resolveGithubToken prefers App, else PAT. Both dispatch and /status use it.
+- Preserves Firebase token verification and GitHub Action relay (no app code change).
+
+**Why App over PAT:** App private key does not expire; installation tokens are short-lived and auto-rotated. Avoids recurring 401s.
+
+**Why keep GitHub Action relay:** Direct in-worker deletion worked but was flaky on Cloudflare free-plan CPU (10 ms) due to RSA signing/key import — abandoned in favour of the un-CPU-limited GitHub Action path.
+
+**Deployment (manual):**
+1. Create GitHub App with Contents: Read and write, Actions: Read, install on leoblixt25/kingQueen.
+2. Cloudflare Workers & Pages → sandy-scorekeeper-workers → Variables and Secrets: add GH_APP_ID, GH_APP_PRIVATE_KEY (full PEM, newlines preserved).
+3. Update live worker code in Cloudflare Quick Edit to match workers/delete-firebase-users.js at f9725b2.
+4. Test status endpoint and "Delete All Registered Players".
+
+**Verification:** code committed (f9725b2) and pushed. Hosting unchanged.
+
 ## 14. Deployment URLs
 
-### EU Project (KingQueen_EU — LIVE)
+### EU Project (KingQueen_EU â€” LIVE)
 * **Firebase Hosting**: https://kingqueen-eu.web.app
 * **Firebase Project**: `kingqueen-eu` (europe-west1, lower latency for Barcelona users)
 * **GitHub Repository**: https://github.com/leoblixt25/kingQueen
@@ -794,16 +819,16 @@ firebase deploy --only firestore:rules --project kingqueen-eu
 git push origin main
 ```
 
-⚠️ **Directive**: This is the ONLY app repo. All work happens in `KingQueen_EU` local + `kingQueen` GitHub repo.
+âš ï¸ **Directive**: This is the ONLY app repo. All work happens in `KingQueen_EU` local + `kingQueen` GitHub repo.
 
-⚠️ **Migration done**: All Firestore data (16 players, 28 matches, 24 tournamentSettings) and the single admin auth user migrated from `kingqueen-c3543` to `kingqueen-eu` via `scripts-firebase-tools/migrate-data.mjs`. Service-account JSON keys are NOT stored in the repo — re-generate as needed (`firebase deploy` uses interactive `firebase login`).
+âš ï¸ **Migration done**: All Firestore data (16 players, 28 matches, 24 tournamentSettings) and the single admin auth user migrated from `kingqueen-c3543` to `kingqueen-eu` via `scripts-firebase-tools/migrate-data.mjs`. Service-account JSON keys are NOT stored in the repo â€” re-generate as needed (`firebase deploy` uses interactive `firebase login`).
 
-⚠️ `DEPLOY_CLOUDFLARE_WORKER_FREE.md`, `FUNCTIONS_DEPLOYMENT_GUIDE.md` and other older guides describe the ABANDONED direct-worker / Firebase Functions approaches. The working architecture is section 13k.
+âš ï¸ `DEPLOY_CLOUDFLARE_WORKER_FREE.md`, `FUNCTIONS_DEPLOYMENT_GUIDE.md` and other older guides describe the ABANDONED direct-worker / Firebase Functions approaches. The working architecture is section 13k.
 
 ### Live data snapshot (Oct 2026, verified at `caa5aa4`)
 * **Current, healthy state.** The user ran Reset Everything again after the 13ah fix and the user reported everything working "as before": View Tournament loads, players show as Player 1..8 per gender.
 * Verified by read-only query: **16 players** (`female_1..female_8`, `male_1..male_8`), **28 matches** (14 female + 14 male), **0 broken `player*_id` references**, `finalMatches` empty.
 * `tournamentSettings/tournament_control` is **clean**: `tournamentStarted: false`, `scoreSubmissionEnabled: false`, both timestamps `null`, `tournament_date` blank. Timer is hidden until Start.
-* ⚠️ **These are the seeded placeholder players, not a real roster.** Real registrations and all match scores were lost in the resets (13ah) and are not recoverable from current state.
-* Live bundle at `caa5aa4`: `assets/index-W0qkNLCb.js` (previously `index-Bq474vN5.js` at `4378e82`, `index-ftXMMC23.js` at `e717fc8`, `index-D7_rWbrW.js` at `8f7398f`). The `history` array does not exist on `tournament_control` yet — it is created on the first Reset Clock press.
+* âš ï¸ **These are the seeded placeholder players, not a real roster.** Real registrations and all match scores were lost in the resets (13ah) and are not recoverable from current state.
+* Live bundle at `caa5aa4`: `assets/index-W0qkNLCb.js` (previously `index-Bq474vN5.js` at `4378e82`, `index-ftXMMC23.js` at `e717fc8`, `index-D7_rWbrW.js` at `8f7398f`). The `history` array does not exist on `tournament_control` yet â€” it is created on the first Reset Clock press.
 * Do not modify production Firestore data without explicit user approval.

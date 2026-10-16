@@ -816,47 +816,18 @@ export default function DrawPage() {
 
         {/* Main content - Step based */}
         <div className="w-full">
-          {/* Completed draw: wheels collapsed, compact controls lead */}
-          {saved && (
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white/70 border border-gray-200 px-4 py-3">
-              <div className="flex items-center gap-2 text-sm font-medium text-foreground/70">
-                <CheckCircle2 size={16} className="text-green-600" />
-                Draw completed — match grids below
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  size="sm"
-                  onClick={() => navigate('/tournament')}
-                  className="bg-ocean hover:bg-ocean-dark text-white font-semibold"
-                >
-                  Go to Tournament
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setShowRestartDrawModal(true)}
-                  className="border-coral text-coral hover:bg-coral/10 font-semibold"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                  Replay draw
-                </Button>
-              </div>
-            </div>
-          )}
-
           {/* Show Female Draw (Step 1) */}
           {(currentStep === 1 || saved) && (
-            <div className={`grid grid-cols-1 ${saved ? "md:grid-cols-1" : "md:grid-cols-[320px_1fr]"} gap-4 md:gap-6 items-start ${currentStep === 2 && !saved ? 'opacity-50' : ''}`}>
-              {!saved && <div className="md:sticky md:top-4">{renderWheel('f')}</div>}
+            <div className={`grid grid-cols-1 md:grid-cols-[320px_1fr] gap-4 md:gap-6 items-start ${currentStep === 2 && !saved ? 'opacity-50' : ''}`}>
+              <div className="md:sticky md:top-4">{renderWheel('f')}</div>
               <div className="min-w-0">{renderMatchGrid(fMatches, 'f')}</div>
             </div>
           )}
 
           {/* Show Male Draw (Step 2) */}
           {(currentStep === 2 || saved) && fDone && (
-            <div className={`mt-6 pt-4 border-t border-sand-dark/10 grid grid-cols-1 ${saved ? "md:grid-cols-1" : "md:grid-cols-[320px_1fr]"} gap-4 md:gap-6 items-start ${currentStep === 1 ? 'hidden' : ''}`}>
-              {!saved && <div className="md:sticky md:top-4">{renderWheel('m')}</div>}
+            <div className={`mt-6 pt-4 border-t border-sand-dark/10 grid grid-cols-1 md:grid-cols-[320px_1fr] gap-4 md:gap-6 items-start ${currentStep === 1 ? 'hidden' : ''}`}>
+              <div className="md:sticky md:top-4">{renderWheel('m')}</div>
               <div className="min-w-0">{renderMatchGrid(mMatches, 'm')}</div>
             </div>
           )}
@@ -886,12 +857,37 @@ export default function DrawPage() {
             </div>
           )}
 
-          {/* Success state - saved (controls shown in compact toolbar above) */}
+          {/* Success state - saved */}
           {saved && (
-            <div className="mt-8 pt-6 border-t border-sand-dark/10 text-center">
-              <p className="text-xs text-foreground/50">
-                {new Date().toLocaleTimeString()} • All matches assigned
-              </p>
+            <div className="mt-8 pt-6 border-t border-sand-dark/10 space-y-4 max-w-md mx-auto">
+              <div className="text-center">
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-100 text-green-700 text-sm font-semibold">
+                  <CheckCircle2 size={16} />
+                  Draw Saved — Tournament Open
+                </div>
+                <p className="text-xs text-foreground/50 mt-2">
+                  {new Date().toLocaleTimeString()} • All matches assigned
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <Button
+                  onClick={() => navigate('/tournament')}
+                  className="w-full touch-target font-semibold py-4 text-base rounded-xl bg-ocean hover:bg-ocean-dark text-white shadow-lg shadow-ocean/30"
+                >
+                  Go to Tournament
+                  <ChevronRight className="w-5 h-5 ml-2" />
+                </Button>
+
+                <Button
+                  onClick={() => setShowRestartDrawModal(true)}
+                  variant="outline"
+                  className="w-full touch-target py-4 text-base border-coral text-coral hover:bg-coral/10"
+                >
+                  <RotateCcw className="w-5 h-5 mr-2" />
+                  Restart Draw
+                </Button>
+              </div>
             </div>
           )}
         </div>

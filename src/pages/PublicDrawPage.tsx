@@ -33,9 +33,6 @@ export default function PublicDrawPage() {
   const [drawTarget, setDrawTarget] = useState<number | null>(null);
   const [now, setNow] = useState(new Date());
   const [activeTab, setActiveTab] = useState<'female' | 'male'>('female');
-  // After the draw is saved, the wheel is collapsed behind a toggle so the
-  // match grid leads. Spectators can still reveal it to see the full draw.
-  const [showWheel, setShowWheel] = useState(false);
   // Submitted scores keyed by `${gender}_${match_number}` so each draw card can
   // show the result beside its teams. Read-only: this page never writes scores.
   const [matchScores, setMatchScores] = useState<Record<string, { s1: number; s2: number }>>({});
@@ -157,7 +154,7 @@ export default function PublicDrawPage() {
     const t = setTimeout(paint, 60);
     window.addEventListener('resize', paint);
     return () => { window.removeEventListener('resize', paint); clearTimeout(t); };
-  }, [loading, saved, femalePlayers, malePlayers, fOrder.current.length, mOrder.current.length, activeTab, showWheel]);
+  }, [loading, saved, femalePlayers, malePlayers, fOrder.current.length, mOrder.current.length, activeTab]);
 
   if (loading) {
     return (
@@ -401,7 +398,7 @@ export default function PublicDrawPage() {
         {/* Tabs */}
         <div className="flex gap-2 max-w-md mx-auto mb-8">
           <Button
-            onClick={() => { setActiveTab('female'); setShowWheel(false); }}
+            onClick={() => setActiveTab('female')}
             className={`flex-1 touch-target font-semibold text-base py-3 transition-all duration-300 ${
               activeTab === 'female'
                 ? 'bg-sunset hover:bg-sunset-dark text-white shadow-beach'
@@ -411,7 +408,7 @@ export default function PublicDrawPage() {
             👩 Female
           </Button>
           <Button
-            onClick={() => { setActiveTab('male'); setShowWheel(false); }}
+            onClick={() => setActiveTab('male')}
             className={`flex-1 touch-target font-semibold text-base py-3 transition-all duration-300 ${
               activeTab === 'male'
                 ? 'bg-ocean hover:bg-ocean-dark text-white shadow-beach'
@@ -425,58 +422,16 @@ export default function PublicDrawPage() {
         <div className="w-full space-y-10">
           <div>
             {activeTab === 'female' && (
-              saved ? (
-                <>
-                  {renderMatchGrid(fMatches, `${fMatches.length} Female Matches`, 'female')}
-                  <div className="mt-6 flex justify-center">
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowWheel(v => !v)}
-                      className="touch-target border-sunset/40 text-sunset-dark hover:bg-sunset/10 font-semibold"
-                    >
-                      <Target size={16} className="mr-2" />
-                      {showWheel ? 'Hide draw wheel' : 'Show draw wheel'}
-                    </Button>
-                  </div>
-                  {showWheel && (
-                    <div className="mt-6">
-                      {renderWheel('f', fMatches, femalePlayers)}
-                    </div>
-                  )}
-                </>
-              ) : (
-                <>
-                  {renderWheel('f', fMatches, femalePlayers)}
-                  {renderMatchGrid(fMatches, `${fMatches.length} Female Matches`, 'female')}
-                </>
-              )
+              <>
+                {renderWheel('f', fMatches, femalePlayers)}
+                {renderMatchGrid(fMatches, `${fMatches.length} Female Matches`, 'female')}
+              </>
             )}
             {activeTab === 'male' && (
-              saved ? (
-                <>
-                  {renderMatchGrid(mMatches, `${mMatches.length} Male Matches`, 'male')}
-                  <div className="mt-6 flex justify-center">
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowWheel(v => !v)}
-                      className="touch-target border-ocean/40 text-ocean-dark hover:bg-ocean/10 font-semibold"
-                    >
-                      <Target size={16} className="mr-2" />
-                      {showWheel ? 'Hide draw wheel' : 'Show draw wheel'}
-                    </Button>
-                  </div>
-                  {showWheel && (
-                    <div className="mt-6">
-                      {renderWheel('m', mMatches, malePlayers)}
-                    </div>
-                  )}
-                </>
-              ) : (
-                <>
-                  {renderWheel('m', mMatches, malePlayers)}
-                  {renderMatchGrid(mMatches, `${mMatches.length} Male Matches`, 'male')}
-                </>
-              )
+              <>
+                {renderWheel('m', mMatches, malePlayers)}
+                {renderMatchGrid(mMatches, `${mMatches.length} Male Matches`, 'male')}
+              </>
             )}
 </div>
         </div>

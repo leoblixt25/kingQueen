@@ -796,19 +796,11 @@ Three bugs, all from run control living in its **own** document that other code 
 
 **Verification:** code committed (f9725b2) and pushed. Hosting unchanged.
 
-## 13ak. PublicDrawPage: collapse wheel after draw saved, with optional reveal (8458025, Oct 2026)
+## 13ak. PublicDrawPage wheel collapse — REVERTED (8458025, reverted)
 
-**Goal:** On the PUBLIC draw page (spectator view), once the draw is saved, the match grid should lead instead of the wheel taking prime vertical space — but players must still be able to reveal the wheel (with names) via a button.
+**Status: reverted.** A short-lived change made the public draw page lead with the match grid and hide the wheel behind a `Show/Hide draw wheel` toggle once the draw was saved. Per request, the public page has been restored to its original layout: the wheel always renders (with the match grid below it) for both the female and male tabs, and there is no toggle button. (An even earlier attempt had wrongly targeted the admin `DrawPage.tsx`; that was also reverted.)
 
-**Note:** An earlier attempt (33926ef, reverted here) applied this to the admin `DrawPage.tsx`; that was the wrong surface and has been reverted.
-
-**Changes (src/pages/PublicDrawPage.tsx):** Presentational only — no data/timer logic touched.
-- New `showWheel` state (default `false`) plus a small `Show draw wheel` / `Hide draw wheel` outline button (`Target` icon), rendered under the match grid.
-- When `saved === true`: the match grid renders FIRST for the active tab, then the toggle button, and the wheel renders only when `showWheel` is true (gender-tinted button: sunset for female, ocean for male).
-- When `saved === false` (live drawing/countdown): unchanged — wheel first, then match grid.
-- `showWheel` added to the wheel paint effect deps so the canvas repaints when revealed; both tab buttons reset `showWheel` to `false` on switch.
-
-**Verification:** `npx vitest run` — 100/100 (9 files). `npx tsc -b --force` — 22 errors, identical to baseline (the two pre-existing `PublicDrawPage.tsx` errors at 62/63 shifted, none added). `npx vite build` — succeeded. Committed (8458025), pushed, deployed to Firebase Hosting.
+**Current behavior:** `src/pages/PublicDrawPage.tsx` renders `renderWheel(...)` then `renderMatchGrid(...)` per tab, unchanged from before the experiment. No `showWheel` state.
 
 ## 14. Deployment URLs
 

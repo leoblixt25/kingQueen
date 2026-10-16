@@ -796,6 +796,18 @@ Three bugs, all from run control living in its **own** document that other code 
 
 **Verification:** code committed (f9725b2) and pushed. Hosting unchanged.
 
+## 13ak. DrawPage: collapse wheel after save, lead with match grids (33926ef, Oct 2026)
+
+**Problem:** After the draw was saved (`saved === true`), both draw wheels still rendered in the left/sticky column (mobile: stacked on top), pushing the match grids down and wasting prime vertical space on small screens.
+
+**Solution (src/pages/DrawPage.tsx):** Purely presentational change to the saved state — no data/timer logic touched.
+- Wheel containers are hidden when saved: `{!saved && <div className="md:sticky md:top-4">{renderWheel('f')}</div>}` (same for `'m'`).
+- Grid layout collapses to a single full-width column when saved: `grid-cols-1 ${saved ? "md:grid-cols-1" : "md:grid-cols-[320px_1fr]"}`, so match grids lead on both mobile and desktop.
+- New compact toolbar renders above the grids when saved, with `Go to Tournament` and a small `Replay draw` (outline) button that opens the existing `ResetConfirmationModal` (`setShowRestartDrawModal(true)` → `restartDraw`).
+- Removed the now-duplicated bottom success block's nav/restart buttons; it keeps only the `time • All matches assigned` caption.
+
+**Verification:** `npx vitest run` — 100/100 (9 files). `npx tsc -b --force` — 22 errors, identical to baseline (none in DrawPage.tsx). `npx vite build` — succeeded. Committed (33926ef), pushed, deployed to Firebase Hosting; live `index.html` references `assets/index-CO0e5Xk_.js`, matching local `dist/` (HTTP 200).
+
 ## 14. Deployment URLs
 
 ### EU Project (KingQueen_EU â€” LIVE)

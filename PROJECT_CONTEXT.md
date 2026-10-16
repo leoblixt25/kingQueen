@@ -796,17 +796,19 @@ Three bugs, all from run control living in its **own** document that other code 
 
 **Verification:** code committed (f9725b2) and pushed. Hosting unchanged.
 
-## 13ak. DrawPage: collapse wheel after save, lead with match grids (33926ef, Oct 2026)
+## 13ak. PublicDrawPage: collapse wheel after draw saved, with optional reveal (8458025, Oct 2026)
 
-**Problem:** After the draw was saved (`saved === true`), both draw wheels still rendered in the left/sticky column (mobile: stacked on top), pushing the match grids down and wasting prime vertical space on small screens.
+**Goal:** On the PUBLIC draw page (spectator view), once the draw is saved, the match grid should lead instead of the wheel taking prime vertical space — but players must still be able to reveal the wheel (with names) via a button.
 
-**Solution (src/pages/DrawPage.tsx):** Purely presentational change to the saved state — no data/timer logic touched.
-- Wheel containers are hidden when saved: `{!saved && <div className="md:sticky md:top-4">{renderWheel('f')}</div>}` (same for `'m'`).
-- Grid layout collapses to a single full-width column when saved: `grid-cols-1 ${saved ? "md:grid-cols-1" : "md:grid-cols-[320px_1fr]"}`, so match grids lead on both mobile and desktop.
-- New compact toolbar renders above the grids when saved, with `Go to Tournament` and a small `Replay draw` (outline) button that opens the existing `ResetConfirmationModal` (`setShowRestartDrawModal(true)` → `restartDraw`).
-- Removed the now-duplicated bottom success block's nav/restart buttons; it keeps only the `time • All matches assigned` caption.
+**Note:** An earlier attempt (33926ef, reverted here) applied this to the admin `DrawPage.tsx`; that was the wrong surface and has been reverted.
 
-**Verification:** `npx vitest run` — 100/100 (9 files). `npx tsc -b --force` — 22 errors, identical to baseline (none in DrawPage.tsx). `npx vite build` — succeeded. Committed (33926ef), pushed, deployed to Firebase Hosting; live `index.html` references `assets/index-CO0e5Xk_.js`, matching local `dist/` (HTTP 200).
+**Changes (src/pages/PublicDrawPage.tsx):** Presentational only — no data/timer logic touched.
+- New `showWheel` state (default `false`) plus a small `Show draw wheel` / `Hide draw wheel` outline button (`Target` icon), rendered under the match grid.
+- When `saved === true`: the match grid renders FIRST for the active tab, then the toggle button, and the wheel renders only when `showWheel` is true (gender-tinted button: sunset for female, ocean for male).
+- When `saved === false` (live drawing/countdown): unchanged — wheel first, then match grid.
+- `showWheel` added to the wheel paint effect deps so the canvas repaints when revealed; both tab buttons reset `showWheel` to `false` on switch.
+
+**Verification:** `npx vitest run` — 100/100 (9 files). `npx tsc -b --force` — 22 errors, identical to baseline (the two pre-existing `PublicDrawPage.tsx` errors at 62/63 shifted, none added). `npx vite build` — succeeded. Committed (8458025), pushed, deployed to Firebase Hosting.
 
 ## 14. Deployment URLs
 

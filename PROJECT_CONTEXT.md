@@ -903,6 +903,62 @@ No Firestore collections, documents, rules or indexes were added or modified. Th
 
 **Phase 2 stops here.** Algorithms, persistence and rules require a later approval.
 
+## 13an. Group Stage engine — Phase 3 (Nov 2026)
+
+**Scope:** pure group-stage engine for the new format. No React, no Firebase, no persistence, no Double Elimination engine, no King & Queen changes.
+
+### Reuse review (what was and was not reused)
+
+- **Not reused:** `rankingUtils` (2/1 player points + final bracket writes), `rankingTiebreaker`/`statUtils` (Whist-8 player semantics and Firestore writes), `matchUtils`/`firebaseUtils` (global `matches` collection), `staticMatchups`/`drawWheel` (format-specific draw assumptions). The new engine must not inherit those rules.
+- **Reused conceptually only:** deterministic fallback ordering (compare by id), strict score validation, and the visual/UX idea of progress counts. No existing file was imported or modified.
+
+### Implemented modules (`src/formats/group-double-elimination/`)
+
+| Module | Implementation |
+|---|---|
+| `groups.ts` | `buildGroupPlan()` — seed-ordered snake distribution, balanced default sizes, explicit `groupSizes`, group ids `group-N`, names `Group A…`, `assignments`, `validateGroupPlan()`, `getQualifiedTeamIds()`. |
+| `groupStageMatches.ts` | Circle-method round robin per group, BYE handling for odd groups, deterministic ids `${groupId}-r${round}-m${index}`, `GroupStageRound` schedule, score apply/reset, completion and progress helpers. |
+| `groupStandings.ts` | Per-group table, head-to-head tiebreak among teams tied on wins, point difference, points scored, team id fallback, unique sequential ranks, `qualified: true` on every row, cross-group seeding (`seedTeamsFromGroupStandings()`). |
+| `groupStage.ts` | `buildGroupStage()` facade (allocation + schedule), qualifiers and completion helpers. |
+| `errors.ts` | `GroupStageError` with typed codes (`invalid-score`, `invalid-group-sizes`, `duplicate-team`, etc.). |
+| `compare.ts` | Code-point string comparison to keep determinism independent of runtime locale. |
+
+### Rules encoded
+
+- **Configurable groups and sizes:** `buildGroupPlan(teams, 2)` or `(teams, { groupSizes: [4, 3, 2] })`; each group needs at least 2 teams.
+- **Automatic distribution:** teams sorted by seed (unseeded last), then name/id, distributed snake-style (8 teams / 2 groups → A, B, B, A, A, B, B, A), so the input order cannot change the draw.
+- **Round robin:** every pair meets exactly once; even group = `n − 1` rounds; odd group = `n` rounds with one BYE per round and no bye match.
+- **Score handling:** single-set scores must be non-negative integers and cannot tie; winner and `completed` status are recomputed on edit; `resetGroupMatchScore()` restores `pending`.
+- **Completion:** a stage is complete only when it has matches and every match is complete. Progress reports total/completed/remaining.
+- **All teams qualified:** `getQualifiedTeamIds()`/`getGroupStageQualifiers()` return every team, and every standings row is `qualified: true`. Group losses are tracked only as `losses` in the group table and never passed to elimination state.
+- **Tiebreakers:** wins → head-to-head (wins, then point difference among the tied block) → overall point difference → points scored → team id.
+
+### Tests
+
+Four new test files, **57 new tests**:
+
+- `groups.test.ts` (18) — balanced/uneven distribution, snake seeds, input-order independence, explicit sizes, qualification, ids/names, validation errors.
+- `groupStageMatches.test.ts` (22) — pair coverage, odd-group BYEs, no double-booking in a round, deterministic unique ids, multi-group schedules, score validation/edit/reset, completion/progress.
+- `groupStandings.test.ts` (10) — completed-only counting, wins ordering, head-to-head priority, circular tie, points-scored and team-id fallbacks, unique ranks, qualification, cross-group seeding.
+- `groupStage.test.ts` (7) — end-to-end facade, uneven groups, determinism, completion, a team losing all group games remaining qualified, error propagation.
+
+### Verification
+
+- `npx vitest run` — **14 files / 161 tests passed** (104 before + 57 new).
+- `npx tsc -b --force` — **22 errors, identical to baseline**, none in new files.
+- `npx vite build` — succeeded (bundle unchanged: the engine is not yet imported by UI, so it is tree-shaken).
+
+### Remaining issues (intentionally deferred)
+
+1. **No persistence or UI.** The engine is not wired to Firestore or any page yet; a service/store phase is required.
+2. **`TournamentConfig.teamsPerGroup` is advisory.** Actual allocation uses `groupSizes` or balanced group count; the admin form must map one to the other.
+3. **Tiebreak policy needs product sign-off** (head-to-head before overall difference). Changing the order later only affects the comparator.
+4. **No court/time scheduling.** Rounds are ordered, but there is no court assignment or start time.
+5. **Group results are not yet passed to elimination**, by design; Phase 4 must seed the bracket from `seedTeamsFromGroupStandings()`.
+6. **Single-set only**, matching the approved format decision.
+
+**Phase 3 stops here.** Double Elimination awaits approval.
+
 ## 14. Deployment URLs
 
 ### EU Project (KingQueen_EU â€” LIVE)

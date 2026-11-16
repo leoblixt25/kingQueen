@@ -899,6 +899,8 @@ No Firestore collections, documents, rules or indexes were added or modified. Th
 
 **Verification:** `npx vitest run` — 10 files / 104 tests passed (4 new registry tests). `npx tsc -b --force` — 22 errors, identical to baseline, none in new files. `npx vite build` — succeeded (`index-DGHGaTtH.js`, 1,540.74 kB). Route shell smoke test: all K&Q paths plus `/`, `/king-queen`, `/formats/group-stage-double-elimination`, `/formats/group-stage-double-elimination/admin` returned 200 with the SPA root.
 
+**Production deployment (16 Nov 2026, approved):** `main` fast-forwarded to `6c57c49` (Phase 1 + Phase 2) and pushed; `firebase deploy --only hosting --project kingqueen-eu` released build `index-DGHGaTtH.js`. Firestore rules were **not** deployed (unchanged). Verified live: `/` serves the chooser, `/king-queen` and all K&Q deep links return 200. `index.html` still has the 1-hour cache header, so an old tab may need Ctrl+F5.
+
 **Phase 2 stops here.** Algorithms, persistence and rules require a later approval.
 
 ## 14. Deployment URLs

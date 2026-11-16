@@ -834,6 +834,73 @@ Three bugs, all from run control living in its **own** document that other code 
 
 **Phase 1 stops here.** Phase 2 (pure group/elimination engines) requires fresh approval.
 
+## 13am. Multi-format architecture — Phase 2 (Nov 2026)
+
+**Scope:** architecture scaffolding only. No group-stage or bracket algorithms, no Firestore reads/writes, no schema or security-rule changes, no King & Queen logic touched.
+
+### Format identification
+
+- `src/formats/types.ts` — `TournamentFormat = "king-queen" | "group-double-elimination"`, `TournamentFormatDefinition`, `TOURNAMENT_FORMAT_IDS`, `isTournamentFormat()`.
+- `src/formats/registry.ts` — metadata and the approved public entry routes: `/king-queen` and `/formats/group-stage-double-elimination`. Exports `KING_QUEEN_FORMAT`, `GROUP_DOUBLE_ELIMINATION_FORMAT`, `TOURNAMENT_FORMAT_DEFINITIONS`, `getTournamentFormatDefinition()`.
+- `src/formats/index.ts` — shared barrel.
+- Used by the format chooser (`Home.tsx`) and the new-format pages. This type is deliberately **not** threaded through King & Queen pages: K&Q remains the implicit format without a discriminator.
+
+### New-format module tree (`src/formats/group-double-elimination/`)
+
+Pure TypeScript, no React and no Firebase imports. Every engine entry point is a documented contract that throws `NotImplementedError` until its phase is approved.
+
+| Module | Purpose |
+|---|---|
+| `types.ts` | Domain model: config, team, group, group match, elimination match, bracket links, Grand Final/reset flag. |
+| `config.ts` | `DEFAULT_CONFIG`, `createTournamentConfig()`, `CONFIG_LIMITS`. Encodes fixed rules (all teams advance, single set, reset final). |
+| `teams.ts` | Team-management contract (`createTeam`, `validateTeamDraft`, `moveTeamToGroup`). |
+| `groups.ts` | Group-allocation contract (`buildGroupPlan`, `validateGroupPlan`). |
+| `groupStageMatches.ts` | Round-robin generation contract (`generateGroupStageSchedule`, `isGroupStageComplete`). |
+| `groupStandings.ts` | Group table contract (`calculateGroupStandings`, `seedTeamsFromGroupStandings`). |
+| `bracket.ts` | Double-elimination bracket generation/validation contract. |
+| `winnersBracket.ts` | Winners Bracket projection and champion lookup contract. |
+| `losersBracket.ts` | Losers Bracket projection and champion lookup contract. |
+| `progression.ts` | Match progression, elimination, and Grand Final reset contract. |
+| `eliminationStandings.ts` | Elimination-only standings contract. |
+| `admin.ts` | Admin workflow sections and the tournament status each becomes usable in. |
+| `notImplemented.ts` | Shared `NotImplementedError` + `notImplemented()` guard. |
+| `index.ts` | Module barrel. |
+
+### Boundaries
+
+- **Shared infrastructure (format-agnostic):** `src/config/firebase.ts`, `src/utils/authUtils.ts`, `components/ui/*`, `Layout`, `ErrorBoundary`, `ProtectedRoute`, toasts, `matchValidation`, `matchScores`, `matchSortUtils`, `rankingVisibility`, the `rankingTiebreaker` comparator, `netAssignment`, `drawTimeUtils`, PDF scaffolding. Shared means "no tournament rules inside", not "safe to change".
+- **King & Queen only:** `Index`, `DrawPage`, `PublicDrawPage`, `LiveRanking`, `AdminControl`, `AdminPanel`, `FinalMatch`, `MatchCard`/`MatchDisplay`, `PlayerRankings`, `RankingsTable`, `TournamentFinished`, `TournamentTimer`, `staticMatchups`, `rankingUtils`, `finalMatchUtils`, `resetUtils`/`tournamentReset`, `placeholderUtils`/`playerInitUtils`, `firebaseUtils` loaders, `MainTitle`, `InfoPage`.
+- **Group Stage + Double Elimination only:** `src/formats/group-double-elimination/**`, `src/pages/formats/**`, and future services/hooks scoped to the `tournaments/{id}` namespace.
+- **Dependency rule:** K&Q never imports the new-format tree; the new format imports shared modules and its own registry entry only. Existing files were not moved.
+
+### Routing
+
+- Existing K&Q routes and deep links are unchanged.
+- New: `/formats/group-stage-double-elimination/admin` → `src/pages/formats/group-double-elimination/AdminSetup.tsx`, wrapped in `ProtectedRoute adminOnly`.
+- The admin shell renders the planned workflow sections from `GSDE_ADMIN_SECTIONS`; it is static, writes nothing, and is hidden behind the existing admin guard.
+- Bottom navigation remains hidden for all `/formats` paths.
+
+### Reuse decisions
+
+- Reused: UI primitives, layout/error/auth guards, format registry for route + copy, generic score/validation/sort/tiebreaker utilities, realtime-subscription and atomic-batch patterns (patterns only, not K&Q instances).
+- Intentionally kept separate: match generation (Whist-8), 2/1 point rankings, final bracket writes, global-collection loaders, draw-wheel assumptions, resets over `players`/`matches`, K&Q admin controls, K&Q public pages.
+
+### Data boundary
+
+No Firestore collections, documents, rules or indexes were added or modified. The future new-format store remains a later phase and must use `tournaments/{id}` only, never the four existing K&Q collections. Deploying that rule block still needs explicit approval.
+
+### Remaining risks
+
+1. Engine contracts throw by design — any premature call surfaces `NotImplementedError`, which is intentional but must not reach production UI.
+2. Two match/score UIs may diverge; shared primitives are reused, but presentation will be format-specific.
+3. The new namespace must stay isolated: writing a `tournaments` document into `matches`/`players` would corrupt K&Q counts and validation.
+4. Future Firestore rules are additive and gated on approval.
+5. Type-only format identification could drift if new formats are added without updating the registry; a registry test now guards ids and routes.
+
+**Verification:** `npx vitest run` — 10 files / 104 tests passed (4 new registry tests). `npx tsc -b --force` — 22 errors, identical to baseline, none in new files. `npx vite build` — succeeded (`index-DGHGaTtH.js`, 1,540.74 kB). Route shell smoke test: all K&Q paths plus `/`, `/king-queen`, `/formats/group-stage-double-elimination`, `/formats/group-stage-double-elimination/admin` returned 200 with the SPA root.
+
+**Phase 2 stops here.** Algorithms, persistence and rules require a later approval.
+
 ## 14. Deployment URLs
 
 ### EU Project (KingQueen_EU â€” LIVE)

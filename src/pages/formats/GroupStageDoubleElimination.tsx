@@ -16,6 +16,10 @@ import {
   RotateCcw,
   Trophy,
 } from "lucide-react";
+import {
+  GROUP_DOUBLE_ELIMINATION_FORMAT,
+  KING_QUEEN_FORMAT,
+} from "@/formats";
 
 const FORMAT_STEPS = [
   {
@@ -56,7 +60,7 @@ export default function GroupStageDoubleElimination() {
           </div>
           <div className="mb-2 flex items-center justify-center gap-2">
             <h1 className="text-2xl md:text-3xl font-extrabold text-foreground">
-              Group Stage + Double Elimination
+              {GROUP_DOUBLE_ELIMINATION_FORMAT.name}
             </h1>
           </div>
           <Badge variant="secondary" className="mb-4">
@@ -100,11 +104,19 @@ export default function GroupStageDoubleElimination() {
             King &amp; Queen tournaments are running today.
           </p>
           <Button asChild className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white">
-            <Link to="/king-queen">
+            <Link to={KING_QUEEN_FORMAT.route}>
               Go to King &amp; Queen
               <ArrowRight className="w-4 h-4" />
             </Link>
           </Button>
+          <div className="mt-3">
+            <Link
+              to={`${GROUP_DOUBLE_ELIMINATION_FORMAT.route}/admin`}
+              className="text-xs font-semibold text-foreground/60 hover:text-ocean hover:underline"
+            >
+              Admin setup
+            </Link>
+          </div>
         </div>
 
         <div className="mt-10 text-center text-sm text-foreground/60">

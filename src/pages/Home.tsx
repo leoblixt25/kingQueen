@@ -3,6 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, Crown, Download, GitBranch } from "lucide-react";
+import {
+  GROUP_DOUBLE_ELIMINATION_FORMAT,
+  KING_QUEEN_FORMAT,
+} from "@/formats";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -27,17 +31,16 @@ export default function Home() {
                   <Crown className="h-6 w-6" />
                 </span>
                 <CardTitle className="text-xl leading-tight">
-                  King &amp; Queen of the Beach
+                  {KING_QUEEN_FORMAT.name}
                 </CardTitle>
               </div>
               <CardDescription className="pt-1">
-                The classic format: 8 players per division, a fresh partner every
-                match, and a live ranking crown.
+                {KING_QUEEN_FORMAT.description}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Button
-                onClick={() => navigate("/king-queen")}
+                onClick={() => navigate(KING_QUEEN_FORMAT.route)}
                 className="w-full py-6 text-base font-bold bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02] flex items-center justify-center gap-2 rounded-2xl"
               >
                 Enter King &amp; Queen
@@ -54,21 +57,25 @@ export default function Home() {
                 </span>
                 <div className="min-w-0">
                   <CardTitle className="text-xl leading-tight">
-                    Group Stage + Double Elimination
+                    {GROUP_DOUBLE_ELIMINATION_FORMAT.name}
                   </CardTitle>
-                  <Badge variant="secondary" className="mt-1.5">
-                    Coming soon
-                  </Badge>
+                  {GROUP_DOUBLE_ELIMINATION_FORMAT.status ===
+                    "in-development" && (
+                    <Badge variant="secondary" className="mt-1.5">
+                      Coming soon
+                    </Badge>
+                  )}
                 </div>
               </div>
               <CardDescription className="pt-1">
-                Round-robin groups for every team, then a double-elimination
-                bracket with a Grand Final.
+                {GROUP_DOUBLE_ELIMINATION_FORMAT.description}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Button
-                onClick={() => navigate("/formats/group-stage-double-elimination")}
+                onClick={() =>
+                  navigate(GROUP_DOUBLE_ELIMINATION_FORMAT.route)
+                }
                 className="w-full py-6 text-base font-bold bg-ocean-gradient hover:opacity-90 text-white shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02] flex items-center justify-center gap-2 rounded-2xl"
               >
                 View new format

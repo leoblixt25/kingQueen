@@ -21,6 +21,7 @@ import DrawPage from "./pages/DrawPage";
 import PublicDrawPage from "./pages/PublicDrawPage";
 import InstallPage from "./pages/InstallPage";
 import GroupStageDoubleElimination from "./pages/formats/GroupStageDoubleElimination";
+import GroupDoubleEliminationAdminSetup from "./pages/formats/group-double-elimination/AdminSetup";
 import Layout from "./components/Layout";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,11 @@ const App = () => (
             <Route path="/" element={<Home />} />
             <Route path="/king-queen" element={<Landing />} />
             <Route path="/formats/group-stage-double-elimination" element={<GroupStageDoubleElimination />} />
+            <Route path="/formats/group-stage-double-elimination/admin" element={
+              <ProtectedRoute adminOnly={true}>
+                <GroupDoubleEliminationAdminSetup />
+              </ProtectedRoute>
+            } />
             <Route path="/live-ranking" element={<LiveRanking />} />
             <Route path="/info" element={<InfoPage />} />
             <Route path="/admin" element={<AdminLogin />} />

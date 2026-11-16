@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
+import Home from "./pages/Home";
 import Landing from "./pages/Landing";
 import Register from "./pages/Register";
 import SignIn from "./pages/SignIn";
@@ -19,6 +20,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import DrawPage from "./pages/DrawPage";
 import PublicDrawPage from "./pages/PublicDrawPage";
 import InstallPage from "./pages/InstallPage";
+import GroupStageDoubleElimination from "./pages/formats/GroupStageDoubleElimination";
 import Layout from "./components/Layout";
 
 const queryClient = new QueryClient();
@@ -31,7 +33,9 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route element={<Layout />}>
-            <Route path="/" element={<Landing />} />
+            <Route path="/" element={<Home />} />
+            <Route path="/king-queen" element={<Landing />} />
+            <Route path="/formats/group-stage-double-elimination" element={<GroupStageDoubleElimination />} />
             <Route path="/live-ranking" element={<LiveRanking />} />
             <Route path="/info" element={<InfoPage />} />
             <Route path="/admin" element={<AdminLogin />} />

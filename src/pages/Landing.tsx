@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Crown, Users, Info, Trophy, Shuffle, Download } from "lucide-react";
+import { ArrowLeft, Crown, Users, Info, Trophy, Shuffle, Download } from "lucide-react";
 import { auth, db } from "@/config/firebase";
 import { collection, onSnapshot } from "firebase/firestore";
 import MainTitle from "@/components/MainTitle";
@@ -62,7 +62,14 @@ export default function Landing() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sand-light via-sand to-ocean-light/20 px-4 pt-24 pb-8 flex items-start justify-center">
+    <div className="relative min-h-screen bg-gradient-to-br from-sand-light via-sand to-ocean-light/20 px-4 pt-24 pb-8 flex items-start justify-center">
+      <Link
+        to="/"
+        className="absolute left-4 top-4 inline-flex items-center gap-1.5 text-sm font-semibold text-ocean hover:text-ocean-dark transition-colors"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Formats
+      </Link>
       <div className="w-full max-w-md mx-auto text-center animate-fade-in">
         <div className="mb-4 animate-bounce-gentle">
           <div className="text-6xl md:text-7xl">🏐</div>

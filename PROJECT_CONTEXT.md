@@ -809,6 +809,31 @@ Three bugs, all from run control living in its **own** document that other code 
 
 **Verification:** `npx vitest run` — 100/100 (9 files). `npx tsc -b --force` — 22 errors, identical to baseline (two pre-existing `PublicDrawPage.tsx` errors 62/63 shifted, none added). `npx vite build` — succeeded.
 
+## 13al. Multi-format landing page — Phase 1 (Nov 2026)
+
+**Goal:** Introduce a second tournament format (Group Stage + Double Elimination) without touching King & Queen behaviour. Phase 1 is the landing/routing split only; no tournament logic, match generation, rankings, scoring, auth or Firestore changes.
+
+**Routing (additive, no existing path renamed):**
+- `/` → new `src/pages/Home.tsx` format chooser (King & Queen card, Group Stage + Double Elimination card, Install App, author credit).
+- `/king-queen` → existing `src/pages/Landing.tsx`, component behaviour unchanged apart from a small `← Formats` link back to `/`.
+- `/formats/group-stage-double-elimination` → new placeholder `src/pages/formats/GroupStageDoubleElimination.tsx` describing the format and linking back to `/` and `/king-queen`.
+- All other K&Q routes (`/live-ranking`, `/info`, `/admin*`, `/draw*`, `/tournament*`, `/player*`, `/register`, `/pending-approval`, `/install`) unchanged.
+
+**Changes:**
+- **New** `src/pages/Home.tsx` — chooser built from existing `Button`, `Card`, `Badge` and the sand/ocean palette. No Firestore reads.
+- **New** `src/pages/formats/GroupStageDoubleElimination.tsx` — static placeholder (group stage → double elimination → Grand Final summary, "In development" badge). No data access.
+- **Modified** `src/App.tsx` — imports `Home` and `GroupStageDoubleElimination`; `/` now renders `Home`, added `/king-queen` and `/formats/group-stage-double-elimination`.
+- **Modified** `src/components/Layout.tsx` — `/king-queen` added to `HIDDEN_PATHS`; bottom nav hidden for any `/formats...` path (same as before for the chooser).
+- **Modified** `src/pages/Landing.tsx` — added `← Formats` link (`Link` to `/`, `ArrowLeft`, `relative` on the outer container). No logic, data or layout changes otherwise.
+
+**Not modified:** `Index`, `DrawPage`, `PublicDrawPage`, `LiveRanking`, `AdminControl`, `MainTitle`, auth, `firebaseUtils`/`rankingUtils`, `firestore.rules`, `firebase.json`, all K&Q collections. No deploy.
+
+**Known consequence (intentional):** `ProtectedRoute` still redirects unauthenticated/non-registered users to `/`, which is now the format chooser. The `BottomNavigation` Home item also points at `/`; it is hidden on both `/` and `/king-queen`.
+
+**Verification:** `npx vitest run` — 100/100 (9 files). `npx tsc -b --force` — 22 errors, identical to baseline, none added. `npx vite build` — succeeded. Manual smoke test: `/`, `/king-queen`, `/formats/group-stage-double-elimination` and representative K&Q deep links.
+
+**Phase 1 stops here.** Phase 2 (pure group/elimination engines) requires fresh approval.
+
 ## 14. Deployment URLs
 
 ### EU Project (KingQueen_EU â€” LIVE)

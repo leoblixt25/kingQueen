@@ -1,11 +1,12 @@
 import { Outlet, useLocation } from "react-router-dom";
 import BottomNavigation from "@/components/BottomNavigation";
 
-const HIDDEN_PATHS = ['/sign-in', '/register', '/'];
+const HIDDEN_PATHS = ['/sign-in', '/register', '/', '/king-queen'];
 
 export default function Layout() {
   const { pathname } = useLocation();
-  const showNav = !HIDDEN_PATHS.includes(pathname);
+  const showNav =
+    !HIDDEN_PATHS.includes(pathname) && !pathname.startsWith('/formats');
 
   return (
     <div className="min-h-screen">

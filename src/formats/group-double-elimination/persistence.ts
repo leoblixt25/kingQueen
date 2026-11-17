@@ -18,6 +18,7 @@ import type {
   Group,
   GroupStageMatch,
   GsdeTournamentStatus,
+  PlayerRegistration,
   Team,
   TournamentConfig,
 } from "./types";
@@ -99,6 +100,8 @@ export interface GsdeTournamentDocument {
   elimination: EliminationBracket | null;
   /** Append-only admin action log. Legacy documents default to an empty log. */
   auditLog?: AuditEntry[];
+  /** Self-registered players for this tournament (isolated from K&Q players). */
+  registrations?: PlayerRegistration[];
   settings: GsdeSettings;
 }
 
@@ -132,6 +135,7 @@ export const createGsdeTournamentDocument = (
   matches: overrides.matches ?? [],
   elimination: overrides.elimination ?? null,
   auditLog: overrides.auditLog ?? [],
+  registrations: overrides.registrations ?? [],
   settings: { ...DEFAULT_GSDE_SETTINGS, ...(overrides.settings ?? {}) },
 });
 
@@ -171,6 +175,7 @@ export const toGsdeFirestoreData = (
   matches: tournament.matches,
   elimination: tournament.elimination,
   auditLog: tournament.auditLog ?? [],
+  registrations: tournament.registrations ?? [],
   settings: tournament.settings,
 });
 
@@ -190,6 +195,7 @@ export const fromGsdeFirestoreData = (
     matches: Array.isArray(data.matches) ? data.matches : [],
     elimination: data.elimination ?? null,
     auditLog: Array.isArray(data.auditLog) ? data.auditLog : [],
+    registrations: Array.isArray(data.registrations) ? data.registrations : [],
     settings: { ...base.settings, ...(data.settings ?? {}) },
   };
 };

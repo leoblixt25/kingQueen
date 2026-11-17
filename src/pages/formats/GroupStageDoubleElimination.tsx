@@ -14,11 +14,13 @@ import {
   Info,
   Loader2,
   Trophy,
+  UserPlus,
   Users,
   Wrench,
 } from "lucide-react";
 import { GROUP_DOUBLE_ELIMINATION_FORMAT } from "@/formats";
 import { selectApprovedTeamCount, selectFinalResult } from "@/formats/group-double-elimination/scoring";
+import { getRegistrationStats } from "@/formats/group-double-elimination/registration";
 import {
   PageShell,
   STATUS_LABEL,
@@ -43,6 +45,8 @@ export default function GroupStageDoubleElimination() {
   const status = doc?.tournament.status ?? "draft";
   const approved = doc ? selectApprovedTeamCount(doc) : 0;
   const finalResult = doc ? selectFinalResult(doc) : null;
+  const registrationStats = doc ? getRegistrationStats(doc) : null;
+  const registrationOpen = status === "draft" || status === "configured";
 
   return (
     <PageShell
@@ -109,6 +113,14 @@ export default function GroupStageDoubleElimination() {
                 ) : null}
               </div>
               <div className="flex flex-wrap gap-2">
+                {registrationOpen ? (
+                  <Button asChild size="sm">
+                    <Link to={`${GROUP_DOUBLE_ELIMINATION_FORMAT.route}/register${id !== "default" ? `?id=${encodeURIComponent(id)}` : ""}`}>
+                      <UserPlus className="mr-1.5 h-4 w-4" />
+                      Register as a player
+                    </Link>
+                  </Button>
+                ) : null}
                 <Button asChild variant="outline" size="sm">
                   <Link to={`${GROUP_DOUBLE_ELIMINATION_FORMAT.route}/player${id !== "default" ? `?id=${encodeURIComponent(id)}` : ""}`}>
                     <Users className="mr-1.5 h-4 w-4" />
@@ -128,14 +140,29 @@ export default function GroupStageDoubleElimination() {
           <Card className="border-sand-dark/40 shadow-beach bg-card/95">
             <CardContent className="flex flex-wrap items-center justify-between gap-3 p-3 text-sm">
               <div>
-                <p className="font-semibold text-foreground">Team registration</p>
+                <p className="font-semibold text-foreground">Registration</p>
                 <p className="text-xs text-foreground/65">
-                  Register with the organiser, then an admin approves each team before
-                  groups are generated. Team limit: {doc.tournament.config.teamLimit}.
+                  Players register individually with an account, then an admin approves
+                  each player and assigns them to a team. Teams are registered by the
+                  organiser (limit {doc.tournament.config.teamLimit}).
+                </p>
+                <p className="mt-1 text-xs text-foreground/55">
+                  Players: {registrationStats?.approved ?? 0} approved ·{" "}
+                  {registrationStats?.pending ?? 0} pending
+                  {registrationOpen ? (
+                    <Link
+                      className="ml-2 font-semibold text-ocean hover:underline"
+                      to={`${GROUP_DOUBLE_ELIMINATION_FORMAT.route}/register${id !== "default" ? `?id=${encodeURIComponent(id)}` : ""}`}
+                    >
+                      Register now →
+                    </Link>
+                  ) : (
+                    <span className="ml-2 italic">· registration closed</span>
+                  )}
                 </p>
               </div>
               <Badge variant="secondary">
-                {approved} approved · {doc.teams.length - approved} pending
+                {approved} teams approved · {doc.teams.length - approved} pending
               </Badge>
             </CardContent>
           </Card>

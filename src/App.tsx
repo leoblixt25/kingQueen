@@ -23,6 +23,8 @@ import InstallPage from "./pages/InstallPage";
 import GroupStageDoubleElimination from "./pages/formats/GroupStageDoubleElimination";
 import GroupDoubleEliminationAdminSetup from "./pages/formats/group-double-elimination/AdminSetup";
 import GroupDoubleEliminationPlayerView from "./pages/formats/group-double-elimination/PlayerView";
+import GroupDoubleEliminationRegister from "./pages/formats/group-double-elimination/Register";
+import GroupDoubleEliminationRegistrationPending from "./pages/formats/group-double-elimination/RegistrationPending";
 import Layout from "./components/Layout";
 
 const queryClient = new QueryClient();
@@ -43,10 +45,14 @@ const App = () => (
                 <GroupDoubleEliminationAdminSetup />
               </ProtectedRoute>
             } />
+            <Route path="/formats/group-stage-double-elimination/register" element={
+              <GroupDoubleEliminationRegister />
+            } />
+            <Route path="/formats/group-stage-double-elimination/register/pending" element={
+              <GroupDoubleEliminationRegistrationPending />
+            } />
             <Route path="/formats/group-stage-double-elimination/player" element={
-              <ProtectedRoute>
-                <GroupDoubleEliminationPlayerView />
-              </ProtectedRoute>
+              <GroupDoubleEliminationPlayerView />
             } />
             <Route path="/live-ranking" element={<LiveRanking />} />
             <Route path="/info" element={<InfoPage />} />

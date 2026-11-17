@@ -3,6 +3,7 @@ import type {
   EliminationMatch,
   GroupStageMatch,
   MatchId,
+  PlayerRegistration,
   Team,
   TeamId,
   TournamentConfig,
@@ -50,6 +51,14 @@ import {
 import { EliminationError, GroupStageError } from "./errors";
 import { validateTeamDraft } from "./teams";
 import {
+  findRegistrationByEmail,
+  findRegistrationByUid,
+  getRegistrations,
+  normalizeRegistrationEmail,
+  validateRegistrationDraft,
+  type RegistrationDraft,
+} from "./registration";
+import {
   appendAudit,
   type AuditAction,
   type AuditActor,
@@ -86,7 +95,11 @@ export type ScoringErrorCode =
   | "integrity-violation"
   | "unauthorized"
   | "not-completed"
-  | "confirm-discard";
+  | "confirm-discard"
+  | "registration-closed"
+  | "registration-invalid"
+  | "already-registered"
+  | "registration-not-found";
 
 export class ScoringError extends Error {
   readonly code: ScoringErrorCode;
@@ -195,6 +208,161 @@ export const addTeam = (
   return commit(
     touch({ ...doc, teams: [...doc.teams, team] }),
     { action: "team-added", actor, teamId: team.id }
+  );
+};
+
+/**
+ * Registration and its admin decisions are locked once the group stage starts.
+ * Translate the generic lifecycle guard into a registration-specific error so
+ * callers can show an accurate "registration closed" message.
+ */
+const guardRegistrationOpen = (doc: GsdeTournamentDocument): void => {
+  try {
+    assertNotPastStage(doc, "configured");
+  } catch (error) {
+    if (error instanceof LifecycleError && error.code === "stage-sequence") {
+      fail("registration-closed", "Player registration is closed for this tournament.");
+    }
+    throw error;
+  }
+};
+
+/** Remove a player id from every team roster (used on reject/removal/reassign). */
+const detachPlayerFromTeams = (
+  doc: GsdeTournamentDocument,
+  uid: string
+): Team[] =>
+  doc.teams.map((team) => ({
+    ...team,
+    playerIds: team.playerIds.filter((id) => id !== uid),
+  }));
+
+/**
+ * Self-service registration for an individual player. Registration closes as
+ * soon as the group stage starts. The signing-in player is the audit actor, so
+ * the sign-up is attributable without granting them admin rights.
+ */
+export const registerPlayer = (
+  doc: GsdeTournamentDocument,
+  draft: RegistrationDraft,
+  actor?: AuditActor
+): GsdeTournamentDocument => {
+  guardRegistrationOpen(doc);
+  const issues = validateRegistrationDraft(draft);
+  if (issues.length > 0) fail("registration-invalid", issues[0].message);
+
+  const email = normalizeRegistrationEmail(draft.email);
+  if (findRegistrationByUid(doc, draft.uid) || findRegistrationByEmail(doc, email)) {
+    fail("already-registered", "This account or email is already registered.");
+  }
+
+  const now = new Date().toISOString();
+  const registration: PlayerRegistration = {
+    uid: draft.uid,
+    email,
+    name: draft.name.trim(),
+    status: "pending",
+    teamId: null,
+    registeredAt: now,
+    decidedAt: null,
+  };
+  return commit(
+    touch({ ...doc, registrations: [...getRegistrations(doc), registration] }),
+    {
+      action: "player-registered",
+      actor: actor ?? { id: draft.uid, label: email, isAdmin: false },
+      detail: `${registration.name} registered as a player.`,
+    }
+  );
+};
+
+const requireRegistration = (
+  doc: GsdeTournamentDocument,
+  uid: string
+): PlayerRegistration => {
+  const registration = findRegistrationByUid(doc, uid);
+  if (!registration) {
+    fail("registration-not-found", `No registration for account "${uid}".`);
+  }
+  return registration;
+};
+
+/** Admin approves a pending player and assigns them to a team. */
+export const approvePlayerRegistration = (
+  doc: GsdeTournamentDocument,
+  uid: string,
+  teamId: TeamId,
+  actor?: AuditActor
+): GsdeTournamentDocument => {
+  guardRegistrationOpen(doc);
+  const registration = requireRegistration(doc, uid);
+  // Re-approving an already-approved player is a valid, audited reassignment.
+  if (!doc.teams.some((team) => team.id === teamId)) {
+    fail("invalid-team", `No team "${teamId}".`);
+  }
+
+  const now = new Date().toISOString();
+  const registrations = getRegistrations(doc).map((item) =>
+    item.uid === uid
+      ? { ...item, status: "approved" as const, teamId, decidedAt: now }
+      : item
+  );
+  const teams = detachPlayerFromTeams(doc, uid).map((team) =>
+    team.id === teamId && !team.playerIds.includes(uid)
+      ? { ...team, playerIds: [...team.playerIds, uid] }
+      : team
+  );
+  return commit(
+    touch({ ...doc, registrations, teams }),
+    {
+      action: "player-registration-approved",
+      actor,
+      teamId,
+      detail: `${registration.name} approved and assigned to a team.`,
+    }
+  );
+};
+
+/** Admin rejects a registration; any team assignment is cleared. */
+export const rejectPlayerRegistration = (
+  doc: GsdeTournamentDocument,
+  uid: string,
+  actor?: AuditActor
+): GsdeTournamentDocument => {
+  guardRegistrationOpen(doc);
+  const registration = requireRegistration(doc, uid);
+  const now = new Date().toISOString();
+  const registrations = getRegistrations(doc).map((item) =>
+    item.uid === uid
+      ? { ...item, status: "rejected" as const, teamId: null, decidedAt: now }
+      : item
+  );
+  return commit(
+    touch({ ...doc, registrations, teams: detachPlayerFromTeams(doc, uid) }),
+    {
+      action: "player-registration-rejected",
+      actor,
+      detail: `${registration.name}'s registration was rejected.`,
+    }
+  );
+};
+
+/** Admin removes a registration entirely; any team assignment is cleared. */
+export const removePlayerRegistration = (
+  doc: GsdeTournamentDocument,
+  uid: string,
+  actor?: AuditActor
+): GsdeTournamentDocument => {
+  guardRegistrationOpen(doc);
+  const registration = requireRegistration(doc, uid);
+  const registrations = getRegistrations(doc).filter((item) => item.uid !== uid);
+  return commit(
+    touch({ ...doc, registrations, teams: detachPlayerFromTeams(doc, uid) }),
+    {
+      action: "player-registration-removed",
+      actor,
+      detail: `${registration.name}'s registration was removed.`,
+    }
   );
 };
 

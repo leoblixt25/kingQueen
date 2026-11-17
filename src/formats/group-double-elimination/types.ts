@@ -68,6 +68,31 @@ export interface Team {
 export const isApprovedTeam = (team: Team): boolean =>
   team.status !== "pending";
 
+/** Admin decision on a self-registered player. */
+export type PlayerRegistrationStatus = "pending" | "approved" | "rejected";
+
+/**
+ * A player who signed up for THIS tournament themselves. Registrations live
+ * only in the isolated `tournaments/{id}` document — never in the King & Queen
+ * `players` collection. The auth `uid` is the authoritative identity; `email`
+ * is kept for display and duplicate detection.
+ */
+export interface PlayerRegistration {
+  /** Firebase Auth uid of the registering player. */
+  uid: string;
+  /** Lower-cased email of the registering player. */
+  email: string;
+  /** Display name entered at registration. */
+  name: string;
+  status: PlayerRegistrationStatus;
+  /** Team assigned by an admin on approval; `null` until then. */
+  teamId: TeamId | null;
+  /** ISO timestamp of the registration. */
+  registeredAt: string;
+  /** ISO timestamp of the approval/rejection, or `null`. */
+  decidedAt: string | null;
+}
+
 export interface Group {
   id: GroupId;
   name: string;

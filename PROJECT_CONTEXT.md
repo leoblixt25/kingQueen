@@ -1235,6 +1235,40 @@ Four new test files, **59 new tests**:
 - Live smoke check: `https://kingqueen-eu.web.app/` serves `index-BcIPX4gY.js`; `/king-queen` and all three new-format deep links return HTTP 200.
 - Note: Firestore writes for the new format require `request.auth != null` (matching K&Q policy); admin-claim restriction remains a recommended follow-up.
 
+## 13aw. Self-service player registration — Phase 12 (Nov 2026)
+
+**Scope:** players of the new format now register individually like in King & Queen, but WITHOUT writing to any K&Q collection. The whole flow lives in the isolated `tournaments/{id}` document. No K&Q source, data, routes or rules blocks changed; `firestore.rules` needs no edit because the deployed `tournaments/{tournamentId}` block already allows authenticated writes to GSDE documents.
+
+### Decisions
+- Unit of registration is the **individual player** (approved choice), not a team. Teams remain admin-created as before.
+- Firebase Auth `uid` is the authoritative identity; `email` is lower-cased and used for duplicate detection and display (same convention as K&Q).
+- Admin **approves** each player and assigns them to a team; approval fills that team's `playerIds` with the player's uid. Re-approval is an audited reassignment. Reject/remove clear any assignment.
+- The player page auto-links the signed-in player to their approved team via `getRegisteredTeamId(doc, uid)`; an explicit `?team=` still wins as an admin/testing fallback.
+- New register/pending/player pages use the new `useGsdeAuth()` hook, NOT K&Q `ProtectedRoute` (which depends on K&Q approval state). The GSDE player route is therefore public; it only reads data.
+
+### Data model & modules
+- `types.ts`: `PlayerRegistrationStatus = pending|approved|rejected`, `PlayerRegistration { uid, email, name, status, teamId, registeredAt, decidedAt }`.
+- `persistence.ts`: optional `registrations?: PlayerRegistration[]` on `GsdeTournamentDocument`, defaulted to `[]` on create/deserialize and written on serialize. Legacy docs round-trip safely.
+- `registration.ts` (pure): `validateRegistrationDraft`, `findRegistrationByUid/Email`, `normalizeRegistrationEmail`, `getRegisteredTeamId`, `getRegistrationStats`, `selectPendingRegistrations`.
+- `scoring.ts`: audited mutations `registerPlayer`, `approvePlayerRegistration`, `rejectPlayerRegistration`, `removePlayerRegistration`. All are gated by `guardRegistrationOpen` (closes once the group stage starts, error `registration-closed`), validated, and pass through `commit()` (audit then integrity).
+- `audit.ts`: four new registration actions; approval/rejection/removal are included in `selectCorrections()`.
+- `integrity.ts`: new checks `duplicate-registration-uid`, `duplicate-registration-email`, `invalid-registration-team` (an approved registration must have a valid team id).
+- `registrationAuth.ts`: Firebase Auth-only helpers (`signUpForRegistration`, `signInForRegistration`, `signInWithGoogleForRegistration`, `currentAuthUser`, `subscribeAuthUser`, `signOutRegistration`). Deliberately NOT exported from the pure `index.ts`.
+
+### UI & routes
+- `/formats/group-stage-double-elimination/register` — `Register.tsx`: name/email/password or Google sign-up, pre-filled from the signed-in account, dedupe warning, redirects to the status page on success.
+- `/formats/group-stage-double-elimination/register/pending` — `RegistrationPending.tsx`: live approval status (pending/approved/rejected), link to My team once approved.
+- `AdminSetup.tsx` section 3 "Player registrations": lists every registration, team selector + approve, reject, remove; uses the same admin `actor` as all other audited actions.
+- `PlayerView.tsx`: uses `useGsdeAuth()` and `getRegisteredTeamId` to default to the player's assigned team.
+- Public landing page: "Register as a player" button + player approval counts; shown only while status is `draft` or `configured`.
+
+### Tests and verification
+- New `registration.test.ts` (12 tests): validation/normalization, selectors, register dedupe, stage guard, approval + `playerIds` + audit, audited reassignment, reject/remove cleanup, integrity failures and Firestore round-trip.
+- `npx vitest run` — **31 files / 331 tests passed** (up from 30 / 319; +1 file, +12 tests).
+- `npx tsc -b --force` — **22 baseline errors, zero new**.
+- `npx vite build` — succeeded (`assets/index-BzjZk7kk.js`).
+- Nothing deployed. Deploy only after explicit approval.
+
 ## 14. Deployment URLs
 
 ### EU Project (KingQueen_EU â€” LIVE)

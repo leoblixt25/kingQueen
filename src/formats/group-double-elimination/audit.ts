@@ -24,7 +24,11 @@ export type AuditAction =
   | "bracket-reset"
   | "elimination-score-entered"
   | "elimination-result-corrected"
-  | "tournament-reopened";
+  | "tournament-reopened"
+  | "player-registered"
+  | "player-registration-approved"
+  | "player-registration-rejected"
+  | "player-registration-removed";
 
 export interface AuditActor {
   id: string;
@@ -96,5 +100,8 @@ export const selectCorrections = (
       entry.action === "group-match-reset" ||
       entry.action === "bracket-reset" ||
       entry.action === "bracket-override-generated" ||
-      entry.action === "tournament-reopened"
+      entry.action === "tournament-reopened" ||
+      entry.action === "player-registration-approved" ||
+      entry.action === "player-registration-rejected" ||
+      entry.action === "player-registration-removed"
   );

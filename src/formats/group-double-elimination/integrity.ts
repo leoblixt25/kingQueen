@@ -19,7 +19,10 @@ export type IntegrityCode =
   | "invalid-group-participants"
   | "invalid-seed-count"
   | "invalid-elimination-result"
-  | "broken-progression-link";
+  | "broken-progression-link"
+  | "duplicate-registration-uid"
+  | "duplicate-registration-email"
+  | "invalid-registration-team";
 
 export interface IntegrityIssue {
   code: IntegrityCode;
@@ -58,6 +61,28 @@ export const validateTournamentIntegrity = (
   }
   for (const id of duplicates(doc.groups.map((group) => group.id))) {
     add("duplicate-group-id", `Duplicate group id "${id}".`);
+  }
+
+  const registrations = doc.registrations ?? [];
+  for (const uid of duplicates(registrations.map((item) => item.uid))) {
+    add("duplicate-registration-uid", `Duplicate registration for account "${uid}".`);
+  }
+  for (const email of duplicates(
+    registrations.map((item) => item.email.trim().toLowerCase())
+  )) {
+    add("duplicate-registration-email", `Duplicate registration for email "${email}".`);
+  }
+  const teamIds = new Set(doc.teams.map((team) => team.id));
+  for (const registration of registrations) {
+    if (
+      registration.status === "approved" &&
+      (!registration.teamId || !teamIds.has(registration.teamId))
+    ) {
+      add(
+        "invalid-registration-team",
+        `Approved registration "${registration.uid}" has no valid team.`
+      );
+    }
   }
 
   const groupIds = new Set(doc.groups.map((group) => group.id));

@@ -7,6 +7,11 @@ import {
   subscribeGsdeTournament,
   type GsdeTournamentDocument,
 } from "@/formats/group-double-elimination/persistence";
+import {
+  currentAuthUser,
+  subscribeAuthUser,
+  type User,
+} from "@/formats/group-double-elimination/registrationAuth";
 import { ArrowLeft } from "lucide-react";
 import { GROUP_DOUBLE_ELIMINATION_FORMAT } from "@/formats";
 
@@ -54,6 +59,21 @@ export function useGsdeTournament() {
   };
 
   return { id, setId, doc, loading, error };
+}
+
+/** Firebase Auth state for the new format's own registration flow. */
+export function useGsdeAuth() {
+  const [user, setUser] = useState<User | null>(() => currentAuthUser());
+  const [loading, setLoading] = useState(true);
+  useEffect(
+    () =>
+      subscribeAuthUser((next) => {
+        setUser(next);
+        setLoading(false);
+      }),
+    []
+  );
+  return { user, loading };
 }
 
 export const teamNameMap = (teams: readonly Team[]): Map<TeamId, string> =>

@@ -28,6 +28,7 @@ import {
 } from "@/formats/group-double-elimination";
 import {
   addTeam as addGsdeTeam,
+  approvePlayerRegistration,
   approveTeam,
   buildTeamsAndGroups,
   completeGroupStage,
@@ -35,6 +36,8 @@ import {
   correctGroupMatchScore,
   editTeam,
   generateEliminationBracket,
+  rejectPlayerRegistration,
+  removePlayerRegistration,
   reopenTournament,
   removeTeam,
   resetEliminationBracket,
@@ -48,6 +51,11 @@ import {
   startGroupStage,
   verifyGroupStageCompletion,
 } from "@/formats/group-double-elimination/scoring";
+import {
+  getRegistrations,
+  getRegistrationStats,
+  selectPendingRegistrations,
+} from "@/formats/group-double-elimination/registration";
 import {
   UNKNOWN_ADMIN,
   selectCorrections,
@@ -111,6 +119,7 @@ export default function GroupDoubleEliminationAdminSetup() {
   const [overrideConfirmed, setOverrideConfirmed] = useState(false);
   const [reopenDiscardConfirmed, setReopenDiscardConfirmed] = useState(false);
   const [reopenTarget, setReopenTarget] = useState<"elimination" | "group-stage">("elimination");
+  const [regTeamChoice, setRegTeamChoice] = useState<Record<string, string>>({});
   const [actor, setActor] = useState<AuditActor>(UNKNOWN_ADMIN);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
@@ -299,6 +308,9 @@ export default function GroupDoubleEliminationAdminSetup() {
   const finalResult = doc ? selectFinalResult(doc) : null;
   const approvedCount = doc ? selectApprovedTeamCount(doc) : 0;
   const corrections = doc ? selectCorrections(doc) : [];
+  const registrationStats = doc ? getRegistrationStats(doc) : null;
+  const pendingRegistrations = doc ? selectPendingRegistrations(doc) : [];
+  const allRegistrations = doc ? getRegistrations(doc) : [];
 
   return (
     <PageShell
@@ -562,6 +574,137 @@ export default function GroupDoubleEliminationAdminSetup() {
               {approvedCount !== 16 ? (
                 <p className="text-xs text-amber-700">
                   Register and approve exactly 16 teams to generate the fixed groups.
+                </p>
+              ) : null}
+            </CardContent>
+          </Card>
+
+          <Card className="border-ocean/20 bg-ocean/5 shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Users className="h-4 w-4 text-ocean" />
+                3. Player registrations ({registrationStats?.pending ?? 0} pending ·{" "}
+                {registrationStats?.approved ?? 0} approved)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-xs text-foreground/60">
+                Players register themselves at the public registration page. Approve each
+                player and assign them to a team; their team's <code>playerIds</code> is
+                filled automatically. Every decision is written to the audit log.
+              </p>
+              {allRegistrations.length === 0 ? (
+                <p className="text-sm text-foreground/60">
+                  No players have registered yet. Share the registration page with players.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {allRegistrations.map((registration) => {
+                    const teamName = registration.teamId
+                      ? doc.teams.find((team) => team.id === registration.teamId)?.name ??
+                        registration.teamId
+                      : null;
+                    const choice =
+                      regTeamChoice[registration.uid] ??
+                      registration.teamId ??
+                      doc.teams[0]?.id ??
+                      "";
+                    return (
+                      <div
+                        key={registration.uid}
+                        className="flex flex-wrap items-center gap-2 rounded-lg border border-sand-dark/25 bg-white/70 p-2 text-xs"
+                      >
+                        <span className="font-semibold text-foreground/85">{registration.name}</span>
+                        <span className="text-foreground/55">{registration.email}</span>
+                        <Badge
+                          variant="outline"
+                          className={
+                            registration.status === "approved"
+                              ? "border-emerald-300 text-emerald-700"
+                              : registration.status === "rejected"
+                                ? "border-red-300 text-red-700"
+                                : "border-amber-300 text-amber-700"
+                          }
+                        >
+                          {registration.status}
+                        </Badge>
+                        {teamName ? <span className="text-foreground/60">· {teamName}</span> : null}
+                        {registration.status !== "approved" ? (
+                          <>
+                            <select
+                              aria-label={`Assign ${registration.name} to a team`}
+                              className="h-8 rounded-md border border-sand-dark/40 bg-white px-2 text-xs"
+                              value={choice}
+                              disabled={saving || doc.teams.length === 0}
+                              onChange={(event) =>
+                                setRegTeamChoice((previous) => ({
+                                  ...previous,
+                                  [registration.uid]: event.target.value,
+                                }))
+                              }
+                            >
+                              {doc.teams.length === 0 ? (
+                                <option value="">No teams yet</option>
+                              ) : (
+                                doc.teams.map((team) => (
+                                  <option key={team.id} value={team.id}>
+                                    {team.name}
+                                  </option>
+                                ))
+                              )}
+                            </select>
+                            <Button
+                              size="sm"
+                              disabled={saving || doc.teams.length === 0 || !choice}
+                              onClick={() =>
+                                apply(
+                                  (current) =>
+                                    approvePlayerRegistration(current, registration.uid, choice, actor),
+                                  `${registration.name} approved and assigned.`
+                                )
+                              }
+                            >
+                              <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Approve
+                            </Button>
+                          </>
+                        ) : null}
+                        {registration.status !== "rejected" ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={saving}
+                            onClick={() =>
+                              apply(
+                                (current) => rejectPlayerRegistration(current, registration.uid, actor),
+                                `${registration.name}'s registration was rejected.`
+                              )
+                            }
+                          >
+                            Reject
+                          </Button>
+                        ) : null}
+                        <button
+                          type="button"
+                          aria-label={`Remove ${registration.name}'s registration`}
+                          className="text-foreground/40 hover:text-red-600 disabled:opacity-40"
+                          disabled={saving}
+                          onClick={() =>
+                            apply(
+                              (current) => removePlayerRegistration(current, registration.uid, actor),
+                              `${registration.name}'s registration was removed.`
+                            )
+                          }
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {doc.teams.length === 0 ? (
+                <p className="text-xs text-amber-700">
+                  Add teams in section 2 before approving players.
                 </p>
               ) : null}
             </CardContent>

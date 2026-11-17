@@ -22,10 +22,12 @@ import {
   type PlayerEliminationMatch,
   type PlayerGroupMatch,
 } from "@/formats/group-double-elimination/playerView";
+import { getRegisteredTeamId } from "@/formats/group-double-elimination/registration";
 import {
   PageShell,
   STATUS_LABEL,
   statusColor,
+  useGsdeAuth,
   useGsdeTournament,
 } from "./shared";
 import { PlacementsView } from "./views";
@@ -123,8 +125,14 @@ function EliminationMatchRow({
 
 export default function GroupDoubleEliminationPlayerView() {
   const { id, doc, loading, error } = useGsdeTournament();
+  const { user } = useGsdeAuth();
   const [searchParams, setSearchParams] = useSearchParams();
-  const teamId = searchParams.get("team")?.trim() ?? "";
+  const queryTeamId = searchParams.get("team")?.trim() ?? "";
+  const registeredTeamId = doc && user ? getRegisteredTeamId(doc, user.uid) : null;
+  // An explicitly supplied `?team=` still wins (admin/testing fallback);
+  // otherwise the signed-in player's approved registration decides the team.
+  const teamId = queryTeamId || registeredTeamId || "";
+  const autoLinked = !queryTeamId && Boolean(registeredTeamId);
   const names = useMemo(
     () => new Map((doc?.teams ?? []).map((team) => [team.id, team.name])),
     [doc?.teams]
@@ -175,7 +183,7 @@ export default function GroupDoubleEliminationPlayerView() {
           <Card className="border-ocean/20 bg-ocean/5 shadow-sm">
             <CardContent className="flex flex-wrap items-end gap-3 p-4">
               <label className="flex-1 min-w-[200px] text-xs text-foreground/60">
-                Choose your team
+                {autoLinked ? "Your team (from your registration)" : "Choose your team"}
                 <select
                   className="mt-1 h-9 w-full rounded-md border border-sand-dark/40 bg-white px-2 text-sm"
                   value={teamId}

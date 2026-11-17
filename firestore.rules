@@ -31,5 +31,23 @@ service cloud.firestore {
       allow read: if true;
       allow write: if false;
     }
+
+    // ------------------------------------------------------------------
+    // Group Stage + Double Elimination (isolated new format) — ADDITIVE.
+    // Lives in a new `tournaments/{id}` collection, never in the K&Q
+    // collections above. The formatId discriminator prevents this rule
+    // from being used to touch foreign documents in the same collection.
+    // Public read mirrors the K&Q read policy so the live view works.
+    // ------------------------------------------------------------------
+    match /tournaments/{tournamentId} {
+      allow read: if true;
+      allow create: if request.auth != null
+                    && request.resource.data.formatId == 'group-double-elimination';
+      allow update: if request.auth != null
+                    && resource.data.formatId == 'group-double-elimination'
+                    && request.resource.data.formatId == 'group-double-elimination';
+      allow delete: if request.auth != null
+                    && resource.data.formatId == 'group-double-elimination';
+    }
   }
 }

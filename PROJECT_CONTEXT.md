@@ -1315,6 +1315,12 @@ Four new test files, **59 new tests**:
 - Verification: 31 files / 331 tests pass; `npx tsc -b --force` still 22 baseline errors / 0 new; `npx vite build` succeeds; local browser check confirmed all elements render with no console errors and all three buttons navigate to their unchanged routes.
 - User explicitly approved deployment. `npx firebase deploy --only hosting --project kingqueen-eu` succeeded (hosting only). Live bundle is now `assets/index-GkET51Sr.js` (replacing `index-BixJN5BZ.js`). Live smoke test: `/` serves the new bundle with `Cache-Control: no-cache`, the heading reads "Beach Volleyball Organizer", both format cards/badges/buttons and the footer render, no console errors; `/king-queen` and the GSDE overview still return HTTP 200.
 
+### GSDE Admin sign-in fix (Nov 2026) — code complete, NOT yet deployed
+- **Bug:** the hub's Admin button navigated to `/formats/group-stage-double-elimination/admin`, which was wrapped in K&Q's `ProtectedRoute adminOnly`. That guard sends unauthenticated / non-admin visitors to `/`, so clicking Admin appeared to "redirect back to the start page".
+- **Fix (GSDE-only, K&Q untouched):** added `src/pages/formats/group-double-elimination/GsdeAdminRoute.tsx` — a GSDE admin guard that keeps the visitor inside the GSDE flow and redirects unauthenticated / non-admin users to a dedicated sign-in page (with `?id=` preserved) instead of `/`. Added `GsdeAdminSignIn.tsx` — a K&Q-style "Admin Sign In" screen (email/password + Google, show/hide password, clear "Access denied" for non-admins) that returns to `/formats/group-stage-double-elimination/admin?id=...` on success. `App.tsx` now routes `/formats/group-stage-double-elimination/admin/sign-in` to the new page and uses `GsdeAdminRoute` for the admin page. K&Q's `ProtectedRoute` and `AdminLogin` were NOT modified.
+- Verification: 31 files / 331 tests pass; `npx tsc -b --force` still 22 baseline errors / 0 new; `npx vite build` succeeds. Local browser smoke test: signed-out Admin click → sign-in page with `?id=test1` preserved; back button returns to hub; non-admin account (`testplayer1@kingqueen.test`) rejected with "Access denied"; `/king-queen` and `/admin` (K&Q AdminLogin) still work; no console errors.
+- **Not deployed** — hosting deploy requires explicit approval.
+
 ## 14. Deployment URLs
 
 ### EU Project (KingQueen_EU â€” LIVE)

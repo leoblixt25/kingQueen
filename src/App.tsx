@@ -29,6 +29,8 @@ import GroupDoubleEliminationPlayerAccess from "./pages/formats/group-double-eli
 import GroupDoubleEliminationPlayerView from "./pages/formats/group-double-elimination/PlayerView";
 import GroupDoubleEliminationRegister from "./pages/formats/group-double-elimination/Register";
 import GroupDoubleEliminationRegistrationPending from "./pages/formats/group-double-elimination/RegistrationPending";
+import GsdeAdminRoute from "./pages/formats/group-double-elimination/GsdeAdminRoute";
+import GsdeAdminSignIn from "./pages/formats/group-double-elimination/GsdeAdminSignIn";
 import Layout from "./components/Layout";
 
 const queryClient = new QueryClient();
@@ -56,10 +58,13 @@ const App = () => (
             <Route path="/formats/group-stage-double-elimination/player-access" element={
               <GroupDoubleEliminationPlayerAccess />
             } />
+            <Route path="/formats/group-stage-double-elimination/admin/sign-in" element={
+              <GsdeAdminSignIn />
+            } />
             <Route path="/formats/group-stage-double-elimination/admin" element={
-              <ProtectedRoute adminOnly={true}>
+              <GsdeAdminRoute>
                 <GroupDoubleEliminationAdminSetup />
-              </ProtectedRoute>
+              </GsdeAdminRoute>
             } />
             <Route path="/formats/group-stage-double-elimination/register" element={
               <GroupDoubleEliminationRegister />

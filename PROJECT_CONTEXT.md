@@ -1272,6 +1272,11 @@ Four new test files, **59 new tests**:
 - User explicitly approved deployment after implementation. `npx firebase deploy --only hosting --project kingqueen-eu` succeeded (22 files uploaded, version finalized and released).
 - **Hosting only** — no Firestore rules change was needed or made; the deployed `tournaments/{tournamentId}` block already permits authenticated GSDE writes, including the new `registrations` field.
 - Live smoke check: `https://kingqueen-eu.web.app/` serves `assets/index-BzjZk7kk.js` (replacing Phase 11 `index-BcIPX4gY.js`); `/king-queen`, the GSDE overview, `/register`, `/register/pending`, `/player` and `/admin` all return HTTP 200.
+- Browser smoke test: the `/register` page renders correctly (name/email/password fields, Google button, "I already have an account" mode toggle, status-page link), and the GSDE overview shows the "Register as a player" button plus player approval counts. No console errors on either page.
+- Commits: `e932aac` (implementation), `7f1c09c` (deployment docs); both pushed to `feature/group-stage-double-elimination`.
+
+### Known follow-up (not part of this phase)
+- Firestore writes to `tournaments/{tournamentId}` still require only `request.auth != null` (same permissive policy as the K&Q collections). Any signed-in user can therefore edit the entire GSDE tournament document from a client, including scores and registrations. Tightening this to admin-claim-based rules would be a separate, explicit change because it modifies deployed rules that also cover K&Q behaviour.
 
 ## 14. Deployment URLs
 

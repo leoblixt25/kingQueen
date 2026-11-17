@@ -1138,6 +1138,31 @@ Four new test files, **59 new tests**:
 - `npx vite build` — succeeded.
 - No K&Q route/page/collection/data changed. No production deploy. No Firestore rules applied.
 
+## 13at. Public interface and tournament information — Phase 9 (Nov 2026)
+
+**Scope:** expanded public page with tournament overview, registration information, live group/elimination matches, Winners/Losers brackets, final standings and rules. Reuses the existing shadcn/ui components and beach visual style; no K&Q changes.
+
+### Public page (`GroupStageDoubleElimination.tsx`)
+- Overview header now shows name, division, event id, date, approved/team-limit count, group configuration and champion banner once complete.
+- Dedicated registration card explains the approve-before-generation flow and shows approved vs pending counts.
+- Tabs: **Group stage** (standings, global ranking, all 24 matches), **Live matches**, **Rankings** (two independent systems), **Double elimination** (brackets + elimination standings), **Final standings** (placements + elimination standings), **Rules**.
+- "My team" and "Admin controls" links remain in the header; all data still comes from the single `tournaments/{id}` subscription.
+
+### New reusable views (`views.tsx`)
+- `LiveMatchesView`: started group and elimination matches awaiting scores, plus the latest completed group/elimination results.
+- `TournamentRulesView`: 16 teams/4 groups, round robin, tiebreaker order, all-teams-qualify, no group eliminations, double-elimination loss rules, Spanish crossover (Games 21/22/25/26 → semifinals 27/28), Grand Final reset, independent rankings and shared tied places.
+
+### Verification
+- `npx vitest run` — **27 files / 291 tests passed** (no new engine logic in this phase).
+- `npx tsc -b --force` — **22 errors, identical to baseline**, zero in new-format files/pages.
+- `npx vite build` — succeeded.
+- No K&Q route/page/collection/data changed. No production deploy. No Firestore rules applied.
+
+### Remaining limitations
+1. "Live" means a started match awaiting a score; no automatic refresh interval beyond the Firestore subscription.
+2. No bilingual copy or PDF export for the new format.
+3. Rules text is shared across public/player/admin views but not yet translated.
+
 ## 14. Deployment URLs
 
 ### EU Project (KingQueen_EU â€” LIVE)

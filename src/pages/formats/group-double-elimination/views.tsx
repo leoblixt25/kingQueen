@@ -440,6 +440,184 @@ export function EliminationStandingsView({ doc }: ViewsProps) {
   );
 }
 
+/** Live (started, awaiting result) matches plus the latest results. */
+export function LiveMatchesView({ doc }: ViewsProps) {
+  const names = teamNameMap(doc.teams);
+  const liveGroups = doc.matches.filter((match) => match.status === "ready");
+  const liveElimination = doc.elimination
+    ? [...doc.elimination.winners, ...doc.elimination.losers, ...doc.elimination.grandFinal].filter(
+        (match) => match.status === "ready"
+      )
+    : [];
+  const recentGroups = doc.matches
+    .filter((match) => match.status === "completed")
+    .slice(-6)
+    .reverse();
+  const recentElimination = doc.elimination
+    ? [...doc.elimination.winners, ...doc.elimination.losers, ...doc.elimination.grandFinal]
+        .filter((match) => match.status === "completed")
+        .sort(
+          (a, b) =>
+            (getGameNumber(b.id) ?? 0) - (getGameNumber(a.id) ?? 0)
+        )
+        .slice(0, 6)
+    : [];
+
+  const liveRow = (match: EliminationMatch) => (
+    <div
+      key={match.id}
+      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-300/50 bg-amber-50/70 px-2.5 py-1.5 text-sm"
+    >
+      <span className="text-xs font-semibold text-amber-800">
+        {getGameNumber(match.id) === null ? match.id : getGameLabel(match.id)}
+      </span>
+      <span className="flex-1 text-foreground/80">
+        {nameOf(names, match.teamAId)} vs {nameOf(names, match.teamBId)}
+      </span>
+      <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">Awaiting result</Badge>
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      <Card className="border-sand-dark/40 shadow-beach bg-card/95">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+            </span>
+            Live matches
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-1.5">
+          {liveGroups.length === 0 && liveElimination.length === 0 ? (
+            <p className="text-sm text-foreground/60">
+              No matches are live right now. Started matches awaiting a score appear here.
+            </p>
+          ) : (
+            <>
+              {liveGroups.map((match) => (
+                <div
+                  key={match.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-300/50 bg-amber-50/70 px-2.5 py-1.5 text-sm"
+                >
+                  <span className="text-xs font-semibold text-amber-800">
+                    Group · Round {match.round}
+                  </span>
+                  <span className="flex-1 text-foreground/80">
+                    {nameOf(names, match.teamAId)} vs {nameOf(names, match.teamBId)}
+                  </span>
+                  <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">
+                    Awaiting result
+                  </Badge>
+                </div>
+              ))}
+              {liveElimination.map(liveRow)}
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="border-sand-dark/40 shadow-beach bg-card/95">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Latest results</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-1.5">
+          {recentGroups.length === 0 && recentElimination.length === 0 ? (
+            <p className="text-sm text-foreground/60">No results have been entered yet.</p>
+          ) : (
+            <>
+              {recentGroups.map((match) => (
+                <div
+                  key={match.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-sand-dark/25 bg-white/60 px-2.5 py-1.5 text-sm"
+                >
+                  <span className="text-xs text-foreground/55">Group · R{match.round}</span>
+                  <span className="flex-1 text-foreground/80">
+                    {nameOf(names, match.teamAId)} {match.scoreA} : {match.scoreB}{" "}
+                    {nameOf(names, match.teamBId)}
+                  </span>
+                  <Badge variant="outline" className="border-emerald-300 text-emerald-700">
+                    Final
+                  </Badge>
+                </div>
+              ))}
+              {recentElimination.map((match) => (
+                <div
+                  key={match.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-sand-dark/25 bg-white/60 px-2.5 py-1.5 text-sm"
+                >
+                  <span className="text-xs font-semibold text-ocean">
+                    {getGameNumber(match.id) === null ? match.id : getGameLabel(match.id)}
+                  </span>
+                  <span className="flex-1 text-foreground/80">
+                    {nameOf(names, match.teamAId)} {match.scoreA} : {match.scoreB}{" "}
+                    {nameOf(names, match.teamBId)}
+                  </span>
+                  <Badge variant="outline" className="border-emerald-300 text-emerald-700">
+                    Final
+                  </Badge>
+                </div>
+              ))}
+            </>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+/** Format rules, kept in one place so public/player/admin can link to them. */
+export function TournamentRulesView() {
+  const rules: { title: string; body: string }[] = [
+    {
+      title: "Teams and groups",
+      body: "16 teams are split into 4 groups of 4 by seed using a snake distribution. Every team plays a single-set round robin inside its group (6 matches per team, 24 group matches in total).",
+    },
+    {
+      title: "Group standings & tiebreakers",
+      body: "Group ranking uses wins, then head-to-head, then point difference, then points scored, then team id. All four teams in each group qualify.",
+    },
+    {
+      title: "No group eliminations",
+      body: "Group losses never count as elimination losses. A team that loses all three group matches still enters the bracket with zero elimination losses.",
+    },
+    {
+      title: "Elimination bracket",
+      body: "The global group ranking seeds a 16-team double-elimination bracket. A first elimination loss drops a team to the Losers Bracket; a second loss eliminates it.",
+    },
+    {
+      title: "Spanish crossover",
+      body: "Spanish crossover: Game 25 meets the Game 22 winner and Game 26 meets the Game 21 winner in the semifinals (Games 27–28). Both semifinal winners reach the Grand Final. Semifinal losers meet for 3rd/4th; that lower final does not feed the Grand Final.",
+    },
+    {
+      title: "Grand Final reset",
+      body: "If the undefeated finalist loses the first Grand Final, a reset final is played to decide the champion.",
+    },
+    {
+      title: "Two independent rankings",
+      body: "Group standings and elimination standings are calculated separately. Group wins are never added to elimination wins. Final tied places are shared; no artificial tiebreakers are invented.",
+    },
+  ];
+
+  return (
+    <Card className="border-sand-dark/40 shadow-beach bg-card/95">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base">Tournament rules</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {rules.map((rule) => (
+          <div key={rule.title}>
+            <h4 className="text-sm font-semibold text-ocean">{rule.title}</h4>
+            <p className="text-sm text-foreground/75">{rule.body}</p>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
 /** Two independent ranking systems shown side by side, never combined. */
 export function IndependentRankingsView({ doc }: ViewsProps) {
   const systems = selectRankingSystems(doc);

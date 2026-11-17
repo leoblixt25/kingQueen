@@ -1304,7 +1304,11 @@ Four new test files, **59 new tests**:
 - `npx tsc -b --force` — 22 pre-existing baseline errors / 0 new.
 - `npx vite build` — succeeds (`assets/index-BixJN5BZ.js`).
 - Local browser smoke test (`vite preview`) against `?id=test1`: hub shows all five buttons + Install/footer; Draw/Ranking/Info/Player Access render with no console errors; Draw → button preserves `?id=test1`; Player Access → Sign In lands on `/register?id=test1&mode=sign-in` in sign-in mode. (Draw/Ranking show empty states for the bracket/elimination because `test1` has not generated a bracket yet — expected.)
-- **Not deployed** — hosting deploy requires explicit approval.
+### Deployment (approved & executed, Nov 2026)
+- User explicitly approved deployment. `npx firebase deploy --only hosting --project kingqueen-eu` succeeded (hosting only; no Firestore rules change).
+- Live bundle: `assets/index-BixJN5BZ.js` (replacing Phase 12 `index-BzjZk7kk.js`). All routes return HTTP 200: `/`, `/king-queen`, the GSDE overview, `/draw`, `/ranking`, `/info`, `/player-access`, `/admin`, `/register`.
+- Browser smoke test against live `?id=test1`: the hub renders all five buttons + Install/footer and no console errors.
+- **Caching fix:** the first smoke test found the browser serving the old bundle from the service worker + Firebase's default `Cache-Control: max-age=3600` on HTML, so the new deploy was invisible for up to an hour on browsers that had visited recently. `firebase.json` now sets `Cache-Control: no-cache` for `**` (all SPA routes) while hashed `/assets/**` keep `public, max-age=31536000, immutable`. Verified live headers. This is a hosting-only config change; no K&Q code, data, routes or rules were touched.
 
 ## 14. Deployment URLs
 

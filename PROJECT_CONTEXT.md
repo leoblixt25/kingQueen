@@ -1163,6 +1163,40 @@ Four new test files, **59 new tests**:
 2. No bilingual copy or PDF export for the new format.
 3. Rules text is shared across public/player/admin views but not yet translated.
 
+## 13au. Lifecycle, integrity and audit — Phase 10 (Nov 2026)
+
+**Scope:** one authoritative state with centralized integrity validation, unique match ids and controlled recalculation, a stage-sequence guard, an append-only admin audit log, and authorized reopening of completed tournaments. No K&Q changes.
+
+### New pure modules
+- `audit.ts`: `AuditAction`, `AuditActor` (default `UNKNOWN_ADMIN`), `AuditEntry`, `appendAudit()` (bounded at 500 entries), `selectCorrections()` (filters corrections/overrides/reopenings).
+- `integrity.ts`: `validateTournamentIntegrity(doc)` returns typed `IntegrityIssue[]` (duplicate team/group/match ids, group id overlap across stages, group size, incomplete completed matches, invalid participants/seeds, invalid elimination winner/loser, broken progression links); `assertTournamentIntegrity()` throws `IntegrityError`.
+- `lifecycle.ts`: `STAGE_ORDER`, `assertNotPastStage()`, `assertStageAdvance()`, `reopenTournament()` (authorized admin + completed + explicit `discardResults` confirmation), all raising `LifecycleError`.
+
+### Centralized persistence gate (`scoring.ts`)
+- Every mutation now passes through `commit()`, which appends the audit entry FIRST and then runs integrity validation; no transition can persist a broken document.
+- All lifecycle guard calls are wrapped by `guard()`, mapping `LifecycleError`/`IntegrityError` into `ScoringError` codes (`stage-sequence`, `integrity-violation`, `unauthorized`, `not-completed`, `confirm-discard`).
+- Added audited `addTeam()` / `removeTeam()`; existing mutations accept an optional `AuditActor` and record the responsible admin.
+- `reopenTournament()` service wrapper audits and validates the result; reopening to `group-stage` drops the bracket and marks seeding stale, reopening to `elimination` keeps group results and allows bracket corrections.
+- `GsdeTournamentDocument.auditLog?: AuditEntry[]` added to persistence serialization/defaults (legacy docs default to `[]`).
+
+### Admin UI (`AdminSetup.tsx`)
+- Resolves the signed-in admin via `getCurrentUser()` into an `AuditActor` (falls back to `UNKNOWN_ADMIN` while identity resolves) and passes it into every mutation, so corrections carry a real actor id/email.
+- Team add/remove now use the centralized `addTeam`/`removeTeam` transitions.
+- New **9. Reopen completed tournament** section (target-stage select + explicit discard checkbox, shown only when complete) and **10. Audit log** section listing recent corrections/reopenings with actor, time, match id and before/after detail.
+
+### Tests and verification
+- `lifecycle.test.ts` (8): integrity accept/reject cases, audit detail for group + elimination corrections and bracket overrides, stage guards (no group edits after advancement, no changes after completion), reopen authorization/confirmation/not-completed rules, and audited reopen state.
+- `npx vitest run` — **28 files / 299 tests passed**.
+- `npx tsc -b --force` — **22 errors, identical to baseline**, zero in new-format files/pages.
+- `npx vite build` — succeeded.
+- Firestore rules proposal reviewed: still purely additive and field-agnostic (no change needed for `auditLog`). `firestore.rules` untouched; nothing deployed.
+- No K&Q route/page/collection/data changed. No production deploy.
+
+### Remaining limitations
+1. Audit writes are authenticated-only in the rules proposal (admin-claim restriction remains a follow-up); the UI records the real admin actor, and the stage/reopen guards enforce admin workflow in application code.
+2. Reopening to `elimination` keeps the completed bracket but resets status, so an admin must correct results explicitly; there is no automatic replay from a saved source-of-truth result list.
+3. The audit log is capped at 500 entries; older entries are intentionally dropped.
+
 ## 14. Deployment URLs
 
 ### EU Project (KingQueen_EU â€” LIVE)

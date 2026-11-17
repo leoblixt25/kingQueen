@@ -27,6 +27,7 @@ import {
   type EliminationMatch,
 } from "@/formats/group-double-elimination";
 import {
+  addTeam as addGsdeTeam,
   approveTeam,
   buildTeamsAndGroups,
   completeGroupStage,
@@ -34,6 +35,8 @@ import {
   correctGroupMatchScore,
   editTeam,
   generateEliminationBracket,
+  reopenTournament,
+  removeTeam,
   resetEliminationBracket,
   resetGroupMatch,
   saveSetup,
@@ -45,6 +48,12 @@ import {
   startGroupStage,
   verifyGroupStageCompletion,
 } from "@/formats/group-double-elimination/scoring";
+import {
+  UNKNOWN_ADMIN,
+  selectCorrections,
+  type AuditActor,
+} from "@/formats/group-double-elimination/audit";
+import { getCurrentUser } from "@/utils/authUtils";
 import {
   saveGsdeTournament,
   type GsdeTournamentDocument,
@@ -100,8 +109,33 @@ export default function GroupDoubleEliminationAdminSetup() {
     Record<string, EliminationDraft>
   >({});
   const [overrideConfirmed, setOverrideConfirmed] = useState(false);
+  const [reopenDiscardConfirmed, setReopenDiscardConfirmed] = useState(false);
+  const [reopenTarget, setReopenTarget] = useState<"elimination" | "group-stage">("elimination");
+  const [actor, setActor] = useState<AuditActor>(UNKNOWN_ADMIN);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
+
+  // The admin page is behind `ProtectedRoute adminOnly`, so the signed-in user
+  // is the actor recorded on every audit entry. Fall back to UNKNOWN_ADMIN if
+  // identity is still resolving when an action is taken.
+  useEffect(() => {
+    let mounted = true;
+    getCurrentUser()
+      .then((user) => {
+        if (!mounted || !user) return;
+        setActor({
+          id: user.uid,
+          label: user.email ?? user.uid,
+          isAdmin: true,
+        });
+      })
+      .catch(() => {
+        /* keep UNKNOWN_ADMIN fallback */
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   useEffect(() => setIdDraft(id), [id]);
   useEffect(() => {
@@ -188,9 +222,9 @@ export default function GroupDoubleEliminationAdminSetup() {
     const transform =
       match.status === "completed"
         ? (current: GsdeTournamentDocument) =>
-            correctGroupMatchScore(current, matchId, a, b)
+            correctGroupMatchScore(current, matchId, a, b, actor)
         : (current: GsdeTournamentDocument) =>
-            scoreGroupMatch(current, matchId, a, b);
+            scoreGroupMatch(current, matchId, a, b, actor);
     apply(transform, match.status === "completed" ? "Group result corrected." : "Group score saved.");
   };
 
@@ -205,7 +239,7 @@ export default function GroupDoubleEliminationAdminSetup() {
     }
     const team = createPendingTeam(createTeamId(teamName), draft, null);
     apply(
-      (current) => ({ ...current, teams: [...current.teams, team] }),
+      (current) => addGsdeTeam(current, team, actor),
       `${team.name} registered (pending approval).`
     );
     setTeamName("");
@@ -216,7 +250,7 @@ export default function GroupDoubleEliminationAdminSetup() {
     if (!editingTeamId) return;
     const seed = editSeed.trim() === "" ? null : Number(editSeed);
     apply(
-      (current) => editTeam(current, editingTeamId, { name: editName, seed }),
+      (current) => editTeam(current, editingTeamId, { name: editName, seed }, actor),
       "Team updated."
     );
     setEditingTeamId(null);
@@ -240,20 +274,18 @@ export default function GroupDoubleEliminationAdminSetup() {
     const transform =
       match.status === "completed"
         ? (current: GsdeTournamentDocument) =>
-            correctEliminationResult(current, match.id, {
-              winnerId,
-              loserId,
-              scoreA: a,
-              scoreB: b,
-            })
+            correctEliminationResult(
+              current,
+              match.id,
+              { winnerId, loserId, scoreA: a, scoreB: b },
+              actor
+            )
         : (current: GsdeTournamentDocument) =>
-            scoreEliminationMatch(current, {
-              matchId: match.id,
-              winnerId,
-              loserId,
-              scoreA: a,
-              scoreB: b,
-            });
+            scoreEliminationMatch(
+              current,
+              { matchId: match.id, winnerId, loserId, scoreA: a, scoreB: b },
+              actor
+            );
     apply(transform, match.status === "completed" ? "Result corrected and bracket recalculated." : "Result saved.");
   };
 
@@ -266,6 +298,7 @@ export default function GroupDoubleEliminationAdminSetup() {
   const completion = doc ? verifyGroupStageCompletion(doc) : null;
   const finalResult = doc ? selectFinalResult(doc) : null;
   const approvedCount = doc ? selectApprovedTeamCount(doc) : 0;
+  const corrections = doc ? selectCorrections(doc) : [];
 
   return (
     <PageShell
@@ -454,7 +487,7 @@ export default function GroupDoubleEliminationAdminSetup() {
                           aria-label={`Approve ${team.name}`}
                           className="text-emerald-600 hover:text-emerald-800"
                           disabled={saving}
-                          onClick={() => apply((current) => approveTeam(current, team.id, true), `${team.name} approved.`)}
+                          onClick={() => apply((current) => approveTeam(current, team.id, true, actor), `${team.name} approved.`)}
                         >
                           <CheckCircle2 className="h-3.5 w-3.5" />
                         </button>
@@ -479,10 +512,7 @@ export default function GroupDoubleEliminationAdminSetup() {
                         disabled={saving || doc.matches.length > 0}
                         onClick={() =>
                           apply(
-                            (current) => ({
-                              ...current,
-                              teams: current.teams.filter((item) => item.id !== team.id),
-                            }),
+                            (current) => removeTeam(current, team.id, actor),
                             `${team.name} removed.`
                           )
                         }
@@ -513,7 +543,7 @@ export default function GroupDoubleEliminationAdminSetup() {
                   disabled={saving || approvedCount !== 16}
                   onClick={() =>
                     apply(
-                      (current) => buildTeamsAndGroups(current, current.teams),
+                      (current) => buildTeamsAndGroups(current, current.teams, actor),
                       "4 groups and 24 matches generated."
                     )
                   }
@@ -524,7 +554,7 @@ export default function GroupDoubleEliminationAdminSetup() {
                   size="sm"
                   variant="outline"
                   disabled={saving || doc.matches.length !== 24 || status !== "configured"}
-                  onClick={() => apply(startGroupStage, "Group stage started.")}
+                  onClick={() => apply((current) => startGroupStage(current, actor), "Group stage started.")}
                 >
                   Start group stage
                 </Button>
@@ -564,7 +594,7 @@ export default function GroupDoubleEliminationAdminSetup() {
                         </span>
                         <Input className="h-7 w-14 text-sm" type="number" min={0} value={b} onChange={(e) => setGroupValue(match.id, "b", e.target.value)} />
                         {match.status === "pending" ? (
-                          <Button size="sm" variant="outline" disabled={saving} onClick={() => apply((current) => startGroupMatch(current, match.id), "Match started.")}>
+                          <Button size="sm" variant="outline" disabled={saving} onClick={() => apply((current) => startGroupMatch(current, match.id, actor), "Match started.")}>
                             <Play className="h-3.5 w-3.5" />
                           </Button>
                         ) : null}
@@ -572,7 +602,7 @@ export default function GroupDoubleEliminationAdminSetup() {
                           {complete ? "Fix" : "Save"}
                         </Button>
                         {complete ? (
-                          <Button size="sm" variant="ghost" disabled={saving} onClick={() => apply((current) => resetGroupMatch(current, match.id), "Result cleared.")}>
+                          <Button size="sm" variant="ghost" disabled={saving} onClick={() => apply((current) => resetGroupMatch(current, match.id, actor), "Result cleared.")}>
                             <RotateCcw className="h-3.5 w-3.5" />
                           </Button>
                         ) : null}
@@ -601,7 +631,7 @@ export default function GroupDoubleEliminationAdminSetup() {
                 <Button
                   size="sm"
                   disabled={saving || !completion?.isComplete}
-                  onClick={() => apply(completeGroupStage, "Group stage verified and final ranking calculated.")}
+                  onClick={() => apply((current) => completeGroupStage(current, actor), "Group stage verified and final ranking calculated.")}
                 >
                   Verify &amp; complete
                 </Button>
@@ -624,7 +654,7 @@ export default function GroupDoubleEliminationAdminSetup() {
                 <Button
                   size="sm"
                   disabled={saving || !completion?.isComplete}
-                  onClick={() => apply(generateEliminationBracket, "Spanish bracket generated.")}
+                  onClick={() => apply((current) => generateEliminationBracket(current, {}, actor), "Spanish bracket generated.")}
                 >
                   Generate bracket
                 </Button>
@@ -632,7 +662,7 @@ export default function GroupDoubleEliminationAdminSetup() {
                   size="sm"
                   variant="outline"
                   disabled={saving || !doc.elimination}
-                  onClick={() => apply(resetEliminationBracket, "Unstarted bracket reset.")}
+                  onClick={() => apply((current) => resetEliminationBracket(current, actor), "Unstarted bracket reset.")}
                 >
                   <RotateCcw className="mr-1 h-4 w-4" />
                   Reset bracket
@@ -655,7 +685,7 @@ export default function GroupDoubleEliminationAdminSetup() {
                 disabled={saving || !overrideConfirmed || Boolean(completion?.isComplete)}
                 onClick={() =>
                   apply(
-                    (current) => generateEliminationBracket(current, { overrideIncomplete: true, adminConfirmed: true }),
+                    (current) => generateEliminationBracket(current, { overrideIncomplete: true, adminConfirmed: true }, actor),
                     "Provisional bracket generated from partial standings."
                   )
                 }
@@ -688,6 +718,97 @@ export default function GroupDoubleEliminationAdminSetup() {
               </CardContent>
             </Card>
           ) : null}
+
+          {finalResult?.complete ? (
+            <Card className="border-sand-dark/40 shadow-beach bg-card/95">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <RotateCcw className="h-4 w-4 text-ocean" />
+                  9. Reopen completed tournament (admin only)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <p className="text-xs text-foreground/65">
+                  Reopening discards results from the chosen stage onward and is recorded in the
+                  audit log. Only an authorized admin may do this.
+                </p>
+                <div className="flex flex-wrap items-end gap-2">
+                  <label className="text-xs text-foreground/60">
+                    Reopen to stage
+                    <select
+                      className="mt-1 h-8 rounded-md border border-sand-dark/40 bg-white px-2 text-sm"
+                      value={reopenTarget}
+                      onChange={(event) =>
+                        setReopenTarget(event.target.value as "elimination" | "group-stage")
+                      }
+                    >
+                      <option value="elimination">Double elimination (keep group results)</option>
+                      <option value="group-stage">Group stage (also discard bracket)</option>
+                    </select>
+                  </label>
+                  <label className="flex items-center gap-2 text-xs text-foreground/70">
+                    <input
+                      type="checkbox"
+                      checked={reopenDiscardConfirmed}
+                      onChange={(event) => setReopenDiscardConfirmed(event.target.checked)}
+                    />
+                    I confirm later-stage results will be discarded.
+                  </label>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={saving || !reopenDiscardConfirmed}
+                    onClick={() =>
+                      apply(
+                        (current) =>
+                          reopenTournament(current, actor, {
+                            targetStage: reopenTarget,
+                            discardResults: true,
+                          }),
+                        `Tournament reopened to ${reopenTarget}.`
+                      )
+                    }
+                  >
+                    Reopen tournament
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          <Card className="border-sand-dark/40 shadow-beach bg-card/95">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Wrench className="h-4 w-4 text-ocean" />
+                10. Audit log — corrections &amp; reopenings ({corrections.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-1.5">
+              {corrections.length === 0 ? (
+                <p className="text-sm text-foreground/60">
+                  No corrections or reopenings have been recorded yet.
+                </p>
+              ) : (
+                [...corrections]
+                  .reverse()
+                  .slice(0, 50)
+                  .map((entry) => (
+                    <div
+                      key={entry.id}
+                      className="rounded-lg border border-sand-dark/25 bg-white/60 px-2.5 py-1.5 text-xs text-foreground/75"
+                    >
+                      <span className="font-semibold text-ocean">{entry.action}</span>
+                      {" · "}
+                      <span>{entry.actorLabel}</span>
+                      {" · "}
+                      <time>{new Date(entry.at).toLocaleString()}</time>
+                      {entry.matchId ? ` · ${entry.matchId}` : ""}
+                      {entry.detail ? ` — ${entry.detail}` : ""}
+                    </div>
+                  ))
+              )}
+            </CardContent>
+          </Card>
 
           {playableElimination.length > 0 ? (
             <Card className="border-sand-dark/40 shadow-beach bg-card/95">

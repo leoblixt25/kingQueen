@@ -49,6 +49,19 @@ import {
 } from "./eliminationStandings";
 import { EliminationError, GroupStageError } from "./errors";
 import { validateTeamDraft } from "./teams";
+import {
+  appendAudit,
+  type AuditAction,
+  type AuditActor,
+} from "./audit";
+import { assertTournamentIntegrity, IntegrityError } from "./integrity";
+import {
+  assertNotPastStage,
+  assertStageAdvance,
+  LifecycleError,
+  reopenTournament as reopenTournamentCore,
+  type ReopenOptions,
+} from "./lifecycle";
 
 /**
  * Admin scoring service for the new format.
@@ -69,7 +82,11 @@ export type ScoringErrorCode =
   | "not-enough-teams"
   | "invalid-team"
   | "stage-sequence"
-  | "override-required";
+  | "override-required"
+  | "integrity-violation"
+  | "unauthorized"
+  | "not-completed"
+  | "confirm-discard";
 
 export class ScoringError extends Error {
   readonly code: ScoringErrorCode;
@@ -105,18 +122,97 @@ const asEngineError = (error: unknown): ScoringErrorCode => {
       return "group-stage-incomplete";
     }
   }
+  if (error instanceof LifecycleError) return error.code;
   return "unknown-match";
+};
+
+interface AuditCall {
+  action: AuditAction;
+  actor?: AuditActor;
+  matchId?: MatchId;
+  teamId?: TeamId;
+  detail?: string;
+}
+
+/**
+ * Single persistence gate: audit first, then verify integrity. No transition
+ * can write a document whose ids, participants or progression are broken.
+ */
+/** Convert lifecycle guard failures into the service's error type. */
+const guard = <T>(action: () => T): T => {
+  try {
+    return action();
+  } catch (error) {
+    if (error instanceof LifecycleError) fail(error.code, error.message);
+    throw error;
+  }
+};
+
+const commit = (
+  doc: GsdeTournamentDocument,
+  audit?: AuditCall
+): GsdeTournamentDocument => {
+  const next = audit ? appendAudit(doc, audit) : doc;
+  try {
+    assertTournamentIntegrity(next);
+  } catch (error) {
+    if (error instanceof IntegrityError) {
+      fail("integrity-violation", error.message);
+    }
+    throw error;
+  }
+  return next;
 };
 
 /** Setup: update the tournament name/division without touching stage data. */
 export const saveSetup = (
   doc: GsdeTournamentDocument,
-  config: TournamentConfig
-): GsdeTournamentDocument =>
-  touch({
-    ...doc,
-    tournament: { ...doc.tournament, config },
-  });
+  config: TournamentConfig,
+  actor?: AuditActor
+): GsdeTournamentDocument => {
+  if (doc.tournament.status === "completed") {
+    fail("stage-sequence", "Reopen the tournament before changing its setup.");
+  }
+  return commit(
+    touch({
+      ...doc,
+      tournament: { ...doc.tournament, config },
+    }),
+    { action: "setup-saved", actor }
+  );
+};
+
+/** Register one team; audit identity is supplied by the admin caller. */
+export const addTeam = (
+  doc: GsdeTournamentDocument,
+  team: Team,
+  actor?: AuditActor
+): GsdeTournamentDocument => {
+  guard(() => assertNotPastStage(doc, "configured"));
+  if (doc.teams.some((item) => item.id === team.id)) {
+    fail("invalid-team", `Team "${team.id}" already exists.`);
+  }
+  return commit(
+    touch({ ...doc, teams: [...doc.teams, team] }),
+    { action: "team-added", actor, teamId: team.id }
+  );
+};
+
+/** Remove a registered team before group generation. */
+export const removeTeam = (
+  doc: GsdeTournamentDocument,
+  teamId: TeamId,
+  actor?: AuditActor
+): GsdeTournamentDocument => {
+  guard(() => assertNotPastStage(doc, "configured"));
+  if (!doc.teams.some((item) => item.id === teamId)) {
+    fail("invalid-team", `No team "${teamId}".`);
+  }
+  return commit(
+    touch({ ...doc, teams: doc.teams.filter((item) => item.id !== teamId) }),
+    { action: "team-removed", actor, teamId }
+  );
+};
 
 /**
  * Creates the fixed 16 teams and their 4 groups / 24 round-robin matches.
@@ -124,8 +220,10 @@ export const saveSetup = (
  */
 export const buildTeamsAndGroups = (
   doc: GsdeTournamentDocument,
-  teams: readonly Team[]
+  teams: readonly Team[],
+  actor?: AuditActor
 ): GsdeTournamentDocument => {
+  guard(() => assertNotPastStage(doc, "configured"));
   if (doc.elimination && listEliminationMatches(doc.elimination).some((m) => m.status === "completed")) {
     fail("bracket-locked", "The elimination bracket has started; reset it before rebuilding teams.");
   }
@@ -144,35 +242,43 @@ export const buildTeamsAndGroups = (
     groupId: team.groupId ?? stage.groups.find((group) => group.teamIds.includes(team.id))?.id ?? `group-${Math.floor(index / 4) + 1}`,
   }));
 
-  return touch({
-    ...doc,
-    teams: withGroups,
-    groups: stage.groups,
-    matches: stage.matches,
-    elimination: null,
-    tournament: {
-      ...doc.tournament,
-      status: "configured",
-      seedingStale: false,
-      config: {
-        ...doc.tournament.config,
-        groupCount: stage.groups.length,
-        teamsPerGroup: 4,
+  return commit(
+    touch({
+      ...doc,
+      teams: withGroups,
+      groups: stage.groups,
+      matches: stage.matches,
+      elimination: null,
+      tournament: {
+        ...doc.tournament,
+        status: "configured",
+        seedingStale: false,
+        config: {
+          ...doc.tournament.config,
+          groupCount: stage.groups.length,
+          teamsPerGroup: 4,
+        },
       },
-    },
-  } as GsdeTournamentDocument);
+    } as GsdeTournamentDocument),
+    { action: "groups-generated", actor }
+  );
 };
 
 export const startGroupStage = (
-  doc: GsdeTournamentDocument
+  doc: GsdeTournamentDocument,
+  actor?: AuditActor
 ): GsdeTournamentDocument => {
+  guard(() => assertStageAdvance(doc, "group-stage"));
   if (doc.matches.length !== 24) {
     fail("group-stage-incomplete", "Generate the group stage before starting it.");
   }
-  return touch({
-    ...doc,
-    tournament: { ...doc.tournament, status: "group-stage" },
-  });
+  return commit(
+    touch({
+      ...doc,
+      tournament: { ...doc.tournament, status: "group-stage" },
+    }),
+    { action: "group-match-started", actor, detail: "Group stage started." }
+  );
 };
 
 const findGroupMatch = (
@@ -188,8 +294,10 @@ const findGroupMatch = (
 export const editTeam = (
   doc: GsdeTournamentDocument,
   teamId: TeamId,
-  patch: { name?: string; seed?: number | null }
+  patch: { name?: string; seed?: number | null },
+  actor?: AuditActor
 ): GsdeTournamentDocument => {
+  guard(() => assertNotPastStage(doc, "configured"));
   const team = doc.teams.find((item) => item.id === teamId);
   if (!team) fail("invalid-team", `No team "${teamId}".`);
   if (doc.matches.length > 0) {
@@ -209,61 +317,79 @@ export const editTeam = (
     fail("invalid-team", issues.map((issue) => issue.message).join(" "));
   }
 
-  return touch({
-    ...doc,
-    teams: doc.teams.map((item) => (item.id === teamId ? { ...item, ...draft } : item)),
-  });
+  return commit(
+    touch({
+      ...doc,
+      teams: doc.teams.map((item) => (item.id === teamId ? { ...item, ...draft } : item)),
+    }),
+    { action: "team-edited", actor, teamId }
+  );
 };
 
 /** Approve or unapprove a registered team. */
 export const approveTeam = (
   doc: GsdeTournamentDocument,
   teamId: TeamId,
-  approved: boolean
+  approved: boolean,
+  actor?: AuditActor
 ): GsdeTournamentDocument => {
+  guard(() => assertNotPastStage(doc, "configured"));
   if (!doc.teams.some((item) => item.id === teamId)) {
     fail("invalid-team", `No team "${teamId}".`);
   }
-  return touch({
-    ...doc,
-    teams: doc.teams.map((item) =>
-      item.id === teamId
-        ? { ...item, status: approved ? ("approved" as const) : ("pending" as const) }
-        : item
-    ),
-  });
+  return commit(
+    touch({
+      ...doc,
+      teams: doc.teams.map((item) =>
+        item.id === teamId
+          ? { ...item, status: approved ? ("approved" as const) : ("pending" as const) }
+          : item
+      ),
+    }),
+    { action: "team-approved", actor, teamId, detail: approved ? "Approved" : "Unapproved" }
+  );
 };
 
 /** Mark a group match as started (ready for score entry). */
 export const startGroupMatch = (
   doc: GsdeTournamentDocument,
-  matchId: MatchId
+  matchId: MatchId,
+  actor?: AuditActor
 ): GsdeTournamentDocument => {
+  guard(() => assertNotPastStage(doc, "group-stage"));
   const match = findGroupMatch(doc, matchId);
   if (match.status === "completed") {
     fail("match-completed", `Group match "${matchId}" is already completed.`);
   }
-  return touch({
-    ...doc,
-    matches: doc.matches.map((item) =>
-      item.id === matchId ? { ...item, status: "ready" as const } : item
-    ),
-  });
+  return commit(
+    touch({
+      ...doc,
+      matches: doc.matches.map((item) =>
+        item.id === matchId ? { ...item, status: "ready" as const } : item
+      ),
+    }),
+    { action: "group-match-started", actor, matchId }
+  );
 };
 
 /** Clear a group result so it can be replayed or corrected. */
 export const resetGroupMatch = (
   doc: GsdeTournamentDocument,
-  matchId: MatchId
+  matchId: MatchId,
+  actor?: AuditActor
 ): GsdeTournamentDocument => {
+  guard(() => assertNotPastStage(doc, "group-stage"));
   const match = findGroupMatch(doc, matchId);
-  return touch({
-    ...doc,
-    matches: doc.matches.map((item) =>
-      item.id === matchId ? resetGroupMatchScore(item) : item
-    ),
-    tournament: { ...doc.tournament, status: "group-stage" },
-  });
+  return commit(
+    touch({
+      ...doc,
+      matches: doc.matches.map((item) =>
+        item.id === matchId ? resetGroupMatchScore(item) : item
+      ),
+      tournament: { ...doc.tournament, status: "group-stage" },
+    }),
+    { action: "group-match-reset", actor, matchId }
+  );
 };
 
 export interface GroupStageCompletion {
@@ -289,8 +415,10 @@ export const verifyGroupStageCompletion = (
 
 /** Explicit completion step; refuses to advance out of sequence. */
 export const completeGroupStage = (
-  doc: GsdeTournamentDocument
+  doc: GsdeTournamentDocument,
+  actor?: AuditActor
 ): GsdeTournamentDocument => {
+  guard(() => assertNotPastStage(doc, "group-stage"));
   const check = verifyGroupStageCompletion(doc);
   if (!check.isComplete) {
     fail(
@@ -298,10 +426,13 @@ export const completeGroupStage = (
       `Only ${check.completed}/${check.total} group matches are complete.`
     );
   }
-  return touch({
-    ...doc,
-    tournament: { ...doc.tournament, groupStageVerified: true },
-  } as GsdeTournamentDocument);
+  return commit(
+    touch({
+      ...doc,
+      tournament: { ...doc.tournament, groupStageVerified: true },
+    } as GsdeTournamentDocument),
+    { action: "group-stage-completed", actor }
+  );
 };
 
 /** Submit a group score. Standings/ranking are derived on read. */
@@ -309,8 +440,10 @@ export const scoreGroupMatch = (
   doc: GsdeTournamentDocument,
   matchId: MatchId,
   scoreA: number,
-  scoreB: number
+  scoreB: number,
+  actor?: AuditActor
 ): GsdeTournamentDocument => {
+  guard(() => assertNotPastStage(doc, "group-stage"));
   const match = findGroupMatch(doc, matchId);
   if (match.status === "completed") {
     fail("match-completed", `Group match "${matchId}" is already completed.`);
@@ -318,10 +451,13 @@ export const scoreGroupMatch = (
 
   try {
     const updated = applyGroupMatchScore(match, scoreA, scoreB);
-    return touch({
-      ...doc,
-      matches: doc.matches.map((item) => (item.id === matchId ? updated : item)),
-    });
+    return commit(
+      touch({
+        ...doc,
+        matches: doc.matches.map((item) => (item.id === matchId ? updated : item)),
+      }),
+      { action: "group-score-entered", actor, matchId }
+    );
   } catch (error) {
     fail(asEngineError(error), "Invalid group score.");
   }
@@ -336,8 +472,12 @@ export const correctGroupMatchScore = (
   doc: GsdeTournamentDocument,
   matchId: MatchId,
   scoreA: number,
-  scoreB: number
+  scoreB: number,
+  actor?: AuditActor
 ): GsdeTournamentDocument => {
+  if (doc.tournament.status === "completed") {
+    fail("stage-sequence", "Reopen the tournament before correcting results.");
+  }
   const match = findGroupMatch(doc, matchId);
   let updated: GroupStageMatch;
 
@@ -352,16 +492,25 @@ export const correctGroupMatchScore = (
     fail("bracket-locked", "Elimination results exist. Reset the bracket before correcting group scores.");
   }
 
-  return touch({
-    ...doc,
-    matches: doc.matches.map((item) => (item.id === matchId ? updated : item)),
-    elimination: null,
-    tournament: {
-      ...doc.tournament,
-      status: "group-stage",
-      seedingStale: bracket !== null,
-    },
-  });
+  return commit(
+    touch({
+      ...doc,
+      matches: doc.matches.map((item) => (item.id === matchId ? updated : item)),
+      elimination: null,
+      tournament: {
+        ...doc.tournament,
+        status: "group-stage",
+        seedingStale: bracket !== null,
+        groupStageVerified: false,
+      },
+    }),
+    {
+      action: "group-score-corrected",
+      actor,
+      matchId,
+      detail: `${match.scoreA ?? "–"}:${match.scoreB ?? "–"} → ${scoreA}:${scoreB}`,
+    }
+  );
 };
 
 export interface BracketGenerationOptions {
@@ -379,8 +528,15 @@ export interface BracketGenerationOptions {
  */
 export const generateEliminationBracket = (
   doc: GsdeTournamentDocument,
-  options: BracketGenerationOptions = {}
+  options: BracketGenerationOptions = {},
+  actor?: AuditActor
 ): GsdeTournamentDocument => {
+  if (
+    doc.elimination &&
+    listEliminationMatches(doc.elimination).some((match) => match.status === "completed")
+  ) {
+    fail("bracket-locked", "The elimination bracket has results; reset it before regenerating.");
+  }
   if (!canGenerateFixed16Bracket(doc.matches)) {
     if (!options.overrideIncomplete || !options.adminConfirmed) {
       fail(
@@ -396,17 +552,24 @@ export const generateEliminationBracket = (
       generateDoubleEliminationBracket(seeds).bracket
     );
 
-    return touch({
-      ...doc,
-      elimination: bracket,
-      tournament: {
-        ...doc.tournament,
-        status: "elimination",
-        seedingStale: true,
-        bracketOverrideUsed: true,
-        groupStageVerified: false,
-      },
-    });
+    return commit(
+      touch({
+        ...doc,
+        elimination: bracket,
+        tournament: {
+          ...doc.tournament,
+          status: "elimination",
+          seedingStale: true,
+          bracketOverrideUsed: true,
+          groupStageVerified: false,
+        },
+      }),
+      {
+        action: "bracket-override-generated",
+        actor,
+        detail: "Provisional bracket from incomplete group standings.",
+      }
+    );
   }
 
   const stage = buildFixed16EliminationStage({
@@ -415,22 +578,26 @@ export const generateEliminationBracket = (
     rounds: [],
   });
 
-  return touch({
-    ...doc,
-    elimination: stage.bracket,
-    tournament: {
-      ...doc.tournament,
-      status: "elimination",
-      seedingStale: false,
-      bracketOverrideUsed: false,
-      groupStageVerified: true,
-    },
-  });
+  return commit(
+    touch({
+      ...doc,
+      elimination: stage.bracket,
+      tournament: {
+        ...doc.tournament,
+        status: "elimination",
+        seedingStale: false,
+        bracketOverrideUsed: false,
+        groupStageVerified: true,
+      },
+    }),
+    { action: "bracket-generated", actor }
+  );
 };
 
 /** Drops an unstarted bracket so group scores can be corrected/regenerated. */
 export const resetEliminationBracket = (
-  doc: GsdeTournamentDocument
+  doc: GsdeTournamentDocument,
+  actor?: AuditActor
 ): GsdeTournamentDocument => {
   if (
     doc.elimination &&
@@ -439,15 +606,19 @@ export const resetEliminationBracket = (
     fail("bracket-locked", "Completed elimination results cannot be discarded automatically.");
   }
 
-  return touch({
-    ...doc,
-    elimination: null,
-    tournament: {
-      ...doc.tournament,
-      status: doc.matches.every((m) => m.status === "completed") ? "configured" : "group-stage",
-      seedingStale: false,
-    },
-  } as GsdeTournamentDocument);
+  return commit(
+    touch({
+      ...doc,
+      elimination: null,
+      tournament: {
+        ...doc.tournament,
+        status: doc.matches.every((m) => m.status === "completed") ? "configured" : "group-stage",
+        seedingStale: false,
+        groupStageVerified: false,
+      },
+    } as GsdeTournamentDocument),
+    { action: "bracket-reset", actor }
+  );
 };
 
 const statusFromBracket = (bracket: EliminationBracket): GsdeTournamentDocument["tournament"]["status"] => {
@@ -471,8 +642,12 @@ const findEliminationMatchOrFail = (
 /** Submit an elimination score; winner advances and loser drops automatically. */
 export const scoreEliminationMatch = (
   doc: GsdeTournamentDocument,
-  outcome: EliminationMatchOutcome
+  outcome: EliminationMatchOutcome,
+  actor?: AuditActor
 ): GsdeTournamentDocument => {
+  if (doc.tournament.status === "completed") {
+    fail("stage-sequence", "Reopen the tournament before changing a result.");
+  }
   if (!doc.elimination) {
     fail("bracket-not-generated", "Generate the elimination bracket first.");
   }
@@ -484,14 +659,17 @@ export const scoreEliminationMatch = (
       outcome,
       FIXED16_ADVANCE_OPTIONS
     );
-    return touch({
-      ...doc,
-      elimination: result.bracket,
-      tournament: {
-        ...doc.tournament,
-        status: statusFromBracket(result.bracket),
-      },
-    });
+    return commit(
+      touch({
+        ...doc,
+        elimination: result.bracket,
+        tournament: {
+          ...doc.tournament,
+          status: statusFromBracket(result.bracket),
+        },
+      }),
+      { action: "elimination-score-entered", actor, matchId: outcome.matchId }
+    );
   } catch (error) {
     return fail(asEngineError(error), "Invalid elimination result.");
   }
@@ -565,8 +743,12 @@ const replayResults = (
 export const correctEliminationResult = (
   doc: GsdeTournamentDocument,
   matchId: MatchId,
-  outcome: Omit<StoredResult, "matchId">
+  outcome: Omit<StoredResult, "matchId">,
+  actor?: AuditActor
 ): GsdeTournamentDocument => {
+  if (doc.tournament.status === "completed") {
+    fail("stage-sequence", "Reopen the tournament before correcting a result.");
+  }
   if (!doc.elimination) {
     fail("bracket-not-generated", "Generate the elimination bracket first.");
   }
@@ -582,15 +764,26 @@ export const correctEliminationResult = (
   results.push({ matchId, ...outcome });
 
   const bracket = replayResults(seeds, results);
-  return touch({
-    ...doc,
-    elimination: bracket,
-    tournament: {
-      ...doc.tournament,
-      status: statusFromBracket(bracket),
-    },
-  });
+  return commit(
+    touch({
+      ...doc,
+      elimination: bracket,
+      tournament: {
+        ...doc.tournament,
+        status: statusFromBracket(bracket),
+      },
+    }),
+    { action: "elimination-result-corrected", actor, matchId }
+  );
 };
+
+/** Authorized reopen of a completed tournament, with integrity validation. */
+export const reopenTournament = (
+  doc: GsdeTournamentDocument,
+  actor: AuditActor,
+  options: ReopenOptions
+): GsdeTournamentDocument =>
+  guard(() => commit(reopenTournamentCore(doc, actor, options)));
 
 /** Selectors used by the public UI and admin screens. */
 

@@ -21,6 +21,7 @@ import type {
   Team,
   TournamentConfig,
 } from "./types";
+import type { AuditEntry } from "./audit";
 
 /**
  * Isolated persistence for the new format.
@@ -96,6 +97,8 @@ export interface GsdeTournamentDocument {
   matches: GroupStageMatch[];
   /** Elimination bracket, `null` until all group matches are complete. */
   elimination: EliminationBracket | null;
+  /** Append-only admin action log. Legacy documents default to an empty log. */
+  auditLog?: AuditEntry[];
   settings: GsdeSettings;
 }
 
@@ -128,6 +131,7 @@ export const createGsdeTournamentDocument = (
   groups: overrides.groups ?? [],
   matches: overrides.matches ?? [],
   elimination: overrides.elimination ?? null,
+  auditLog: overrides.auditLog ?? [],
   settings: { ...DEFAULT_GSDE_SETTINGS, ...(overrides.settings ?? {}) },
 });
 
@@ -166,6 +170,7 @@ export const toGsdeFirestoreData = (
   groups: tournament.groups,
   matches: tournament.matches,
   elimination: tournament.elimination,
+  auditLog: tournament.auditLog ?? [],
   settings: tournament.settings,
 });
 
@@ -184,6 +189,7 @@ export const fromGsdeFirestoreData = (
     groups: Array.isArray(data.groups) ? data.groups : [],
     matches: Array.isArray(data.matches) ? data.matches : [],
     elimination: data.elimination ?? null,
+    auditLog: Array.isArray(data.auditLog) ? data.auditLog : [],
     settings: { ...base.settings, ...(data.settings ?? {}) },
   };
 };

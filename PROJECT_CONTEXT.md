@@ -1229,6 +1229,12 @@ Four new test files, **59 new tests**:
 1. K&Q champion/reset logic has no pure module (it is Firebase/React-backed), so those K&Q behaviours are covered indirectly via their input data rather than unit-tested here; they remain unchanged by this work.
 2. These matrices are deterministic unit/integration tests; they do not replace a browser smoke test of the deployed build.
 
+### Deployment (approved & executed, Nov 2026)
+- With explicit approval, the additive `tournaments/{tournamentId}` block was applied to `firestore.rules` (purely additive; all five K&Q rules unchanged) and committed as `a4af4f3`.
+- `firebase deploy --only firestore:rules,hosting --project kingqueen-eu` succeeded: rules compiled and released, hosting released `index-BcIPX4gY.js` (replacing the old Phase 1/2 `index-DGHGaTtH.js`).
+- Live smoke check: `https://kingqueen-eu.web.app/` serves `index-BcIPX4gY.js`; `/king-queen` and all three new-format deep links return HTTP 200.
+- Note: Firestore writes for the new format require `request.auth != null` (matching K&Q policy); admin-claim restriction remains a recommended follow-up.
+
 ## 14. Deployment URLs
 
 ### EU Project (KingQueen_EU â€” LIVE)

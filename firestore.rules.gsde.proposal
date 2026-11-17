@@ -1,0 +1,102 @@
+PROPOSAL ONLY — NOT APPLIED, NOT DEPLOYED.
+Requires explicit approval before anyone copies this block into firestore.rules.
+
+===============================================================================
+ADDITIVE DIFF (only new lines; no existing King & Queen rule is changed)
+===============================================================================
+
+--- a/firestore.rules
++++ b/firestore.rules
+@@ -30,5 +30,18 @@
+     match /admins/{adminId} {
+       allow read: if true;
+       allow write: if false;
+     }
++
++    // ------------------------------------------------------------------
++    // Group Stage + Double Elimination (isolated new format) — ADDITIVE.
++    // Lives in a new `tournaments/{id}` collection, never in the K&Q
++    // collections above. The formatId discriminator prevents this rule
++    // from being used to touch foreign documents in the same collection.
++    // Public read mirrors the K&Q read policy so the live view works.
++    // ------------------------------------------------------------------
++    match /tournaments/{tournamentId} {
++      allow read: if true;
++      allow create: if request.auth != null
++                    && request.resource.data.formatId == 'group-double-elimination';
++      allow update: if request.auth != null
++                    && resource.data.formatId == 'group-double-elimination'
++                    && request.resource.data.formatId == 'group-double-elimination';
++      allow delete: if request.auth != null
++                    && resource.data.formatId == 'group-double-elimination';
++    }
+   }
+ }
+
+===============================================================================
+FULL PROPOSED firestore.rules (for reference / side-by-side review)
+===============================================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Players collection - Public read, authenticated write
+    match /players/{playerId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Matches collection - Public read, authenticated write
+    match /matches/{matchId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Final Matches collection - Public read, authenticated write
+    match /finalMatches/{document=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Tournament Settings - Read public, Write authenticated
+    match /tournamentSettings/{settingId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Admins collection - Read public (for admin checks), write none
+    match /admins/{adminId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ------------------------------------------------------------------
+    // Group Stage + Double Elimination (isolated new format) — ADDITIVE.
+    // Lives in a new `tournaments/{id}` collection, never in the K&Q
+    // collections above. The formatId discriminator prevents this rule
+    // from being used to touch foreign documents in the same collection.
+    // Public read mirrors the K&Q read policy so the live view works.
+    // ------------------------------------------------------------------
+    match /tournaments/{tournamentId} {
+      allow read: if true;
+      allow create: if request.auth != null
+                    && request.resource.data.formatId == 'group-double-elimination';
+      allow update: if request.auth != null
+                    && resource.data.formatId == 'group-double-elimination'
+                    && request.resource.data.formatId == 'group-double-elimination';
+      allow delete: if request.auth != null
+                    && resource.data.formatId == 'group-double-elimination';
+    }
+  }
+}
+
+===============================================================================
+NOTES / LIMITATIONS FOR APPROVAL
+===============================================================================
+- This block is purely additive: none of the five King & Queen rules change.
+- Writes require `request.auth != null`, matching the existing K&Q policy.
+  Tightening to an admin-only check (e.g. verifying an `admins` document for
+  `request.auth.uid`) is recommended as a follow-up if the K&Q policy is
+  hardened, so both formats stay consistent.
+- No Firestore rules have been deployed. Production rules remain unchanged.

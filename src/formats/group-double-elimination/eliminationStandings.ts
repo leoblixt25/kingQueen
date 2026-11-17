@@ -1,10 +1,15 @@
 import type { EliminationBracket, MatchId, TeamId } from "./types";
-import { listEliminationMatches } from "./bracket";
+import {
+  findEliminationMatch,
+  listEliminationMatches,
+} from "./bracket";
 import {
   getEliminationChampion,
   getEliminationLossCount,
   getEliminationWinCount,
 } from "./progression";
+import { GAME_IDS_16 } from "./gameNumbers";
+import { hasSpanishCrossover } from "./spanishCrossover";
 
 /**
  * Elimination standings and final placements.
@@ -72,6 +77,94 @@ const eliminationMatchFor = (
 };
 
 /**
+ * Placements for the Spanish fixed-16 crossover.
+ *
+ * The two semifinal winners contest the Grand Final (1st/2nd) and the two
+ * semifinal losers contest the lower final (3rd/4th). When the lower final is
+ * not playable because both semifinal losers already took their second loss,
+ * they share 3rd. The remaining teams are placed by their Losers Bracket
+ * elimination round, with teams from the same round sharing a place.
+ */
+const buildSpanishPlacementMap = (
+  bracket: EliminationBracket
+): Map<TeamId, number> => {
+  const places = new Map<TeamId, number>();
+  const champion = getEliminationChampion(bracket);
+
+  if (champion) places.set(champion, 1);
+
+  const deciding =
+    bracket.grandFinal.find((match) => match.round === 2) ??
+    bracket.grandFinal.find((match) => match.round === 1);
+
+  if (
+    deciding?.status === "completed" &&
+    deciding.loserId &&
+    !places.has(deciding.loserId)
+  ) {
+    places.set(deciding.loserId, 2);
+  }
+
+  const lowerFinal = findEliminationMatch(bracket, GAME_IDS_16.lowerFinal);
+  if (
+    lowerFinal?.status === "completed" &&
+    lowerFinal.winnerId &&
+    lowerFinal.loserId
+  ) {
+    if (!places.has(lowerFinal.winnerId)) {
+      places.set(lowerFinal.winnerId, 3);
+    }
+    if (!places.has(lowerFinal.loserId)) {
+      places.set(lowerFinal.loserId, 4);
+    }
+  }
+
+  // Semifinal losers not already placed via the lower final share 3rd. This
+  // covers both the "lower final not played" case and a single-team lower
+  // final left over from mixed-loss semifinals.
+  for (const id of [GAME_IDS_16.semiFinal1, GAME_IDS_16.semiFinal2]) {
+    const semi = findEliminationMatch(bracket, id);
+    if (
+      semi?.status === "completed" &&
+      semi.loserId &&
+      !places.has(semi.loserId)
+    ) {
+      places.set(semi.loserId, 3);
+    }
+  }
+
+  const losersRounds = [...new Set(bracket.losers.map((match) => match.round))]
+    .sort((a, b) => b - a);
+  let nextPlace = 5;
+
+  for (const round of losersRounds) {
+    if (lowerFinal?.round === round) continue;
+
+    const eliminated = [
+      ...new Set(
+        bracket.losers
+          .filter(
+            (match) =>
+              match.round === round &&
+              match.status === "completed" &&
+              match.loserId !== null &&
+              getEliminationLossCount(bracket, match.loserId) >= 2
+          )
+          .map((match) => match.loserId as TeamId)
+      ),
+    ].filter((teamId) => !places.has(teamId));
+
+    if (eliminated.length === 0) continue;
+    for (const teamId of eliminated) {
+      places.set(teamId, nextPlace);
+    }
+    nextPlace += eliminated.length;
+  }
+
+  return places;
+};
+
+/**
  * Ranks every team whose tournament is over.
  *
  * Winner 1st, deciding-final loser 2nd, then Losers Bracket rounds from the
@@ -81,6 +174,10 @@ const eliminationMatchFor = (
 const buildPlacementMap = (
   bracket: EliminationBracket
 ): Map<TeamId, number> => {
+  if (hasSpanishCrossover(bracket)) {
+    return buildSpanishPlacementMap(bracket);
+  }
+
   const places = new Map<TeamId, number>();
   const champion = getEliminationChampion(bracket);
 
@@ -93,8 +190,8 @@ const buildPlacementMap = (
   if (deciding?.status === "completed" && deciding.loserId) {
     const resetTriggered =
       deciding.round === 1 &&
-      deciding.teamBId !== null &&
-      deciding.winnerId === deciding.teamBId;
+      deciding.loserId !== null &&
+      getEliminationLossCount(bracket, deciding.loserId) === 1;
 
     if (!resetTriggered) places.set(deciding.loserId, 2);
   }

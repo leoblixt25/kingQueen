@@ -1011,6 +1011,51 @@ Four new test files, **59 new tests**:
 
 **Phase 4 stops here.** No King & Queen logic, routes, Firestore rules or production data were touched.
 
+## 13ap. Persistence, scoring, live UI — Phase 5 (Nov 2026)
+
+**Scope:** isolated Firestore persistence, admin scoring/corrections service, live public + admin pages, Spanish tail completion, reset/placement fixes, additive rules PROPOSAL (not applied), and full regression. No K&Q changes.
+
+### Spanish tail + reset/placement correctness (pure engine)
+- `spanishCrossover.ts` now rewires the WHOLE tail: G21→SF2-B, G22→SF1-B, G25→SF1-A, G26→SF2-A; BOTH semifinal winners→GF (G30/31); both semifinal losers→lower final (G29) for 3rd/4th; lower final `winnerTo` cleared so it no longer re-enters the GF. `hasSpanishCrossover()` verifies all 8 links.
+- `progression.ts`: reset detection is by LOSS COUNT of the first-GF loser (undefeated finalist loses once), not bracket slot — required because the crossover mixes slot loss counts. Champion logic updated to match.
+- `eliminationStandings.ts`: `buildSpanishPlacementMap()` when crossover detected — GF 1st/2nd, lower final 3rd/4th (shared 3rd if not playable), remaining teams by losers round. Ties SHARE a place; no invented tiebreakers.
+- `fixed16Progression.test.ts` assertions updated for the corrected Spanish loss distribution (champion + 3rd-place winner may finish on 1 loss; other 14 on 2).
+
+### Isolated persistence (`persistence.ts`, direct import — NOT in the pure `index.ts`)
+- Only path ever written: `tournaments/{id}`. `GSDE_COLLECTION`, `GSDE_FORMAT_ID = "group-double-elimination"`, `KQ_COLLECTIONS` (test-only constant for the four K&Q collections).
+- Single document holds `tournament` (config/status/`seedingStale`/timestamps), `teams`, `groups`, `matches` (24 group matches), `elimination`, `settings` (game numbering, shared-place policy, `avoidRematches`, `grandFinalReset`, fixed tiebreak list). `formatId` discriminator on every write; reads reject foreign formats.
+- API: `createGsdeTournamentDocument`, `gsdeTournamentPath/Ref`, `toGsdeFirestoreData`, `fromGsdeFirestoreData`, `save/load/subscribe/delete/listGsdeTournament`. Path traversal/empty ids rejected.
+- `persistence.test.ts` (7): path isolation, no K&Q overlap, id validation, discriminator, round-trip, foreign-format rejection, defaults.
+
+### Admin scoring service (`scoring.ts`, pure transitions; Firestore write in the caller)
+- `saveSetup`, `buildTeamsAndGroups`, `startGroupStage`, `scoreGroupMatch`, `correctGroupMatchScore`, `generateEliminationBracket`, `resetEliminationBracket`, `scoreEliminationMatch`, `correctEliminationResult`.
+- Selectors: `selectGroupStandings`, `selectGlobalRanking`, `selectEliminationStandings`, `selectPlacements`, `selectProgress`, `selectLossCount`.
+- Gates: all 24 group matches required for bracket generation; duplicate/invalid scores rejected; group corrections before any elimination result clear the bracket and set `seedingStale`; after an elimination result the bracket is `bracket-locked`; elimination corrections replay results in game order and drop stale downstream results; Spanish crossover preserved through replay.
+- `scoring.test.ts` (11): build 16/4/24, standings/ranking, invalid/duplicate, 24-match gate, Spanish bracket, auto-advance/loss counting, invalid/duplicate elimination, lock behavior, group correction recalculation, elimination replay, crossover preservation.
+
+### Live UI (no K&Q tournament imports)
+- `src/pages/formats/group-double-elimination/shared.tsx`: `useGsdeTournament()` (`?id=` query param, default `default`, `subscribeGsdeTournament`), `PageShell`, status labels/colors, team-name helpers, progression link labels.
+- `src/pages/formats/group-double-elimination/views.tsx`: group standings, global 1–16 ranking, group matches, winners/losers/grand-final brackets with game numbers + progression, elimination status, placements, progress summary.
+- `GroupStageDoubleElimination.tsx` (public): tabs Group stage / Double elimination / Placements; live subscription; clear stage separation.
+- `AdminSetup.tsx` (admin, behind existing `ProtectedRoute adminOnly`): event id switcher, setup, add/remove teams, build groups, start group stage, 24 group score inputs with corrections, bracket generate/reset, elimination result entry/corrections, and all views. Writes only via `saveGsdeTournament`.
+- No new routes needed; both placeholder pages were replaced in place. `src/formats/group-double-elimination/index.ts` stays pure (persistence/scoring imported directly).
+
+### Firestore rules proposal (NOT applied)
+- `firestore.rules.gsde.proposal` (new): additive-only `match /tournaments/{tournamentId}` block — public read, authenticated write, `formatId == 'group-double-elimination'` guard on create/update/delete. Includes unified diff, full proposed rules, and notes. `firestore.rules` is UNCHANGED; nothing deployed. Admin-only hardening noted as a follow-up to keep parity with a future K&Q rules tightening.
+
+### Verification
+- `npx vitest run` — **24 files / 269 tests passed**.
+- `npx tsc -b --force` — **22 errors, identical to baseline**, zero in `src/formats/` or new pages.
+- `npx vite build` — succeeded; main bundle hash unchanged (`index-DGHGaTtH.js`) because pages are not yet reachable from a deployed build snapshot (no deploy performed).
+- No K&Q route/page/collection/data changed. No production deploy.
+
+### Remaining limitations
+1. Firestore rules block is a proposal only — requires explicit approval + deploy before writes can succeed in production; current permissive K&Q rules have no `tournaments` block, so writes would be denied by default until approved.
+2. Writes are authenticated (not admin-claim-restricted), matching current K&Q policy; admin-only rules are a follow-up.
+3. No court/time scheduling, PDF export, or bilingual copy for the new format.
+4. Elimination result correction replays stored results in game number order; a correction to an early game intentionally drops now-invalid downstream results (admin must re-enter them).
+5. No deploy of Phase 5 code.
+
 ## 14. Deployment URLs
 
 ### EU Project (KingQueen_EU â€” LIVE)

@@ -12,6 +12,7 @@ import {
   listEliminationMatches,
   replaceEliminationMatch,
 } from "./bracket";
+import { chooseRematchSafeDrop } from "./rematchPrevention";
 
 /**
  * Elimination progression.
@@ -38,6 +39,15 @@ export interface EliminationAdvanceResult {
   eliminatedTeamId: TeamId | null;
   /** Set when the Losers champion wins the first Grand Final. */
   resetFinalRequired: boolean;
+}
+
+export interface EliminationAdvanceOptions {
+  /**
+   * Redirect a loser to a different Losers match in the same round when the
+   * same-index target would be an immediate rematch. Used by the fixed
+   * 16-team format; the general engine keeps canonical routing by default.
+   */
+  avoidRematches?: boolean;
 }
 
 const isScore = (value: number | null | undefined): value is number =>
@@ -108,6 +118,23 @@ const fillSlot = (
   return replaceEliminationMatch(bracket, updated);
 };
 
+/**
+ * A reset is required when the team that lost the first Grand Final came into
+ * it undefeated (so it now has exactly one loss). That is the "undefeated
+ * finalist loses once" case the reset exists to correct. Detection is by loss
+ * count rather than bracket slot, so it works for the Spanish crossover where
+ * the final slots carry mixed loss counts.
+ */
+const firstFinalRequiresReset = (
+  bracket: EliminationBracket,
+  firstFinal: EliminationMatch | undefined
+): boolean =>
+  Boolean(
+    firstFinal?.status === "completed" &&
+      firstFinal.loserId &&
+      getEliminationLossCount(bracket, firstFinal.loserId) === 1
+  );
+
 const appendResetFinal = (
   bracket: EliminationBracket,
   firstFinal: EliminationMatch
@@ -141,7 +168,8 @@ const appendResetFinal = (
 
 export const advanceEliminationMatch = (
   bracket: EliminationBracket,
-  outcome: EliminationMatchOutcome
+  outcome: EliminationMatchOutcome,
+  options: EliminationAdvanceOptions = {}
 ): EliminationAdvanceResult => {
   const match = findEliminationMatch(bracket, outcome.matchId);
 
@@ -214,19 +242,27 @@ export const advanceEliminationMatch = (
   if (completed.winnerTo) {
     next = fillSlot(next, completed.winnerTo, winnerId);
   }
-  if (completed.loserTo) {
-    next = fillSlot(next, completed.loserTo, loserId);
+
+  const loserLosses = getEliminationLossCount(next, loserId);
+  if (completed.loserTo && loserLosses < 2) {
+    // A team on its second loss is eliminated and must not be placed into a
+    // following match (relevant for the Spanish tail's crossover semifinals).
+    let link = completed.loserTo;
+    if (options.avoidRematches) {
+      const drop = chooseRematchSafeDrop(next, completed.id, loserId);
+      next = drop.bracket;
+      link = drop.link;
+    }
+    next = fillSlot(next, link, loserId);
   }
 
-  let eliminatedTeamId: TeamId | null =
-    getEliminationLossCount(next, loserId) >= 2 ? loserId : null;
+  let eliminatedTeamId: TeamId | null = loserLosses >= 2 ? loserId : null;
   let resetFinalRequired = next.resetFinalRequired;
 
   const isFirstGrandFinal =
     completed.phase === "grand-final" && completed.round === 1;
 
-  if (isFirstGrandFinal && completed.winnerId === completed.teamBId) {
-    // The Losers champion took the first final: play it again.
+  if (isFirstGrandFinal && firstFinalRequiresReset(next, completed)) {
     next = appendResetFinal(next, completed);
     eliminatedTeamId = null;
     resetFinalRequired = true;
@@ -245,9 +281,7 @@ export const needsGrandFinalReset = (
   if (!first || first.status !== "completed") return false;
   if (second) return second.status !== "completed";
 
-  return Boolean(
-    first.winnerId && first.teamBId && first.winnerId === first.teamBId
-  );
+  return firstFinalRequiresReset(bracket, first);
 };
 
 /** Tournament champion, `null` until the deciding final is complete. */
@@ -260,10 +294,13 @@ export const getEliminationChampion = (
   }
 
   const first = bracket.grandFinal.find((match) => match.round === 1);
+  // The first final decides the title unless a reset is still outstanding.
+  // A champion may legitimately have one loss in the Spanish crossover, when
+  // the runner-up also entered the final with a loss.
   if (
     first?.status === "completed" &&
     first.winnerId &&
-    first.winnerId === first.teamAId
+    !firstFinalRequiresReset(bracket, first)
   ) {
     return first.winnerId;
   }
@@ -276,5 +313,8 @@ export const isEliminationComplete = (
 ): boolean =>
   getEliminationChampion(bracket) !== null &&
   listEliminationMatches(bracket).every(
-    (match) => match.status === "completed"
+    (match) =>
+      match.status === "completed" ||
+      match.teamAId === null ||
+      match.teamBId === null
   );

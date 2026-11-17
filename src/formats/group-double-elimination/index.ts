@@ -22,3 +22,7 @@ export * from "./losersBracket";
 export * from "./progression";
 export * from "./eliminationStandings";
 export * from "./admin";
+export * from "./gameNumbers";
+export * from "./spanishCrossover";
+export * from "./rematchPrevention";
+export * from "./fixed16";

@@ -22,6 +22,7 @@ import PublicDrawPage from "./pages/PublicDrawPage";
 import InstallPage from "./pages/InstallPage";
 import GroupStageDoubleElimination from "./pages/formats/GroupStageDoubleElimination";
 import GroupDoubleEliminationAdminSetup from "./pages/formats/group-double-elimination/AdminSetup";
+import GroupDoubleEliminationPlayerView from "./pages/formats/group-double-elimination/PlayerView";
 import Layout from "./components/Layout";
 
 const queryClient = new QueryClient();
@@ -40,6 +41,11 @@ const App = () => (
             <Route path="/formats/group-stage-double-elimination/admin" element={
               <ProtectedRoute adminOnly={true}>
                 <GroupDoubleEliminationAdminSetup />
+              </ProtectedRoute>
+            } />
+            <Route path="/formats/group-stage-double-elimination/player" element={
+              <ProtectedRoute>
+                <GroupDoubleEliminationPlayerView />
               </ProtectedRoute>
             } />
             <Route path="/live-ranking" element={<LiveRanking />} />

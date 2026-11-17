@@ -8,7 +8,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import { AlertCircle, Loader2, Wrench } from "lucide-react";
+import { AlertCircle, Loader2, Users, Wrench } from "lucide-react";
 import { GROUP_DOUBLE_ELIMINATION_FORMAT } from "@/formats";
 import {
   PageShell,
@@ -55,12 +55,20 @@ export default function GroupStageDoubleElimination() {
               <code className="rounded bg-white/70 px-1 py-0.5">{id}</code>
             </p>
           </div>
-          <Button asChild variant="outline" size="sm">
-            <Link to={`${GROUP_DOUBLE_ELIMINATION_FORMAT.route}/admin${id !== "default" ? `?id=${encodeURIComponent(id)}` : ""}`}>
-              <Wrench className="mr-1.5 h-4 w-4" />
-              Admin controls
-            </Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="outline" size="sm">
+              <Link to={`${GROUP_DOUBLE_ELIMINATION_FORMAT.route}/player${id !== "default" ? `?id=${encodeURIComponent(id)}` : ""}`}>
+                <Users className="mr-1.5 h-4 w-4" />
+                My team
+              </Link>
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link to={`${GROUP_DOUBLE_ELIMINATION_FORMAT.route}/admin${id !== "default" ? `?id=${encodeURIComponent(id)}` : ""}`}>
+                <Wrench className="mr-1.5 h-4 w-4" />
+                Admin controls
+              </Link>
+            </Button>
+          </div>
         </CardContent>
       </Card>
 

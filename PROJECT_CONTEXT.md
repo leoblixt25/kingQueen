@@ -1091,6 +1091,34 @@ Four new test files, **59 new tests**:
 3. No court/time scheduling, PDF export or bilingual copy for the new format.
 4. Elimination corrections still replay stored results and drop now-invalid downstream results.
 
+## 13ar. Stage-dependent player interface — Phase 7 (Nov 2026)
+
+**Scope:** a dedicated player page whose content depends on the current tournament stage, showing assigned group/opponents/upcoming/results/ranking during the group stage and bracket side/next opponent/schedule/elimination losses/alive-vs-eliminated during elimination. No K&Q changes.
+
+### Pure selectors (`playerView.ts`)
+- `getPlayerStage(doc)` derives `registration | group-stage | elimination | completed` from the authoritative document (status plus data fallbacks).
+- `buildPlayerGroupView(doc, teamId)`: group name, opponents, upcoming matches, completed results (scores from the team's perspective), standing/rank and **group losses only**.
+- `buildPlayerEliminationView(doc, teamId)`: elimination wins/losses from `getEliminationLossCount` only, status (`winners/losers/eliminated/champion`), `competing`, current bracket side, next unresolved match (opponent + game number + round), full personal schedule sorted by game number, final place and eliminating match id.
+- `buildPlayerView(doc, teamId)` combines both with the team name and stage. A team that lost all three group matches reports `groupLosses: 3` and `eliminationLosses: 0` at bracket entry — group results are never mixed into elimination counts.
+- `playerView.test.ts` (8): group view/opponents/upcoming, winless team entering with 0 elimination losses, first loss → Losers, second loss → eliminated with match id, next-opponent/game-number schedule, stage transitions and unknown-team handling.
+
+### Player page (`PlayerView.tsx`)
+- New route `/formats/group-stage-double-elimination/player` behind the existing `ProtectedRoute` (regular player registration/auth, no admin claim), reachable from a "My team" button on the public page.
+- `?id=` selects the tournament, `?team=` selects the team; a dropdown lists teams from the authoritative doc. Stage badge and cards adapt to registration / group / elimination / completed states.
+- During elimination the page explicitly contrasts group losses vs elimination losses and shows alive/eliminated, bracket side, next opponent, personal schedule and final place; placements are shown for elimination/completed stages.
+- Reads only `tournaments/{id}` via the shared subscription hook; writes nothing.
+
+### Verification
+- `npx vitest run` — **26 files / 285 tests passed**.
+- `npx tsc -b --force` — **22 errors, identical to baseline**, zero in new-format files/pages.
+- `npx vite build` — succeeded.
+- No K&Q route/page/collection/data changed. No production deploy. No Firestore rules applied.
+
+### Remaining limitations
+1. Player identity is a team selector (`?team=`), not yet mapped from the signed-in user; new-format teams are not linked to K&Q `players` records.
+2. "Schedule" means game number/round order — no court or time-slot data exists in the format yet.
+3. The player route reuses the existing `ProtectedRoute`, so it requires the app's existing player registration/auth.
+
 ## 14. Deployment URLs
 
 ### EU Project (KingQueen_EU â€” LIVE)

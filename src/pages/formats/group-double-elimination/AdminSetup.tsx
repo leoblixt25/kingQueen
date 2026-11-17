@@ -17,6 +17,7 @@ import {
   Trophy,
   Users,
   Wrench,
+  Zap,
 } from "lucide-react";
 import {
   createPendingTeam,
@@ -61,6 +62,11 @@ import {
   selectCorrections,
   type AuditActor,
 } from "@/formats/group-double-elimination/audit";
+import { findSubmissionForMatch } from "@/formats/group-double-elimination/playerSubmission";
+import {
+  canLoadTestData,
+  loadTestTeamsAndPlayers,
+} from "@/formats/group-double-elimination/testData";
 import { getCurrentUser } from "@/utils/authUtils";
 import {
   saveGsdeTournament,
@@ -552,6 +558,20 @@ export default function GroupDoubleEliminationAdminSetup() {
               <div className="flex flex-wrap gap-2">
                 <Button
                   size="sm"
+                  variant="secondary"
+                  disabled={saving || !canLoadTestData(doc)}
+                  onClick={() =>
+                    apply(
+                      (current) => loadTestTeamsAndPlayers(current, actor),
+                      "16 approved test teams and players loaded; group schedule generated."
+                    )
+                  }
+                >
+                  <Zap className="mr-1 h-4 w-4" />
+                  Load test teams &amp; players
+                </Button>
+                <Button
+                  size="sm"
                   disabled={saving || approvedCount !== 16}
                   onClick={() =>
                     apply(
@@ -576,6 +596,11 @@ export default function GroupDoubleEliminationAdminSetup() {
                   Register and approve exactly 16 teams to generate the fixed groups.
                 </p>
               ) : null}
+              <p className="text-xs text-foreground/55">
+                Test data creates approved placeholder teams and players (like King &amp;
+                Queen) only inside this tournament. The first three test accounts can
+                sign in and submit scores immediately.
+              </p>
             </CardContent>
           </Card>
 
@@ -720,11 +745,19 @@ export default function GroupDoubleEliminationAdminSetup() {
                   const a = groupValue(match.id, "a", match.scoreA);
                   const b = groupValue(match.id, "b", match.scoreB);
                   const complete = match.status === "completed";
+                  const submission = findSubmissionForMatch(doc, match.id);
                   return (
                     <div key={match.id} className="rounded-lg border border-sand-dark/25 bg-white/60 p-2">
-                      <div className="mb-1 flex items-center justify-between text-[11px] text-foreground/50">
+                      <div className="mb-1 flex items-center justify-between gap-1 text-[11px] text-foreground/50">
                         <span>{match.id}</span>
-                        <span className="capitalize">{match.status}</span>
+                        <span className="flex items-center gap-1">
+                          {submission ? (
+                            <span className="rounded bg-sky-100 px-1 text-sky-800">
+                              by {submission.playerLabel}
+                            </span>
+                          ) : null}
+                          <span className="capitalize">{match.status}</span>
+                        </span>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <Input className="h-7 w-14 text-sm" type="number" min={0} value={a} onChange={(e) => setGroupValue(match.id, "a", e.target.value)} />
@@ -962,14 +995,22 @@ export default function GroupDoubleEliminationAdminSetup() {
                 {playableElimination.map((match) => {
                   const draft = elValue(match);
                   const gameNumber = getGameNumber(match.id);
+                  const submission = findSubmissionForMatch(doc, match.id);
                   return (
                     <div key={match.id} className="rounded-lg border border-sand-dark/25 bg-white/60 p-2">
-                      <div className="mb-1.5 flex items-center justify-between text-[11px] text-foreground/50">
+                      <div className="mb-1.5 flex items-center justify-between gap-1 text-[11px] text-foreground/50">
                         <span className="font-semibold text-ocean">
                           {gameNumber === null ? match.id : getGameLabel(match.id)}
                         </span>
-                        <span>
-                          {match.phase === "grand-final" ? "Grand Final" : match.phase} R{match.round}
+                        <span className="flex items-center gap-1">
+                          {submission ? (
+                            <span className="rounded bg-sky-100 px-1 text-sky-800">
+                              by {submission.playerLabel}
+                            </span>
+                          ) : null}
+                          <span>
+                            {match.phase === "grand-final" ? "Grand Final" : match.phase} R{match.round}
+                          </span>
                         </span>
                       </div>
                       <div className="flex flex-wrap items-center gap-1.5">

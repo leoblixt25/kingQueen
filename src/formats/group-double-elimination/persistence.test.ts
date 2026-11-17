@@ -60,6 +60,28 @@ describe("new-format Firestore isolation", () => {
     expect(restored?.settings).toEqual(DEFAULT_GSDE_SETTINGS);
   });
 
+  it("round-trips immutable player score submissions", () => {
+    const submission = {
+      matchId: "group-1",
+      stage: "group" as const,
+      playerUid: "uid-1",
+      playerLabel: "player1@test.test",
+      submittedAt: "2026-11-17T00:00:00.000Z",
+      scoreA: 7,
+      scoreB: 3,
+      winnerId: "t1",
+    };
+    const tournament = createGsdeTournamentDocument("event-1", {
+      scoreSubmissions: { "uid-1": { "group-1": submission } },
+    });
+    const data = toGsdeFirestoreData(tournament);
+    const restored = fromGsdeFirestoreData(data, tournament.id);
+
+    expect(restored?.scoreSubmissions).toEqual({
+      "uid-1": { "group-1": submission },
+    });
+  });
+
   it("ignores documents from a foreign format", () => {
     expect(fromGsdeFirestoreData({ formatId: "king-queen" }, "x")).toBeNull();
     expect(fromGsdeFirestoreData(undefined, "x")).toBeNull();

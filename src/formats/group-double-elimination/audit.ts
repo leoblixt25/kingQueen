@@ -25,6 +25,7 @@ export type AuditAction =
   | "elimination-score-entered"
   | "elimination-result-corrected"
   | "tournament-reopened"
+  | "test-data-loaded"
   | "player-registered"
   | "player-registration-approved"
   | "player-registration-rejected"

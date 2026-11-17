@@ -133,6 +133,30 @@ export interface EliminationMatch extends MatchScore {
   loserTo: BracketLink | null;
 }
 
+/**
+ * One authoritative record that a player has submitted a score for a match.
+ * Stored inside `tournaments/{id}` (never in a separate collection) and keyed
+ * by the submitting player's uid, then by match id. A record is immutable:
+ * players submit once, and only an admin may correct the underlying score.
+ */
+export interface ScoreSubmission {
+  matchId: MatchId;
+  stage: "group" | "elimination";
+  /** Firebase Auth uid of the submitting player. */
+  playerUid: PlayerId;
+  /** Email/name recorded for display in the audit trail. */
+  playerLabel: string;
+  submittedAt: string;
+  /** Scores in the match's own A/B orientation. */
+  scoreA: number;
+  scoreB: number;
+  /** Winning team derived from the submitted score. */
+  winnerId: TeamId;
+}
+
+/** uid → (matchId → submission). Enables submit-once checks in Firestore rules. */
+export type ScoreSubmissionMap = Record<PlayerId, Record<MatchId, ScoreSubmission>>;
+
 export interface EliminationBracket {
   winners: EliminationMatch[];
   losers: EliminationMatch[];

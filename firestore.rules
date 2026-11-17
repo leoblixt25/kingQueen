@@ -38,14 +38,59 @@ service cloud.firestore {
     // collections above. The formatId discriminator prevents this rule
     // from being used to touch foreign documents in the same collection.
     // Public read mirrors the K&Q read policy so the live view works.
+    //
+    // Admin identity mirrors the client-side isAdmin() email check. A signed-
+    // in player may only (a) register themselves once or (b) add ONE score
+    // submission under their own uid; existing submissions are immutable, so
+    // a player cannot edit a submitted score. Only the admin may correct any
+    // score. All K&Q rules above are intentionally left untouched.
     // ------------------------------------------------------------------
+    function gsdeAdmin() {
+      return request.auth != null
+             && request.auth.token.email == 'leo.blixt77@gmail.com';
+    }
+
+    function gsdeFormatGuard() {
+      return resource.data.formatId == 'group-double-elimination'
+             && request.resource.data.formatId == 'group-double-elimination';
+    }
+
+    function gsdePlayerWrite() {
+      let before = resource.data;
+      let after = request.resource.data;
+      let beforeSubs = before.get('scoreSubmissions', {});
+      let afterSubs = after.get('scoreSubmissions', {});
+      let myBefore = beforeSubs.get(request.auth.uid, {});
+      let myAfter = afterSubs.get(request.auth.uid, {});
+      return request.auth != null
+        && gsdeFormatGuard()
+        && after.tournament.diff(before.tournament).affectedKeys().hasOnly(['updatedAt'])
+        && after.auditLog.size() == before.auditLog.size() + 1
+        && (
+          // Self-registration: append exactly one registration record.
+          (after.diff(before).affectedKeys().hasOnly(['registrations', 'auditLog', 'tournament'])
+            && after.registrations.size() == before.registrations.size() + 1)
+          ||
+          // Score submission: only the caller's sub-map may gain one entry.
+          // No existing submission may be changed or removed (submit-once).
+          (after.diff(before).affectedKeys().hasOnly([
+             'matches', 'elimination', 'scoreSubmissions', 'auditLog', 'tournament'
+           ])
+            && after.matches.size() == before.matches.size()
+            && afterSubs.diff(beforeSubs).removedKeys().size() == 0
+            && afterSubs.diff(beforeSubs).changedKeys().hasOnly([request.auth.uid])
+            && afterSubs.diff(beforeSubs).addedKeys().hasOnly([request.auth.uid])
+            && myAfter.diff(myBefore).addedKeys().size() == 1
+            && myAfter.diff(myBefore).changedKeys().size() == 0
+            && myAfter.diff(myBefore).removedKeys().size() == 0)
+        );
+    }
+
     match /tournaments/{tournamentId} {
       allow read: if true;
       allow create: if request.auth != null
                     && request.resource.data.formatId == 'group-double-elimination';
-      allow update: if request.auth != null
-                    && resource.data.formatId == 'group-double-elimination'
-                    && request.resource.data.formatId == 'group-double-elimination';
+      allow update: if (gsdeAdmin() && gsdeFormatGuard()) || gsdePlayerWrite();
       allow delete: if request.auth != null
                     && resource.data.formatId == 'group-double-elimination';
     }

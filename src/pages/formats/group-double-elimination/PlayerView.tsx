@@ -1,8 +1,9 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   AlertCircle,
   CalendarClock,
@@ -11,12 +12,25 @@ import {
   GitBranch,
   Layers,
   Loader2,
+  Send,
   ShieldAlert,
   Swords,
   Users,
   XCircle,
 } from "lucide-react";
 import { GROUP_DOUBLE_ELIMINATION_FORMAT } from "@/formats";
+import { listEliminationMatches } from "@/formats/group-double-elimination/bracket";
+import {
+  saveGsdeTournament,
+  type GsdeTournamentDocument,
+} from "@/formats/group-double-elimination/persistence";
+import {
+  findPlayerSubmission,
+  listPlayerSubmittableMatches,
+  submitPlayerEliminationScore,
+  submitPlayerGroupScore,
+  type SubmittableMatch,
+} from "@/formats/group-double-elimination/playerSubmission";
 import {
   buildPlayerView,
   type PlayerEliminationMatch,
@@ -142,6 +156,137 @@ export default function GroupDoubleEliminationPlayerView() {
     [doc, teamId]
   );
 
+  // Only the player's OWN approved team may submit scores. The `?team=` query
+  // override is a read-only/admin testing fallback and never grants scoring.
+  const canSubmit = Boolean(
+    doc && user && registeredTeamId && teamId === registeredTeamId
+  );
+  const submittable = useMemo<SubmittableMatch[]>(
+    () =>
+      canSubmit && doc && user && registeredTeamId
+        ? listPlayerSubmittableMatches(doc, registeredTeamId)
+        : [],
+    [canSubmit, doc, user, registeredTeamId]
+  );
+  const submittedEntries = useMemo(() => {
+    if (!canSubmit || !doc || !user || !registeredTeamId) return [];
+    const ownTeamMatchIds = new Set<string>();
+    for (const match of doc.matches) {
+      if (match.teamAId === registeredTeamId || match.teamBId === registeredTeamId) {
+        ownTeamMatchIds.add(match.id);
+      }
+    }
+    if (doc.elimination) {
+      for (const match of listEliminationMatches(doc.elimination)) {
+        if (match.teamAId === registeredTeamId || match.teamBId === registeredTeamId) {
+          ownTeamMatchIds.add(match.id);
+        }
+      }
+    }
+    return Object.values(doc.scoreSubmissions?.[user.uid] ?? {})
+      .filter((entry) => ownTeamMatchIds.has(entry.matchId))
+      .sort((a, b) => a.submittedAt.localeCompare(b.submittedAt));
+  }, [canSubmit, doc, user, registeredTeamId]);
+
+  const [drafts, setDrafts] = useState<
+    Record<string, { for: string; against: string }>
+  >({});
+  const [submitting, setSubmitting] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{
+    kind: "ok" | "error";
+    text: string;
+  } | null>(null);
+
+  const draftValue = (
+    matchId: string,
+    field: "for" | "against"
+  ): string => drafts[matchId]?.[field] ?? "";
+
+  const setDraftValue = (
+    matchId: string,
+    field: "for" | "against",
+    value: string
+  ) =>
+    setDrafts((previous) => ({
+      ...previous,
+      [matchId]: {
+        for: previous[matchId]?.for ?? "",
+        against: previous[matchId]?.against ?? "",
+        [field]: value,
+      },
+    }));
+
+  const opponentOf = (matchId: string): string | null => {
+    if (!doc || !teamId) return null;
+    const groupMatch = doc.matches.find((match) => match.id === matchId);
+    if (groupMatch) {
+      const opponentId =
+        groupMatch.teamAId === teamId ? groupMatch.teamBId : groupMatch.teamAId;
+      return names.get(opponentId) ?? opponentId;
+    }
+    const eliminationMatch = doc.elimination
+      ? listEliminationMatches(doc.elimination).find((match) => match.id === matchId)
+      : null;
+    if (eliminationMatch) {
+      const opponentId =
+        eliminationMatch.teamAId === teamId
+          ? eliminationMatch.teamBId
+          : eliminationMatch.teamAId;
+      return opponentId ? names.get(opponentId) ?? opponentId : null;
+    }
+    return null;
+  };
+
+  const isTeamA = (matchId: string): boolean => {
+    const groupMatch = doc?.matches.find((match) => match.id === matchId);
+    if (groupMatch) return groupMatch.teamAId === teamId;
+    const eliminationMatch = doc?.elimination
+      ? listEliminationMatches(doc.elimination).find((match) => match.id === matchId)
+      : null;
+    return eliminationMatch ? eliminationMatch.teamAId === teamId : true;
+  };
+
+  const submitScore = async (item: SubmittableMatch) => {
+    if (!doc || !user || !registeredTeamId) return;
+    const rawFor = draftValue(item.matchId, "for");
+    const rawAgainst = draftValue(item.matchId, "against");
+    if (rawFor.trim() === "" || rawAgainst.trim() === "") {
+      setNotice({ kind: "error", text: "Enter both scores before submitting." });
+      return;
+    }
+    setSubmitting(item.matchId);
+    setNotice(null);
+    try {
+      const input = {
+        uid: user.uid,
+        matchId: item.matchId,
+        scoreFor: Number(rawFor),
+        scoreAgainst: Number(rawAgainst),
+      };
+      const transform = (current: GsdeTournamentDocument) =>
+        item.stage === "group"
+          ? submitPlayerGroupScore(current, input)
+          : submitPlayerEliminationScore(current, input);
+      await saveGsdeTournament(transform(doc));
+      setDrafts((previous) => {
+        const next = { ...previous };
+        delete next[item.matchId];
+        return next;
+      });
+      setNotice({
+        kind: "ok",
+        text: "Score submitted and locked. Only an admin can correct it now.",
+      });
+    } catch (caught) {
+      setNotice({
+        kind: "error",
+        text: caught instanceof Error ? caught.message : "Could not submit the score.",
+      });
+    } finally {
+      setSubmitting(null);
+    }
+  };
+
   const selectTeam = (next: string) => {
     const params = new URLSearchParams(searchParams);
     params.set("id", id);
@@ -221,6 +366,142 @@ export default function GroupDoubleEliminationPlayerView() {
             </Card>
           ) : view ? (
             <div className="space-y-6">
+              {notice ? (
+                <Card
+                  className={
+                    notice.kind === "ok"
+                      ? "border-emerald-300 bg-emerald-50"
+                      : "border-red-300 bg-red-50"
+                  }
+                >
+                  <CardContent
+                    className={`flex items-center gap-2 p-3 text-sm ${
+                      notice.kind === "ok" ? "text-emerald-800" : "text-red-800"
+                    }`}
+                  >
+                    {notice.kind === "ok" ? (
+                      <CheckCircle2 className="h-4 w-4" />
+                    ) : (
+                      <AlertCircle className="h-4 w-4" />
+                    )}
+                    {notice.text}
+                  </CardContent>
+                </Card>
+              ) : null}
+
+              {user && doc && !registeredTeamId ? (
+                <Card className="border-amber-300 bg-amber-50">
+                  <CardContent className="p-3 text-sm text-amber-900">
+                    Your account is not approved for this tournament yet. Score entry
+                    unlocks when an admin assigns you to a team.
+                  </CardContent>
+                </Card>
+              ) : null}
+
+              {canSubmit && submittable.length > 0 ? (
+                <Card className="border-emerald-300/60 bg-emerald-50/70 shadow-sm">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center gap-2 text-emerald-900">
+                      <Send className="h-4 w-4" /> Submit your match scores
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <p className="text-xs text-emerald-900/75">
+                      Enter your team's score first. You can submit each match once —
+                      after that the result is locked and only an admin can correct it.
+                    </p>
+                    {submittable.map((item) => (
+                      <div
+                        key={item.matchId}
+                        className="flex flex-wrap items-center gap-2 rounded-lg border border-emerald-200 bg-white/70 p-2 text-sm"
+                      >
+                        <span className="min-w-[110px] text-xs font-semibold text-ocean">
+                          {item.stage === "group" ? "Group" : "Elimination"} ·{" "}
+                          {item.gameLabel}
+                        </span>
+                        <span className="min-w-[90px] flex-1 truncate text-foreground/75">
+                          vs {opponentOf(item.matchId) ?? "TBD"}
+                        </span>
+                        <Input
+                          aria-label={`Your score for ${item.matchId}`}
+                          className="h-7 w-14 text-sm"
+                          type="number"
+                          min={0}
+                          value={draftValue(item.matchId, "for")}
+                          onChange={(event) =>
+                            setDraftValue(item.matchId, "for", event.target.value)
+                          }
+                        />
+                        <span className="text-foreground/40">:</span>
+                        <Input
+                          aria-label={`Opponent score for ${item.matchId}`}
+                          className="h-7 w-14 text-sm"
+                          type="number"
+                          min={0}
+                          value={draftValue(item.matchId, "against")}
+                          onChange={(event) =>
+                            setDraftValue(item.matchId, "against", event.target.value)
+                          }
+                        />
+                        <Button
+                          size="sm"
+                          disabled={submitting === item.matchId}
+                          onClick={() => submitScore(item)}
+                        >
+                          {submitting === item.matchId ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <>
+                              <Send className="mr-1 h-3.5 w-3.5" /> Submit
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              ) : null}
+
+              {canSubmit && submittedEntries.length > 0 ? (
+                <Card className="border-sky-300/60 bg-sky-50/70 shadow-sm">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center gap-2 text-sky-900">
+                      <CheckCircle2 className="h-4 w-4" /> Submitted results (locked)
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-1.5">
+                    {submittedEntries.map((entry) => {
+                      const teamA = isTeamA(entry.matchId);
+                      return (
+                        <div
+                          key={entry.matchId}
+                          className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-sky-200 bg-white/70 px-2.5 py-1.5 text-sm text-sky-900"
+                        >
+                          <span className="text-xs font-semibold text-ocean">
+                            {entry.stage === "group" ? "Group" : "Elimination"} ·{" "}
+                            {entry.matchId}
+                          </span>
+                          <span className="flex-1 truncate text-foreground/70">
+                            vs {opponentOf(entry.matchId) ?? "TBD"}
+                          </span>
+                          <span className="tabular-nums font-semibold">
+                            {teamA
+                              ? `${entry.scoreA} : ${entry.scoreB}`
+                              : `${entry.scoreB} : ${entry.scoreA}`}
+                          </span>
+                          <Badge variant="outline" className="border-sky-300 text-sky-800">
+                            {new Date(entry.submittedAt).toLocaleString()}
+                          </Badge>
+                        </div>
+                      );
+                    })}
+                    <p className="text-xs text-sky-900/70">
+                      These scores are final for players. Contact an admin to correct one.
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : null}
+
               {view.stage === "registration" ? (
                 <Card className="border-sand-dark/40 shadow-beach bg-card/95">
                   <CardHeader className="pb-2">

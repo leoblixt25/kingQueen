@@ -19,6 +19,7 @@ import type {
   GroupStageMatch,
   GsdeTournamentStatus,
   PlayerRegistration,
+  ScoreSubmissionMap,
   Team,
   TournamentConfig,
 } from "./types";
@@ -102,6 +103,11 @@ export interface GsdeTournamentDocument {
   auditLog?: AuditEntry[];
   /** Self-registered players for this tournament (isolated from K&Q players). */
   registrations?: PlayerRegistration[];
+  /**
+   * Immutable player score submissions, keyed by uid then match id. Legacy
+   * documents default to an empty map. Never stored outside this document.
+   */
+  scoreSubmissions?: ScoreSubmissionMap;
   settings: GsdeSettings;
 }
 
@@ -136,6 +142,7 @@ export const createGsdeTournamentDocument = (
   elimination: overrides.elimination ?? null,
   auditLog: overrides.auditLog ?? [],
   registrations: overrides.registrations ?? [],
+  scoreSubmissions: overrides.scoreSubmissions ?? {},
   settings: { ...DEFAULT_GSDE_SETTINGS, ...(overrides.settings ?? {}) },
 });
 
@@ -176,6 +183,7 @@ export const toGsdeFirestoreData = (
   elimination: tournament.elimination,
   auditLog: tournament.auditLog ?? [],
   registrations: tournament.registrations ?? [],
+  scoreSubmissions: tournament.scoreSubmissions ?? {},
   settings: tournament.settings,
 });
 
@@ -196,6 +204,10 @@ export const fromGsdeFirestoreData = (
     elimination: data.elimination ?? null,
     auditLog: Array.isArray(data.auditLog) ? data.auditLog : [],
     registrations: Array.isArray(data.registrations) ? data.registrations : [],
+    scoreSubmissions:
+      data.scoreSubmissions && typeof data.scoreSubmissions === "object"
+        ? data.scoreSubmissions
+        : {},
     settings: { ...base.settings, ...(data.settings ?? {}) },
   };
 };

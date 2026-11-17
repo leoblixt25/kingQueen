@@ -1197,6 +1197,38 @@ Four new test files, **59 new tests**:
 2. Reopening to `elimination` keeps the completed bracket but resets status, so an admin must correct results explicitly; there is no automatic replay from a saved source-of-truth result list.
 3. The audit log is capped at 500 entries; older entries are intentionally dropped.
 
+## 13av. Regression matrix — Phase 11 (Nov 2026)
+
+**Scope:** a single end-to-end acceptance suite covering both formats plus persistence isolation. No production source, K&Q code/data, or rules changed — this phase adds two test files only.
+
+### New test files
+- `src/formats/group-double-elimination/regressionMatrix.test.ts` (10 tests) — runs each accepted scenario from a clean generated tournament through the REAL scoring service:
+  1. Groups: 4 groups of 4, **24 unique** round-robin matches, 6 unique pairings per group.
+  2. Completing groups: 24/24 matches, correct standings, ranks 1–16, 24 total wins/losses, all rows play exactly 3 games and qualify.
+  3. A team losing all 3 group matches still qualifies and appears in the global ranking.
+  4. Every team starts the elimination bracket with **0 elimination losses**.
+  5. First elimination loss moves the team to the Losers bracket.
+  6. Second elimination loss eliminates the team (with recorded `eliminatedByMatchId`).
+  7. Grand Final with the undefeated finalist winning → correct champion, **no reset**.
+  8. First Grand Final won by the one-loss finalist → **Reset Final added**, no champion until it is played, then the rematch decides the champion and completes the tournament.
+  9. Save/refresh: a Firestore round-trip leaves the document identical and every derived view (group standings, elimination standings, player view, reset flag) unchanged.
+  10. Multiple tournaments: distinct `tournaments/{id}` paths and no data crossover between two events with different scoring policies.
+- `src/utils/kqRegressionMatrix.test.ts` (10 tests) — pure-module regression pins proving K&Q is untouched:
+  - Format registry: K&Q stays `id: king-queen`, `route: /king-queen`, `status: live`, first in the registry, and outside the `/formats/` namespace.
+  - Draw: exact 14×4 `STATIC_MATCHUPS` matrix, 14 matches over 7 rounds × 2 courts with fixed A/B alternation, exact seed→player mapping, partner ×1 / opponent ×2 integrity, wrong-count rejection, non-mutating shuffle, 8 female + 8 male placeholder names.
+  - Ranking: the full documented tiebreaker chain in order (points → total score → point differential → head-to-head → strength of opponents → player id), exact `getTiebreakerLevel` names, and deterministic sorting under reversed input.
+  - Reveal gate: names stay hidden until the first submitted result (`RANKINGS_REVEAL_MATCHES === 1`).
+
+### Tests and verification
+- `npx vitest run` — **30 files / 319 tests passed** (up from 28 / 299; +2 files, +20 tests).
+- `npx tsc -b --force` — **22 errors, identical to baseline**, zero in new-format or regression files.
+- `npx vite build` — succeeded.
+- Only pure K&Q modules were imported; no K&Q source file was modified. `firestore.rules` untouched; nothing deployed.
+
+### Remaining limitations
+1. K&Q champion/reset logic has no pure module (it is Firebase/React-backed), so those K&Q behaviours are covered indirectly via their input data rather than unit-tested here; they remain unchanged by this work.
+2. These matrices are deterministic unit/integration tests; they do not replace a browser smoke test of the deployed build.
+
 ## 14. Deployment URLs
 
 ### EU Project (KingQueen_EU â€” LIVE)

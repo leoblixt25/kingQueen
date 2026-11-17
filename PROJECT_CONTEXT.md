@@ -959,6 +959,58 @@ Four new test files, **57 new tests**:
 
 **Phase 3 stops here.** Double Elimination awaits approval.
 
+## 13ao. Double Elimination engine — Phase 4 (Nov 2026)
+
+**Scope:** pure double-elimination engine for the new format. No React, no Firebase, no persistence, no UI wiring, no King & Queen changes. The Phase 2 stubs in `bracket.ts`, `winnersBracket.ts`, `losersBracket.ts`, `progression.ts` and `eliminationStandings.ts` are now real implementations; `teams.ts` and `admin.ts` remain Phase 2 contracts.
+
+### Architecture
+
+| Module | Implementation |
+|---|---|
+| `bracket.ts` | Canonical power-of-two bracket generation with seed order `1, n, …`, snake-style Winners/Losers links, bye collapsing, deterministic ids (`winners-rR-mM`, `losers-rR-mM`, `grand-final-1/2`), bracket validation and match lookup/replacement helpers. |
+| `winnersBracket.ts` | Round projection and Winners champion lookup. |
+| `losersBracket.ts` | Round projection and Losers champion lookup. |
+| `progression.ts` | `advanceEliminationMatch()` routes winner and loser, counts elimination-only losses, creates the reset final, resolves the champion and `needsGrandFinalReset()`. |
+| `eliminationStandings.ts` | Per-team elimination wins/losses/status and competition-style final placements (ties share a place). |
+| `elimination.ts` | Facade: `buildEliminationStage(groupStage)` requires a completed group stage, seeds from `seedTeamsFromGroupStandings()` and generates the bracket. |
+| `errors.ts` | `EliminationError` with typed codes. |
+| `types.ts` | `EliminationBracket` gains optional `seededTeamIds`, `bracketSize`, `byeTeamIds` metadata. |
+
+### Rules encoded
+
+- **Seeding:** the only bridge to group data is `buildEliminationStage()`. It rejects an incomplete group stage unless `allowIncompleteGroupStage` is set, then orders all qualified teams by group rank via Phase 3's `seedTeamsFromGroupStandings()`.
+- **Zero elimination losses:** the bracket stores no group records; every seeded team starts with 0 wins / 0 losses. Group results can never eliminate a team here.
+- **Bracket sizes and byes:** bracket size is the next power of two. Missing seeds become byes that are collapsed out during generation and pass their winner source forward. Verified for 2, 3, 5, 6, 7, 8 and 9+ teams.
+- **Progression:** a completed match fills its `winnerTo` / `loserTo` slots automatically. A Winners loss sends the team to the Losers Bracket (1 loss, still alive); a Losers loss eliminates it (2 losses).
+- **Grand Final:** GF1 is `Winners champion vs Losers champion`. If the Losers champion wins, GF2 (`grand-final-2`) is created and `resetFinalRequired` is set; otherwise the tournament is over immediately.
+- **Placements:** champion 1st, deciding-final loser 2nd, then Losers Bracket rounds from last to first (`3, 4, 5, 5, 7, 7` for 8 teams). Places are projected from the bracket structure, so they are correct even mid-tournament.
+
+### Tests
+
+Four new test files, **59 new tests**:
+
+- `bracket.test.ts` (23) — seed order, power-of-two sizes, link routing, ids and determinism, validation errors, byes for 2/3/5/6/7 teams, no double-booking, round projections and bracket champions.
+- `progression.test.ts` (21) — slot filling, first-loss drop, second-loss elimination, full 8-team run, GF/GF2 conditions, 2/3/5-team runs, progression errors.
+- `eliminationStandings.test.ts` (10) — zero-loss start, live statuses, ranks and tied placements, elimination match attribution, partial-tournament projection.
+- `elimination.test.ts` (5) — group-stage completion guard, preview mode, seeding equals group standings, winless group team included with zero elimination losses, no group data in the bracket.
+
+### Verification
+
+- `npx vitest run` — **18 files / 220 tests passed** (161 before + 59 new).
+- `npx tsc -b --force` — **22 errors, identical to baseline**, none in `src/formats/`.
+- `npx vite build` — succeeded; bundle hash unchanged (`index-DGHGaTtH.js`) because no UI imports the engine yet.
+
+### Remaining issues (intentionally deferred)
+
+1. **No persistence or UI.** The bracket is not wired to a page or store; a state/store phase is needed before it can be used in the app.
+2. **No score-entry integration.** Progression accepts optional scores but the admin scoring screen does not exist yet.
+3. **No rematch avoidance.** Same-index drop pairing can produce an immediate rematch; this is deterministic but not yet optimized.
+4. **`firestore.rules` unchanged.** Future `tournaments/{id}` persistence still needs an additive rules block and explicit approval before deploy.
+5. **Placements use competition ranking per Losers round**; product sign-off on tie presentation is still needed.
+6. **Phase 5+ awaits approval.** No production deploy of this engine has been performed.
+
+**Phase 4 stops here.** No King & Queen logic, routes, Firestore rules or production data were touched.
+
 ## 14. Deployment URLs
 
 ### EU Project (KingQueen_EU â€” LIVE)

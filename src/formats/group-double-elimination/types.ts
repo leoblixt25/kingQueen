@@ -101,4 +101,10 @@ export interface EliminationBracket {
   grandFinal: EliminationMatch[];
   /** Set once the Losers champion wins the first Grand Final. */
   resetFinalRequired: boolean;
+  /** Seeds in bracket order, best first. Never contains group-stage records. */
+  seededTeamIds?: TeamId[];
+  /** Bracket size: the next power of two >= `seededTeamIds.length`. */
+  bracketSize?: number;
+  /** Teams that skip the first Winners round because of a bye. */
+  byeTeamIds?: TeamId[];
 }

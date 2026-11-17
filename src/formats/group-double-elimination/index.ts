@@ -15,6 +15,7 @@ export * from "./groups";
 export * from "./groupStageMatches";
 export * from "./groupStandings";
 export * from "./groupStage";
+export * from "./elimination";
 export * from "./bracket";
 export * from "./winnersBracket";
 export * from "./losersBracket";

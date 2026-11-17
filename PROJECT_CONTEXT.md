@@ -1119,6 +1119,25 @@ Four new test files, **59 new tests**:
 2. "Schedule" means game number/round order — no court or time-slot data exists in the format yet.
 3. The player route reuses the existing `ProtectedRoute`, so it requires the app's existing player registration/auth.
 
+## 13as. Two independent ranking systems — Phase 8 (Nov 2026)
+
+**Scope:** explicit, separately-derived group and elimination ranking systems with tests proving group and elimination wins/losses are never combined. No K&Q changes.
+
+### Pure module (`rankingSystems.ts`)
+- `GROUP_RANKING_SYSTEM` and `ELIMINATION_RANKING_SYSTEM` definitions name their source and measures.
+- `selectRankingSystems(doc)` returns `{ group: { tables, global }, elimination: { standings, placements, championTeamId, runnerUpTeamIds } }`. Group data is derived ONLY from `doc.groups`/`doc.matches`; elimination data ONLY from `doc.elimination`.
+- `selectGroupRecord()` / `selectEliminationRecord()` expose per-team records from the respective source; there is no combined total field anywhere.
+- `rankingSystems.test.ts` (6): distinct definitions/no combined key, group changes affect only group rankings, no group results leak into elimination standings, elimination results change only elimination rankings, group corrections never carry results into a regenerated bracket, separate per-team records.
+
+### UI
+- `IndependentRankingsView` in `views.tsx` shows both systems side by side with an explanatory banner. The public page gained a dedicated **Rankings** tab (now Groups / Rankings / Double elimination / Placements).
+
+### Verification
+- `npx vitest run` — **27 files / 291 tests passed**.
+- `npx tsc -b --force` — **22 errors, identical to baseline**, zero in new-format files/pages.
+- `npx vite build` — succeeded.
+- No K&Q route/page/collection/data changed. No production deploy. No Firestore rules applied.
+
 ## 14. Deployment URLs
 
 ### EU Project (KingQueen_EU â€” LIVE)

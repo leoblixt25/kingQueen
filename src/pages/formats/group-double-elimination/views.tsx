@@ -17,6 +17,11 @@ import {
   selectPlacements,
   selectProgress,
 } from "@/formats/group-double-elimination/scoring";
+import {
+  ELIMINATION_RANKING_SYSTEM,
+  GROUP_RANKING_SYSTEM,
+  selectRankingSystems,
+} from "@/formats/group-double-elimination/rankingSystems";
 import { linkLabel, nameOf, teamNameMap } from "./shared";
 
 const th = "px-2 py-1.5 text-left text-xs font-semibold text-foreground/60";
@@ -432,6 +437,45 @@ export function EliminationStandingsView({ doc }: ViewsProps) {
         </table>
       </CardContent>
     </Card>
+  );
+}
+
+/** Two independent ranking systems shown side by side, never combined. */
+export function IndependentRankingsView({ doc }: ViewsProps) {
+  const systems = selectRankingSystems(doc);
+  return (
+    <div className="space-y-4">
+      <Card className="border-ocean/20 bg-ocean/5 shadow-sm">
+        <CardContent className="p-3 text-sm text-foreground/75">
+          <strong>Two independent rankings.</strong> {GROUP_RANKING_SYSTEM.label} uses{" "}
+          {GROUP_RANKING_SYSTEM.source.toLowerCase()}; {ELIMINATION_RANKING_SYSTEM.label}{" "}
+          uses {ELIMINATION_RANKING_SYSTEM.source.toLowerCase()}. Group wins/losses are
+          never added to elimination wins/losses.
+        </CardContent>
+      </Card>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="space-y-4">
+          <h3 className="text-sm font-bold uppercase tracking-wide text-ocean">
+            {GROUP_RANKING_SYSTEM.label}
+          </h3>
+          <GroupStandingsView doc={doc} />
+          <GlobalRankingView doc={doc} />
+          {systems.group.tables.length === 0 ? (
+            <EmptyView text="Group standings appear once groups are generated." />
+          ) : null}
+        </div>
+        <div className="space-y-4">
+          <h3 className="text-sm font-bold uppercase tracking-wide text-ocean">
+            {ELIMINATION_RANKING_SYSTEM.label}
+          </h3>
+          <EliminationStandingsView doc={doc} />
+          <PlacementsView doc={doc} />
+          {systems.elimination.standings.length === 0 ? (
+            <EmptyView text="Elimination standings appear once the bracket starts." />
+          ) : null}
+        </div>
+      </div>
+    </div>
   );
 }
 

@@ -22,6 +22,7 @@ import {
   GlobalRankingView,
   GroupMatchesView,
   GroupStandingsView,
+  IndependentRankingsView,
   PlacementsView,
   ProgressSummary,
 } from "./group-double-elimination/views";
@@ -90,8 +91,9 @@ export default function GroupStageDoubleElimination() {
         <>
           <ProgressSummary doc={doc} />
           <Tabs defaultValue={doc.elimination ? "bracket" : "groups"}>
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="groups">Group stage</TabsTrigger>
+              <TabsTrigger value="rankings">Rankings</TabsTrigger>
               <TabsTrigger value="bracket">Double elimination</TabsTrigger>
               <TabsTrigger value="placements">Placements</TabsTrigger>
             </TabsList>
@@ -99,6 +101,9 @@ export default function GroupStageDoubleElimination() {
               <GroupStandingsView doc={doc} />
               <GlobalRankingView doc={doc} />
               <GroupMatchesView doc={doc} />
+            </TabsContent>
+            <TabsContent value="rankings" className="mt-4">
+              <IndependentRankingsView doc={doc} />
             </TabsContent>
             <TabsContent value="bracket" className="mt-4 space-y-6">
               <EliminationBracketView doc={doc} />

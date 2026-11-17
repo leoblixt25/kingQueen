@@ -1310,6 +1310,11 @@ Four new test files, **59 new tests**:
 - Browser smoke test against live `?id=test1`: the hub renders all five buttons + Install/footer and no console errors.
 - **Caching fix:** the first smoke test found the browser serving the old bundle from the service worker + Firebase's default `Cache-Control: max-age=3600` on HTML, so the new deploy was invisible for up to an hour on browsers that had visited recently. `firebase.json` now sets `Cache-Control: no-cache` for `**` (all SPA routes) while hashed `/assets/**` keep `public, max-age=31536000, immutable`. Verified live headers. This is a hosting-only config change; no K&Q code, data, routes or rules were touched.
 
+### Landing page polish + deployment (approved & executed, Nov 2026)
+- Commit `5ebea6a` restyled the root landing page (`src/pages/Home.tsx`, the format chooser at `/`) only. Header is now **"Beach Volleyball Organizer"** with the app's ocean→sunset→coral gradient treatment; ball icon became a gradient tile; format cards gained consistent icon tiles, status badges, clearer hierarchy, aligned spacing and a subtle hover lift. All navigation, buttons and footer copy/routes are unchanged; K&Q files/data/rules untouched.
+- Verification: 31 files / 331 tests pass; `npx tsc -b --force` still 22 baseline errors / 0 new; `npx vite build` succeeds; local browser check confirmed all elements render with no console errors and all three buttons navigate to their unchanged routes.
+- User explicitly approved deployment. `npx firebase deploy --only hosting --project kingqueen-eu` succeeded (hosting only). Live bundle is now `assets/index-GkET51Sr.js` (replacing `index-BixJN5BZ.js`). Live smoke test: `/` serves the new bundle with `Cache-Control: no-cache`, the heading reads "Beach Volleyball Organizer", both format cards/badges/buttons and the footer render, no console errors; `/king-queen` and the GSDE overview still return HTTP 200.
+
 ## 14. Deployment URLs
 
 ### EU Project (KingQueen_EU â€” LIVE)

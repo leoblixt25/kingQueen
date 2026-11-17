@@ -1056,6 +1056,41 @@ Four new test files, **59 new tests**:
 4. Elimination result correction replays stored results in game number order; a correction to an early game intentionally drops now-invalid downstream results (admin must re-enter them).
 5. No deploy of Phase 5 code.
 
+## 13aq. Stage-driven admin workflow — Phase 6 (Nov 2026)
+
+**Scope:** full admin workflow following tournament stages — configuration, team registration/approval/edit, group generation, group-stage management, completion verification, bracket generation, elimination management, and completion display. The elimination bracket remains gated behind a complete group stage unless an explicit double-confirm admin override is used. No K&Q changes.
+
+### Data model extensions
+- `TournamentConfig` gained `date: string` (plain `YYYY-MM-DD`) and `teamLimit: number`; defaults are `""` and `16` in `config.ts` and all persistence defaults factory functions.
+- `Team` gained optional `status?: "pending" | "approved"` plus `isApprovedTeam()` (missing status means approved, so legacy documents keep working). `createPendingTeam()` in `teams.ts` registers teams as pending until approved.
+- `GsdeTournamentDocument.tournament` gained `bracketOverrideUsed?: boolean` and `groupStageVerified?: boolean` (both default `false`).
+
+### Admin transitions (`scoring.ts`)
+- `editTeam()` (name/seed, validated for duplicates, blocked once groups exist), `approveTeam()`, `startGroupMatch()`, `resetGroupMatch()`.
+- `verifyGroupStageCompletion()` returns `{ isComplete, completed, total, ranking }` using the pure global ranking; `completeGroupStage()` refuses to advance unless all 24 matches are done and sets `groupStageVerified: true`.
+- `buildTeamsAndGroups()` now rejects pending teams so generation is gated on 16 approved teams.
+- `generateEliminationBracket()` keeps the 24-match gate. An override is honoured ONLY with both `overrideIncomplete: true` AND `adminConfirmed: true`; a provisional bracket is flagged `seedingStale`, `bracketOverrideUsed`, `groupStageVerified: false`. A genuine generation clears all three stale flags and sets `groupStageVerified: true`.
+- Added selectors `selectFinalResult()` (champion / runner-up / placements / complete) and `selectApprovedTeamCount()`.
+
+### Admin UI (`AdminSetup.tsx`)
+- Numbered sections 1–8 matching the requested workflow. Config form now includes name, date, team limit, group count and group size (fixed engine still enforces 16/4/4 on generation).
+- Team chips with approve / edit / remove controls; edit form for name and seed; build button gated on exactly 16 approved teams.
+- 24-match group cards with start, save, correction ("Fix") and reset; completion panel with verify button; bracket generation plus explicit override checkbox requiring confirmation; elimination match scores with winner selection and corrections; champion/runner-up completion panel.
+- All views (standings, global ranking, group matches, elimination standings, placements, progress) stay visible; writes still go only through `saveGsdeTournament()` to `tournaments/{id}`.
+
+### Tests and verification
+- `adminWorkflow.test.ts` (8): pending/approved counts, approval gate for group generation, team edit validation, group match start/reset, completion verification gating, exact override double-confirm rules, provisional flags, final-result selector shape.
+- `npx vitest run` — **25 files / 277 tests passed**.
+- `npx tsc -b --force` — **22 errors, identical to baseline**, zero in `src/formats/` or new pages.
+- `npx vite build` — succeeded.
+- No K&Q route/page/collection/data changed. No production deploy. No Firestore rules applied.
+
+### Remaining limitations
+1. Override is a deliberate, clearly flagged provisional state; admin must regenerate from full standings once the group stage completes.
+2. Firestore rules proposal still requires approval + deploy before writes succeed.
+3. No court/time scheduling, PDF export or bilingual copy for the new format.
+4. Elimination corrections still replay stored results and drop now-invalid downstream results.
+
 ## 14. Deployment URLs
 
 ### EU Project (KingQueen_EU â€” LIVE)

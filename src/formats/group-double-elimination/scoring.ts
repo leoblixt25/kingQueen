@@ -12,6 +12,7 @@ import {
   applyGroupMatchScore,
   getGroupStageProgress,
   isGroupStageComplete,
+  resetGroupMatchScore,
 } from "./groupStageMatches";
 import {
   calculateAllGroupStandings,
@@ -47,6 +48,7 @@ import {
   type FinalPlacement,
 } from "./eliminationStandings";
 import { EliminationError, GroupStageError } from "./errors";
+import { validateTeamDraft } from "./teams";
 
 /**
  * Admin scoring service for the new format.
@@ -64,7 +66,10 @@ export type ScoringErrorCode =
   | "bracket-locked"
   | "bracket-not-generated"
   | "group-stage-incomplete"
-  | "not-enough-teams";
+  | "not-enough-teams"
+  | "invalid-team"
+  | "stage-sequence"
+  | "override-required";
 
 export class ScoringError extends Error {
   readonly code: ScoringErrorCode;
@@ -125,6 +130,14 @@ export const buildTeamsAndGroups = (
     fail("bracket-locked", "The elimination bracket has started; reset it before rebuilding teams.");
   }
 
+  const pending = teams.filter((team) => team.status === "pending");
+  if (pending.length > 0) {
+    fail(
+      "invalid-team",
+      `${pending.length} team(s) are still pending approval. Approve them before generating groups.`
+    );
+  }
+
   const stage = buildFixed16GroupStage(teams);
   const withGroups = teams.map((team, index) => ({
     ...team,
@@ -169,6 +182,126 @@ const findGroupMatch = (
   const match = doc.matches.find((item) => item.id === matchId);
   if (!match) fail("unknown-match", `No group match "${matchId}".`);
   return match;
+};
+
+/** Edit a registered team's name and/or seed (before groups are generated). */
+export const editTeam = (
+  doc: GsdeTournamentDocument,
+  teamId: TeamId,
+  patch: { name?: string; seed?: number | null }
+): GsdeTournamentDocument => {
+  const team = doc.teams.find((item) => item.id === teamId);
+  if (!team) fail("invalid-team", `No team "${teamId}".`);
+  if (doc.matches.length > 0) {
+    fail("stage-sequence", "Teams cannot be edited after groups are generated.");
+  }
+
+  const draft = {
+    name: patch.name ?? team.name,
+    playerIds: team.playerIds,
+    seed: patch.seed !== undefined ? patch.seed : team.seed,
+  };
+  const issues = validateTeamDraft(
+    draft,
+    doc.teams.filter((item) => item.id !== teamId)
+  );
+  if (issues.length > 0) {
+    fail("invalid-team", issues.map((issue) => issue.message).join(" "));
+  }
+
+  return touch({
+    ...doc,
+    teams: doc.teams.map((item) => (item.id === teamId ? { ...item, ...draft } : item)),
+  });
+};
+
+/** Approve or unapprove a registered team. */
+export const approveTeam = (
+  doc: GsdeTournamentDocument,
+  teamId: TeamId,
+  approved: boolean
+): GsdeTournamentDocument => {
+  if (!doc.teams.some((item) => item.id === teamId)) {
+    fail("invalid-team", `No team "${teamId}".`);
+  }
+  return touch({
+    ...doc,
+    teams: doc.teams.map((item) =>
+      item.id === teamId
+        ? { ...item, status: approved ? ("approved" as const) : ("pending" as const) }
+        : item
+    ),
+  });
+};
+
+/** Mark a group match as started (ready for score entry). */
+export const startGroupMatch = (
+  doc: GsdeTournamentDocument,
+  matchId: MatchId
+): GsdeTournamentDocument => {
+  const match = findGroupMatch(doc, matchId);
+  if (match.status === "completed") {
+    fail("match-completed", `Group match "${matchId}" is already completed.`);
+  }
+  return touch({
+    ...doc,
+    matches: doc.matches.map((item) =>
+      item.id === matchId ? { ...item, status: "ready" as const } : item
+    ),
+  });
+};
+
+/** Clear a group result so it can be replayed or corrected. */
+export const resetGroupMatch = (
+  doc: GsdeTournamentDocument,
+  matchId: MatchId
+): GsdeTournamentDocument => {
+  const match = findGroupMatch(doc, matchId);
+  return touch({
+    ...doc,
+    matches: doc.matches.map((item) =>
+      item.id === matchId ? resetGroupMatchScore(item) : item
+    ),
+    tournament: { ...doc.tournament, status: "group-stage" },
+  });
+};
+
+export interface GroupStageCompletion {
+  isComplete: boolean;
+  completed: number;
+  total: number;
+  /** Final group ranking 1–16, derived only from group results. */
+  ranking: GlobalRankingRow[];
+}
+
+/** Verify completion and expose the final group ranking. */
+export const verifyGroupStageCompletion = (
+  doc: GsdeTournamentDocument
+): GroupStageCompletion => {
+  const progress = getGroupStageProgress(doc.matches);
+  return {
+    isComplete: progress.isComplete && progress.total === 24,
+    completed: progress.completed,
+    total: progress.total,
+    ranking: getFixed16GlobalRanking(doc.groups, doc.matches),
+  };
+};
+
+/** Explicit completion step; refuses to advance out of sequence. */
+export const completeGroupStage = (
+  doc: GsdeTournamentDocument
+): GsdeTournamentDocument => {
+  const check = verifyGroupStageCompletion(doc);
+  if (!check.isComplete) {
+    fail(
+      "group-stage-incomplete",
+      `Only ${check.completed}/${check.total} group matches are complete.`
+    );
+  }
+  return touch({
+    ...doc,
+    tournament: { ...doc.tournament, groupStageVerified: true },
+  } as GsdeTournamentDocument);
 };
 
 /** Submit a group score. Standings/ranking are derived on read. */
@@ -231,12 +364,49 @@ export const correctGroupMatchScore = (
   });
 };
 
-/** All 24 group matches gate bracket generation. */
+export interface BracketGenerationOptions {
+  /** Allow generating from partial group results. Requires `adminConfirmed`. */
+  overrideIncomplete?: boolean;
+  /** Explicit admin acknowledgement that the bracket is provisional. */
+  adminConfirmed?: boolean;
+}
+
+/**
+ * All 24 group matches gate bracket generation. An admin override is only
+ * honoured when BOTH `overrideIncomplete` and `adminConfirmed` are set; the
+ * resulting bracket is flagged `seedingStale` so it must be regenerated once
+ * the group stage is genuinely complete.
+ */
 export const generateEliminationBracket = (
-  doc: GsdeTournamentDocument
+  doc: GsdeTournamentDocument,
+  options: BracketGenerationOptions = {}
 ): GsdeTournamentDocument => {
   if (!canGenerateFixed16Bracket(doc.matches)) {
-    fail("group-stage-incomplete", "All 24 group matches must be complete.");
+    if (!options.overrideIncomplete || !options.adminConfirmed) {
+      fail(
+        "group-stage-incomplete",
+        "All 24 group matches must be complete. An admin override requires explicit confirmation."
+      );
+    }
+
+    const seeds = seedTeamsFromGroupStandings(
+      calculateAllGroupStandings(doc.groups, doc.matches)
+    );
+    const bracket = applySpanishCrossover(
+      generateDoubleEliminationBracket(seeds).bracket
+    );
+
+    return touch({
+      ...doc,
+      elimination: bracket,
+      tournament: {
+        ...doc.tournament,
+        status: "elimination",
+        seedingStale: true,
+        bracketOverrideUsed: true,
+        groupStageVerified: false,
+      },
+    });
   }
 
   const stage = buildFixed16EliminationStage({
@@ -252,8 +422,10 @@ export const generateEliminationBracket = (
       ...doc.tournament,
       status: "elimination",
       seedingStale: false,
+      bracketOverrideUsed: false,
+      groupStageVerified: true,
     },
-  } as GsdeTournamentDocument);
+  });
 };
 
 /** Drops an unstarted bracket so group scores can be corrected/regenerated. */
@@ -454,3 +626,21 @@ export const selectLossCount = (
   teamId: TeamId
 ): number =>
   doc.elimination ? getEliminationLossCount(doc.elimination, teamId) : 0;
+
+/** Champion, runner-up and final positions for the completion panel. */
+export const selectFinalResult = (doc: GsdeTournamentDocument) => {
+  const placements = selectPlacements(doc);
+  const first = placements.find((placement) => placement.place === 1);
+  const second = placements.find((placement) => placement.place === 2);
+  return {
+    complete: Boolean(doc.elimination && getEliminationChampion(doc.elimination)),
+    championTeamIds: first?.teamIds ?? [],
+    runnerUpTeamIds: second?.teamIds ?? [],
+    placements,
+  };
+};
+
+/** Count of approved teams, used to gate group generation. */
+export const selectApprovedTeamCount = (
+  doc: GsdeTournamentDocument
+): number => doc.teams.filter((team) => team.status !== "pending").length;

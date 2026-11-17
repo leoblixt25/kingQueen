@@ -9,6 +9,8 @@ import type { TournamentConfig } from "./types";
  */
 export const DEFAULT_CONFIG: TournamentConfig = {
   name: "",
+  date: "",
+  teamLimit: 16,
   divisionName: "Open",
   groupCount: 2,
   matchFormat: "single-set",

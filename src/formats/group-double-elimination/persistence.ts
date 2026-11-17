@@ -83,6 +83,10 @@ export interface GsdeTournamentDocument {
     status: GsdeTournamentStatus;
     /** Set when a group score was corrected after a bracket existed. */
     seedingStale: boolean;
+    /** Set when an admin generated the bracket before the group stage finished. */
+    bracketOverrideUsed?: boolean;
+    /** Set by the explicit group-stage completion step. */
+    groupStageVerified?: boolean;
     createdAt: string | null;
     updatedAt: string | null;
   };
@@ -103,6 +107,8 @@ export const createGsdeTournamentDocument = (
   tournament: {
     config: {
       name: "",
+      date: "",
+      teamLimit: 16,
       divisionName: "Open",
       groupCount: 4,
       matchFormat: "single-set",
@@ -112,6 +118,8 @@ export const createGsdeTournamentDocument = (
     },
     status: "draft",
     seedingStale: false,
+    bracketOverrideUsed: false,
+    groupStageVerified: false,
     createdAt: null,
     updatedAt: null,
     ...(overrides.tournament ?? {}),

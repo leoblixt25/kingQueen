@@ -9,14 +9,17 @@ import {
   CheckCircle2,
   GitBranch,
   Loader2,
+  Pencil,
+  Play,
   Plus,
   RotateCcw,
   Trash2,
+  Trophy,
   Users,
   Wrench,
 } from "lucide-react";
 import {
-  createTeam,
+  createPendingTeam,
   createTeamId,
   getGameLabel,
   getGameNumber,
@@ -24,15 +27,23 @@ import {
   type EliminationMatch,
 } from "@/formats/group-double-elimination";
 import {
+  approveTeam,
   buildTeamsAndGroups,
+  completeGroupStage,
   correctEliminationResult,
   correctGroupMatchScore,
+  editTeam,
   generateEliminationBracket,
   resetEliminationBracket,
+  resetGroupMatch,
   saveSetup,
   scoreEliminationMatch,
   scoreGroupMatch,
+  selectApprovedTeamCount,
+  selectFinalResult,
+  startGroupMatch,
   startGroupStage,
+  verifyGroupStageCompletion,
 } from "@/formats/group-double-elimination/scoring";
 import {
   saveGsdeTournament,
@@ -74,22 +85,42 @@ export default function GroupDoubleEliminationAdminSetup() {
   const { id, setId, doc, loading, error } = useGsdeTournament();
   const [idDraft, setIdDraft] = useState(id);
   const [name, setName] = useState("");
+  const [date, setDate] = useState("");
   const [division, setDivision] = useState("Open");
+  const [teamLimit, setTeamLimit] = useState("16");
+  const [groupCount, setGroupCount] = useState("4");
+  const [groupSize, setGroupSize] = useState("4");
   const [teamName, setTeamName] = useState("");
   const [teamSeed, setTeamSeed] = useState("");
+  const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editSeed, setEditSeed] = useState("");
   const [groupScores, setGroupScores] = useState<Record<string, ScoreDraft>>({});
   const [eliminationScores, setEliminationScores] = useState<
     Record<string, EliminationDraft>
   >({});
+  const [overrideConfirmed, setOverrideConfirmed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
 
   useEffect(() => setIdDraft(id), [id]);
   useEffect(() => {
     if (!doc) return;
-    setName(doc.tournament.config.name);
-    setDivision(doc.tournament.config.divisionName);
-  }, [doc?.tournament.config.name, doc?.tournament.config.divisionName]); // eslint-disable-line react-hooks/exhaustive-deps
+    const config = doc.tournament.config;
+    setName(config.name);
+    setDate(config.date);
+    setDivision(config.divisionName);
+    setTeamLimit(String(config.teamLimit));
+    setGroupCount(String(config.groupCount));
+    setGroupSize(String(config.teamsPerGroup ?? 4));
+  }, [
+    doc?.tournament.config.name,
+    doc?.tournament.config.date,
+    doc?.tournament.config.divisionName,
+    doc?.tournament.config.teamLimit,
+    doc?.tournament.config.groupCount,
+    doc?.tournament.config.teamsPerGroup,
+  ]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const apply = async (
     transform: (current: GsdeTournamentDocument) => GsdeTournamentDocument,
@@ -136,10 +167,7 @@ export default function GroupDoubleEliminationAdminSetup() {
     };
   };
 
-  const setElValue = (
-    matchId: string,
-    patch: Partial<EliminationDraft>
-  ) =>
+  const setElValue = (matchId: string, patch: Partial<EliminationDraft>) =>
     setEliminationScores((previous) => {
       const base = previous[matchId] ?? { winner: "A" as const, a: "", b: "" };
       return { ...previous, [matchId]: { ...base, ...patch } };
@@ -175,16 +203,23 @@ export default function GroupDoubleEliminationAdminSetup() {
       showError(issues.map((issue) => issue.message).join(" "));
       return;
     }
-    const team = createTeam(createTeamId(teamName), draft, null);
+    const team = createPendingTeam(createTeamId(teamName), draft, null);
     apply(
-      (current) => ({
-        ...current,
-        teams: [...current.teams, team],
-      }),
-      `${team.name} added.`
+      (current) => ({ ...current, teams: [...current.teams, team] }),
+      `${team.name} registered (pending approval).`
     );
     setTeamName("");
     setTeamSeed("");
+  };
+
+  const saveTeamEdit = () => {
+    if (!editingTeamId) return;
+    const seed = editSeed.trim() === "" ? null : Number(editSeed);
+    apply(
+      (current) => editTeam(current, editingTeamId, { name: editName, seed }),
+      "Team updated."
+    );
+    setEditingTeamId(null);
   };
 
   const submitEliminationScore = (match: EliminationMatch) => {
@@ -228,6 +263,9 @@ export default function GroupDoubleEliminationAdminSetup() {
         (match) => match.teamAId !== null && match.teamBId !== null
       )
     : [];
+  const completion = doc ? verifyGroupStageCompletion(doc) : null;
+  const finalResult = doc ? selectFinalResult(doc) : null;
+  const approvedCount = doc ? selectApprovedTeamCount(doc) : 0;
 
   return (
     <PageShell
@@ -287,7 +325,7 @@ export default function GroupDoubleEliminationAdminSetup() {
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
                 <Wrench className="h-4 w-4 text-ocean" />
-                Tournament &amp; event
+                1. Tournament configuration
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -304,22 +342,30 @@ export default function GroupDoubleEliminationAdminSetup() {
                   Switch
                 </Button>
               </div>
-              <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 <label className="text-xs text-foreground/60">
                   Tournament name
-                  <Input
-                    className={`${inputCls} mt-1`}
-                    value={name}
-                    onChange={(event) => setName(event.target.value)}
-                  />
+                  <Input className={`${inputCls} mt-1`} value={name} onChange={(e) => setName(e.target.value)} />
+                </label>
+                <label className="text-xs text-foreground/60">
+                  Date
+                  <Input className={`${inputCls} mt-1`} type="date" value={date} onChange={(e) => setDate(e.target.value)} />
                 </label>
                 <label className="text-xs text-foreground/60">
                   Division
-                  <Input
-                    className={`${inputCls} mt-1`}
-                    value={division}
-                    onChange={(event) => setDivision(event.target.value)}
-                  />
+                  <Input className={`${inputCls} mt-1`} value={division} onChange={(e) => setDivision(e.target.value)} />
+                </label>
+                <label className="text-xs text-foreground/60">
+                  Team limit
+                  <Input className={`${inputCls} mt-1`} type="number" min={2} value={teamLimit} onChange={(e) => setTeamLimit(e.target.value)} />
+                </label>
+                <label className="text-xs text-foreground/60">
+                  Number of groups
+                  <Input className={`${inputCls} mt-1`} type="number" min={1} value={groupCount} onChange={(e) => setGroupCount(e.target.value)} />
+                </label>
+                <label className="text-xs text-foreground/60">
+                  Group size
+                  <Input className={`${inputCls} mt-1`} type="number" min={2} value={groupSize} onChange={(e) => setGroupSize(e.target.value)} />
                 </label>
               </div>
               <Button
@@ -331,7 +377,11 @@ export default function GroupDoubleEliminationAdminSetup() {
                       saveSetup(current, {
                         ...current.tournament.config,
                         name,
+                        date,
                         divisionName: division,
+                        teamLimit: Number(teamLimit),
+                        groupCount: Number(groupCount),
+                        teamsPerGroup: Number(groupSize),
                       }),
                     "Setup saved."
                   )
@@ -339,6 +389,9 @@ export default function GroupDoubleEliminationAdminSetup() {
               >
                 Save setup
               </Button>
+              <p className="text-xs text-foreground/50">
+                This fixed format enforces 16 teams / 4 groups / group size 4 when groups are generated.
+              </p>
             </CardContent>
           </Card>
 
@@ -346,7 +399,7 @@ export default function GroupDoubleEliminationAdminSetup() {
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
                 <Users className="h-4 w-4 text-ocean" />
-                Teams ({doc.teams.length}/16)
+                2. Team registration ({approvedCount}/{doc.teams.length} approved)
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -370,47 +423,94 @@ export default function GroupDoubleEliminationAdminSetup() {
                     onChange={(event) => setTeamSeed(event.target.value)}
                   />
                 </label>
-                <Button
-                  size="sm"
-                  disabled={saving || doc.teams.length >= 16}
-                  onClick={addTeam}
-                >
+                <Button size="sm" disabled={saving || doc.teams.length >= 16} onClick={addTeam}>
                   <Plus className="mr-1 h-4 w-4" />
-                  Add
+                  Register
                 </Button>
               </div>
               <div className="flex flex-wrap gap-1.5">
-                {doc.teams.map((team) => (
-                  <span
-                    key={team.id}
-                    className="inline-flex items-center gap-1 rounded-full border border-sand-dark/30 bg-white/70 px-2 py-1 text-xs text-foreground/80"
-                  >
-                    {team.seed ? <b className="text-ocean">#{team.seed}</b> : null}
-                    {team.name}
-                    <button
-                      type="button"
-                      aria-label={`Remove ${team.name}`}
-                      className="text-foreground/40 hover:text-red-600"
-                      disabled={saving || doc.matches.length > 0}
-                      onClick={() =>
-                        apply(
-                          (current) => ({
-                            ...current,
-                            teams: current.teams.filter((item) => item.id !== team.id),
-                          }),
-                          `${team.name} removed.`
-                        )
-                      }
+                {doc.teams.map((team) => {
+                  const approved = team.status !== "pending";
+                  return (
+                    <span
+                      key={team.id}
+                      className="inline-flex items-center gap-1 rounded-full border border-sand-dark/30 bg-white/70 px-2 py-1 text-xs text-foreground/80"
                     >
-                      <Trash2 className="h-3 w-3" />
-                    </button>
-                  </span>
-                ))}
+                      {team.seed ? <b className="text-ocean">#{team.seed}</b> : null}
+                      {team.name}
+                      <Badge
+                        variant="outline"
+                        className={
+                          approved
+                            ? "border-emerald-300 text-emerald-700"
+                            : "border-amber-300 text-amber-700"
+                        }
+                      >
+                        {approved ? "approved" : "pending"}
+                      </Badge>
+                      {!approved ? (
+                        <button
+                          type="button"
+                          aria-label={`Approve ${team.name}`}
+                          className="text-emerald-600 hover:text-emerald-800"
+                          disabled={saving}
+                          onClick={() => apply((current) => approveTeam(current, team.id, true), `${team.name} approved.`)}
+                        >
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        aria-label={`Edit ${team.name}`}
+                        className="text-ocean hover:text-ocean-dark"
+                        disabled={saving || doc.matches.length > 0}
+                        onClick={() => {
+                          setEditingTeamId(team.id);
+                          setEditName(team.name);
+                          setEditSeed(team.seed === null ? "" : String(team.seed));
+                        }}
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Remove ${team.name}`}
+                        className="text-foreground/40 hover:text-red-600"
+                        disabled={saving || doc.matches.length > 0}
+                        onClick={() =>
+                          apply(
+                            (current) => ({
+                              ...current,
+                              teams: current.teams.filter((item) => item.id !== team.id),
+                            }),
+                            `${team.name} removed.`
+                          )
+                        }
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </span>
+                  );
+                })}
               </div>
+              {editingTeamId ? (
+                <div className="flex flex-wrap items-end gap-2 rounded-xl border border-ocean/30 bg-ocean/5 p-2">
+                  <label className="flex-1 min-w-[140px] text-xs text-foreground/60">
+                    Name
+                    <Input className={`${inputCls} mt-1`} value={editName} onChange={(e) => setEditName(e.target.value)} />
+                  </label>
+                  <label className="w-24 text-xs text-foreground/60">
+                    Seed
+                    <Input className={`${inputCls} mt-1`} type="number" min={1} value={editSeed} onChange={(e) => setEditSeed(e.target.value)} />
+                  </label>
+                  <Button size="sm" disabled={saving} onClick={saveTeamEdit}>Save team</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setEditingTeamId(null)}>Cancel</Button>
+                </div>
+              ) : null}
               <div className="flex flex-wrap gap-2">
                 <Button
                   size="sm"
-                  disabled={saving || doc.teams.length !== 16}
+                  disabled={saving || approvedCount !== 16}
                   onClick={() =>
                     apply(
                       (current) => buildTeamsAndGroups(current, current.teams),
@@ -429,9 +529,9 @@ export default function GroupDoubleEliminationAdminSetup() {
                   Start group stage
                 </Button>
               </div>
-              {doc.teams.length !== 16 ? (
+              {approvedCount !== 16 ? (
                 <p className="text-xs text-amber-700">
-                  Add exactly 16 teams to generate the fixed groups and schedule.
+                  Register and approve exactly 16 teams to generate the fixed groups.
                 </p>
               ) : null}
             </CardContent>
@@ -440,7 +540,7 @@ export default function GroupDoubleEliminationAdminSetup() {
           {doc.matches.length > 0 ? (
             <Card className="border-sand-dark/40 shadow-beach bg-card/95">
               <CardHeader className="pb-2">
-                <CardTitle className="text-base">Group scores (24 matches)</CardTitle>
+                <CardTitle className="text-base">4. Group-stage management (24 matches)</CardTitle>
               </CardHeader>
               <CardContent className="grid gap-2 p-3 sm:grid-cols-2">
                 {doc.matches.map((match) => {
@@ -448,22 +548,13 @@ export default function GroupDoubleEliminationAdminSetup() {
                   const b = groupValue(match.id, "b", match.scoreB);
                   const complete = match.status === "completed";
                   return (
-                    <div
-                      key={match.id}
-                      className="rounded-lg border border-sand-dark/25 bg-white/60 p-2"
-                    >
+                    <div key={match.id} className="rounded-lg border border-sand-dark/25 bg-white/60 p-2">
                       <div className="mb-1 flex items-center justify-between text-[11px] text-foreground/50">
                         <span>{match.id}</span>
-                        {complete ? <Badge variant="outline">Done</Badge> : null}
+                        <span className="capitalize">{match.status}</span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <Input
-                          className="h-7 w-14 text-sm"
-                          type="number"
-                          min={0}
-                          value={a}
-                          onChange={(event) => setGroupValue(match.id, "a", event.target.value)}
-                        />
+                        <Input className="h-7 w-14 text-sm" type="number" min={0} value={a} onChange={(e) => setGroupValue(match.id, "a", e.target.value)} />
                         <span className="flex-1 truncate text-xs text-foreground/70">
                           {doc.teams.find((team) => team.id === match.teamAId)?.name ?? match.teamAId}
                         </span>
@@ -471,21 +562,20 @@ export default function GroupDoubleEliminationAdminSetup() {
                         <span className="flex-1 truncate text-xs text-foreground/70">
                           {doc.teams.find((team) => team.id === match.teamBId)?.name ?? match.teamBId}
                         </span>
-                        <Input
-                          className="h-7 w-14 text-sm"
-                          type="number"
-                          min={0}
-                          value={b}
-                          onChange={(event) => setGroupValue(match.id, "b", event.target.value)}
-                        />
-                        <Button
-                          size="sm"
-                          variant={complete ? "outline" : "default"}
-                          disabled={saving}
-                          onClick={() => submitGroupScore(match.id)}
-                        >
+                        <Input className="h-7 w-14 text-sm" type="number" min={0} value={b} onChange={(e) => setGroupValue(match.id, "b", e.target.value)} />
+                        {match.status === "pending" ? (
+                          <Button size="sm" variant="outline" disabled={saving} onClick={() => apply((current) => startGroupMatch(current, match.id), "Match started.")}>
+                            <Play className="h-3.5 w-3.5" />
+                          </Button>
+                        ) : null}
+                        <Button size="sm" variant={complete ? "outline" : "default"} disabled={saving} onClick={() => submitGroupScore(match.id)}>
                           {complete ? "Fix" : "Save"}
                         </Button>
+                        {complete ? (
+                          <Button size="sm" variant="ghost" disabled={saving} onClick={() => apply((current) => resetGroupMatch(current, match.id), "Result cleared.")}>
+                            <RotateCcw className="h-3.5 w-3.5" />
+                          </Button>
+                        ) : null}
                       </div>
                     </div>
                   );
@@ -497,56 +587,119 @@ export default function GroupDoubleEliminationAdminSetup() {
           <Card className="border-sand-dark/40 shadow-beach bg-card/95">
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
-                <GitBranch className="h-4 w-4 text-ocean" />
-                Bracket generation
+                <Trophy className="h-4 w-4 text-ocean" />
+                5. Group-stage completion
               </CardTitle>
             </CardHeader>
-            <CardContent className="flex flex-wrap items-center gap-2">
-              <Button
-                size="sm"
-                disabled={saving || !doc.matches.every((match) => match.status === "completed")}
-                onClick={() =>
-                  apply(generateEliminationBracket, "Spanish bracket generated.")
-                }
-              >
-                Generate bracket
-              </Button>
+            <CardContent className="space-y-2">
+              <p className="text-sm text-foreground/75">
+                {completion
+                  ? `${completion.completed}/${completion.total} group matches complete`
+                  : "No group stage generated yet."}
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  size="sm"
+                  disabled={saving || !completion?.isComplete}
+                  onClick={() => apply(completeGroupStage, "Group stage verified and final ranking calculated.")}
+                >
+                  Verify &amp; complete
+                </Button>
+                {doc.tournament.groupStageVerified ? (
+                  <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">Verified</Badge>
+                ) : null}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-sand-dark/40 shadow-beach bg-card/95">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <GitBranch className="h-4 w-4 text-ocean" />
+                6. Elimination bracket generation
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  size="sm"
+                  disabled={saving || !completion?.isComplete}
+                  onClick={() => apply(generateEliminationBracket, "Spanish bracket generated.")}
+                >
+                  Generate bracket
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={saving || !doc.elimination}
+                  onClick={() => apply(resetEliminationBracket, "Unstarted bracket reset.")}
+                >
+                  <RotateCcw className="mr-1 h-4 w-4" />
+                  Reset bracket
+                </Button>
+                {doc.tournament.seedingStale ? (
+                  <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">Seeding changed — regenerate</Badge>
+                ) : null}
+              </div>
+              <label className="flex items-center gap-2 text-xs text-foreground/70">
+                <input
+                  type="checkbox"
+                  checked={overrideConfirmed}
+                  onChange={(e) => setOverrideConfirmed(e.target.checked)}
+                />
+                Admin override: I confirm the bracket is provisional while group matches are incomplete.
+              </label>
               <Button
                 size="sm"
                 variant="outline"
-                disabled={saving || !doc.elimination}
+                disabled={saving || !overrideConfirmed || Boolean(completion?.isComplete)}
                 onClick={() =>
-                  apply(resetEliminationBracket, "Unstarted bracket reset.")
+                  apply(
+                    (current) => generateEliminationBracket(current, { overrideIncomplete: true, adminConfirmed: true }),
+                    "Provisional bracket generated from partial standings."
+                  )
                 }
               >
-                <RotateCcw className="mr-1 h-4 w-4" />
-                Reset bracket
+                Generate with override
               </Button>
-              {doc.tournament.seedingStale ? (
-                <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">
-                  Seeding changed — regenerate
-                </Badge>
-              ) : null}
-              <span className="text-xs text-foreground/55">
-                All 24 group matches must be scored before the bracket can be generated.
-              </span>
             </CardContent>
           </Card>
+
+          {finalResult?.complete ? (
+            <Card className="border-amber-300/60 bg-amber-50/70 shadow-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2 text-amber-900">
+                  <Trophy className="h-4 w-4" /> 8. Tournament complete
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm text-amber-900">
+                <p>
+                  <strong>Champion:</strong>{" "}
+                  {finalResult.championTeamIds
+                    .map((teamId) => doc.teams.find((team) => team.id === teamId)?.name ?? teamId)
+                    .join(" / ")}
+                </p>
+                <p>
+                  <strong>Runner-up:</strong>{" "}
+                  {finalResult.runnerUpTeamIds
+                    .map((teamId) => doc.teams.find((team) => team.id === teamId)?.name ?? teamId)
+                    .join(" / ")}
+                </p>
+              </CardContent>
+            </Card>
+          ) : null}
 
           {playableElimination.length > 0 ? (
             <Card className="border-sand-dark/40 shadow-beach bg-card/95">
               <CardHeader className="pb-2">
-                <CardTitle className="text-base">Elimination scores &amp; corrections</CardTitle>
+                <CardTitle className="text-base">7. Elimination scores &amp; corrections</CardTitle>
               </CardHeader>
               <CardContent className="grid gap-2 p-3 lg:grid-cols-2">
                 {playableElimination.map((match) => {
                   const draft = elValue(match);
                   const gameNumber = getGameNumber(match.id);
                   return (
-                    <div
-                      key={match.id}
-                      className="rounded-lg border border-sand-dark/25 bg-white/60 p-2"
-                    >
+                    <div key={match.id} className="rounded-lg border border-sand-dark/25 bg-white/60 p-2">
                       <div className="mb-1.5 flex items-center justify-between text-[11px] text-foreground/50">
                         <span className="font-semibold text-ocean">
                           {gameNumber === null ? match.id : getGameLabel(match.id)}
@@ -559,40 +712,15 @@ export default function GroupDoubleEliminationAdminSetup() {
                         <select
                           className="h-7 rounded-md border border-sand-dark/40 bg-white px-1 text-xs"
                           value={draft.winner}
-                          onChange={(event) =>
-                            setElValue(match.id, {
-                              winner: event.target.value as "A" | "B",
-                            })
-                          }
+                          onChange={(event) => setElValue(match.id, { winner: event.target.value as "A" | "B" })}
                         >
-                          <option value="A">
-                            Winner: {doc.teams.find((t) => t.id === match.teamAId)?.name ?? "A"}
-                          </option>
-                          <option value="B">
-                            Winner: {doc.teams.find((t) => t.id === match.teamBId)?.name ?? "B"}
-                          </option>
+                          <option value="A">Winner: {doc.teams.find((t) => t.id === match.teamAId)?.name ?? "A"}</option>
+                          <option value="B">Winner: {doc.teams.find((t) => t.id === match.teamBId)?.name ?? "B"}</option>
                         </select>
-                        <Input
-                          className="h-7 w-14 text-sm"
-                          type="number"
-                          min={0}
-                          value={draft.a}
-                          onChange={(event) => setElValue(match.id, { a: event.target.value })}
-                        />
+                        <Input className="h-7 w-14 text-sm" type="number" min={0} value={draft.a} onChange={(e) => setElValue(match.id, { a: e.target.value })} />
                         <span className="text-xs text-foreground/40">:</span>
-                        <Input
-                          className="h-7 w-14 text-sm"
-                          type="number"
-                          min={0}
-                          value={draft.b}
-                          onChange={(event) => setElValue(match.id, { b: event.target.value })}
-                        />
-                        <Button
-                          size="sm"
-                          variant={match.status === "completed" ? "outline" : "default"}
-                          disabled={saving}
-                          onClick={() => submitEliminationScore(match)}
-                        >
+                        <Input className="h-7 w-14 text-sm" type="number" min={0} value={draft.b} onChange={(e) => setElValue(match.id, { b: e.target.value })} />
+                        <Button size="sm" variant={match.status === "completed" ? "outline" : "default"} disabled={saving} onClick={() => submitEliminationScore(match)}>
                           {match.status === "completed" ? "Fix" : "Save"}
                         </Button>
                       </div>

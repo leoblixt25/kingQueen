@@ -68,6 +68,16 @@ export const createTeam = (
   groupId,
 });
 
+/** Newly registered teams start unapproved until an admin approves them. */
+export const createPendingTeam = (
+  id: TeamId,
+  draft: TeamDraft,
+  groupId: GroupId | null = null
+): Team => ({
+  ...createTeam(id, draft, groupId),
+  status: "pending",
+});
+
 export const moveTeamToGroup = (
   team: Team,
   groupId: GroupId | null

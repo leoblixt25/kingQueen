@@ -34,6 +34,10 @@ export interface BracketLink {
 
 export interface TournamentConfig {
   name: string;
+  /** Tournament date as a plain `YYYY-MM-DD` string (empty until set). */
+  date: string;
+  /** Configured team limit. The fixed engine enforces exactly 16. */
+  teamLimit: number;
   divisionName: string;
   groupCount: number;
   /** Single-set matches are the only supported format for now. */
@@ -53,7 +57,16 @@ export interface Team {
   playerIds: PlayerId[];
   seed: number | null;
   groupId: GroupId | null;
+  /**
+   * Admin approval state. Legacy documents without this field are treated as
+   * approved (see `isApprovedTeam`), so older persisted tournaments keep working.
+   */
+  status?: "pending" | "approved";
 }
+
+/** Legacy-safe approval check: missing status means approved. */
+export const isApprovedTeam = (team: Team): boolean =>
+  team.status !== "pending";
 
 export interface Group {
   id: GroupId;

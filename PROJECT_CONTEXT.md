@@ -1267,7 +1267,11 @@ Four new test files, **59 new tests**:
 - `npx vitest run` — **31 files / 331 tests passed** (up from 30 / 319; +1 file, +12 tests).
 - `npx tsc -b --force` — **22 baseline errors, zero new**.
 - `npx vite build` — succeeded (`assets/index-BzjZk7kk.js`).
-- Nothing deployed. Deploy only after explicit approval.
+
+### Deployment (approved & executed, Nov 2026)
+- User explicitly approved deployment after implementation. `npx firebase deploy --only hosting --project kingqueen-eu` succeeded (22 files uploaded, version finalized and released).
+- **Hosting only** — no Firestore rules change was needed or made; the deployed `tournaments/{tournamentId}` block already permits authenticated GSDE writes, including the new `registrations` field.
+- Live smoke check: `https://kingqueen-eu.web.app/` serves `assets/index-BzjZk7kk.js` (replacing Phase 11 `index-BcIPX4gY.js`); `/king-queen`, the GSDE overview, `/register`, `/register/pending`, `/player` and `/admin` all return HTTP 200.
 
 ## 14. Deployment URLs
 

@@ -1283,6 +1283,29 @@ Four new test files, **59 new tests**:
 ### Known follow-up (not part of this phase)
 - Firestore writes to `tournaments/{tournamentId}` still require only `request.auth != null` (same permissive policy as the K&Q collections). Any signed-in user can therefore edit the entire GSDE tournament document from a client, including scores and registrations. Tightening this to admin-claim-based rules would be a separate, explicit change because it modifies deployed rules that also cover K&Q behaviour.
 
+## 13ax. K&Q-style hub restyle for the GSDE format (Nov 2026)
+
+**Scope:** the GSDE start page now looks and navigates like the King & Queen start page. No K&Q source, route, rule, or data was touched — this is purely the GSDE namespace and shared GSDE UI helpers.
+
+### Decisions
+- `src/pages/formats/GroupStageDoubleElimination.tsx` was replaced by a centered beach hub that mirrors K&Q's `Landing.tsx`: gradient sand background, bouncing 🏐, a GSDE-branded gradient title (`GsdeMainTitle`), and big gradient buttons — **Tournament Draw**, **Live Ranking**, **Player**, **Info** — plus a smaller **Admin** button, **Install App**, the "Designed and created by Leo Blixt…" footer, and a "Formats" back link to `/`.
+- The wide tabbed dashboard that used to live on the overview was split into dedicated pages, each reusing the existing view components unchanged:
+  - `/formats/group-stage-double-elimination/draw` — `LiveMatchesView`, `EliminationBracketView`, `GroupMatchesView`, `ProgressSummary`.
+  - `/formats/group-stage-double-elimination/ranking` — `GlobalRankingView`, `IndependentRankingsView`, `ProgressSummary`.
+  - `/formats/group-stage-double-elimination/info` — format overview, player-registration explainer, `TournamentRulesView`.
+  - `/formats/group-stage-double-elimination/player-access` — K&Q-style Player Access screen with **Sign In**, **Register**, **My team**, signed-in status (via `useGsdeAuth` + `findRegistrationByUid`) and **Sign Out** (via `signOutRegistration`). Uses GSDE auth helpers only — never K&Q `ProtectedRoute` / `authUtils`.
+- `Player` → player-access (chosen by user); `Register` remains reachable from that screen and the existing `/register` route. `My team` stays at `/player`.
+- The Register page now reads `?mode=sign-in` so the Player Access "Sign In" button opens it directly in sign-in mode.
+- `gsdeHref(route, id)` and `GsdeMainTitle` were added to GSDE `shared.tsx`; `PageShell`'s "Back to format overview" link now preserves `?id=`. All hub buttons propagate `?id=` so testing with `?id=test1` works end to end.
+- Admin route stays behind `ProtectedRoute adminOnly={true}`; all `/formats/*` routes continue to hide the global bottom navigation via `Layout.tsx`.
+
+### Verification
+- `npx vitest run` — 31 files / 331 tests pass.
+- `npx tsc -b --force` — 22 pre-existing baseline errors / 0 new.
+- `npx vite build` — succeeds (`assets/index-BixJN5BZ.js`).
+- Local browser smoke test (`vite preview`) against `?id=test1`: hub shows all five buttons + Install/footer; Draw/Ranking/Info/Player Access render with no console errors; Draw → button preserves `?id=test1`; Player Access → Sign In lands on `/register?id=test1&mode=sign-in` in sign-in mode. (Draw/Ranking show empty states for the bracket/elimination because `test1` has not generated a bracket yet — expected.)
+- **Not deployed** — hosting deploy requires explicit approval.
+
 ## 14. Deployment URLs
 
 ### EU Project (KingQueen_EU â€” LIVE)

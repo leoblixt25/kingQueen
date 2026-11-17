@@ -22,6 +22,10 @@ import PublicDrawPage from "./pages/PublicDrawPage";
 import InstallPage from "./pages/InstallPage";
 import GroupStageDoubleElimination from "./pages/formats/GroupStageDoubleElimination";
 import GroupDoubleEliminationAdminSetup from "./pages/formats/group-double-elimination/AdminSetup";
+import GroupDoubleEliminationDraw from "./pages/formats/group-double-elimination/Draw";
+import GroupDoubleEliminationRanking from "./pages/formats/group-double-elimination/Ranking";
+import GroupDoubleEliminationInfo from "./pages/formats/group-double-elimination/Info";
+import GroupDoubleEliminationPlayerAccess from "./pages/formats/group-double-elimination/PlayerAccess";
 import GroupDoubleEliminationPlayerView from "./pages/formats/group-double-elimination/PlayerView";
 import GroupDoubleEliminationRegister from "./pages/formats/group-double-elimination/Register";
 import GroupDoubleEliminationRegistrationPending from "./pages/formats/group-double-elimination/RegistrationPending";
@@ -40,6 +44,18 @@ const App = () => (
             <Route path="/" element={<Home />} />
             <Route path="/king-queen" element={<Landing />} />
             <Route path="/formats/group-stage-double-elimination" element={<GroupStageDoubleElimination />} />
+            <Route path="/formats/group-stage-double-elimination/draw" element={
+              <GroupDoubleEliminationDraw />
+            } />
+            <Route path="/formats/group-stage-double-elimination/ranking" element={
+              <GroupDoubleEliminationRanking />
+            } />
+            <Route path="/formats/group-stage-double-elimination/info" element={
+              <GroupDoubleEliminationInfo />
+            } />
+            <Route path="/formats/group-stage-double-elimination/player-access" element={
+              <GroupDoubleEliminationPlayerAccess />
+            } />
             <Route path="/formats/group-stage-double-elimination/admin" element={
               <ProtectedRoute adminOnly={true}>
                 <GroupDoubleEliminationAdminSetup />

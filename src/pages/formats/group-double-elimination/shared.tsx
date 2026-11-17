@@ -18,6 +18,26 @@ import { GROUP_DOUBLE_ELIMINATION_FORMAT } from "@/formats";
 /** Default document used when no `?id=` is supplied. */
 export const DEFAULT_GSDE_TOURNAMENT_ID = "default";
 
+/** Builds a GSDE route that preserves the selected tournament id. */
+export const gsdeHref = (route: string, id: string): string =>
+  id === DEFAULT_GSDE_TOURNAMENT_ID
+    ? route
+    : `${route}?id=${encodeURIComponent(id)}`;
+
+/** K&Q-style gradient title, branded for the group-stage format. */
+export function GsdeMainTitle() {
+  return (
+    <h1 className="font-bold text-2xl sm:text-3xl md:text-3xl lg:text-4xl leading-tight tracking-wide">
+      <span className="bg-gradient-to-r from-ocean via-sunset to-coral bg-clip-text text-transparent drop-shadow-sm">
+        Group Stage
+      </span>{" "}
+      <span className="text-lg sm:text-xl md:text-xl lg:text-2xl text-foreground/80">
+        + Double Elimination
+      </span>
+    </h1>
+  );
+}
+
 /**
  * Subscribes to a single isolated `tournaments/{id}` document. When the
  * document does not exist yet, callers receive a fresh local draft that any
@@ -131,6 +151,8 @@ export function PageShell({
   backLabel,
   children,
 }: PageShellProps) {
+  const [searchParams] = useSearchParams();
+  const currentId = searchParams.get("id")?.trim() || DEFAULT_GSDE_TOURNAMENT_ID;
   return (
     <div className="min-h-screen bg-gradient-to-br from-sand-light via-sand to-ocean-light/20 px-4 pt-8 pb-10 flex items-start justify-center">
       <div className="w-full max-w-6xl mx-auto animate-fade-in">
@@ -157,7 +179,7 @@ export function PageShell({
         <div className="mt-6 space-y-6">{children}</div>
         <div className="mt-10 text-center text-sm text-foreground/60">
           <Link
-            to={GROUP_DOUBLE_ELIMINATION_FORMAT.route}
+            to={gsdeHref(GROUP_DOUBLE_ELIMINATION_FORMAT.route, currentId)}
             className="font-semibold text-foreground/80 hover:underline"
           >
             Back to format overview

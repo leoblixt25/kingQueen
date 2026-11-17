@@ -1275,6 +1275,11 @@ Four new test files, **59 new tests**:
 - Browser smoke test: the `/register` page renders correctly (name/email/password fields, Google button, "I already have an account" mode toggle, status-page link), and the GSDE overview shows the "Register as a player" button plus player approval counts. No console errors on either page.
 - Commits: `e932aac` (implementation), `7f1c09c` (deployment docs); both pushed to `feature/group-stage-double-elimination`.
 
+### Test data (seeded after approval, Nov 2026)
+- `tournaments/test1` was seeded for manual testing (the `default` document is left empty). It has **16 approved teams** (seeds 1–16), **4 groups / 24 matches**, status **configured** (registration still open), 2 pre-seeded registrations and an audit log.
+- Three Firebase Auth test accounts were created (fixed uids `gsde-test-player-1..3`, emails `testplayer1..3@kingqueen.test`): #1 has **no registration** (fresh sign-up test), #2 is **pending approval**, #3 is **approved and assigned to `t1`**. Credentials were supplied to the user directly, not stored here.
+- Access it via `?id=test1` on the overview, admin, register, pending and player pages.
+
 ### Known follow-up (not part of this phase)
 - Firestore writes to `tournaments/{tournamentId}` still require only `request.auth != null` (same permissive policy as the K&Q collections). Any signed-in user can therefore edit the entire GSDE tournament document from a client, including scores and registrations. Tightening this to admin-claim-based rules would be a separate, explicit change because it modifies deployed rules that also cover K&Q behaviour.
 

@@ -1391,15 +1391,21 @@ Four new test files, **59 new tests**:
 ### Tests and verification
 - New `category.test.ts` (18 tests): classification, valid/invalid pairs for all three categories, category-correct pairs for 8/12/16/24/32, corrupted-pair integrity, legacy genderless tolerance, display labels, partial-roster refresh, and full size-aware runs (8/12/24/32 generic bracket, 16 keeps crossover).
 - Updated `testData.test.ts` (14), `registration.test.ts` (16) and `persistence.test.ts` (11) for genders, pairs, custom names, category normalization and third-player rejection.
-- `npx vitest run` — **34 files / 378 tests passed**.
+- `npx vitest run` — **34 files / 380 tests passed**.
 - `npx tsc -b --force` — **22 pre-existing baseline errors / 0 new**.
 - `npx eslint src/formats/group-double-elimination src/pages/formats/group-double-elimination` — 3 pre-existing errors (`progression.test.ts` prefer-const, `GsdeAdminSignIn.tsx` 2× `any`) + 9 pre-existing fast-refresh warnings; none on new code.
-- `npx vite build` — succeeds (`assets/index-BSe8-MZH.js`, CSS `index-sQ8tv5JE.css`).
+- `npx vite build` — succeeds (`assets/index-DF6v7Yod.js`, CSS `index-CB8RHMJ5.css`).
 
 ### Deployment (hosting only, Nov 2026)
-- `npx firebase deploy --only hosting --project kingqueen-eu` succeeded (22 files). Live `index.html` serves `assets/index-BSe8-MZH.js` (replacing `index-BQnqML9D.js`) with `Cache-Control: no-cache`; CSS unchanged.
-- Live smoke: `/`, `/king-queen`, GSDE overview, `/admin`, `/register`, `/player`, `/ranking`, `/draw`, `/info` all HTTP 200.
+- `npx firebase deploy --only hosting --project kingqueen-eu` succeeded (22 files). Live `index.html` serves `assets/index-DF6v7Yod.js` (replacing `index-BSe8-MZH.js`) with `Cache-Control: no-cache`; CSS is `index-CB8RHMJ5.css`.
+- Live smoke: `/`, `/gsde`, `/format/group-stage-double-elimination`, `/register`, `/login` all HTTP 200.
 - `tournaments/test1` still holds its earlier single-player-derived team names until the test loader is run again; rerunning **Load test teams & players** at the selected size/category replaces them with valid pairs (allowed while status is `draft`/`configured` and no elimination bracket exists).
+
+### Reset all + test-loader discoverability (follow-up)
+- **Manage → Setup** now contains three cards: the setup fields, **Test teams & players** (the old Flow loader, so it is visible where the category/team limit are chosen) and **Reset all tournament data**. Manage → Flow only keeps Build groups / Start group stage and links back to Setup.
+- New pure `resetTournament(doc, actor?)` in `scoring.ts`: clears `teams`, `groups`, `matches`, `elimination`, `registrations` and `scoreSubmissions`; resets `status` to `draft` and `seedingStale` / `bracketOverrideUsed` / `groupStageVerified` to false; keeps `id`, `config` (category normalized), `settings` and the audit log; appends a `tournament-reset` entry; runs through `commit()` so the integrity gate still applies. Allowed at **any** stage, including completed; the UI requires an explicit confirmation checkbox before enabling the destructive button, and the checkbox resets on event-id change.
+- `AuditAction` gained `tournament-reset` and `selectCorrections()` includes it. `lifecycle.test.ts` (10 tests) covers a completed-tournament reset (all data cleared, setup/settings/audit kept, status `draft`, audit entry) and loading test data again afterwards.
+- Verification: **380 tests passed**, tsc 22 pre-existing baseline errors / 0 new, ESLint unchanged (3 pre-existing errors + 9 warnings), hosting deployed (`assets/index-DF6v7Yod.js`), `firestore.rules` byte-identical.
 
 ## 14. Deployment URLs
 

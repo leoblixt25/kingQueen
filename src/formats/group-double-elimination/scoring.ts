@@ -202,6 +202,57 @@ export const saveSetup = (
   );
 };
 
+/**
+ * Destructive full reset: clear every stage, roster and registration while
+ * keeping the event id, setup, settings and audit history. Allowed at any
+ * stage, including completed, because it is the only way to reuse an event id
+ * for a fresh tournament. The caller is responsible for the explicit
+ * confirmation checkbox in the admin UI.
+ */
+export const resetTournament = (
+  doc: GsdeTournamentDocument,
+  actor?: AuditActor
+): GsdeTournamentDocument => {
+  const now = new Date().toISOString();
+  const cleared = {
+    teams: doc.teams.length,
+    groups: doc.groups.length,
+    matches: doc.matches.length,
+    registrations: (doc.registrations ?? []).length,
+  };
+
+  return commit(
+    {
+      id: doc.id,
+      tournament: {
+        config: {
+          ...doc.tournament.config,
+          category: normalizeTournamentCategory(doc.tournament.config.category),
+        },
+        status: "draft",
+        seedingStale: false,
+        bracketOverrideUsed: false,
+        groupStageVerified: false,
+        createdAt: doc.tournament.createdAt ?? now,
+        updatedAt: now,
+      },
+      teams: [],
+      groups: [],
+      matches: [],
+      elimination: null,
+      auditLog: doc.auditLog ?? [],
+      registrations: [],
+      scoreSubmissions: {},
+      settings: doc.settings,
+    },
+    {
+      action: "tournament-reset",
+      actor,
+      detail: `Cleared ${cleared.teams} teams, ${cleared.groups} groups, ${cleared.matches} matches and ${cleared.registrations} registrations.`,
+    }
+  );
+};
+
 /** Register one team; audit identity is supplied by the admin caller. */
 export const addTeam = (
   doc: GsdeTournamentDocument,

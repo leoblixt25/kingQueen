@@ -44,6 +44,7 @@ import {
   removeTeam,
   resetEliminationBracket,
   resetGroupMatch,
+  resetTournament,
   saveSetup,
   scoreEliminationMatch,
   scoreGroupMatch,
@@ -321,6 +322,7 @@ export default function GroupDoubleEliminationAdminSetup() {
   const [actor, setActor] = useState<AuditActor>(UNKNOWN_ADMIN);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
+  const [resetConfirmed, setResetConfirmed] = useState(false);
 
   // The admin page is behind the GSDE admin guard, so the signed-in user is the
   // actor recorded on every audit entry. Fall back to UNKNOWN_ADMIN if identity
@@ -350,6 +352,7 @@ export default function GroupDoubleEliminationAdminSetup() {
     setEliminationMatchIndex(0);
     setEditingGroupMatchId(null);
     setEditingEliminationMatchId(null);
+    setResetConfirmed(false);
   }, [id]);
 
   useEffect(() => {
@@ -1812,6 +1815,7 @@ export default function GroupDoubleEliminationAdminSetup() {
                   />
 
                   {manageSection === "setup" ? (
+                    <>
                     <SectionCard emoji="⚙️" title="Tournament setup">
                       <div className="grid gap-4 sm:grid-cols-2">
                         <div className="sm:col-span-2">
@@ -1905,11 +1909,14 @@ export default function GroupDoubleEliminationAdminSetup() {
                         2x2 {category} format: {selectedTeamCount} teams · {expectedPlayers} players · {selectedGroupCount} groups of 4.
                       </p>
                     </SectionCard>
-                  ) : null}
 
-                  {manageSection === "flow" ? (
-                    <SectionCard emoji="▶️" title="Tournament flow">
+                    <SectionCard emoji="🧪" title="Test teams & players">
                       <div className="space-y-3">
+                        <p className="text-sm text-foreground/70">
+                          Creates {selectedTeamCount} approved {category} pairs ({expectedPlayers} players)
+                          inside this tournament and generates the group schedule. Only available before
+                          the group stage starts.
+                        </p>
                         <Button
                           className={primaryBtn}
                           disabled={saving || !canLoadTestData(doc)}
@@ -1923,6 +1930,74 @@ export default function GroupDoubleEliminationAdminSetup() {
                           <Zap className="w-5 h-5 mr-2" />
                           Load test teams &amp; players
                         </Button>
+                        {!canLoadTestData(doc) ? (
+                          <p className="text-center text-xs text-foreground/55">
+                            Test data can only be loaded in draft/configured with no matches. Use
+                            &quot;Reset all tournament data&quot; below to start over first.
+                          </p>
+                        ) : null}
+                      </div>
+                    </SectionCard>
+
+                    <SectionCard emoji="🗑️" title="Reset all tournament data">
+                      <div className="space-y-3">
+                        <p className="text-sm text-foreground/70">
+                          Removes all teams, players, registrations, groups, matches, brackets and
+                          scores from <span className="font-semibold">{doc?.tournament.config.name || id}</span>.
+                          The event id, setup (name, date, category, team limit) and activity history
+                          are kept. This works at any stage, including a completed tournament, and
+                          cannot be undone.
+                        </p>
+                        {doc ? (
+                          <p className="rounded-xl bg-white/70 p-3 text-center text-xs font-semibold text-foreground/60 shadow-sand">
+                            Current: {doc.teams.length} teams · {(doc.registrations ?? []).length} registrations
+                            · {doc.matches.length} group matches · {doc.elimination ? "bracket generated" : "no bracket"}
+                          </p>
+                        ) : null}
+                        <label className="flex items-start gap-3 rounded-xl border border-destructive/40 bg-destructive/5 p-3 text-sm text-foreground/80">
+                          <input
+                            type="checkbox"
+                            className="mt-1 h-4 w-4 accent-destructive"
+                            checked={resetConfirmed}
+                            onChange={(event) => setResetConfirmed(event.target.checked)}
+                          />
+                          <span>
+                            I understand this permanently deletes all tournament data for this event.
+                          </span>
+                        </label>
+                        <Button
+                          className="touch-target w-full bg-destructive text-destructive-foreground font-semibold hover:bg-destructive/90"
+                          disabled={saving || !resetConfirmed}
+                          onClick={() =>
+                            apply(
+                              (current) => resetTournament(current, actor),
+                              "All tournament data cleared. Setup, settings and activity history kept.",
+                              () => setResetConfirmed(false)
+                            )
+                          }
+                        >
+                          <Trash2 className="w-5 h-5 mr-2" />
+                          Reset all tournament data
+                        </Button>
+                      </div>
+                    </SectionCard>
+                    </>
+                  ) : null}
+
+                  {manageSection === "flow" ? (
+                    <SectionCard emoji="▶️" title="Tournament flow">
+                      <div className="space-y-3">
+                        <p className="rounded-xl bg-white/70 p-3 text-center text-xs font-semibold text-foreground/60 shadow-sand">
+                          Need placeholder teams? Load test teams &amp; players from the
+                          <button
+                            type="button"
+                            className="ml-1 font-bold text-ocean underline"
+                            onClick={() => setManageSection("setup")}
+                          >
+                            Setup
+                          </button>
+                          tab.
+                        </p>
                         <Button
                           className={outlineBtn}
                           disabled={saving || approvedCount !== selectedTeamCount}
@@ -1945,8 +2020,8 @@ export default function GroupDoubleEliminationAdminSetup() {
                         </Button>
                       </div>
                       <p className="text-center text-xs text-foreground/55">
-                        Test data creates approved placeholder teams and players only inside this tournament.
-                        The first three test accounts can sign in and submit scores immediately.
+                        Groups can only be rebuilt while the tournament is still in setup. Use
+                        &quot;Reset all tournament data&quot; on the Setup tab to start over.
                       </p>
                       <div className="space-y-3 rounded-xl bg-white/70 p-4 text-center shadow-sand">
                         <p className="text-2xl font-bold text-ocean">

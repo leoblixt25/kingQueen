@@ -10,6 +10,7 @@ import {
   correctGroupMatchScore,
   generateEliminationBracket,
   reopenTournament,
+  resetTournament,
   scoreEliminationMatch,
   scoreGroupMatch,
   ScoringError,
@@ -22,6 +23,7 @@ import {
   validateTournamentIntegrity,
   assertTournamentIntegrity,
 } from "./integrity";
+import { canLoadTestData, loadTestTeamsAndPlayers } from "./testData";
 
 const ADMIN: AuditActor = { id: "admin-1", label: "admin@example.com", isAdmin: true };
 const PLAYER: AuditActor = { id: "player-1", label: "player@example.com", isAdmin: false };
@@ -214,5 +216,56 @@ describe("stage sequence and reopen", () => {
       action: "tournament-reopened",
       actorId: ADMIN.id,
     });
+  });
+});
+
+describe("reset all tournament data", () => {
+  it("clears every stage but keeps setup, settings and audit history", () => {
+    const completed = completeTournament();
+    const doc: GsdeTournamentDocument = {
+      ...completed,
+      tournament: {
+        ...completed.tournament,
+        createdAt: "2026-01-01T00:00:00.000Z",
+      },
+    };
+    const auditCount = doc.auditLog?.length ?? 0;
+
+    const reset = resetTournament(doc, ADMIN);
+
+    expect(reset.id).toBe("event-1");
+    expect(reset.tournament.status).toBe("draft");
+    expect(reset.teams).toEqual([]);
+    expect(reset.groups).toEqual([]);
+    expect(reset.matches).toEqual([]);
+    expect(reset.elimination).toBeNull();
+    expect(reset.registrations).toEqual([]);
+    expect(reset.scoreSubmissions).toEqual({});
+    expect(reset.tournament.seedingStale).toBe(false);
+    expect(reset.tournament.bracketOverrideUsed).toBe(false);
+    expect(reset.tournament.groupStageVerified).toBe(false);
+    expect(reset.tournament.config).toEqual(doc.tournament.config);
+    expect(reset.settings).toEqual(doc.settings);
+    expect(reset.tournament.createdAt).toBe(doc.tournament.createdAt);
+    expect(reset.auditLog).toHaveLength(auditCount + 1);
+    expect(reset.auditLog?.at(-1)).toMatchObject({
+      action: "tournament-reset",
+      actorId: ADMIN.id,
+    });
+    expect(
+      selectCorrections(reset).some((entry) => entry.action === "tournament-reset")
+    ).toBe(true);
+    expect(validateTournamentIntegrity(reset)).toEqual([]);
+  });
+
+  it("allows test data to be loaded again after a reset", () => {
+    const reset = resetTournament(completeTournament(), ADMIN);
+    expect(canLoadTestData(reset)).toBe(true);
+
+    const loaded = loadTestTeamsAndPlayers(reset, ADMIN);
+    expect(loaded.teams).toHaveLength(16);
+    expect(loaded.groups).toHaveLength(4);
+    expect(loaded.matches).toHaveLength(24);
+    expect(validateTournamentIntegrity(loaded)).toEqual([]);
   });
 });

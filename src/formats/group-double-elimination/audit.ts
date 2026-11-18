@@ -25,6 +25,7 @@ export type AuditAction =
   | "elimination-score-entered"
   | "elimination-result-corrected"
   | "tournament-reopened"
+  | "tournament-reset"
   | "test-data-loaded"
   | "player-registered"
   | "player-registration-approved"
@@ -102,6 +103,7 @@ export const selectCorrections = (
       entry.action === "bracket-reset" ||
       entry.action === "bracket-override-generated" ||
       entry.action === "tournament-reopened" ||
+      entry.action === "tournament-reset" ||
       entry.action === "player-registration-approved" ||
       entry.action === "player-registration-rejected" ||
       entry.action === "player-registration-removed"

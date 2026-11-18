@@ -310,7 +310,7 @@ export default function GroupDoubleEliminationAdminSetup() {
   const [editingGroupMatchId, setEditingGroupMatchId] = useState<string | null>(null);
   const [editingEliminationMatchId, setEditingEliminationMatchId] = useState<string | null>(null);
   const [section, setSection] = useState<AdminSection>("overview");
-  const [manageSection, setManageSection] = useState<ManageSection>("flow");
+  const [manageSection, setManageSection] = useState<ManageSection>("setup");
   const [resultsSection, setResultsSection] = useState<ResultsSection>("groups");
   const [matchStage, setMatchStage] = useState<MatchStage>("group");
   const [groupMatchIndex, setGroupMatchIndex] = useState(0);
@@ -458,6 +458,54 @@ export default function GroupDoubleEliminationAdminSetup() {
   };
 
   const showError = (text: string) => setNotice({ kind: "error", text });
+
+  // Shared destructive control: rendered on Overview and Manage → Setup so it
+  // is always one screen away from where the admin lands.
+  const resetCard = (
+    <SectionCard emoji="🗑️" title="Delete all tournament data">
+      <div className="space-y-3">
+        <p className="text-sm text-foreground/70">
+          Start this event over. Removes all teams, players, registrations, groups, matches,
+          brackets and scores from{" "}
+          <span className="font-semibold">{doc?.tournament.config.name || id}</span>. The event
+          id, setup (name, date, category, team limit) and activity history are kept. Works at
+          any stage, including a completed tournament, and cannot be undone.
+        </p>
+        {doc ? (
+          <p className="rounded-xl bg-white/70 p-3 text-center text-xs font-semibold text-foreground/60 shadow-sand">
+            Current: {doc.teams.length} teams · {(doc.registrations ?? []).length} registrations ·{" "}
+            {doc.matches.length} group matches ·{" "}
+            {doc.elimination ? "bracket generated" : "no bracket"}
+          </p>
+        ) : null}
+        <label className="flex items-start gap-3 rounded-xl border border-destructive/40 bg-destructive/5 p-3 text-sm text-foreground/80">
+          <input
+            type="checkbox"
+            className="mt-1 h-4 w-4 accent-destructive"
+            checked={resetConfirmed}
+            onChange={(event) => setResetConfirmed(event.target.checked)}
+          />
+          <span>
+            I understand this permanently deletes all tournament data for this event.
+          </span>
+        </label>
+        <Button
+          className={dangerBtn}
+          disabled={saving || !resetConfirmed}
+          onClick={() =>
+            apply(
+              (current) => resetTournament(current, actor),
+              "All tournament data cleared. Setup, settings and activity history kept.",
+              () => setResetConfirmed(false)
+            )
+          }
+        >
+          <Trash2 className="w-5 h-5 mr-2" />
+          Delete all tournament data
+        </Button>
+      </div>
+    </SectionCard>
+  );
 
   const groupValue = (matchId: string, field: "a" | "b", fallback: number | null) =>
     groupScores[matchId]?.[field] ?? (fallback === null ? "" : String(fallback));
@@ -855,6 +903,8 @@ export default function GroupDoubleEliminationAdminSetup() {
                       ))}
                     </div>
                   </SectionCard>
+
+                  {resetCard}
 
                   {finalResult?.complete ? (
                     <div className="rounded-2xl bg-beach-gradient p-6 text-white shadow-beach">
@@ -1933,54 +1983,13 @@ export default function GroupDoubleEliminationAdminSetup() {
                         {!canLoadTestData(doc) ? (
                           <p className="text-center text-xs text-foreground/55">
                             Test data can only be loaded in draft/configured with no matches. Use
-                            &quot;Reset all tournament data&quot; below to start over first.
+                            &quot;Delete all tournament data&quot; below to start over first.
                           </p>
                         ) : null}
                       </div>
                     </SectionCard>
 
-                    <SectionCard emoji="🗑️" title="Reset all tournament data">
-                      <div className="space-y-3">
-                        <p className="text-sm text-foreground/70">
-                          Removes all teams, players, registrations, groups, matches, brackets and
-                          scores from <span className="font-semibold">{doc?.tournament.config.name || id}</span>.
-                          The event id, setup (name, date, category, team limit) and activity history
-                          are kept. This works at any stage, including a completed tournament, and
-                          cannot be undone.
-                        </p>
-                        {doc ? (
-                          <p className="rounded-xl bg-white/70 p-3 text-center text-xs font-semibold text-foreground/60 shadow-sand">
-                            Current: {doc.teams.length} teams · {(doc.registrations ?? []).length} registrations
-                            · {doc.matches.length} group matches · {doc.elimination ? "bracket generated" : "no bracket"}
-                          </p>
-                        ) : null}
-                        <label className="flex items-start gap-3 rounded-xl border border-destructive/40 bg-destructive/5 p-3 text-sm text-foreground/80">
-                          <input
-                            type="checkbox"
-                            className="mt-1 h-4 w-4 accent-destructive"
-                            checked={resetConfirmed}
-                            onChange={(event) => setResetConfirmed(event.target.checked)}
-                          />
-                          <span>
-                            I understand this permanently deletes all tournament data for this event.
-                          </span>
-                        </label>
-                        <Button
-                          className="touch-target w-full bg-destructive text-destructive-foreground font-semibold hover:bg-destructive/90"
-                          disabled={saving || !resetConfirmed}
-                          onClick={() =>
-                            apply(
-                              (current) => resetTournament(current, actor),
-                              "All tournament data cleared. Setup, settings and activity history kept.",
-                              () => setResetConfirmed(false)
-                            )
-                          }
-                        >
-                          <Trash2 className="w-5 h-5 mr-2" />
-                          Reset all tournament data
-                        </Button>
-                      </div>
-                    </SectionCard>
+                    {resetCard}
                     </>
                   ) : null}
 
@@ -2021,7 +2030,7 @@ export default function GroupDoubleEliminationAdminSetup() {
                       </div>
                       <p className="text-center text-xs text-foreground/55">
                         Groups can only be rebuilt while the tournament is still in setup. Use
-                        &quot;Reset all tournament data&quot; on the Setup tab to start over.
+                        &quot;Delete all tournament data&quot; on the Overview or Setup tab to start over.
                       </p>
                       <div className="space-y-3 rounded-xl bg-white/70 p-4 text-center shadow-sand">
                         <p className="text-2xl font-bold text-ocean">
@@ -2218,6 +2227,9 @@ export default function GroupDoubleEliminationAdminSetup() {
             Back to all formats
           </Link>
         </div>
+        <p className="text-center text-[10px] text-foreground/40">
+          GSDE admin build 2026-11-18b
+        </p>
       </div>
     </div>
   );

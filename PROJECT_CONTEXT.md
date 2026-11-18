@@ -1394,18 +1394,18 @@ Four new test files, **59 new tests**:
 - `npx vitest run` — **34 files / 380 tests passed**.
 - `npx tsc -b --force` — **22 pre-existing baseline errors / 0 new**.
 - `npx eslint src/formats/group-double-elimination src/pages/formats/group-double-elimination` — 3 pre-existing errors (`progression.test.ts` prefer-const, `GsdeAdminSignIn.tsx` 2× `any`) + 9 pre-existing fast-refresh warnings; none on new code.
-- `npx vite build` — succeeds (`assets/index-DF6v7Yod.js`, CSS `index-CB8RHMJ5.css`).
+- `npx vite build` — succeeds (`assets/index-DzUrRXes.js`, CSS `index-CB8RHMJ5.css`).
 
 ### Deployment (hosting only, Nov 2026)
-- `npx firebase deploy --only hosting --project kingqueen-eu` succeeded (22 files). Live `index.html` serves `assets/index-DF6v7Yod.js` (replacing `index-BSe8-MZH.js`) with `Cache-Control: no-cache`; CSS is `index-CB8RHMJ5.css`.
+- `npx firebase deploy --only hosting --project kingqueen-eu` succeeded (22 files). Live `index.html` serves `assets/index-DzUrRXes.js` (replacing `index-DF6v7Yod.js`) with `Cache-Control: no-cache`; CSS is `index-CB8RHMJ5.css`.
 - Live smoke: `/`, `/gsde`, `/format/group-stage-double-elimination`, `/register`, `/login` all HTTP 200.
 - `tournaments/test1` still holds its earlier single-player-derived team names until the test loader is run again; rerunning **Load test teams & players** at the selected size/category replaces them with valid pairs (allowed while status is `draft`/`configured` and no elimination bracket exists).
 
 ### Reset all + test-loader discoverability (follow-up)
-- **Manage → Setup** now contains three cards: the setup fields, **Test teams & players** (the old Flow loader, so it is visible where the category/team limit are chosen) and **Reset all tournament data**. Manage → Flow only keeps Build groups / Start group stage and links back to Setup.
-- New pure `resetTournament(doc, actor?)` in `scoring.ts`: clears `teams`, `groups`, `matches`, `elimination`, `registrations` and `scoreSubmissions`; resets `status` to `draft` and `seedingStale` / `bracketOverrideUsed` / `groupStageVerified` to false; keeps `id`, `config` (category normalized), `settings` and the audit log; appends a `tournament-reset` entry; runs through `commit()` so the integrity gate still applies. Allowed at **any** stage, including completed; the UI requires an explicit confirmation checkbox before enabling the destructive button, and the checkbox resets on event-id change.
+- **Manage → Setup** now contains three cards: the setup fields, **Test teams & players** (the old Flow loader, so it is visible where the category/team limit are chosen) and the shared **Delete all tournament data** card. Manage opens on **Setup** by default; the same delete card is also on **Overview**, so it is visible immediately after sign-in. Manage → Flow only keeps Build groups / Start group stage and links back to Setup. The admin footer shows `GSDE admin build 2026-11-18b` so the deployed build can be confirmed at a glance.
+- New pure `resetTournament(doc, actor?)` in `scoring.ts`: clears `teams`, `groups`, `matches`, `elimination`, `registrations` and `scoreSubmissions`; resets `status` to `draft` and `seedingStale` / `bracketOverrideUsed` / `groupStageVerified` to false; keeps `id`, `config` (category normalized), `settings` and the audit log; appends a `tournament-reset` entry; runs through `commit()` so the integrity gate still applies. Allowed at **any** stage, including completed; the button is labelled **Delete all tournament data** and requires an explicit confirmation checkbox, and the checkbox resets on event-id change.
 - `AuditAction` gained `tournament-reset` and `selectCorrections()` includes it. `lifecycle.test.ts` (10 tests) covers a completed-tournament reset (all data cleared, setup/settings/audit kept, status `draft`, audit entry) and loading test data again afterwards.
-- Verification: **380 tests passed**, tsc 22 pre-existing baseline errors / 0 new, ESLint unchanged (3 pre-existing errors + 9 warnings), hosting deployed (`assets/index-DF6v7Yod.js`), `firestore.rules` byte-identical.
+- Verification: **380 tests passed**, tsc 22 pre-existing baseline errors / 0 new, ESLint unchanged (3 pre-existing errors + 9 warnings), hosting deployed (`assets/index-DzUrRXes.js`), `firestore.rules` byte-identical.
 
 ## 14. Deployment URLs
 

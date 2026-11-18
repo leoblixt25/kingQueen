@@ -1336,6 +1336,17 @@ Four new test files, **59 new tests**:
 - **Live rule proof:** as approved test player `gsde-test-player-3` on `tournaments/test1`, a group-score submission PATCH returned **200 (allowed)** and a subsequent attempt to edit that submission returned **403 PERMISSION_DENIED** — submit-once/no-edit is enforced server-side. The test also completed one group match in `test1` (test data only).
 - **Caveat:** the rules validate the *shape* of a player write (own uid, one new entry, no edits) but not match ownership/score values; the UI/domain layer enforces those. A client that bypasses the UI could add multiple submissions for different matches in separate writes; normal players cannot edit any submitted score.
 
+## 13az. GSDE admin redesign to match the K&Q tournament page (Nov 2026)
+
+**Scope: presentation-only. No domain logic, tournament rules, guards, routes or K&Q code changed.** The GSDE admin screen now uses the same visual language as K&Q `/tournament`: `min-h-screen bg-sand-gradient px-4 py-6` → `max-w-lg mx-auto space-y-6 animate-fade-in`, frosted `bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach` cards, gradient-clipped headings, ocean=Team A / sunset=Team B, palm=success, coral=destructive, and `touch-target` on all controls.
+
+- `AdminSetup.tsx` was rewritten as a single narrow, mobile-first column. Read-only standings/ranking tables from `views.tsx` were replaced by local K&Q-style medal rows using the same selectors (`selectGroupStandings`, `selectGlobalRanking`, `selectEliminationStandings`, `selectPlacements`) — no domain calls changed. Dead `pendingRegistrations` derived value removed.
+- Elimination score entry now appears in logical progression (after bracket generation, before completion/reopen/activity/standings) instead of physically last after the audit log. All handlers, disabled guards, audit actions and domain calls were preserved, including the provisional-bracket `overrideIncomplete` + `adminConfirmed` double confirmation and the audited reopen flow.
+- Removed invalid bare `amber` alpha utilities (unavailable in this Tailwind config) in favour of `amber-100/70`, `amber-300/60`, `amber-50/80` and `hover:bg-amber-500`; inputs are `h-12 text-base md:text-base`, score boxes `w-24 text-2xl`.
+- Verification: `npx vitest run` — 33 files / 342 tests pass. `npx tsc -b --force` — 22 known baseline errors / 0 new, none in `AdminSetup.tsx`. `npx vite build` succeeds.
+- Visual verification: authenticated live admin sign-in was unavailable (credentials not in repo; Google popup stalls), so a temporary GSDE-only guard bypass was used locally and reverted before commit. Desktop (1521px) and mobile (375x812, touch) checks at `?id=test1`: no horizontal overflow (`scrollWidth == clientWidth`), no sub-44px buttons, score inputs 96x44 at 24px, sand gradient applied, headings legible, and zero console errors.
+- **Deployed (hosting only):** `npx firebase deploy --only hosting --project kingqueen-eu` succeeded. Live bundle `assets/index-DgB5DX3p.js`, CSS `assets/index-Dhbx86cZ.css` (replacing `index-CMncUtd6.js`). `firestore.rules` unchanged; one authoritative `tournaments/{id}` document and two independent ranking systems preserved.
+
 ## 14. Deployment URLs
 
 ### EU Project (KingQueen_EU â€” LIVE)

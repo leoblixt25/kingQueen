@@ -14,6 +14,7 @@ import {
 import { GROUP_DOUBLE_ELIMINATION_FORMAT } from "@/formats";
 import { findRegistrationByUid } from "@/formats/group-double-elimination/registration";
 import { signOutRegistration } from "@/formats/group-double-elimination/registrationAuth";
+import { resolveTeamDisplayName } from "@/formats/group-double-elimination/category";
 import {
   GsdeMainTitle,
   gsdeHref,
@@ -129,8 +130,14 @@ export default function GroupDoubleEliminationPlayerAccess() {
                     {registration.status === "approved" && registration.teamId ? (
                       <>
                         {" · "}
-                        {doc?.teams.find((team) => team.id === registration.teamId)?.name ??
-                          registration.teamId}
+                        {(() => {
+                          const team = doc?.teams.find(
+                            (item) => item.id === registration.teamId
+                          );
+                          return team && doc
+                            ? resolveTeamDisplayName(doc.registrations ?? [], team)
+                            : registration.teamId;
+                        })()}
                       </>
                     ) : null}
                   </p>

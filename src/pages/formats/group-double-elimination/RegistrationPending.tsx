@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GROUP_DOUBLE_ELIMINATION_FORMAT } from "@/formats";
 import { findRegistrationByUid } from "@/formats/group-double-elimination/registration";
+import { resolveTeamDisplayName } from "@/formats/group-double-elimination/category";
 import { PageShell, useGsdeAuth, useGsdeTournament } from "./shared";
 
 const REGISTER_ROUTE = `${GROUP_DOUBLE_ELIMINATION_FORMAT.route}/register`;
@@ -63,8 +64,12 @@ export default function GroupDoubleEliminationRegistrationPending() {
             <p>
               <strong>{registration.name}</strong> is registered and assigned to{" "}
               <strong>
-                {doc?.teams.find((team) => team.id === registration.teamId)?.name ??
-                  registration.teamId}
+                {(() => {
+                  const team = doc?.teams.find((item) => item.id === registration.teamId);
+                  return team && doc
+                    ? resolveTeamDisplayName(doc.registrations ?? [], team)
+                    : registration.teamId;
+                })()}
               </strong>
               .
             </p>

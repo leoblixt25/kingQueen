@@ -41,6 +41,7 @@ import {
   PageShell,
   STATUS_LABEL,
   statusColor,
+  teamNameMap,
   useGsdeAuth,
   useGsdeTournament,
 } from "./shared";
@@ -148,8 +149,9 @@ export default function GroupDoubleEliminationPlayerView() {
   const teamId = queryTeamId || registeredTeamId || "";
   const autoLinked = !queryTeamId && Boolean(registeredTeamId);
   const names = useMemo(
-    () => new Map((doc?.teams ?? []).map((team) => [team.id, team.name])),
-    [doc?.teams]
+    () =>
+      teamNameMap(doc?.teams ?? [], doc?.registrations ?? []),
+    [doc?.teams, doc?.registrations]
   );
   const view = useMemo(
     () => (doc && teamId ? buildPlayerView(doc, teamId) : null),
@@ -337,7 +339,7 @@ export default function GroupDoubleEliminationPlayerView() {
                   <option value="">Select a team…</option>
                   {doc.teams.map((team) => (
                     <option key={team.id} value={team.id}>
-                      {team.name}
+                      {names.get(team.id) ?? team.name}
                     </option>
                   ))}
                 </select>

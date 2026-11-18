@@ -1,7 +1,14 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import type { BracketLink, GsdeTournamentStatus, Team, TeamId } from "@/formats/group-double-elimination";
+import type {
+  BracketLink,
+  GsdeTournamentStatus,
+  PlayerRegistration,
+  Team,
+  TeamId,
+} from "@/formats/group-double-elimination";
 import { getGameLabel } from "@/formats/group-double-elimination";
+import { resolveTeamDisplayName } from "@/formats/group-double-elimination/category";
 import {
   createGsdeTournamentDocument,
   subscribeGsdeTournament,
@@ -96,8 +103,14 @@ export function useGsdeAuth() {
   return { user, loading };
 }
 
-export const teamNameMap = (teams: readonly Team[]): Map<TeamId, string> =>
-  new Map(teams.map((team) => [team.id, team.name]));
+export const teamNameMap = (
+  teams: readonly Team[],
+  registrations: readonly PlayerRegistration[] = []
+): Map<TeamId, string> => {
+  return new Map(
+    teams.map((team) => [team.id, resolveTeamDisplayName(registrations, team)])
+  );
+};
 
 export const nameOf = (
   names: Map<TeamId, string>,

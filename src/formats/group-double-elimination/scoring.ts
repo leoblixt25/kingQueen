@@ -12,7 +12,6 @@ import type { GsdeTournamentDocument } from "./persistence";
 import {
   applyGroupMatchScore,
   getGroupStageProgress,
-  isGroupStageComplete,
   resetGroupMatchScore,
 } from "./groupStageMatches";
 import {
@@ -20,14 +19,19 @@ import {
   seedTeamsFromGroupStandings,
   type GroupStandingsTable,
 } from "./groupStandings";
-import { buildFixed16GroupStage } from "./fixed16";
+import { FIXED16_ADVANCE_OPTIONS, type GlobalRankingRow } from "./fixed16";
 import {
-  FIXED16_ADVANCE_OPTIONS,
-  buildFixed16EliminationStage,
-  canGenerateFixed16Bracket,
-  getFixed16GlobalRanking,
-  type GlobalRankingRow,
-} from "./fixed16";
+  buildOverrideBracket,
+  buildSizeAwareEliminationStage,
+  buildSizeAwareGroupStage,
+  canGenerateSizeAwareBracket,
+  expectedGroupMatchCount,
+  getSizeAwareGlobalRanking,
+} from "./sizeAware";
+import {
+  normalizeTournamentCategory,
+  refreshPairTeamNames,
+} from "./category";
 import {
   findEliminationMatch,
   generateDoubleEliminationBracket,
@@ -189,7 +193,10 @@ export const saveSetup = (
   return commit(
     touch({
       ...doc,
-      tournament: { ...doc.tournament, config },
+      tournament: {
+        ...doc.tournament,
+        config: { ...config, category: normalizeTournamentCategory(config.category) },
+      },
     }),
     { action: "setup-saved", actor }
   );
@@ -237,6 +244,11 @@ const detachPlayerFromTeams = (
     playerIds: team.playerIds.filter((id) => id !== uid),
   }));
 
+/** Recompute default pair names after any roster change. */
+const withRefreshedPairNames = (
+  doc: GsdeTournamentDocument
+): GsdeTournamentDocument => ({ ...doc, teams: refreshPairTeamNames(doc) });
+
 /**
  * Self-service registration for an individual player. Registration closes as
  * soon as the group stage starts. The signing-in player is the audit actor, so
@@ -261,6 +273,7 @@ export const registerPlayer = (
     uid: draft.uid,
     email,
     name: draft.name.trim(),
+    gender: draft.gender,
     status: "pending",
     teamId: null,
     registeredAt: now,
@@ -296,9 +309,16 @@ export const approvePlayerRegistration = (
 ): GsdeTournamentDocument => {
   guardRegistrationOpen(doc);
   const registration = requireRegistration(doc, uid);
+  if (registration.gender !== "male" && registration.gender !== "female") {
+    fail("registration-invalid", "This registration is missing a player gender.");
+  }
   // Re-approving an already-approved player is a valid, audited reassignment.
-  if (!doc.teams.some((team) => team.id === teamId)) {
+  const target = doc.teams.find((team) => team.id === teamId);
+  if (!target) {
     fail("invalid-team", `No team "${teamId}".`);
+  }
+  if (!target.playerIds.includes(uid) && target.playerIds.length >= 2) {
+    fail("invalid-team", "Teams are fixed pairs of exactly two players.");
   }
 
   const now = new Date().toISOString();
@@ -313,7 +333,7 @@ export const approvePlayerRegistration = (
       : team
   );
   return commit(
-    touch({ ...doc, registrations, teams }),
+    touch(withRefreshedPairNames({ ...doc, registrations, teams })),
     {
       action: "player-registration-approved",
       actor,
@@ -338,7 +358,7 @@ export const rejectPlayerRegistration = (
       : item
   );
   return commit(
-    touch({ ...doc, registrations, teams: detachPlayerFromTeams(doc, uid) }),
+    touch(withRefreshedPairNames({ ...doc, registrations, teams: detachPlayerFromTeams(doc, uid) })),
     {
       action: "player-registration-rejected",
       actor,
@@ -357,7 +377,7 @@ export const removePlayerRegistration = (
   const registration = requireRegistration(doc, uid);
   const registrations = getRegistrations(doc).filter((item) => item.uid !== uid);
   return commit(
-    touch({ ...doc, registrations, teams: detachPlayerFromTeams(doc, uid) }),
+    touch(withRefreshedPairNames({ ...doc, registrations, teams: detachPlayerFromTeams(doc, uid) })),
     {
       action: "player-registration-removed",
       actor,
@@ -383,8 +403,10 @@ export const removeTeam = (
 };
 
 /**
- * Creates the fixed 16 teams and their 4 groups / 24 round-robin matches.
- * Rebuilding is only allowed before elimination starts.
+ * Creates the approved teams' groups and round-robin matches. The 16-team path
+ * keeps the fixed 4-group / 24-match engine; other supported sizes use the same
+ * generic group engine with four teams per group. Rebuilding is only allowed
+ * before elimination starts.
  */
 export const buildTeamsAndGroups = (
   doc: GsdeTournamentDocument,
@@ -396,6 +418,14 @@ export const buildTeamsAndGroups = (
     fail("bracket-locked", "The elimination bracket has started; reset it before rebuilding teams.");
   }
 
+  const expectedTeams = doc.tournament.config.teamLimit;
+  if (Number.isInteger(expectedTeams) && teams.length !== expectedTeams) {
+    fail(
+      "invalid-team",
+      `This tournament is configured for ${expectedTeams} teams, but ${teams.length} were supplied.`
+    );
+  }
+
   const pending = teams.filter((team) => team.status === "pending");
   if (pending.length > 0) {
     fail(
@@ -404,10 +434,11 @@ export const buildTeamsAndGroups = (
     );
   }
 
-  const stage = buildFixed16GroupStage(teams);
+  const stage = buildSizeAwareGroupStage(doc, teams);
+  const teamsPerGroup = stage.groups[0]?.teamIds.length ?? 4;
   const withGroups = teams.map((team, index) => ({
     ...team,
-    groupId: team.groupId ?? stage.groups.find((group) => group.teamIds.includes(team.id))?.id ?? `group-${Math.floor(index / 4) + 1}`,
+    groupId: team.groupId ?? stage.groups.find((group) => group.teamIds.includes(team.id))?.id ?? `group-${Math.floor(index / teamsPerGroup) + 1}`,
   }));
 
   return commit(
@@ -423,8 +454,9 @@ export const buildTeamsAndGroups = (
         seedingStale: false,
         config: {
           ...doc.tournament.config,
+          teamLimit: teams.length,
           groupCount: stage.groups.length,
-          teamsPerGroup: 4,
+          teamsPerGroup,
         },
       },
     } as GsdeTournamentDocument),
@@ -437,7 +469,8 @@ export const startGroupStage = (
   actor?: AuditActor
 ): GsdeTournamentDocument => {
   guard(() => assertStageAdvance(doc, "group-stage"));
-  if (doc.matches.length !== 24) {
+  const expected = expectedGroupMatchCount(doc);
+  if (doc.matches.length !== expected || doc.matches.length === 0) {
     fail("group-stage-incomplete", "Generate the group stage before starting it.");
   }
   return commit(
@@ -472,10 +505,12 @@ export const editTeam = (
     fail("stage-sequence", "Teams cannot be edited after groups are generated.");
   }
 
+  const nameIsCustom = Boolean(team.nameIsCustom) || patch.name !== undefined;
   const draft = {
     name: patch.name ?? team.name,
     playerIds: team.playerIds,
     seed: patch.seed !== undefined ? patch.seed : team.seed,
+    nameIsCustom,
   };
   const issues = validateTeamDraft(
     draft,
@@ -564,7 +599,7 @@ export interface GroupStageCompletion {
   isComplete: boolean;
   completed: number;
   total: number;
-  /** Final group ranking 1–16, derived only from group results. */
+  /** Final group ranking, derived only from group results. */
   ranking: GlobalRankingRow[];
 }
 
@@ -574,10 +609,13 @@ export const verifyGroupStageCompletion = (
 ): GroupStageCompletion => {
   const progress = getGroupStageProgress(doc.matches);
   return {
-    isComplete: progress.isComplete && progress.total === 24,
+    isComplete:
+      progress.isComplete &&
+      progress.total === expectedGroupMatchCount(doc) &&
+      progress.total > 0,
     completed: progress.completed,
     total: progress.total,
-    ranking: getFixed16GlobalRanking(doc.groups, doc.matches),
+    ranking: getSizeAwareGlobalRanking(doc),
   };
 };
 
@@ -689,7 +727,7 @@ export interface BracketGenerationOptions {
 }
 
 /**
- * All 24 group matches gate bracket generation. An admin override is only
+ * Every group match gates bracket generation. An admin override is only
  * honoured when BOTH `overrideIncomplete` and `adminConfirmed` are set; the
  * resulting bracket is flagged `seedingStale` so it must be regenerated once
  * the group stage is genuinely complete.
@@ -705,20 +743,15 @@ export const generateEliminationBracket = (
   ) {
     fail("bracket-locked", "The elimination bracket has results; reset it before regenerating.");
   }
-  if (!canGenerateFixed16Bracket(doc.matches)) {
+  if (!canGenerateSizeAwareBracket(doc)) {
     if (!options.overrideIncomplete || !options.adminConfirmed) {
       fail(
         "group-stage-incomplete",
-        "All 24 group matches must be complete. An admin override requires explicit confirmation."
+        `All ${expectedGroupMatchCount(doc)} group matches must be complete. An admin override requires explicit confirmation.`
       );
     }
 
-    const seeds = seedTeamsFromGroupStandings(
-      calculateAllGroupStandings(doc.groups, doc.matches)
-    );
-    const bracket = applySpanishCrossover(
-      generateDoubleEliminationBracket(seeds).bracket
-    );
+    const bracket = buildOverrideBracket(doc);
 
     return commit(
       touch({
@@ -740,11 +773,7 @@ export const generateEliminationBracket = (
     );
   }
 
-  const stage = buildFixed16EliminationStage({
-    groups: doc.groups,
-    matches: doc.matches,
-    rounds: [],
-  });
+  const stage = buildSizeAwareEliminationStage(doc);
 
   return commit(
     touch({
@@ -961,7 +990,7 @@ export const selectGroupStandings = (
 
 export const selectGlobalRanking = (
   doc: GsdeTournamentDocument
-): GlobalRankingRow[] => getFixed16GlobalRanking(doc.groups, doc.matches);
+): GlobalRankingRow[] => getSizeAwareGlobalRanking(doc);
 
 export const selectEliminationStandings = (
   doc: GsdeTournamentDocument

@@ -11,6 +11,7 @@ export const DEFAULT_CONFIG: TournamentConfig = {
   name: "",
   date: "",
   teamLimit: 16,
+  category: "Mixto",
   divisionName: "Open",
   groupCount: 2,
   matchFormat: "single-set",

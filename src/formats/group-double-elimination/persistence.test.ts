@@ -99,5 +99,72 @@ describe("new-format Firestore isolation", () => {
     expect(restored?.matches).toEqual([]);
     expect(restored?.elimination).toBeNull();
     expect(restored?.tournament.status).toBe("group-stage");
+    expect(restored?.tournament.config.category).toBe("Mixto");
+  });
+
+  it("defaults Mixto for legacy tournaments with no category", () => {
+    const tournament = createGsdeTournamentDocument("event-1");
+    const data = toGsdeFirestoreData(tournament);
+    const stored = data.tournament as { config?: { category?: string } };
+    if (stored.config) delete stored.config.category;
+
+    expect(fromGsdeFirestoreData(data, "event-1")?.tournament.config.category).toBe(
+      "Mixto"
+    );
+  });
+
+  it("normalizes stored category values", () => {
+    const restored = fromGsdeFirestoreData(
+      {
+        formatId: GSDE_FORMAT_ID,
+        tournament: { config: { category: "femenino", teamLimit: 12 } },
+      },
+      "event-3"
+    );
+    const invalid = fromGsdeFirestoreData(
+      {
+        formatId: GSDE_FORMAT_ID,
+        tournament: { config: { category: "unknown" } },
+      },
+      "event-4"
+    );
+
+    expect(restored?.tournament.config.category).toBe("Female");
+    expect(restored?.tournament.config.teamLimit).toBe(12);
+    expect(invalid?.tournament.config.category).toBe("Mixto");
+  });
+
+  it("round-trips player gender and custom team names", () => {
+    const tournament = createGsdeTournamentDocument("event-1", {
+      teams: [
+        {
+          id: "t1",
+          name: "The Spikers",
+          playerIds: ["p1", "p2"],
+          seed: 1,
+          groupId: null,
+          nameIsCustom: true,
+        },
+      ],
+      registrations: [
+        {
+          uid: "p1",
+          email: "p1@example.com",
+          name: "Alex",
+          gender: "male",
+          status: "approved",
+          teamId: "t1",
+          registeredAt: "2026-01-01T00:00:00.000Z",
+          decidedAt: "2026-01-01T00:00:00.000Z",
+        },
+      ],
+    });
+    const restored = fromGsdeFirestoreData(
+      toGsdeFirestoreData(tournament),
+      tournament.id
+    );
+
+    expect(restored?.teams[0].nameIsCustom).toBe(true);
+    expect(restored?.registrations?.[0].gender).toBe("male");
   });
 });

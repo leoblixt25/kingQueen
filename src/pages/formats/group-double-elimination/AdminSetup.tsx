@@ -26,6 +26,7 @@ import {
   getGameNumber,
   validateTeamDraft,
   type EliminationMatch,
+  type TournamentCategory,
 } from "@/formats/group-double-elimination";
 import {
   addTeam as addGsdeTeam,
@@ -68,8 +69,16 @@ import {
 import { findSubmissionForMatch } from "@/formats/group-double-elimination/playerSubmission";
 import {
   canLoadTestData,
+  GROUP_COUNT_BY_TEAM_COUNT,
   loadTestTeamsAndPlayers,
+  SUPPORTED_TEST_TEAM_COUNTS,
+  type TestTeamCount,
 } from "@/formats/group-double-elimination/testData";
+import {
+  getTeamPlayerNames,
+  normalizeTournamentCategory,
+  TOURNAMENT_CATEGORY_OPTIONS,
+} from "@/formats/group-double-elimination/category";
 import { getCurrentUser } from "@/utils/authUtils";
 import {
   saveGsdeTournament,
@@ -283,6 +292,7 @@ export default function GroupDoubleEliminationAdminSetup() {
   const [name, setName] = useState("");
   const [date, setDate] = useState("");
   const [division, setDivision] = useState("Open");
+  const [category, setCategory] = useState<TournamentCategory>("Mixto");
   const [teamLimit, setTeamLimit] = useState("16");
   const [groupCount, setGroupCount] = useState("4");
   const [groupSize, setGroupSize] = useState("4");
@@ -346,6 +356,7 @@ export default function GroupDoubleEliminationAdminSetup() {
     setName(doc?.tournament.config.name ?? "");
     setDate(doc?.tournament.config.date ?? "");
     setDivision(doc?.tournament.config.divisionName ?? "Open");
+    setCategory(normalizeTournamentCategory(doc?.tournament.config.category));
     setTeamLimit(String(doc?.tournament.config.teamLimit ?? 16));
     setGroupCount(String(doc?.tournament.config.groupCount ?? 4));
     setGroupSize(String(doc?.tournament.config.teamsPerGroup ?? 4));
@@ -353,12 +364,22 @@ export default function GroupDoubleEliminationAdminSetup() {
     doc?.tournament.config.name,
     doc?.tournament.config.date,
     doc?.tournament.config.divisionName,
+    doc?.tournament.config.category,
     doc?.tournament.config.teamLimit,
     doc?.tournament.config.groupCount,
     doc?.tournament.config.teamsPerGroup,
   ]);
 
   const status = doc?.tournament.status ?? "draft";
+  const parsedTeamLimit = Number(teamLimit);
+  const selectedTeamCount = (
+    SUPPORTED_TEST_TEAM_COUNTS.includes(parsedTeamLimit as TestTeamCount)
+      ? parsedTeamLimit
+      : 16
+  ) as TestTeamCount;
+  const selectedGroupCount = GROUP_COUNT_BY_TEAM_COUNT[selectedTeamCount];
+  const expectedPlayers = selectedTeamCount * 2;
+  const expectedGroupMatches = selectedGroupCount * 6;
   const groupMatches = doc?.matches ?? [];
   const playableElimination = doc?.elimination
     ? [...doc.elimination.winners, ...doc.elimination.losers, ...doc.elimination.grandFinal].filter(
@@ -374,7 +395,7 @@ export default function GroupDoubleEliminationAdminSetup() {
   const corrections = doc ? selectCorrections(doc) : [];
   const registrationStats = doc ? getRegistrationStats(doc) : null;
   const allRegistrations = doc ? getRegistrations(doc) : [];
-  const names = doc ? teamNameMap(doc.teams) : new Map();
+  const names = doc ? teamNameMap(doc.teams, doc.registrations ?? []) : new Map();
   const groupTables = doc ? selectGroupStandings(doc) : [];
   const globalRanking = doc ? selectGlobalRanking(doc) : [];
   const eliminationStandings = doc ? selectEliminationStandings(doc) : [];
@@ -553,10 +574,19 @@ export default function GroupDoubleEliminationAdminSetup() {
     );
   };
 
+  const applyTeamLimit = (value: string) => {
+    const next = Number(value) as TestTeamCount;
+    if (!SUPPORTED_TEST_TEAM_COUNTS.includes(next)) return;
+    setTeamLimit(String(next));
+    setGroupCount(String(GROUP_COUNT_BY_TEAM_COUNT[next]));
+    setGroupSize("4");
+  };
+
   const addTeam = () => {
     if (!doc) return;
     const seed = teamSeed.trim() === "" ? null : Number(teamSeed);
-    const draft = { name: teamName, playerIds: [], seed };
+    // A team named by the admin keeps its name; player approval never renames it.
+    const draft = { name: teamName, playerIds: [], seed, nameIsCustom: true };
     const issues = validateTeamDraft(draft, doc.teams);
     if (issues.length > 0) {
       showError(issues.map((issue) => issue.message).join(" "));
@@ -624,8 +654,8 @@ export default function GroupDoubleEliminationAdminSetup() {
 
   const nextStep = !doc
     ? "Loading tournament data…"
-    : approvedCount !== 16
-      ? `Register and approve ${16 - approvedCount} more team${16 - approvedCount === 1 ? "" : "s"}.`
+    : approvedCount !== selectedTeamCount
+      ? `Register and approve ${Math.max(0, selectedTeamCount - approvedCount)} more team${selectedTeamCount - approvedCount === 1 ? "" : "s"}.`
       : groupMatches.length === 0
         ? "Build the group schedule in Manage → Flow."
         : status === "configured"
@@ -875,7 +905,7 @@ export default function GroupDoubleEliminationAdminSetup() {
                   </div>
                   <Button
                     className={primaryBtn}
-                    disabled={saving || doc.teams.length >= 16}
+                    disabled={saving || doc.teams.length >= selectedTeamCount}
                     onClick={addTeam}
                   >
                     <Plus className="w-5 h-5 mr-2" />
@@ -910,7 +940,11 @@ export default function GroupDoubleEliminationAdminSetup() {
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0">
                               <p className="break-words text-base font-bold text-foreground">
-                                {team.name}
+                                {names.get(team.id) ?? team.name}
+                              </p>
+                              <p className="break-words text-xs font-semibold text-foreground/60">
+                                {getTeamPlayerNames(doc.registrations ?? [], team).join(" / ") ||
+                                  "Players assigned by admin"}
                               </p>
                               <p className="text-xs font-semibold text-ocean">
                                 {team.seed ? `Seed #${team.seed}` : "Unseeded"}
@@ -992,9 +1026,9 @@ export default function GroupDoubleEliminationAdminSetup() {
                     </div>
                   ) : null}
 
-                  {approvedCount !== 16 ? (
+                  {approvedCount !== selectedTeamCount ? (
                     <p className="text-center text-xs font-semibold text-amber-800">
-                      Register and approve exactly 16 teams to generate the groups.
+                      Register and approve exactly {selectedTeamCount} two-player teams ({expectedPlayers} players) to generate the groups.
                     </p>
                   ) : null}
                 </SectionCard>
@@ -1049,6 +1083,13 @@ export default function GroupDoubleEliminationAdminSetup() {
                                 <p className="break-all text-xs text-foreground/55">
                                   {registration.email}
                                 </p>
+                                <p className="text-xs font-semibold text-ocean">
+                                  {registration.gender
+                                    ? registration.gender === "male"
+                                      ? "Male"
+                                      : "Female"
+                                    : "Gender not supplied"}
+                                </p>
                               </div>
                               <Pill tone={tone}>{registration.status}</Pill>
                             </div>
@@ -1075,8 +1116,16 @@ export default function GroupDoubleEliminationAdminSetup() {
                                     <option value="">No teams yet</option>
                                   ) : (
                                     doc.teams.map((team) => (
-                                      <option key={team.id} value={team.id}>
-                                        {team.name}
+                                      <option
+                                        key={team.id}
+                                        value={team.id}
+                                        disabled={
+                                          !team.playerIds.includes(registration.uid) &&
+                                          team.playerIds.length >= 2
+                                        }
+                                      >
+                                        {names.get(team.id) ?? team.name}
+                                        {team.playerIds.length >= 2 ? " (full)" : ""}
                                       </option>
                                     ))
                                   )}
@@ -1793,14 +1842,41 @@ export default function GroupDoubleEliminationAdminSetup() {
                         <Field label="Division">
                           <Input className={inputCls} value={division} onChange={(e) => setDivision(e.target.value)} />
                         </Field>
+                        <Field label="Category">
+                          <select
+                            aria-label="Tournament category"
+                            className={selectCls}
+                            value={category}
+                            onChange={(event) =>
+                              setCategory(normalizeTournamentCategory(event.target.value))
+                            }
+                          >
+                            {TOURNAMENT_CATEGORY_OPTIONS.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </Field>
                         <Field label="Team limit">
-                          <Input className={inputCls} type="number" min={2} value={teamLimit} onChange={(e) => setTeamLimit(e.target.value)} />
+                          <select
+                            aria-label="Team limit"
+                            className={selectCls}
+                            value={teamLimit}
+                            onChange={(event) => applyTeamLimit(event.target.value)}
+                          >
+                            {SUPPORTED_TEST_TEAM_COUNTS.map((count) => (
+                              <option key={count} value={count}>
+                                {count} teams · {count * 2} players
+                              </option>
+                            ))}
+                          </select>
                         </Field>
                         <Field label="Number of groups">
-                          <Input className={inputCls} type="number" min={1} value={groupCount} onChange={(e) => setGroupCount(e.target.value)} />
+                          <Input className={inputCls} type="number" min={1} value={groupCount} readOnly />
                         </Field>
                         <Field label="Group size">
-                          <Input className={inputCls} type="number" min={2} value={groupSize} onChange={(e) => setGroupSize(e.target.value)} />
+                          <Input className={inputCls} type="number" min={2} value={groupSize} readOnly />
                         </Field>
                       </div>
                       <Button
@@ -1814,7 +1890,8 @@ export default function GroupDoubleEliminationAdminSetup() {
                                 name,
                                 date,
                                 divisionName: division,
-                                teamLimit: Number(teamLimit),
+                                category: normalizeTournamentCategory(category),
+                                teamLimit: selectedTeamCount,
                                 groupCount: Number(groupCount),
                                 teamsPerGroup: Number(groupSize),
                               }),
@@ -1825,7 +1902,7 @@ export default function GroupDoubleEliminationAdminSetup() {
                         Save setup
                       </Button>
                       <p className="text-center text-xs text-foreground/55">
-                        Fixed format: 16 teams · 4 groups · group size 4.
+                        2x2 {category} format: {selectedTeamCount} teams · {expectedPlayers} players · {selectedGroupCount} groups of 4.
                       </p>
                     </SectionCard>
                   ) : null}
@@ -1839,7 +1916,7 @@ export default function GroupDoubleEliminationAdminSetup() {
                           onClick={() =>
                             apply(
                               (current) => loadTestTeamsAndPlayers(current, actor),
-                              "16 approved test teams and players loaded; group schedule generated."
+                              `${selectedTeamCount} approved ${category} pairs and ${expectedPlayers} players loaded; group schedule generated.`
                             )
                           }
                         >
@@ -1848,11 +1925,11 @@ export default function GroupDoubleEliminationAdminSetup() {
                         </Button>
                         <Button
                           className={outlineBtn}
-                          disabled={saving || approvedCount !== 16}
+                          disabled={saving || approvedCount !== selectedTeamCount}
                           onClick={() =>
                             apply(
                               (current) => buildTeamsAndGroups(current, current.teams, actor),
-                              "4 groups and 24 matches generated."
+                              `${selectedGroupCount} groups and ${expectedGroupMatches} matches generated.`
                             )
                           }
                         >
@@ -1860,7 +1937,7 @@ export default function GroupDoubleEliminationAdminSetup() {
                         </Button>
                         <Button
                           className={outlineBtn}
-                          disabled={saving || doc.matches.length !== 24 || status !== "configured"}
+                          disabled={saving || doc.matches.length !== expectedGroupMatches || status !== "configured"}
                           onClick={() => apply((current) => startGroupStage(current, actor), "Group stage started.")}
                         >
                           <Play className="w-5 h-5 mr-2" />

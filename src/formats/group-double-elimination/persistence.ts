@@ -24,6 +24,7 @@ import type {
   TournamentConfig,
 } from "./types";
 import type { AuditEntry } from "./audit";
+import { normalizeTournamentCategory } from "./category";
 
 /**
  * Isolated persistence for the new format.
@@ -121,6 +122,7 @@ export const createGsdeTournamentDocument = (
       name: "",
       date: "",
       teamLimit: 16,
+      category: "Mixto",
       divisionName: "Open",
       groupCount: 4,
       matchFormat: "single-set",
@@ -195,9 +197,20 @@ export const fromGsdeFirestoreData = (
   if (!data || data.formatId !== GSDE_FORMAT_ID) return null;
 
   const base = createGsdeTournamentDocument(id);
+  const storedTournament = (data.tournament ?? {}) as Partial<
+    GsdeTournamentDocument["tournament"]
+  >;
   return {
     id,
-    tournament: { ...base.tournament, ...(data.tournament ?? {}) },
+    tournament: {
+      ...base.tournament,
+      ...storedTournament,
+      config: {
+        ...base.tournament.config,
+        ...(storedTournament.config ?? {}),
+        category: normalizeTournamentCategory(storedTournament.config?.category),
+      },
+    },
     teams: Array.isArray(data.teams) ? data.teams : [],
     groups: Array.isArray(data.groups) ? data.groups : [],
     matches: Array.isArray(data.matches) ? data.matches : [],

@@ -1,5 +1,6 @@
 import type { GroupId, PlayerId, Team, TeamId } from "./types";
 import { compareText } from "./compare";
+import { TEAM_PLAYER_COUNT } from "./category";
 
 /**
  * Team management for the new format. Teams are isolated entities: they may
@@ -10,6 +11,7 @@ export interface TeamDraft {
   name: string;
   playerIds: PlayerId[];
   seed?: number | null;
+  nameIsCustom?: boolean;
 }
 
 export interface TeamValidationIssue {
@@ -52,6 +54,12 @@ export const validateTeamDraft = (
       message: "A player cannot be linked twice to the same team.",
     });
   }
+  if (draft.playerIds.length > TEAM_PLAYER_COUNT) {
+    issues.push({
+      field: "playerIds",
+      message: `A team is a fixed pair of at most ${TEAM_PLAYER_COUNT} players.`,
+    });
+  }
 
   return issues;
 };
@@ -66,6 +74,7 @@ export const createTeam = (
   playerIds: [...new Set(draft.playerIds)],
   seed: draft.seed ?? null,
   groupId,
+  ...(draft.nameIsCustom ? { nameIsCustom: true } : {}),
 });
 
 /** Newly registered teams start unapproved until an admin approves them. */

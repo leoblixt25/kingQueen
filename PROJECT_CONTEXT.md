@@ -1359,6 +1359,48 @@ Four new test files, **59 new tests**:
 - Visual verification: the temporary local-only GSDE guard bypass was reverted before commit/deploy. Desktop (897px) and narrow-viewport (375px iframe) checks at `?id=test1`: no horizontal overflow, no enabled buttons below 44px, score inputs 96x44, counter advanced `1 / 24` → `2 / 24`, all Manage and Results sub-tabs render, and zero console errors.
 - **Deployed (hosting only):** `npx firebase deploy --only hosting --project kingqueen-eu` succeeded (22 files uploaded). Live bundle is `assets/index-BQnqML9D.js`, CSS `assets/index-sQ8tv5JE.css` (replacing `index-DgB5DX3p.js` / `index-Dhbx86cZ.css`). `firestore.rules` unchanged; no K&Q screens or data touched.
 
+## 13bb. GSDE 2x2 fixed pairs + Male/Female/Mixto category (Nov 2026)
+
+**Scope: GSDE only.** K&Q code, routes, screens, data and Firestore rule blocks are untouched. `firestore.rules` is byte-identical (`git diff` empty); every GSDE write still targets the single `tournaments/{id}` document.
+
+### Category and pairs
+- `TournamentCategory = "Male" | "Female" | "Mixto"`; `TournamentConfig.category` defaults to **Mixto** (`config.ts`, `persistence.ts`). Legacy/invalid stored values normalize through `normalizeTournamentCategory()` (`femenino`/`F` → Female, `masculino`/`M` → Male, anything else → Mixto).
+- New pure module `category.ts`: `TEAM_PLAYER_COUNT = 2`, `TOURNAMENT_CATEGORY_OPTIONS`, `categoryForGenders()`, `isPairValidForCategory()`, `derivePairTeamName()`, `getTeamPlayerNames()`, `resolveTeamDisplayName()`, `validateTeamCategory()`, `validateTeamsForCategory()`, `refreshPairTeamNames()`.
+- A team is **exactly two players**: Male = male+male, Female = female+female, Mixto = one of each. Rule enforced at registration (`validateRegistrationDraft` requires a gender), approval (`approvePlayerRegistration` rejects a third player and a category-breaking pair), team drafts (max two players) and the central `validateTournamentIntegrity()` (`invalid-team-size`, `invalid-team-category`).
+- `PlayerRegistration.gender?: "male" | "female"` is optional so legacy documents still load. Legacy genderless registrations remain valid for integrity, but **new approvals** require a gender (`registration-invalid`).
+- Pair identity is immutable after generation: players only ever enter teams through approval, and nothing in scheduling, scoring, standings, elimination or finals reassigns them.
+
+### Team names
+- Default team names are both player names: `John Smith / David Brown` (`derivePairTeamName`). `Team.nameIsCustom` marks an admin-entered name; those are never overwritten and display as `Custom Name (A / B)` so both players stay visible everywhere.
+- `approvePlayerRegistration` / reject / remove call `refreshPairTeamNames()`: non-custom names follow the roster (one remaining player shows their name; a full pair shows both). Admin-added teams in `AdminSetup` set `nameIsCustom: true`, and `editTeam` sets it when a name is supplied.
+
+### Test-data loader (2x2 simulation)
+- `testData.ts` supports **8 / 12 / 16 / 24 / 32 teams** → **16 / 24 / 32 / 48 / 64 players**, exactly two distinct players per team, `2N` approved registrations already assigned to their pairs, category-correct genders, pair-derived names and the full group schedule.
+- Group counts: 8→2, 12→3, 16→4, 24→6, 32→8 groups of four. Success copy and counts in `AdminSetup` are dynamic for the selected size/category.
+
+### Scheduling by size
+- New `sizeAware.ts` facade: **16 teams keep the unchanged `fixed16.ts` path** (4 groups / 24 matches / Spanish crossover). Other supported sizes use the existing generic `groups.ts` / `elimination.ts` / `bracket.ts` engines with four teams per group.
+- `scoring.ts` no longer hard-codes 16/24: `buildTeamsAndGroups` validates the configured team limit and persists `teamLimit`/`groupCount`/`teamsPerGroup`; stage start, completion, ranking, bracket gating and bracket generation all use `expectedGroupMatchCount()` / `canGenerateSizeAwareBracket()` / `getSizeAwareGlobalRanking()`.
+- Scoring rules, progression, audit, reopen and persistence are unchanged; only the group/bracket wiring became size-aware.
+
+### UI
+- `AdminSetup.tsx`: **Category** and **Team limit** selects (team counts show their player count), read-only derived group count/size, dynamic "N teams / 2N players" copy, pair + both player names on team chips, gender on registrations, and full-team options disabled in the approval selector.
+- `Register.tsx`: required player gender (email/password and Google flows), category in the page subtitle, pair labels on the existing-registration card.
+- `shared.tsx` `teamNameMap(teams, registrations)` + `playerView.ts`, `PlayerView`, `PlayerAccess`, `RegistrationPending` and `views.tsx` show the pair/custom label everywhere.
+
+### Tests and verification
+- New `category.test.ts` (18 tests): classification, valid/invalid pairs for all three categories, category-correct pairs for 8/12/16/24/32, corrupted-pair integrity, legacy genderless tolerance, display labels, partial-roster refresh, and full size-aware runs (8/12/24/32 generic bracket, 16 keeps crossover).
+- Updated `testData.test.ts` (14), `registration.test.ts` (16) and `persistence.test.ts` (11) for genders, pairs, custom names, category normalization and third-player rejection.
+- `npx vitest run` — **34 files / 378 tests passed**.
+- `npx tsc -b --force` — **22 pre-existing baseline errors / 0 new**.
+- `npx eslint src/formats/group-double-elimination src/pages/formats/group-double-elimination` — 3 pre-existing errors (`progression.test.ts` prefer-const, `GsdeAdminSignIn.tsx` 2× `any`) + 9 pre-existing fast-refresh warnings; none on new code.
+- `npx vite build` — succeeds (`assets/index-BSe8-MZH.js`, CSS `index-sQ8tv5JE.css`).
+
+### Deployment (hosting only, Nov 2026)
+- `npx firebase deploy --only hosting --project kingqueen-eu` succeeded (22 files). Live `index.html` serves `assets/index-BSe8-MZH.js` (replacing `index-BQnqML9D.js`) with `Cache-Control: no-cache`; CSS unchanged.
+- Live smoke: `/`, `/king-queen`, GSDE overview, `/admin`, `/register`, `/player`, `/ranking`, `/draw`, `/info` all HTTP 200.
+- `tournaments/test1` still holds its earlier single-player-derived team names until the test loader is run again; rerunning **Load test teams & players** at the selected size/category replaces them with valid pairs (allowed while status is `draft`/`configured` and no elimination bracket exists).
+
 ## 14. Deployment URLs
 
 ### EU Project (KingQueen_EU â€” LIVE)

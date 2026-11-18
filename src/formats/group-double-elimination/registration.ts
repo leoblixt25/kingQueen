@@ -1,4 +1,4 @@
-import type { PlayerRegistration } from "./types";
+import type { PlayerGender, PlayerRegistration } from "./types";
 import type { GsdeTournamentDocument } from "./persistence";
 
 /**
@@ -14,12 +14,21 @@ export interface RegistrationDraft {
   uid: string;
   email: string;
   name: string;
+  gender: PlayerGender;
 }
 
 export interface RegistrationIssue {
-  field: "uid" | "email" | "name";
+  field: "uid" | "email" | "name" | "gender";
   message: string;
 }
+
+export const PLAYER_GENDER_OPTIONS: ReadonlyArray<{
+  value: PlayerGender;
+  label: string;
+}> = [
+  { value: "male", label: "Male" },
+  { value: "female", label: "Female" },
+];
 
 /** Emails are stored and compared lower-cased, matching the K&Q convention. */
 export const normalizeRegistrationEmail = (email: string): string =>
@@ -45,6 +54,9 @@ export const validateRegistrationDraft = (
   const name = draft.name.trim();
   if (name.length < 2) {
     issues.push({ field: "name", message: "Enter your name (at least 2 characters)." });
+  }
+  if (draft.gender !== "male" && draft.gender !== "female") {
+    issues.push({ field: "gender", message: "Select your player gender." });
   }
   return issues;
 };

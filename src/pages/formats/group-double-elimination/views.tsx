@@ -67,7 +67,7 @@ export function GroupStandingsView({ doc }: ViewsProps) {
                     <tr key={row.teamId} className="border-b border-sand-dark/15 last:border-0">
                       <td className={td}>{row.rank}</td>
                       <td className={`${td} font-semibold`}>
-                        {nameOf(teamNameMap(doc.teams), row.teamId)}
+                        {nameOf(teamNameMap(doc.teams, doc.registrations ?? []), row.teamId)}
                       </td>
                       <td className={td}>{row.played}</td>
                       <td className={td}>{row.wins}</td>
@@ -96,7 +96,7 @@ export function GroupMatchesView({ doc }: ViewsProps) {
   if (doc.matches.length === 0) {
     return <EmptyView text="Group matches have not been generated yet." />;
   }
-  const names = teamNameMap(doc.teams);
+  const names = teamNameMap(doc.teams, doc.registrations ?? []);
 
   return (
     <Card className="border-sand-dark/40 shadow-beach bg-card/95">
@@ -182,7 +182,7 @@ export function GlobalRankingView({ doc }: ViewsProps) {
               <tr key={row.teamId} className="border-b border-sand-dark/15 last:border-0">
                 <td className={`${td} font-bold text-ocean`}>{row.globalRank}</td>
                 <td className={`${td} font-semibold`}>
-                  {nameOf(teamNameMap(doc.teams), row.teamId)}
+                  {nameOf(teamNameMap(doc.teams, doc.registrations ?? []), row.teamId)}
                 </td>
                 <td className={td}>#{row.groupRank}</td>
                 <td className={td}>{row.wins}</td>
@@ -315,7 +315,7 @@ export function EliminationBracketView({ doc }: ViewsProps) {
   if (!bracket) {
     return <EmptyView text="The double-elimination bracket has not been generated yet." />;
   }
-  const names = teamNameMap(doc.teams);
+  const names = teamNameMap(doc.teams, doc.registrations ?? []);
 
   return (
     <div className="space-y-4">
@@ -341,7 +341,7 @@ export function PlacementsView({ doc }: ViewsProps) {
   if (placements.length === 0) {
     return <EmptyView text="Final placements appear once the bracket is complete." />;
   }
-  const names = teamNameMap(doc.teams);
+  const names = teamNameMap(doc.teams, doc.registrations ?? []);
 
   return (
     <Card className="border-sand-dark/40 shadow-beach bg-card/95">
@@ -389,7 +389,7 @@ export function EliminationStandingsView({ doc }: ViewsProps) {
   if (standings.length === 0) {
     return <EmptyView text="Elimination standings appear once the bracket starts." />;
   }
-  const names = teamNameMap(doc.teams);
+  const names = teamNameMap(doc.teams, doc.registrations ?? []);
 
   return (
     <Card className="border-sand-dark/40 shadow-beach bg-card/95">
@@ -442,7 +442,7 @@ export function EliminationStandingsView({ doc }: ViewsProps) {
 
 /** Live (started, awaiting result) matches plus the latest results. */
 export function LiveMatchesView({ doc }: ViewsProps) {
-  const names = teamNameMap(doc.teams);
+  const names = teamNameMap(doc.teams, doc.registrations ?? []);
   const liveGroups = doc.matches.filter((match) => match.status === "ready");
   const liveElimination = doc.elimination
     ? [...doc.elimination.winners, ...doc.elimination.losers, ...doc.elimination.grandFinal].filter(
@@ -675,7 +675,7 @@ export function ProgressSummary({ doc }: ViewsProps) {
       ) : null}
       {progress.champion ? (
         <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">
-          Champion: {nameOf(teamNameMap(doc.teams), progress.champion)}
+          Champion: {nameOf(teamNameMap(doc.teams, doc.registrations ?? []), progress.champion)}
         </Badge>
       ) : null}
     </div>

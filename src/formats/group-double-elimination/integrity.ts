@@ -1,6 +1,7 @@
 import type { GsdeTournamentDocument } from "./persistence";
 import { listEliminationMatches } from "./bracket";
 import { isGroupStageMatchComplete } from "./groupStageMatches";
+import { validateTeamsForCategory } from "./category";
 
 /**
  * Central integrity checks. A transition is only allowed to persist if the
@@ -22,7 +23,9 @@ export type IntegrityCode =
   | "broken-progression-link"
   | "duplicate-registration-uid"
   | "duplicate-registration-email"
-  | "invalid-registration-team";
+  | "invalid-registration-team"
+  | "invalid-team-category"
+  | "invalid-team-size";
 
 export interface IntegrityIssue {
   code: IntegrityCode;
@@ -103,9 +106,25 @@ export const validateTournamentIntegrity = (
     }
   }
 
+  for (const team of doc.teams) {
+    if (team.playerIds.length > 2) {
+      add(
+        "invalid-team-size",
+        `Team "${team.name}" has ${team.playerIds.length} players; a 2x2 pair needs exactly two.`
+      );
+    }
+  }
+  for (const message of validateTeamsForCategory(doc)) {
+    add("invalid-team-category", message);
+  }
+
+  const expectedGroupSize = doc.tournament.config.teamsPerGroup ?? 4;
   for (const group of doc.groups) {
-    if (group.teamIds.length !== 4) {
-      add("invalid-group-size", `Group "${group.id}" does not have 4 teams.`);
+    if (group.teamIds.length !== expectedGroupSize) {
+      add(
+        "invalid-group-size",
+        `Group "${group.id}" does not have ${expectedGroupSize} teams.`
+      );
     }
     if (duplicates(group.teamIds).length > 0) {
       add("invalid-group-size", `Group "${group.id}" has duplicate teams.`);
@@ -125,8 +144,16 @@ export const validateTournamentIntegrity = (
   }
 
   const seeds = doc.elimination?.seededTeamIds ?? [];
-  if (doc.elimination && (seeds.length !== 16 || duplicates(seeds).length > 0)) {
-    add("invalid-seed-count", "Elimination bracket must have 16 unique seeds.");
+  const expectedSeedCount =
+    doc.teams.length > 0 ? doc.teams.length : doc.tournament.config.teamLimit || 16;
+  if (
+    doc.elimination &&
+    (seeds.length !== expectedSeedCount || duplicates(seeds).length > 0)
+  ) {
+    add(
+      "invalid-seed-count",
+      `Elimination bracket must have ${expectedSeedCount} unique seeds.`
+    );
   }
 
   const eliminationIds = new Set(eliminationMatches.map((match) => match.id));

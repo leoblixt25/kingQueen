@@ -21,6 +21,12 @@ export type GsdeTournamentStatus =
 
 export type MatchStatus = "pending" | "ready" | "completed";
 
+/** 2x2 team category. Mixto is the default for this format. */
+export type TournamentCategory = "Male" | "Female" | "Mixto";
+
+/** Gender of an individual player used for category validation. */
+export type PlayerGender = "male" | "female";
+
 /** Where a match sits in the elimination stage. */
 export type BracketSide = "winners" | "losers" | "grand-final";
 
@@ -36,8 +42,10 @@ export interface TournamentConfig {
   name: string;
   /** Tournament date as a plain `YYYY-MM-DD` string (empty until set). */
   date: string;
-  /** Configured team limit. The fixed engine enforces exactly 16. */
+  /** Configured team limit. The 16-team path keeps its fixed rules. */
   teamLimit: number;
+  /** 2x2 team category; defaults to Mixto for backwards compatibility. */
+  category: TournamentCategory;
   divisionName: string;
   groupCount: number;
   /** Single-set matches are the only supported format for now. */
@@ -62,6 +70,11 @@ export interface Team {
    * approved (see `isApprovedTeam`), so older persisted tournaments keep working.
    */
   status?: "pending" | "approved";
+  /**
+   * True when an admin entered the name manually. Pair-derived names are
+   * refreshed when registrations complete; custom names are never overwritten.
+   */
+  nameIsCustom?: boolean;
 }
 
 /** Legacy-safe approval check: missing status means approved. */
@@ -91,6 +104,8 @@ export interface PlayerRegistration {
   registeredAt: string;
   /** ISO timestamp of the approval/rejection, or `null`. */
   decidedAt: string | null;
+  /** Player gender, used to enforce the tournament category on a pair. */
+  gender?: PlayerGender;
 }
 
 export interface Group {

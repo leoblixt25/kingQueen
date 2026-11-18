@@ -6,10 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { GROUP_DOUBLE_ELIMINATION_FORMAT } from "@/formats";
+import type { PlayerGender } from "@/formats/group-double-elimination";
+import { resolveTeamDisplayName } from "@/formats/group-double-elimination/category";
 import {
   findRegistrationByEmail,
   findRegistrationByUid,
   normalizeRegistrationEmail,
+  PLAYER_GENDER_OPTIONS,
   validateRegistrationDraft,
 } from "@/formats/group-double-elimination/registration";
 import {
@@ -50,6 +53,7 @@ export default function GroupDoubleEliminationRegister() {
   const initialMode = searchParams.get("mode") === "sign-in" ? "sign-in" : "register";
 
   const [name, setName] = useState("");
+  const [gender, setGender] = useState<PlayerGender | "">("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [mode, setMode] = useState<"register" | "sign-in">(initialMode);
@@ -84,6 +88,7 @@ export default function GroupDoubleEliminationRegister() {
       uid: user?.uid ?? "pending",
       email: activeEmail,
       name,
+      gender: gender as PlayerGender,
     });
     if (issues.length > 0) {
       setError(issues.map((issue) => issue.message).join(" "));
@@ -103,7 +108,12 @@ export default function GroupDoubleEliminationRegister() {
       );
       const next = registerPlayer(
         doc,
-        { uid: account.uid, email: registrationEmail, name },
+        {
+          uid: account.uid,
+          email: registrationEmail,
+          name,
+          gender: gender as PlayerGender,
+        },
         { id: account.uid, label: registrationEmail, isAdmin: false }
       );
       await saveGsdeTournament(next);
@@ -118,6 +128,10 @@ export default function GroupDoubleEliminationRegister() {
   const google = async () => {
     setError(null);
     if (!doc) return;
+    if (gender !== "male" && gender !== "female") {
+      setError("Select your player gender before continuing with Google.");
+      return;
+    }
     setBusy(true);
     try {
       const account = user ?? (await signInWithGoogleForRegistration());
@@ -131,7 +145,12 @@ export default function GroupDoubleEliminationRegister() {
       );
       const next = registerPlayer(
         doc,
-        { uid: account.uid, email: registrationEmail, name: displayName },
+        {
+          uid: account.uid,
+          email: registrationEmail,
+          name: displayName,
+          gender,
+        },
         { id: account.uid, label: registrationEmail, isAdmin: false }
       );
       await saveGsdeTournament(next);
@@ -146,14 +165,14 @@ export default function GroupDoubleEliminationRegister() {
   return (
     <PageShell
       title="Player registration"
-      subtitle={`${GROUP_DOUBLE_ELIMINATION_FORMAT.name} · register as an individual player`}
+      subtitle={`${GROUP_DOUBLE_ELIMINATION_FORMAT.name} · ${doc?.tournament.config.category ?? "Mixto"} · register as an individual player`}
       backTo={`${GROUP_DOUBLE_ELIMINATION_FORMAT.route}?id=${encodeURIComponent(id)}`}
       backLabel="Tournament overview"
     >
       <Card className="border-ocean/20 bg-ocean/5 shadow-sm">
         <CardContent className="p-4 text-sm text-foreground/70">
-          Register with your name and account, then an admin will approve your
-          registration and assign you to a team. Your registration is stored only
+          Register with your name, gender and account, then an admin will approve your
+          registration and assign you to a fixed two-player team. Your registration is stored only
           in this tournament (
           <code className="rounded bg-white/70 px-1 py-0.5">
             tournaments/{`{id}`}
@@ -183,7 +202,13 @@ export default function GroupDoubleEliminationRegister() {
               Status: <Badge variant="secondary">{existing.status}</Badge>
               {existing.status === "approved" && existing.teamId ? (
                 <span>
-                  · Team: {doc?.teams.find((team) => team.id === existing.teamId)?.name ?? existing.teamId}
+                  · Team:{" "}
+                  {(() => {
+                    const team = doc?.teams.find((item) => item.id === existing.teamId);
+                    return team && doc
+                      ? resolveTeamDisplayName(doc.registrations ?? [], team)
+                      : existing.teamId;
+                  })()}
                 </span>
               ) : null}
             </p>
@@ -217,6 +242,23 @@ export default function GroupDoubleEliminationRegister() {
                   placeholder="e.g. Alex Morgan"
                   onChange={(event) => setName(event.target.value)}
                 />
+              </label>
+              <label className="block text-xs text-foreground/60">
+                Player gender
+                <select
+                  className={`${inputCls} mt-1`}
+                  value={gender}
+                  onChange={(event) =>
+                    setGender(event.target.value as PlayerGender | "")
+                  }
+                >
+                  <option value="">Select gender</option>
+                  {PLAYER_GENDER_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
               </label>
               <label className="block text-xs text-foreground/60">
                 Email

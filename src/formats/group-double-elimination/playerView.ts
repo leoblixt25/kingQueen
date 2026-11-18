@@ -6,6 +6,7 @@ import type {
   TeamId,
 } from "./types";
 import type { GsdeTournamentDocument } from "./persistence";
+import { resolveTeamDisplayName } from "./category";
 import {
   calculateGroupStandings,
   type GroupStanding,
@@ -117,7 +118,12 @@ export const buildPlayerGroupView = (
     .filter((id) => id !== teamId)
     .map((id) => ({
       teamId: id,
-      name: teamById.get(id)?.name ?? id,
+      name: (() => {
+        const opponent = teamById.get(id);
+        return opponent
+          ? resolveTeamDisplayName(doc.registrations ?? [], opponent)
+          : id;
+      })(),
     }));
 
   const standing = group
@@ -260,7 +266,7 @@ export const buildPlayerView = (
   const stage = getPlayerStage(doc);
   return {
     teamId,
-    teamName: team.name,
+    teamName: resolveTeamDisplayName(doc.registrations ?? [], team),
     stage,
     group: buildPlayerGroupView(doc, teamId),
     elimination: buildPlayerEliminationView(doc, teamId),

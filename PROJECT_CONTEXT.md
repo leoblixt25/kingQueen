@@ -1347,6 +1347,18 @@ Four new test files, **59 new tests**:
 - Visual verification: authenticated live admin sign-in was unavailable (credentials not in repo; Google popup stalls), so a temporary GSDE-only guard bypass was used locally and reverted before commit. Desktop (1521px) and mobile (375x812, touch) checks at `?id=test1`: no horizontal overflow (`scrollWidth == clientWidth`), no sub-44px buttons, score inputs 96x44 at 24px, sand gradient applied, headings legible, and zero console errors.
 - **Deployed (hosting only):** `npx firebase deploy --only hosting --project kingqueen-eu` succeeded. Live bundle `assets/index-DgB5DX3p.js`, CSS `assets/index-Dhbx86cZ.css` (replacing `index-CMncUtd6.js`). `firestore.rules` unchanged; one authoritative `tournaments/{id}` document and two independent ranking systems preserved.
 
+## 13ba. GSDE admin control-centre restructure + score-fix workflow (Nov 2026)
+
+**Scope: presentation/UI-only. No domain logic, tournament rules, guards, routes, K&Q code, data or Firestore rule blocks changed.** Every GSDE write still targets only `tournaments/{id}`; the two independent ranking systems and the single authoritative document remain untouched.
+
+- `AdminSetup.tsx` was reorganised into top-level tabs: **Overview**, **Teams**, **Players**, **Matches**, **Results**, **Manage**. Related controls are grouped into nested tabs: Results → **Groups / Ranking / Elimination / Final**; Manage → **Setup / Flow / Bracket / Advanced / Activity**. The overview stays one click away, and secondary controls are hidden until their tab is selected.
+- Matches now show **one matchup at a time** (never a vertical list): Group/Elimination stage tabs, clear team names and score boxes, match metadata, **Previous / Next** arrows, an `X / N` counter, remaining-match count, and a **Jump to match** selector. Changing stage, section or tournament id clears edit state.
+- Completed group/elimination results are read-only until **Edit score** / **Edit result** is pressed, matching K&Q's inline `Edit Score` workflow. The edit form is seeded from stored scores; **Save changes** calls the existing `correctGroupMatchScore(...)` / `correctEliminationResult(...)` with `actor`, and **Cancel** discards without writing. Correction/reopen audit logging is therefore preserved.
+- Functionality audit against `HEAD`: all 22 original GSDE domain mutation call sites remain present (setup, team/player approvals, group generation/start/complete, bracket generation/reset, scoring/correction/reset, reopen, etc.), including the provisional-bracket `overrideIncomplete` + `adminConfirmed` double guard.
+- Verification: `npx eslint src/pages/formats/group-double-elimination/AdminSetup.tsx` clean; `npx vitest run` — 33 files / 342 tests pass; `npx tsc -b --force` — same 22 known baseline errors, 0 new (none in `AdminSetup.tsx`); `npx vite build` succeeds.
+- Visual verification: the temporary local-only GSDE guard bypass was reverted before commit/deploy. Desktop (897px) and narrow-viewport (375px iframe) checks at `?id=test1`: no horizontal overflow, no enabled buttons below 44px, score inputs 96x44, counter advanced `1 / 24` → `2 / 24`, all Manage and Results sub-tabs render, and zero console errors.
+- **Deployed (hosting only):** `npx firebase deploy --only hosting --project kingqueen-eu` succeeded (22 files uploaded). Live bundle is `assets/index-BQnqML9D.js`, CSS `assets/index-sQ8tv5JE.css` (replacing `index-DgB5DX3p.js` / `index-Dhbx86cZ.css`). `firestore.rules` unchanged; no K&Q screens or data touched.
+
 ## 14. Deployment URLs
 
 ### EU Project (KingQueen_EU â€” LIVE)

@@ -1,10 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { AlertCircle, CheckCircle2, Loader2, UserPlus } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Crown,
+  Info,
+  Loader2,
+  LogOut,
+  Users,
+} from "lucide-react";
 import { GROUP_DOUBLE_ELIMINATION_FORMAT } from "@/formats";
 import type { PlayerGender } from "@/formats/group-double-elimination";
 import { resolveTeamDisplayName } from "@/formats/group-double-elimination/category";
@@ -12,24 +23,32 @@ import {
   findRegistrationByEmail,
   findRegistrationByUid,
   normalizeRegistrationEmail,
-  PLAYER_GENDER_OPTIONS,
   validateRegistrationDraft,
 } from "@/formats/group-double-elimination/registration";
 import {
-  signInForRegistration,
-  signInWithGoogleForRegistration,
+  signOutRegistration,
   signUpForRegistration,
+  signInWithGoogleForRegistration,
 } from "@/formats/group-double-elimination/registrationAuth";
 import { registerPlayer } from "@/formats/group-double-elimination/scoring";
 import { saveGsdeTournament } from "@/formats/group-double-elimination/persistence";
-import { PageShell, useGsdeAuth, useGsdeTournament } from "./shared";
+import {
+  GsdeGoogleButton,
+  GsdeMainTitle,
+  gsdeHref,
+  useGsdeAuth,
+  useGsdeTournament,
+} from "./shared";
+
+const ROUTE = GROUP_DOUBLE_ELIMINATION_FORMAT.route;
+const PENDING_ROUTE = `${ROUTE}/register/pending`;
+const PLAYER_ROUTE = `${ROUTE}/player`;
+const PAIRING_ROUTE = `${ROUTE}/pairing`;
+const SIGN_IN_ROUTE = `${ROUTE}/sign-in`;
+const PLAYER_ACCESS_ROUTE = `${ROUTE}/player-access`;
 
 const inputCls =
-  "h-9 w-full rounded-md border border-sand-dark/40 bg-white px-2.5 text-sm text-foreground placeholder:text-foreground/40";
-
-const PENDING_ROUTE = `${GROUP_DOUBLE_ELIMINATION_FORMAT.route}/register/pending`;
-const PLAYER_ROUTE = `${GROUP_DOUBLE_ELIMINATION_FORMAT.route}/player`;
-const PAIRING_ROUTE = `${GROUP_DOUBLE_ELIMINATION_FORMAT.route}/pairing`;
+  "w-full touch-target bg-white/70 border-sand-dark/30 focus:border-ocean";
 
 const firebaseMessage = (error: unknown): string => {
   const code = (error as { code?: string })?.code ?? "";
@@ -38,28 +57,30 @@ const firebaseMessage = (error: unknown): string => {
   }
   if (code.includes("weak-password")) return "Choose a password of at least 6 characters.";
   if (code.includes("invalid-email")) return "Enter a valid email address.";
-  if (code.includes("wrong-password") || code.includes("invalid-credential")) {
-    return "Wrong email or password.";
-  }
-  if (code.includes("user-not-found")) return "No account for that email. Register first.";
   if (code.includes("popup-closed-by-user")) return "Google sign-in was cancelled.";
   return error instanceof Error ? error.message : "Could not complete sign-up.";
 };
 
+/** K&Q-style player registration, scoped to the isolated GSDE flow. */
 export default function GroupDoubleEliminationRegister() {
   const { id, doc } = useGsdeTournament();
   const { user, loading: authLoading } = useGsdeAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const initialMode = searchParams.get("mode") === "sign-in" ? "sign-in" : "register";
 
   const [name, setName] = useState("");
   const [gender, setGender] = useState<PlayerGender | "">("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [mode, setMode] = useState<"register" | "sign-in">(initialMode);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // The old combined "?mode=sign-in" link now opens the dedicated sign-in page.
+  useEffect(() => {
+    if (searchParams.get("mode") === "sign-in") {
+      navigate(gsdeHref(SIGN_IN_ROUTE, id), { replace: true });
+    }
+  }, [searchParams, id, navigate]);
 
   // Pre-fill from the signed-in account when available.
   useEffect(() => {
@@ -76,8 +97,16 @@ export default function GroupDoubleEliminationRegister() {
     );
   }, [doc, user, email]);
 
-  const goTo = (route: string) =>
-    navigate(`${route}?id=${encodeURIComponent(id)}`);
+  const goTo = (route: string) => navigate(gsdeHref(route, id));
+
+  const handleSignOut = async () => {
+    setBusy(true);
+    try {
+      await signOutRegistration();
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -100,10 +129,7 @@ export default function GroupDoubleEliminationRegister() {
     try {
       // Creating an account writes to Firebase Auth only — never to K&Q data.
       const account =
-        user ??
-        (mode === "register"
-          ? await signUpForRegistration(name, activeEmail, password)
-          : await signInForRegistration(activeEmail, password));
+        user ?? (await signUpForRegistration(name, activeEmail, password));
       const registrationEmail = normalizeRegistrationEmail(
         account.email ?? activeEmail
       );
@@ -163,183 +189,292 @@ export default function GroupDoubleEliminationRegister() {
     }
   };
 
-  return (
-    <PageShell
-      title="Player registration"
-      subtitle={`${GROUP_DOUBLE_ELIMINATION_FORMAT.name} · ${doc?.tournament.config.category ?? "Mixto"} · register as an individual player`}
-      backTo={`${GROUP_DOUBLE_ELIMINATION_FORMAT.route}?id=${encodeURIComponent(id)}`}
-      backLabel="Tournament overview"
-    >
-      <Card className="border-ocean/20 bg-ocean/5 shadow-sm">
-        <CardContent className="p-4 text-sm text-foreground/70">
-          Register with your name, gender and email, then invite a compatible registered player
-          to form your fixed two-player team. An admin approves completed teams before play. Your registration is stored only
-          in this tournament (
-          <code className="rounded bg-white/70 px-1 py-0.5">
-            tournaments/{`{id}`}
-          </code>
-          ); King &amp; Queen data is never touched.
-        </CardContent>
-      </Card>
+  const handleCancel = () => {
+    setName("");
+    setGender("");
+    setEmail(user?.email ?? "");
+    setPassword("");
+    setError(null);
+  };
 
-      {authLoading ? (
-        <Card className="border-sand-dark/40 shadow-beach bg-card/95">
-          <CardContent className="flex items-center justify-center gap-2 p-10 text-sm text-foreground/60">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading account…
+  return (
+    <div className="min-h-screen bg-sand-gradient px-4 py-6">
+      <div className="max-w-lg mx-auto space-y-6 animate-fade-in">
+        <header className="text-center pt-8">
+          <div className="relative">
+            <div className="w-full max-w-2xl mx-auto text-center px-4 mb-4">
+              <GsdeMainTitle />
+            </div>
+            <div className="w-16 h-1 bg-sunset mx-auto rounded-full mb-6" />
+            <h2 className="text-xl font-semibold text-ocean mb-2">
+              Tournament Access Portal
+            </h2>
+
+            <div className="mt-4 flex justify-center gap-2">
+              {user ? (
+                <div className="flex items-center gap-2 text-sm">
+                  <div className="flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full">
+                    <CheckCircle2 className="w-4 h-4" />
+                    {user.email}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSignOut}
+                    disabled={busy}
+                    className="text-xs"
+                  >
+                    <LogOut className="w-3 h-3 mr-1" />
+                    Sign Out
+                  </Button>
+                </div>
+              ) : (
+                <div className="text-center text-sm text-foreground/60 mt-2">
+                  Already have an account?{" "}
+                  <Button
+                    variant="link"
+                    onClick={() => goTo(SIGN_IN_ROUTE)}
+                    className="p-0 h-auto text-ocean hover:text-ocean-dark font-medium"
+                  >
+                    Sign in here
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        </header>
+
+        <Card className="bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach">
+          <CardContent className="p-4 text-center">
+            <h3 className="font-semibold text-ocean mb-2">Current Tournament</h3>
+            <div className="flex flex-wrap justify-center gap-2">
+              <span className="px-3 py-1 bg-sunset/20 text-sunset rounded-full text-sm">
+                {GROUP_DOUBLE_ELIMINATION_FORMAT.name}
+              </span>
+              <span className="px-3 py-1 bg-ocean/20 text-ocean rounded-full text-sm">
+                {doc?.tournament.config.category ?? "Mixto"} · 2×2 teams
+              </span>
+            </div>
           </CardContent>
         </Card>
-      ) : existing ? (
-        <Card className="border-sand-dark/40 shadow-beach bg-card/95">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-ocean" /> Your registration
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm text-foreground/75">
-            <p>
-              <strong>{existing.name}</strong> · {existing.email}
-            </p>
-            <p className="flex items-center gap-2">
-              Status: <Badge variant="secondary">{existing.status}</Badge>
-              {existing.status === "approved" && existing.teamId ? (
-                <span>
-                  · Team:{" "}
-                  {(() => {
-                    const team = doc?.teams.find((item) => item.id === existing.teamId);
-                    return team && doc
-                      ? resolveTeamDisplayName(doc.registrations ?? [], team)
-                      : existing.teamId;
-                  })()}
-                </span>
-              ) : null}
-            </p>
-            <div className="flex flex-wrap gap-2 pt-1">
-              <Button size="sm" variant="outline" onClick={() => goTo(PENDING_ROUTE)}>
-                View status
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => goTo(PAIRING_ROUTE)}>
-                Find a partner
-              </Button>
+
+        {authLoading ? (
+          <Card className="bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach">
+            <CardContent className="flex items-center justify-center gap-2 p-10 text-sm text-foreground/60">
+              <Loader2 className="h-4 w-4 animate-spin" /> Loading account…
+            </CardContent>
+          </Card>
+        ) : existing ? (
+          <Card className="bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach">
+            <CardHeader>
+              <CardTitle className="text-center text-ocean font-bold flex items-center justify-center gap-2">
+                <Crown className="w-5 h-5" />
+                Your Registration
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-center">
+                <strong>{existing.name}</strong> · {existing.email}
+              </p>
+              <p className="text-center flex flex-wrap items-center justify-center gap-2">
+                Status: <Badge variant="secondary">{existing.status}</Badge>
+                {existing.status === "approved" && existing.teamId ? (
+                  <span>
+                    · Team:{" "}
+                    {(() => {
+                      const team = doc?.teams.find((item) => item.id === existing.teamId);
+                      return team && doc
+                        ? resolveTeamDisplayName(doc.registrations ?? [], team)
+                        : existing.teamId;
+                    })()}
+                  </span>
+                ) : null}
+              </p>
+              <div className="flex gap-3 pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => goTo(PENDING_ROUTE)}
+                  className="flex-1 touch-target bg-white/70"
+                >
+                  View status
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => goTo(PAIRING_ROUTE)}
+                  className="flex-1 touch-target bg-white/70"
+                >
+                  Find a partner
+                </Button>
+              </div>
               {existing.status === "approved" ? (
-                <Button size="sm" onClick={() => goTo(PLAYER_ROUTE)}>
+                <Button
+                  onClick={() => goTo(PLAYER_ROUTE)}
+                  className="w-full touch-target bg-ocean hover:bg-ocean-dark text-white font-semibold"
+                >
+                  <Users className="w-4 h-4 mr-2" />
                   My team
                 </Button>
               ) : null}
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card className="border-sand-dark/40 shadow-beach bg-card/95">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
-              <UserPlus className="h-4 w-4 text-ocean" />
-              {mode === "register" ? "Register as a player" : "Sign in to register"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form className="space-y-3" onSubmit={submit}>
-              <label className="block text-xs text-foreground/60">
-                Your name
-                <Input
-                  className={`${inputCls} mt-1`}
-                  value={name}
-                  placeholder="e.g. Alex Morgan"
-                  onChange={(event) => setName(event.target.value)}
-                />
-              </label>
-              <label className="block text-xs text-foreground/60">
-                Player gender
-                <select
-                  className={`${inputCls} mt-1`}
-                  value={gender}
-                  onChange={(event) =>
-                    setGender(event.target.value as PlayerGender | "")
-                  }
-                >
-                  <option value="">Select gender</option>
-                  {PLAYER_GENDER_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block text-xs text-foreground/60">
-                Email
-                <Input
-                  className={`${inputCls} mt-1`}
-                  type="email"
-                  value={email}
-                  disabled={Boolean(user?.email)}
-                  placeholder="you@example.com"
-                  onChange={(event) => setEmail(event.target.value)}
-                />
-              </label>
-              {!user || mode === "sign-in" ? (
-                <label className="block text-xs text-foreground/60">
-                  Password
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach">
+            <CardHeader>
+              <CardTitle className="text-center text-ocean font-bold flex items-center justify-center gap-2">
+                <Crown className="w-5 h-5" />
+                Player Registration
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={submit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="gsde-register-name" className="text-foreground font-medium">
+                    Name
+                  </Label>
                   <Input
-                    className={`${inputCls} mt-1`}
-                    type="password"
-                    value={password}
-                    minLength={6}
-                    placeholder="At least 6 characters"
-                    onChange={(event) => setPassword(event.target.value)}
+                    id="gsde-register-name"
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                    className={inputCls}
+                    placeholder="Enter your name"
                   />
-                </label>
-              ) : null}
+                </div>
 
-              {error ? (
-                <p className="flex items-start gap-1.5 rounded-md border border-red-300 bg-red-50 p-2 text-xs text-red-800">
-                  <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {error}
-                </p>
-              ) : null}
+                <div className="space-y-2">
+                  <Label htmlFor="gsde-register-email" className="text-foreground font-medium">
+                    Email Address
+                  </Label>
+                  <Input
+                    id="gsde-register-email"
+                    type="email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    disabled={Boolean(user?.email)}
+                    className={inputCls}
+                    placeholder="Enter your email"
+                  />
+                  {user?.email ? (
+                    <p className="text-xs text-muted-foreground italic">
+                      Email locked to your authenticated account ({user.email})
+                    </p>
+                  ) : null}
+                </div>
 
-              <div className="flex flex-wrap items-center gap-2">
-                <Button type="submit" size="sm" disabled={busy}>
-                  {busy ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}
-                  {mode === "register" ? "Register" : "Sign in & register"}
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  disabled={busy}
-                  onClick={() => {
-                    setMode((current) => (current === "register" ? "sign-in" : "register"));
-                    setError(null);
-                  }}
-                >
-                  {mode === "register" ? "I already have an account" : "Create an account"}
-                </Button>
-              </div>
-            </form>
+                {!user ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="gsde-register-password" className="text-foreground font-medium">
+                      Password
+                    </Label>
+                    <Input
+                      id="gsde-register-password"
+                      type="password"
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      minLength={6}
+                      className={inputCls}
+                      placeholder="Create a password (min 6 characters)"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Must be at least 6 characters
+                    </p>
+                  </div>
+                ) : null}
 
-            <div className="my-3 flex items-center gap-2 text-xs text-foreground/45">
-              <span className="h-px flex-1 bg-sand-dark/30" /> or{" "}
-              <span className="h-px flex-1 bg-sand-dark/30" />
+                <div className="space-y-3">
+                  <Label className="text-foreground font-medium">Gender Division</Label>
+                  <RadioGroup
+                    value={gender}
+                    onValueChange={(value) => setGender(value as PlayerGender)}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="male" id="gsde-male" />
+                      <Label htmlFor="gsde-male" className="cursor-pointer">
+                        Male
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="female" id="gsde-female" />
+                      <Label htmlFor="gsde-female" className="cursor-pointer">
+                        Female
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                {error ? (
+                  <Alert className="border-coral/30 bg-coral/10">
+                    <AlertCircle className="h-4 w-4 text-coral" />
+                    <AlertDescription className="text-coral-dark">
+                      {error}
+                    </AlertDescription>
+                  </Alert>
+                ) : null}
+
+                <div className="flex gap-3 pt-4">
+                  <Button
+                    type="submit"
+                    disabled={busy}
+                    className="flex-1 touch-target bg-ocean hover:bg-ocean-dark text-white font-semibold py-3 transition-all duration-300"
+                  >
+                    {busy ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Registering...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-4 h-4 mr-2" />
+                        Register
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleCancel}
+                    disabled={busy}
+                    className="flex-1 touch-target bg-white/70 hover:bg-coral hover:text-white border-coral/30 text-coral transition-all duration-300"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+
+              <Alert className="mt-6 border-ocean/30 bg-ocean/5">
+                <Info className="h-4 w-4 text-ocean" />
+                <AlertDescription className="text-foreground/70">
+                  After registration, invite a compatible player to form your 2×2
+                  team. An admin approves completed teams before play. Your data
+                  is stored only in this tournament.
+                </AlertDescription>
+              </Alert>
+            </CardContent>
+          </Card>
+        )}
+
+        <Card className="bg-white/80 backdrop-blur-sm border border-ocean/20 shadow-beach">
+          <CardContent className="p-6">
+            <div className="text-center space-y-4">
+              <h3 className="text-lg font-semibold text-ocean">Continue with Google</h3>
+              <p className="text-sm text-foreground/70">
+                Sign up with Google for secure account access and automatic email
+                confirmation.
+              </p>
+              <GsdeGoogleButton onClick={google} busy={busy} />
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="w-full"
-              disabled={busy}
-              onClick={google}
-            >
-              Continue with Google
-            </Button>
-            <p className="mt-3 text-center text-xs">
-              <Link
-                className="font-semibold text-ocean hover:underline"
-                to={`${PLAYER_ROUTE}?id=${encodeURIComponent(id)}`}
-              >
-                Already assigned to a team? Go to My team
-              </Link>
-            </p>
           </CardContent>
         </Card>
-      )}
-    </PageShell>
+
+        <div className="text-center">
+          <Button
+            variant="ghost"
+            onClick={() => goTo(PLAYER_ACCESS_ROUTE)}
+            className="text-ocean hover:text-ocean-dark"
+          >
+            ← Back to Player Access
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }

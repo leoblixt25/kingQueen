@@ -2,31 +2,19 @@ import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  AlertCircle,
-  ArrowLeft,
-  Eye,
-  EyeOff,
-  Loader2,
-  LogIn,
-  ShieldCheck,
-} from "lucide-react";
+import { AlertCircle, Eye, EyeOff, LogIn } from "lucide-react";
 import { GROUP_DOUBLE_ELIMINATION_FORMAT } from "@/formats";
 import { adminSignInWithEmail, isAdmin, signInWithGoogle } from "@/utils/authUtils";
 import { auth } from "@/config/firebase";
 import { signOut } from "firebase/auth";
-import {
-  DEFAULT_GSDE_TOURNAMENT_ID,
-  GsdeMainTitle,
-  gsdeHref,
-} from "./shared";
+import { DEFAULT_GSDE_TOURNAMENT_ID, gsdeHref } from "./shared";
 
 const ROUTE = GROUP_DOUBLE_ELIMINATION_FORMAT.route;
 
-/** K&Q-style admin sign-in screen, scoped to the isolated GSDE flow. */
+/** K&Q-style admin login screen, scoped to the isolated GSDE flow. */
 export default function GsdeAdminSignIn() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -38,29 +26,24 @@ export default function GsdeAdminSignIn() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const goBack = () => navigate(gsdeHref(ROUTE, id));
+  const finishAdminSignIn = () => navigate(gsdeHref(`${ROUTE}/admin`, id));
 
-  const finishAdminSignIn = () => {
-    navigate(gsdeHref(`${ROUTE}/admin`, id));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleLogin = async (event: React.FormEvent) => {
+    event.preventDefault();
     setLoading(true);
     setError(null);
     try {
       const result = await adminSignInWithEmail(email, password);
-      if (!result.success) {
-        throw new Error(result.error || "Invalid admin credentials.");
-      }
+      if (!result.success) throw new Error(result.error || "Invalid admin credentials.");
+
       const ok = await isAdmin();
       if (!ok) {
         await signOut(auth);
-        throw new Error("Access denied. This account does not have admin privileges.");
+        throw new Error("Access denied. Please check your credentials.");
       }
       finishAdminSignIn();
-    } catch (err: any) {
-      setError(err?.message || "Unable to sign in. Please check your credentials.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Invalid login credentials. Please check your email and password.");
     } finally {
       setLoading(false);
     }
@@ -71,141 +54,149 @@ export default function GsdeAdminSignIn() {
     setError(null);
     try {
       const result = await signInWithGoogle();
-      if (!result.success) {
-        throw new Error(result.error || "Google sign-in failed.");
-      }
+      if (!result.success) throw new Error(result.error || "Google sign-in failed.");
+
       const ok = await isAdmin();
       if (!ok) {
         await signOut(auth);
-        throw new Error("Access denied. This account does not have admin privileges.");
+        throw new Error("You don't have admin privileges.");
       }
       finishAdminSignIn();
-    } catch (err: any) {
-      setError(err?.message || "Google sign-in failed. Please try again.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Google sign in failed. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="relative min-h-screen bg-sand-gradient px-4 py-6 flex items-start justify-center">
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={goBack}
-        className="absolute left-4 top-4 inline-flex items-center gap-1.5 text-sm font-semibold text-ocean hover:text-ocean-dark hover:bg-transparent"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Tournament
-      </Button>
-
-      <div className="w-full max-w-md mx-auto text-center pt-14 animate-fade-in">
-        <div className="text-6xl mb-4 animate-bounce-gentle">🏐</div>
-        <div className="w-full max-w-2xl mx-auto text-center px-4 mb-6">
-          <GsdeMainTitle />
-        </div>
-
-        <Card className="bg-white/85 backdrop-blur-sm border border-sand-dark/20 shadow-beach">
-          <CardContent className="pt-6 pb-6">
-            <div className="mb-5 flex items-center justify-center gap-2 text-foreground/85">
-              <ShieldCheck className="w-5 h-5 text-ocean" />
-              <h2 className="text-lg font-bold">Admin Sign In</h2>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4 text-left">
-              <div className="space-y-1.5">
+    <div className="min-h-screen bg-sand-gradient px-4 py-6 flex items-center justify-center">
+      <div className="w-full max-w-md mx-auto">
+        <Card className="bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach">
+          <CardHeader>
+            <CardTitle className="text-2xl font-bold text-center text-ocean">
+              Admin Login
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleLogin} className="space-y-6">
+              <div className="space-y-2">
                 <Label htmlFor="gsde-admin-email">Email</Label>
                 <Input
                   id="gsde-admin-email"
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@example.com"
-                  autoComplete="username"
-                  disabled={loading}
+                  onChange={(event) => setEmail(event.target.value)}
                   required
+                  className="bg-white/70 border-sand-dark/30 focus:border-ocean"
+                  placeholder="admin@example.com"
                 />
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <Label htmlFor="gsde-admin-password">Password</Label>
                 <div className="relative">
                   <Input
                     id="gsde-admin-password"
                     type={showPassword ? "text" : "password"}
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    autoComplete="current-password"
-                    disabled={loading}
-                    className="pr-10"
+                    onChange={(event) => setPassword(event.target.value)}
                     required
+                    className="bg-white/70 border-sand-dark/30 focus:border-ocean pr-10"
+                    placeholder="••••••••"
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    aria-label={showPassword ? "Hide password" : "Show password"}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-foreground/50 hover:text-foreground"
+                    onClick={() => setShowPassword((current) => !current)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
                   >
                     {showPassword ? (
-                      <EyeOff className="w-4 h-4" />
+                      <EyeOff className="h-4 w-4 text-gray-500" />
                     ) : (
-                      <Eye className="w-4 h-4" />
+                      <Eye className="h-4 w-4 text-gray-500" />
                     )}
                   </button>
                 </div>
               </div>
 
               {error ? (
-                <Alert className="border-destructive/40 bg-destructive/5">
-                  <AlertCircle className="h-4 w-4 text-destructive" />
-                  <AlertDescription className="text-destructive text-left">
+                <Alert className="border-coral/30 bg-coral/10">
+                  <AlertCircle className="h-4 w-4 text-coral" />
+                  <AlertDescription className="text-coral-dark">
                     {error}
                   </AlertDescription>
                 </Alert>
               ) : null}
 
+              <div className="flex gap-3 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => navigate(gsdeHref(ROUTE, id))}
+                  className="flex-1 bg-white/70 hover:bg-coral hover:text-white border-coral/30 text-coral transition-all duration-300"
+                >
+                  Back
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="flex-1 bg-ocean hover:bg-ocean-dark text-white font-semibold py-3 transition-all duration-300 flex items-center gap-2"
+                >
+                  {loading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Logging in...
+                    </>
+                  ) : (
+                    <>
+                      <LogIn className="w-4 h-4" />
+                      Login
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              <div className="relative mt-6">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-white px-2 text-gray-500">Or</span>
+                </div>
+              </div>
+
               <Button
-                type="submit"
+                type="button"
+                variant="outline"
+                onClick={handleGoogleSignIn}
                 disabled={loading}
-                className="w-full py-6 text-lg font-semibold bg-ocean hover:bg-ocean-dark text-white shadow-beach transition-all duration-300 flex items-center justify-center gap-3"
+                className="w-full mt-4 text-xs sm:text-sm py-2 sm:py-3"
               >
-                {loading ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <LogIn className="w-5 h-5" />
-                )}
-                {loading ? "Signing in…" : "Sign in as Admin"}
+                <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-2 flex-shrink-0" viewBox="0 0 24 24">
+                  <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                  <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                  <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                  <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                </svg>
+                Continue with Google
               </Button>
             </form>
 
-            <div className="relative my-5">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white px-2 text-gray-500">Or</span>
-              </div>
+            <div className="mt-6 text-center">
+              <Button
+                variant="link"
+                onClick={() =>
+                  setError(
+                    "To create an admin account, register through player registration first, then contact support to assign admin privileges."
+                  )
+                }
+                className="text-sm text-foreground/60"
+              >
+                Need an admin account?
+              </Button>
             </div>
-
-            <Button
-              onClick={handleGoogleSignIn}
-              disabled={loading}
-              variant="outline"
-              className="w-full py-6 text-lg font-semibold border-ocean/60 bg-ocean/5 text-ocean hover:bg-ocean hover:text-white shadow-sm transition-all duration-300 flex items-center justify-center gap-3"
-            >
-              <ShieldCheck className="w-5 h-5" />
-              Sign in with Google
-            </Button>
           </CardContent>
         </Card>
-
-        <div className="mt-8 text-sm text-foreground/60">
-          <p>🌊 Beach Volleyball Tournament Tracker 🏖️</p>
-          <p className="mt-2 text-xs">
-            Admin access is restricted to authorized accounts.
-          </p>
-        </div>
       </div>
     </div>
   );

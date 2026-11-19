@@ -32,12 +32,9 @@ export default function GroupDoubleEliminationPlayerAccess() {
   const [signingOut, setSigningOut] = useState(false);
 
   const registration = doc && user ? findRegistrationByUid(doc, user.uid) : undefined;
+  const canOpenTeam = Boolean(user && registration?.status === "approved");
 
   const go = (route: string) => navigate(gsdeHref(route, id));
-  const goToRegister = (mode: "sign-in" | "register") => {
-    const base = gsdeHref(`${ROUTE}/register`, id);
-    navigate(`${base}${base.includes("?") ? "&" : "?"}mode=${mode}`);
-  };
 
   const handleSignOut = async () => {
     setSigningOut(true);
@@ -83,7 +80,7 @@ export default function GroupDoubleEliminationPlayerAccess() {
           <Card className="bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach">
             <CardContent className="space-y-4 pt-6">
               <Button
-                onClick={() => goToRegister("sign-in")}
+                onClick={() => go(`${ROUTE}/sign-in`)}
                 className="w-full py-6 text-lg font-semibold bg-ocean hover:bg-ocean-dark text-white shadow-beach transition-all duration-300 flex items-center justify-center gap-3"
               >
                 <LogIn className="w-5 h-5" />
@@ -100,20 +97,11 @@ export default function GroupDoubleEliminationPlayerAccess() {
               </div>
 
               <Button
-                onClick={() => goToRegister("register")}
+                onClick={() => go(`${ROUTE}/register`)}
                 className="w-full py-6 text-lg font-semibold bg-sunset hover:bg-sunset-dark text-white shadow-beach transition-all duration-300 flex items-center justify-center gap-3"
               >
                 <UserPlus className="w-5 h-5" />
                 Register
-              </Button>
-
-              <Button
-                onClick={() => go(`${ROUTE}/player`)}
-                variant="outline"
-                className="w-full py-6 text-lg font-semibold border-ocean/60 bg-ocean/5 text-ocean hover:bg-ocean hover:text-white shadow-sm transition-all duration-300 flex items-center justify-center gap-3"
-              >
-                <Users className="w-5 h-5" />
-                My team
               </Button>
             </CardContent>
           </Card>
@@ -154,11 +142,12 @@ export default function GroupDoubleEliminationPlayerAccess() {
                   >
                     View status
                   </Button>
-                  {registration?.status === "approved" ? (
+                  {canOpenTeam ? (
                     <Button
                       onClick={() => go(`${ROUTE}/player`)}
                       className="flex-1 bg-ocean text-white hover:bg-ocean-dark"
                     >
+                      <Users className="w-4 h-4 mr-2" />
                       My team
                     </Button>
                   ) : null}

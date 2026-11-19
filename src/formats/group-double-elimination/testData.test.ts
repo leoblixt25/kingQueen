@@ -10,7 +10,8 @@ import {
   type GsdeTournamentDocument,
 } from "./persistence";
 import { getRegisteredTeamId } from "./registration";
-import { startGroupStage } from "./scoring";
+import { listEliminationMatches } from "./bracket";
+import { selectFinalResult, startGroupStage } from "./scoring";
 import {
   buildTestPairs,
   canLoadTestData,
@@ -27,6 +28,33 @@ const ADMIN: AuditActor = {
   id: "admin-1",
   label: "admin@kingqueen.test",
   isAdmin: true,
+};
+
+/** Small deterministic LCG so simulated outcomes are repeatable in tests. */
+const seededRng = (seed: number): (() => number) => {
+  let state = seed >>> 0;
+  return () => {
+    state = (state * 1664525 + 1013904223) >>> 0;
+    return state / 4294967296;
+  };
+};
+
+const expectWinnerOn21 = (match: {
+  teamAId: string | null;
+  teamBId: string | null;
+  winnerId: string | null;
+  scoreA: number | null;
+  scoreB: number | null;
+}): void => {
+  expect(match.scoreA).not.toBeNull();
+  expect(match.scoreB).not.toBeNull();
+  const a = match.scoreA as number;
+  const b = match.scoreB as number;
+  const winnerScore = match.winnerId === match.teamAId ? a : b;
+  const loserScore = match.winnerId === match.teamAId ? b : a;
+  expect(winnerScore).toBe(21);
+  expect(loserScore).toBeGreaterThanOrEqual(0);
+  expect(loserScore).toBeLessThanOrEqual(20);
 };
 
 const makeDoc = (
@@ -181,4 +209,44 @@ describe("GSDE admin test-data loader", () => {
     );
     expect(data.formatId).toBe("group-double-elimination");
   });
+
+  it("can fill random group scores with the winner on 21", () => {
+    const loaded = loadTestTeamsAndPlayers(makeDoc(8), ADMIN, {
+      results: "groups",
+      rng: seededRng(7),
+    });
+
+    expect(loaded.tournament.status).toBe("group-stage");
+    expect(loaded.matches).toHaveLength(12);
+    expect(loaded.matches.every((match) => match.status === "completed")).toBe(true);
+    loaded.matches.forEach(expectWinnerOn21);
+    expect(loaded.elimination).toBeNull();
+  });
+
+  it.each(SUPPORTED_TEST_TEAM_COUNTS)(
+    "simulates the full %i-team tournament through to a champion",
+    (teamCount) => {
+      const loaded = loadTestTeamsAndPlayers(makeDoc(teamCount), ADMIN, {
+        results: "full",
+        rng: seededRng(teamCount),
+      });
+
+      expect(loaded.tournament.status).toBe("completed");
+      expect(loaded.elimination).not.toBeNull();
+      expect(selectFinalResult(loaded)?.complete).toBe(true);
+
+      const allMatches = [
+        ...loaded.matches,
+        ...listEliminationMatches(loaded.elimination!),
+      ];
+      expect(allMatches.every((match) => match.status === "completed")).toBe(true);
+      allMatches.forEach(expectWinnerOn21);
+      expect(
+        loaded.auditLog?.some((entry) => entry.action === "test-data-loaded")
+      ).toBe(true);
+      expect(
+        loaded.auditLog?.some((entry) => entry.action === "elimination-score-entered")
+      ).toBe(true);
+    }
+  );
 });

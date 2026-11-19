@@ -73,6 +73,8 @@ import {
   GROUP_COUNT_BY_TEAM_COUNT,
   loadTestTeamsAndPlayers,
   SUPPORTED_TEST_TEAM_COUNTS,
+  TEST_RESULT_MODE_OPTIONS,
+  type TestResultMode,
   type TestTeamCount,
 } from "@/formats/group-double-elimination/testData";
 import {
@@ -323,6 +325,7 @@ export default function GroupDoubleEliminationAdminSetup() {
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [resetConfirmed, setResetConfirmed] = useState(false);
+  const [testResultMode, setTestResultMode] = useState<TestResultMode>("none");
 
   // The admin page is behind the GSDE admin guard, so the signed-in user is the
   // actor recorded on every audit entry. Fall back to UNKNOWN_ADMIN if identity
@@ -383,6 +386,18 @@ export default function GroupDoubleEliminationAdminSetup() {
   const selectedGroupCount = GROUP_COUNT_BY_TEAM_COUNT[selectedTeamCount];
   const expectedPlayers = selectedTeamCount * 2;
   const expectedGroupMatches = selectedGroupCount * 6;
+  const testResultSummary =
+    testResultMode === "groups"
+      ? `Random results for all ${expectedGroupMatches} group matches: winner 21, loser 0–20.`
+      : testResultMode === "full"
+        ? "Random results for the group stage and the entire elimination bracket, through to a champion: winner 21, loser 0–20."
+        : "Only teams and the schedule are created; you enter the scores yourself.";
+  const testLoadSuccess =
+    testResultMode === "groups"
+      ? `${selectedTeamCount} approved ${category} pairs loaded and ${expectedGroupMatches} random group results generated.`
+      : testResultMode === "full"
+        ? `${selectedTeamCount} approved ${category} pairs loaded; the full tournament was simulated to a champion.`
+        : `${selectedTeamCount} approved ${category} pairs and ${expectedPlayers} players loaded; group schedule generated.`;
   const groupMatches = doc?.matches ?? [];
   const playableElimination = doc?.elimination
     ? [...doc.elimination.winners, ...doc.elimination.losers, ...doc.elimination.grandFinal].filter(
@@ -1967,13 +1982,35 @@ export default function GroupDoubleEliminationAdminSetup() {
                           inside this tournament and generates the group schedule. Only available before
                           the group stage starts.
                         </p>
+                        <Field label="Results after loading">
+                          <select
+                            aria-label="Test result simulation"
+                            className={selectCls}
+                            value={testResultMode}
+                            onChange={(event) =>
+                              setTestResultMode(event.target.value as TestResultMode)
+                            }
+                          >
+                            {TEST_RESULT_MODE_OPTIONS.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </Field>
+                        <p className="text-center text-xs text-foreground/55">
+                          {testResultSummary}
+                        </p>
                         <Button
                           className={primaryBtn}
                           disabled={saving || !canLoadTestData(doc)}
                           onClick={() =>
                             apply(
-                              (current) => loadTestTeamsAndPlayers(current, actor),
-                              `${selectedTeamCount} approved ${category} pairs and ${expectedPlayers} players loaded; group schedule generated.`
+                              (current) =>
+                                loadTestTeamsAndPlayers(current, actor, {
+                                  results: testResultMode,
+                                }),
+                              testLoadSuccess
                             )
                           }
                         >
@@ -2228,7 +2265,7 @@ export default function GroupDoubleEliminationAdminSetup() {
           </Link>
         </div>
         <p className="text-center text-[10px] text-foreground/40">
-          GSDE admin build 2026-11-18b
+          GSDE admin build 2026-11-19a
         </p>
       </div>
     </div>

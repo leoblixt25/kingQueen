@@ -1377,6 +1377,7 @@ Four new test files, **59 new tests**:
 ### Test-data loader (2x2 simulation)
 - `testData.ts` supports **8 / 12 / 16 / 24 / 32 teams** → **16 / 24 / 32 / 48 / 64 players**, exactly two distinct players per team, `2N` approved registrations already assigned to their pairs, category-correct genders, pair-derived names and the full group schedule.
 - Group counts: 8→2, 12→3, 16→4, 24→6, 32→8 groups of four. Success copy and counts in `AdminSetup` are dynamic for the selected size/category.
+- **Result simulation** (Nov 19): the loader has a `Results after loading` select with `none` (default, teams + schedule only), `groups` (random score for every group match) and `full` (groups + the entire elimination bracket through to a champion). Scores follow the padel rule requested by the admin: the winning side always has **21**, the losing side a random **0–20**; no ties are generated. `loadTestTeamsAndPlayers(doc, actor, { results, rng })` is still pure; `rng` is injectable so tests are deterministic. Every simulated match goes through the normal scoring transitions, so standings, bracket progression, audit entries (`group-score-entered`, `elimination-score-entered`), grand-final reset and final placements all behave exactly as if the admin had typed the scores.
 
 ### Scheduling by size
 - New `sizeAware.ts` facade: **16 teams keep the unchanged `fixed16.ts` path** (4 groups / 24 matches / Spanish crossover). Other supported sizes use the existing generic `groups.ts` / `elimination.ts` / `bracket.ts` engines with four teams per group.
@@ -1390,22 +1391,22 @@ Four new test files, **59 new tests**:
 
 ### Tests and verification
 - New `category.test.ts` (18 tests): classification, valid/invalid pairs for all three categories, category-correct pairs for 8/12/16/24/32, corrupted-pair integrity, legacy genderless tolerance, display labels, partial-roster refresh, and full size-aware runs (8/12/24/32 generic bracket, 16 keeps crossover).
-- Updated `testData.test.ts` (14), `registration.test.ts` (16) and `persistence.test.ts` (11) for genders, pairs, custom names, category normalization and third-player rejection.
-- `npx vitest run` — **34 files / 380 tests passed**.
+- Updated `testData.test.ts` (20), `registration.test.ts` (16) and `persistence.test.ts` (11) for genders, pairs, custom names, category normalization, third-player rejection, random group scores and full-tournament simulation at every supported size.
+- `npx vitest run` — **34 files / 386 tests passed**.
 - `npx tsc -b --force` — **22 pre-existing baseline errors / 0 new**.
 - `npx eslint src/formats/group-double-elimination src/pages/formats/group-double-elimination` — 3 pre-existing errors (`progression.test.ts` prefer-const, `GsdeAdminSignIn.tsx` 2× `any`) + 9 pre-existing fast-refresh warnings; none on new code.
-- `npx vite build` — succeeds (`assets/index-DzUrRXes.js`, CSS `index-CB8RHMJ5.css`).
+- `npx vite build` — succeeds (`assets/index-mL_rrkP5.js`, CSS `index-CB8RHMJ5.css`).
 
 ### Deployment (hosting only, Nov 2026)
-- `npx firebase deploy --only hosting --project kingqueen-eu` succeeded (22 files). Live `index.html` serves `assets/index-DzUrRXes.js` (replacing `index-DF6v7Yod.js`) with `Cache-Control: no-cache`; CSS is `index-CB8RHMJ5.css`.
+- `npx firebase deploy --only hosting --project kingqueen-eu` succeeded (22 files). Live `index.html` serves `assets/index-mL_rrkP5.js` (replacing `index-DzUrRXes.js`) with `Cache-Control: no-cache`; CSS is `index-CB8RHMJ5.css`.
 - Live smoke: `/`, `/gsde`, `/format/group-stage-double-elimination`, `/register`, `/login` all HTTP 200.
 - `tournaments/test1` still holds its earlier single-player-derived team names until the test loader is run again; rerunning **Load test teams & players** at the selected size/category replaces them with valid pairs (allowed while status is `draft`/`configured` and no elimination bracket exists).
 
 ### Reset all + test-loader discoverability (follow-up)
-- **Manage → Setup** now contains three cards: the setup fields, **Test teams & players** (the old Flow loader, so it is visible where the category/team limit are chosen) and the shared **Delete all tournament data** card. Manage opens on **Setup** by default; the same delete card is also on **Overview**, so it is visible immediately after sign-in. Manage → Flow only keeps Build groups / Start group stage and links back to Setup. The admin footer shows `GSDE admin build 2026-11-18b` so the deployed build can be confirmed at a glance.
+- **Manage → Setup** now contains three cards: the setup fields, **Test teams & players** (the old Flow loader, so it is visible where the category/team limit are chosen) and the shared **Delete all tournament data** card. Manage opens on **Setup** by default; the same delete card is also on **Overview**, so it is visible immediately after sign-in. Manage → Flow only keeps Build groups / Start group stage and links back to Setup. The admin footer shows `GSDE admin build 2026-11-19a` so the deployed build can be confirmed at a glance.
 - New pure `resetTournament(doc, actor?)` in `scoring.ts`: clears `teams`, `groups`, `matches`, `elimination`, `registrations` and `scoreSubmissions`; resets `status` to `draft` and `seedingStale` / `bracketOverrideUsed` / `groupStageVerified` to false; keeps `id`, `config` (category normalized), `settings` and the audit log; appends a `tournament-reset` entry; runs through `commit()` so the integrity gate still applies. Allowed at **any** stage, including completed; the button is labelled **Delete all tournament data** and requires an explicit confirmation checkbox, and the checkbox resets on event-id change.
 - `AuditAction` gained `tournament-reset` and `selectCorrections()` includes it. `lifecycle.test.ts` (10 tests) covers a completed-tournament reset (all data cleared, setup/settings/audit kept, status `draft`, audit entry) and loading test data again afterwards.
-- Verification: **380 tests passed**, tsc 22 pre-existing baseline errors / 0 new, ESLint unchanged (3 pre-existing errors + 9 warnings), hosting deployed (`assets/index-DzUrRXes.js`), `firestore.rules` byte-identical.
+- Verification: **386 tests passed**, tsc 22 pre-existing baseline errors / 0 new, ESLint unchanged (3 pre-existing errors + 9 warnings), hosting deployed (`assets/index-mL_rrkP5.js`), `firestore.rules` byte-identical.
 
 ## 14. Deployment URLs
 

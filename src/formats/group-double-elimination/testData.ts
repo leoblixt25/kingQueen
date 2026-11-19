@@ -6,7 +6,15 @@ import {
   TEAM_PLAYER_COUNT,
 } from "./category";
 import type { GsdeTournamentDocument } from "./persistence";
-import { buildTeamsAndGroups } from "./scoring";
+import { listEliminationMatches } from "./bracket";
+import { getGameNumber } from "./gameNumbers";
+import {
+  buildTeamsAndGroups,
+  generateEliminationBracket,
+  scoreEliminationMatch,
+  scoreGroupMatch,
+  startGroupStage,
+} from "./scoring";
 import { createTeamId } from "./teams";
 import type {
   PlayerGender,
@@ -38,6 +46,30 @@ export const GROUP_COUNT_BY_TEAM_COUNT: Record<TestTeamCount, number> = {
   24: 6,
   32: 8,
 };
+
+/**
+ * Optional result simulation when loading test data.
+ * - `none`: only teams, registrations and the schedule (admin enters scores).
+ * - `groups`: every group match gets a random result.
+ * - `full`: group results plus the whole elimination bracket, up to a champion.
+ */
+export type TestResultMode = "none" | "groups" | "full";
+
+export const TEST_RESULT_MODE_OPTIONS: ReadonlyArray<{
+  value: TestResultMode;
+  label: string;
+}> = [
+  { value: "none", label: "Teams & schedule only" },
+  { value: "groups", label: "Random group scores only" },
+  { value: "full", label: "Random scores · full tournament" },
+];
+
+export interface TestDataOptions {
+  /** Result simulation to apply after loading teams. Defaults to `none`. */
+  results?: TestResultMode;
+  /** Injectable RNG so tests are deterministic. Defaults to `Math.random`. */
+  rng?: () => number;
+}
 
 const MALE_FIRST_NAMES = [
   "Liam",
@@ -188,13 +220,93 @@ export const buildTestPairs = (
   return pairs;
 };
 
+/** Random integer in [0, maxInclusive], clamped for injected RNGs. */
+const randomInt = (rng: () => number, maxInclusive: number): number =>
+  Math.min(maxInclusive, Math.max(0, Math.floor(rng() * (maxInclusive + 1))));
+
+/**
+ * Random single-set score: the winner always has 21, the loser 0–20.
+ * `winnerIsTeamA` decides which side receives the 21.
+ */
+const randomScore = (
+  rng: () => number,
+  winnerIsTeamA: boolean
+): { scoreA: number; scoreB: number } => {
+  const loserScore = randomInt(rng, 20);
+  return winnerIsTeamA
+    ? { scoreA: 21, scoreB: loserScore }
+    : { scoreA: loserScore, scoreB: 21 };
+};
+
+const simulateGroupResults = (
+  doc: GsdeTournamentDocument,
+  actor: AuditActor,
+  rng: () => number
+): GsdeTournamentDocument => {
+  let next = startGroupStage(doc, actor);
+  for (const match of [...next.matches]) {
+    if (match.status === "completed") continue;
+    const { scoreA, scoreB } = randomScore(rng, rng() < 0.5);
+    next = scoreGroupMatch(next, match.id, scoreA, scoreB, actor);
+  }
+  return next;
+};
+
+const simulateEliminationResults = (
+  doc: GsdeTournamentDocument,
+  actor: AuditActor,
+  rng: () => number
+): GsdeTournamentDocument => {
+  let next = doc;
+  // Bounded loop: the longest supported bracket finishes well below this.
+  for (let step = 0; step < 500; step += 1) {
+    if (next.tournament.status === "completed" || !next.elimination) return next;
+
+    const playable = listEliminationMatches(next.elimination)
+      .filter(
+        (match) =>
+          match.status !== "completed" &&
+          match.teamAId !== null &&
+          match.teamBId !== null
+      )
+      .sort(
+        (a, b) =>
+          (getGameNumber(a.id) ?? Number.MAX_SAFE_INTEGER) -
+          (getGameNumber(b.id) ?? Number.MAX_SAFE_INTEGER)
+      );
+    const match = playable[0];
+    if (!match || match.teamAId === null || match.teamBId === null) return next;
+
+    const winnerIsTeamA = rng() < 0.5;
+    const { scoreA, scoreB } = randomScore(rng, winnerIsTeamA);
+    next = scoreEliminationMatch(
+      next,
+      {
+        matchId: match.id,
+        winnerId: winnerIsTeamA ? match.teamAId : match.teamBId,
+        loserId: winnerIsTeamA ? match.teamBId : match.teamAId,
+        scoreA,
+        scoreB,
+      },
+      actor
+    );
+  }
+  return next;
+};
+
 /**
  * Replace teams and registrations with approved 2x2 test data and generate the
  * group schedule. Pure: the caller persists the returned document.
+ *
+ * `options.results` can additionally fill random scores (winner 21, loser
+ * 0–20) for the group stage and, with `full`, play the entire elimination
+ * bracket through to a champion. Passing `rng` makes the simulation
+ * deterministic for tests.
  */
 export const loadTestTeamsAndPlayers = (
   doc: GsdeTournamentDocument,
-  actor: AuditActor
+  actor: AuditActor,
+  options: TestDataOptions = {}
 ): GsdeTournamentDocument => {
   if (!canLoadTestData(doc)) {
     throw new TestDataError(
@@ -242,9 +354,19 @@ export const loadTestTeamsAndPlayers = (
     actor
   );
 
-  return appendAudit(seeded, {
+  const loaded = appendAudit(seeded, {
     action: "test-data-loaded",
     actor,
     detail: `Loaded ${teams.length} approved ${category} test pairs and ${registrations.length} approved test players.`,
   });
+
+  const mode = options.results ?? "none";
+  if (mode === "none") return loaded;
+
+  const rng = options.rng ?? Math.random;
+  const withGroupResults = simulateGroupResults(loaded, actor, rng);
+  if (mode === "groups") return withGroupResults;
+
+  const withBracket = generateEliminationBracket(withGroupResults, {}, actor);
+  return simulateEliminationResults(withBracket, actor, rng);
 };

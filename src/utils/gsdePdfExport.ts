@@ -228,7 +228,13 @@ export const buildGsdePdf = (report: GsdeTournamentReport): jsPDF => {
       accent: RGB
     ): void => {
       const completed = match.status === "completed" && match.scoreA !== null && match.scoreB !== null;
-      const label = `${match.groupName ? `${match.groupName} · ` : ""}${match.label}`;
+      const resultBadge =
+        match.resultType === "walkover"
+          ? "W/O"
+          : match.resultType === "retired"
+            ? "RET"
+            : null;
+      const label = `${match.groupName ? `${match.groupName} · ` : ""}${match.label}${resultBadge ? ` · ${resultBadge}` : ""}`;
 
       pdf.setFillColor(...WHITE);
       pdf.setDrawColor(...BORDER_GRAY);
@@ -265,7 +271,7 @@ export const buildGsdePdf = (report: GsdeTournamentReport): jsPDF => {
       pdf.text(match.teamA, barX + 3.5, barY1 + barH / 2 + fsA * 0.185);
       if (completed) {
         pdf.setFontSize(10);
-        pdf.text(String(match.scoreA), barX + barW - 2.5, barY1 + barH / 2 + 3.5, { align: "right" });
+        pdf.text(resultBadge ?? String(match.scoreA), barX + barW - 2.5, barY1 + barH / 2 + 3.5, { align: "right" });
       }
 
       pdf.setFontSize(7.5);
@@ -282,7 +288,7 @@ export const buildGsdePdf = (report: GsdeTournamentReport): jsPDF => {
       pdf.text(match.teamB, barX + 3.5, barY2 + barH / 2 + fsB * 0.185);
       if (completed) {
         pdf.setFontSize(10);
-        pdf.text(String(match.scoreB), barX + barW - 2.5, barY2 + barH / 2 + 3.5, { align: "right" });
+        pdf.text(resultBadge ?? String(match.scoreB), barX + barW - 2.5, barY2 + barH / 2 + 3.5, { align: "right" });
       }
     };
 

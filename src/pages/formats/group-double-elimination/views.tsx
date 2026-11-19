@@ -8,7 +8,13 @@ import {
   Trophy,
 } from "lucide-react";
 import type { EliminationMatch, TeamId } from "@/formats/group-double-elimination";
-import { getGameLabel, getGameNumber } from "@/formats/group-double-elimination";
+import {
+  getGameLabel,
+  getGameNumber,
+  getResultType,
+  getWinner,
+  resultTypeBadge,
+} from "@/formats/group-double-elimination";
 import type { GsdeTournamentDocument } from "@/formats/group-double-elimination/persistence";
 import {
   selectCompletion,
@@ -236,16 +242,23 @@ function EliminationMatchRow({
 }) {
   const gameNumber = getGameNumber(match.id);
   const gameLabel = gameNumber === null ? match.id : `Game ${gameNumber}`;
+  const winnerId = getWinner(match);
+  const badge = resultTypeBadge(getResultType(match));
 
   return (
     <div className="rounded-xl border border-sand-dark/30 bg-white/60 p-2.5">
       <div className="mb-1.5 flex items-center justify-between gap-2">
-        <span className="text-xs font-bold text-ocean">{gameLabel}</span>
+        <span className="flex items-center gap-1.5 text-xs font-bold text-ocean">
+          {gameLabel}
+          {badge ? (
+            <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">{badge}</Badge>
+          ) : null}
+        </span>
         {statusBadge(match)}
       </div>
       {[match.teamAId, match.teamBId].map((teamId, index) => {
         const score = index === 0 ? match.scoreA : match.scoreB;
-        const isWinner = match.winnerId !== null && match.winnerId === teamId;
+        const isWinner = winnerId !== null && winnerId === teamId;
         return (
           <div
             key={`${match.id}-slot-${index}`}

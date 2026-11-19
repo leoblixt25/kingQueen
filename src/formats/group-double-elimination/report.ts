@@ -1,4 +1,5 @@
 import { selectCorrections } from "./audit";
+import { getResultType, getWinner } from "./matchResult";
 import { listEliminationMatches } from "./bracket";
 import {
   normalizeTournamentCategory,
@@ -60,6 +61,7 @@ export interface GsdeReportMatch {
   scoreA: number | null;
   scoreB: number | null;
   winnerId: TeamId | null;
+  resultType: "normal" | "walkover" | "retired";
   status: MatchStatus;
 }
 
@@ -250,6 +252,7 @@ export const buildGsdeTournamentReport = (
     scoreA: match.scoreA,
     scoreB: match.scoreB,
     winnerId: match.winnerId,
+    resultType: "normal",
     status: match.status,
   });
 
@@ -286,7 +289,8 @@ export const buildGsdeTournamentReport = (
     teamB: nameOf(match.teamBId),
     scoreA: match.scoreA,
     scoreB: match.scoreB,
-    winnerId: match.winnerId,
+    winnerId: getWinner(match),
+    resultType: getResultType(match),
     status: match.status,
   });
 

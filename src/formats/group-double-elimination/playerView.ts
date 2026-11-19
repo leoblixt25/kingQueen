@@ -11,6 +11,7 @@ import {
   calculateGroupStandings,
   type GroupStanding,
 } from "./groupStandings";
+import { getWinner } from "./matchResult";
 import { listEliminationMatches } from "./bracket";
 import {
   getEliminationChampion,
@@ -193,7 +194,7 @@ const eliminationMatchFor = (
     opponentId: isA ? match.teamBId : match.teamAId,
     scoreFor: isA ? match.scoreA : match.scoreB,
     scoreAgainst: isA ? match.scoreB : match.scoreA,
-    won: match.winnerId === teamId,
+    won: getWinner(match) === teamId,
   };
 };
 

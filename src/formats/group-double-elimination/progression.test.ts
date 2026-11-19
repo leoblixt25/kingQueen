@@ -196,7 +196,7 @@ describe("Grand Final and the reset final", () => {
 
   it("decides the champion in the reset final", () => {
     const ready = playUntilFinal(generateDoubleEliminationBracket(seeds(8)).bracket);
-    let state = play(ready, byId(ready, "grand-final-1"), "teamB").bracket;
+    const state = play(ready, byId(ready, "grand-final-1"), "teamB").bracket;
     const reset = byId(state, "grand-final-2");
     const result = play(state, reset, "teamA");
 
@@ -326,18 +326,20 @@ describe("progression errors", () => {
     ).toBe("invalid-outcome");
   });
 
-  it("rejects scores that contradict the winner", () => {
-    expect(
-      captureError(() =>
-        advanceEliminationMatch(bracket, {
-          matchId: "winners-r1-m1",
-          winnerId: "s1",
-          loserId: "s8",
-          scoreA: 10,
-          scoreB: 21,
-        })
-      ).code
-    ).toBe("invalid-outcome");
+  it("higher score wins even when a legacy winner flag contradicts it", () => {
+    const match = byId(bracket, "winners-r1-m1");
+    const result = advanceEliminationMatch(bracket, {
+      matchId: match.id,
+      winnerId: match.teamAId as TeamId,
+      loserId: match.teamBId as TeamId,
+      scoreA: 10,
+      scoreB: 21,
+    });
+    const completed = byId(result.bracket, match.id);
+    expect(completed.winnerId).toBe(match.teamBId);
+    expect(completed.loserId).toBe(match.teamAId);
+    expect(completed.scoreA).toBe(10);
+    expect(completed.scoreB).toBe(21);
   });
 
   it("rejects replaying a completed match", () => {

@@ -1,6 +1,7 @@
 import type {
   EliminationBracket,
   EliminationMatch,
+  EliminationResultType,
   GroupStageMatch,
   MatchId,
   PlayerRegistration,
@@ -38,6 +39,12 @@ import {
   listEliminationMatches,
   validateEliminationBracket,
 } from "./bracket";
+import {
+  getLoser,
+  getWinner,
+  isMarkerScore,
+  resolveEliminationResult,
+} from "./matchResult";
 import {
   advanceEliminationMatch,
   getEliminationLossCount,
@@ -206,8 +213,11 @@ const enforceScoreRule = (
   doc: GsdeTournamentDocument,
   scoreA: number,
   scoreB: number,
-  match?: GroupStageMatch | EliminationMatch
+  match?: GroupStageMatch | EliminationMatch,
+  resultType: EliminationResultType = "normal"
 ): string | null => {
+  // Walkover/retired results carry a 1–0 marker, not a played set.
+  if (resultType !== "normal") return null;
   const validation = validateScore(scoreA, scoreB, scoreConfigFor(doc));
   if (!validation.valid) {
     fail("invalid-score", validation.message ?? "Invalid score.");
@@ -969,18 +979,35 @@ export const scoreEliminationMatch = (
   }
 
   const target = findEliminationMatchOrFail(doc.elimination, outcome.matchId);
+  if ((outcome.scoreA == null) !== (outcome.scoreB == null)) {
+    fail("invalid-score", "Both scores are required for an elimination result.");
+  }
+  const resultType = outcome.resultType ?? "normal";
+  if (
+    resultType !== "normal" &&
+    outcome.scoreA !== null &&
+    outcome.scoreB !== null &&
+    outcome.scoreA !== undefined &&
+    outcome.scoreB !== undefined &&
+    !isMarkerScore(outcome.scoreA, outcome.scoreB)
+  ) {
+    fail(
+      "invalid-score",
+      "Walkover and retired results must advance one team with a 1–0 marker score."
+    );
+  }
   const warning =
     outcome.scoreA !== undefined &&
     outcome.scoreB !== undefined &&
     outcome.scoreA !== null &&
     outcome.scoreB !== null
-      ? enforceScoreRule(doc, outcome.scoreA, outcome.scoreB, target)
+      ? enforceScoreRule(doc, outcome.scoreA, outcome.scoreB, target, resultType)
       : null;
 
   try {
     const result = advanceEliminationMatch(
       doc.elimination,
-      outcome,
+      { ...outcome, resultType },
       FIXED16_ADVANCE_OPTIONS
     );
     const next = touch({
@@ -1009,6 +1036,7 @@ interface StoredResult {
   loserId: TeamId;
   scoreA: number | null;
   scoreB: number | null;
+  resultType?: EliminationResultType;
 }
 
 const collectResults = (bracket: EliminationBracket): StoredResult[] =>
@@ -1016,15 +1044,16 @@ const collectResults = (bracket: EliminationBracket): StoredResult[] =>
     .filter(
       (match): match is EliminationMatch =>
         match.status === "completed" &&
-        match.winnerId !== null &&
-        match.loserId !== null
+        getWinner(match) !== null &&
+        getLoser(match) !== null
     )
     .map((match) => ({
       matchId: match.id,
-      winnerId: match.winnerId as TeamId,
-      loserId: match.loserId as TeamId,
+      winnerId: getWinner(match) as TeamId,
+      loserId: getLoser(match) as TeamId,
       scoreA: match.scoreA,
       scoreB: match.scoreB,
+      resultType: match.resultType,
     }));
 
 /**
@@ -1108,6 +1137,7 @@ const replayResults = (
             loserId: result.loserId,
             scoreA: result.scoreA,
             scoreB: result.scoreB,
+            resultType: result.resultType,
           },
           FIXED16_ADVANCE_OPTIONS
         ).bracket;
@@ -1153,7 +1183,7 @@ const replayResults = (
 export const correctEliminationResult = (
   doc: GsdeTournamentDocument,
   matchId: MatchId,
-  outcome: Omit<StoredResult, "matchId">,
+  outcome: Omit<EliminationMatchOutcome, "matchId">,
   actor?: AuditActor
 ): GsdeTournamentDocument => {
   if (doc.tournament.status === "completed") {
@@ -1170,37 +1200,46 @@ export const correctEliminationResult = (
   }
 
   const target = findEliminationMatchOrFail(doc.elimination, matchId);
-  const warning =
-    outcome.scoreA !== null && outcome.scoreB !== null
-      ? enforceScoreRule(doc, outcome.scoreA, outcome.scoreB, target)
-      : null;
+  if ((outcome.scoreA == null) !== (outcome.scoreB == null)) {
+    fail("invalid-score", "Both scores are required for a correction.");
+  }
+  const resolved = resolveEliminationResult(target, outcome);
   const participants = [target.teamAId, target.teamBId];
   if (
-    !outcome.winnerId ||
-    !outcome.loserId ||
-    outcome.winnerId === outcome.loserId ||
-    !participants.includes(outcome.winnerId) ||
-    !participants.includes(outcome.loserId)
+    !resolved.winnerId ||
+    !resolved.loserId ||
+    resolved.winnerId === resolved.loserId ||
+    !participants.includes(resolved.winnerId) ||
+    !participants.includes(resolved.loserId)
   ) {
     fail(
       "invalid-score",
-      "Correction winner and loser must be the two match participants."
+      "Correction scores must identify the two match participants."
     );
   }
-  if (outcome.scoreA !== null || outcome.scoreB !== null) {
-    const validScores =
-      outcome.scoreA !== null &&
-      outcome.scoreB !== null &&
-      Number.isInteger(outcome.scoreA) &&
-      Number.isInteger(outcome.scoreB) &&
-      outcome.scoreA >= 0 &&
-      outcome.scoreB >= 0 &&
-      outcome.scoreA !== outcome.scoreB &&
-      (outcome.scoreA > outcome.scoreB) === (outcome.winnerId === target.teamAId);
-    if (!validScores) {
-      fail("invalid-score", "Correction scores do not agree with the winner.");
-    }
+  if (
+    resolved.resultType !== "normal" &&
+    outcome.scoreA !== null &&
+    outcome.scoreB !== null &&
+    outcome.scoreA !== undefined &&
+    outcome.scoreB !== undefined &&
+    !isMarkerScore(outcome.scoreA, outcome.scoreB)
+  ) {
+    fail(
+      "invalid-score",
+      "Walkover and retired results must advance one team with a 1–0 marker score."
+    );
   }
+  const warning =
+    resolved.scoreA !== null && resolved.scoreB !== null
+      ? enforceScoreRule(
+          doc,
+          resolved.scoreA,
+          resolved.scoreB,
+          target,
+          resolved.resultType
+        )
+      : null;
 
   const storedResults = collectResults(doc.elimination);
   if (!storedResults.some((result) => result.matchId === matchId)) {
@@ -1217,7 +1256,14 @@ export const correctEliminationResult = (
       )
     );
   const results = storedResults.filter((result) => result.matchId !== matchId);
-  results.push({ matchId, ...outcome });
+  results.push({
+    matchId,
+    winnerId: resolved.winnerId,
+    loserId: resolved.loserId,
+    scoreA: resolved.scoreA,
+    scoreB: resolved.scoreB,
+    resultType: resolved.resultType,
+  });
 
   const { bracket, invalidated } = replayResults(seeds, results);
   const next = touch({

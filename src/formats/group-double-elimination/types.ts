@@ -161,6 +161,9 @@ export interface MatchScore {
   scoreB: number | null;
 }
 
+/** How an elimination result was decided. `normal` is the default. */
+export type EliminationResultType = "normal" | "walkover" | "retired";
+
 export interface GroupStageMatch extends MatchScore {
   id: MatchId;
   phase: "group";
@@ -184,6 +187,8 @@ export interface EliminationMatch extends MatchScore {
   status: MatchStatus;
   winnerId: TeamId | null;
   loserId: TeamId | null;
+  /** Walkover/retired results carry a 1–0 marker score and this label. */
+  resultType?: EliminationResultType;
   /** Where the winner advances; `null` for the final match of a bracket. */
   winnerTo: BracketLink | null;
   /** Where the loser drops; `null` means the team is eliminated. */

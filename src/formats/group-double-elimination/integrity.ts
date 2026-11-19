@@ -1,4 +1,6 @@
 import type { GsdeTournamentDocument } from "./persistence";
+import type { MatchId, TeamId } from "./types";
+import { getLoser, getWinner, hasDecidableScores, deriveWinner } from "./matchResult";
 import { listEliminationMatches } from "./bracket";
 import { isGroupStageMatchComplete } from "./groupStageMatches";
 import { normalizeTournamentCategory, validateTeamsForCategory } from "./category";
@@ -20,6 +22,7 @@ export type IntegrityCode =
   | "invalid-group-participants"
   | "invalid-seed-count"
   | "invalid-elimination-result"
+  | "winner-score-mismatch"
   | "broken-progression-link"
   | "duplicate-registration-uid"
   | "duplicate-registration-email"
@@ -44,6 +47,41 @@ const duplicates = (values: readonly string[]): string[] => {
     seen.add(value);
   }
   return [...repeated];
+};
+
+export interface WinnerScoreConflict {
+  matchId: MatchId;
+  storedWinnerId: TeamId | null;
+  scoreWinnerId: TeamId;
+}
+
+/**
+ * Migration check: a saved match whose stored winner disagrees with its own
+ * scores. Only comparable score pairs are checked, so legacy walkovers without
+ * scores are not reported as conflicts.
+ */
+export const findWinnerScoreConflicts = (
+  doc: GsdeTournamentDocument
+): WinnerScoreConflict[] => {
+  if (!doc.elimination) return [];
+  const conflicts: WinnerScoreConflict[] = [];
+  for (const match of listEliminationMatches(doc.elimination)) {
+    if (match.status !== "completed" || !hasDecidableScores(match)) continue;
+    const scoreWinnerId = deriveWinner(
+      match.teamAId,
+      match.teamBId,
+      match.scoreA,
+      match.scoreB
+    );
+    if (scoreWinnerId && match.winnerId !== scoreWinnerId) {
+      conflicts.push({
+        matchId: match.id,
+        storedWinnerId: match.winnerId,
+        scoreWinnerId,
+      });
+    }
+  }
+  return conflicts;
 };
 
 export class IntegrityError extends Error {
@@ -248,13 +286,19 @@ export const validateTournamentIntegrity = (
 
   const eliminationIds = new Set(eliminationMatches.map((match) => match.id));
   for (const match of eliminationMatches) {
+    const winner = getWinner(match);
+    const loser = getLoser(match);
+    // Scores are authoritative when present. Legacy records without scores
+    // still need a valid stored winner/loser pair to be considered complete.
+    const legacyResult = match.status === "completed" && !hasDecidableScores(match);
     if (
       match.status === "completed" &&
-      (!match.winnerId ||
-        !match.loserId ||
-        match.winnerId === match.loserId ||
-        ![match.teamAId, match.teamBId].includes(match.winnerId) ||
-        ![match.teamAId, match.teamBId].includes(match.loserId))
+      (!winner ||
+        !loser ||
+        winner === loser ||
+        ![match.teamAId, match.teamBId].includes(winner) ||
+        ![match.teamAId, match.teamBId].includes(loser) ||
+        (legacyResult && (!match.winnerId || !match.loserId)))
     ) {
       add(
         "invalid-elimination-result",
@@ -269,6 +313,13 @@ export const validateTournamentIntegrity = (
         );
       }
     }
+  }
+
+  for (const conflict of findWinnerScoreConflicts(doc)) {
+    add(
+      "winner-score-mismatch",
+      `Elimination match "${conflict.matchId}" has a stored winner (${conflict.storedWinnerId ?? "none"}) that contradicts its scores; the score winner is ${conflict.scoreWinnerId}. Recompute the bracket from results to repair it.`
+    );
   }
 
   return issues;

@@ -6,6 +6,7 @@ import type {
   MatchId,
   TeamId,
 } from "./types";
+import { getLoser, getWinner } from "./matchResult";
 import { EliminationError } from "./errors";
 
 /**
@@ -444,19 +445,21 @@ export const validateEliminationBracket = (
 
     if (match.status !== "completed") continue;
 
-    if (!match.winnerId || !match.loserId) {
+    const winner = getWinner(match);
+    const loser = getLoser(match);
+    if (!winner || !loser) {
       problems.push(`"${match.id}" is completed without a winner and loser.`);
       continue;
     }
 
     const participants = [match.teamAId, match.teamBId];
-    if (!participants.includes(match.winnerId)) {
+    if (!participants.includes(winner)) {
       problems.push(`"${match.id}" winner is not a participant.`);
     }
-    if (!participants.includes(match.loserId)) {
+    if (!participants.includes(loser)) {
       problems.push(`"${match.id}" loser is not a participant.`);
     }
-    if (match.winnerId === match.loserId) {
+    if (winner === loser) {
       problems.push(`"${match.id}" cannot have the same winner and loser.`);
     }
   }

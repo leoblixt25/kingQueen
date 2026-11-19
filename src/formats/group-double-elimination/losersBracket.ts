@@ -1,4 +1,5 @@
 import type { EliminationBracket, EliminationMatch, TeamId } from "./types";
+import { getWinner } from "./matchResult";
 import { GRAND_FINAL_ONE_ID } from "./bracket";
 
 /**
@@ -48,8 +49,8 @@ export const getLosersChampion = (
       match.winnerTo.slot === "teamB"
   );
 
-  if (final?.status === "completed" && final.winnerId) {
-    return final.winnerId;
+  if (final?.status === "completed") {
+    return getWinner(final);
   }
 
   // With two teams the Losers champion is the first-round loser, so no

@@ -1,4 +1,5 @@
 import type { EliminationBracket, EliminationMatch, TeamId } from "./types";
+import { getWinner } from "./matchResult";
 import { GRAND_FINAL_ONE_ID } from "./bracket";
 
 /**
@@ -52,8 +53,8 @@ export const getWinnersChampion = (
 
   const roundOne = bracket.grandFinal.find((match) => match.round === 1);
 
-  if (final?.status === "completed" && final.winnerId) {
-    return final.winnerId;
+  if (final?.status === "completed") {
+    return getWinner(final);
   }
 
   // The slot can already be filled when the Winners final was itself a

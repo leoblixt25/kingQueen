@@ -2,9 +2,16 @@ import type {
   BracketLink,
   EliminationBracket,
   EliminationMatch,
+  EliminationResultType,
   MatchId,
   TeamId,
 } from "./types";
+import {
+  getLoser,
+  getWinner,
+  isMarkerScore,
+  resolveEliminationResult,
+} from "./matchResult";
 import { EliminationError } from "./errors";
 import {
   GRAND_FINAL_TWO_ID,
@@ -29,11 +36,16 @@ import {
 
 export interface EliminationMatchOutcome {
   matchId: MatchId;
-  winnerId: TeamId;
-  loserId: TeamId;
+  /**
+   * Optional legacy fields. When scores are supplied they always decide the
+   * result; these are only consulted for older matches recorded without scores.
+   */
+  winnerId?: TeamId;
+  loserId?: TeamId;
   /** Optional single-set scores, in `teamA` / `teamB` order. */
   scoreA?: number | null;
   scoreB?: number | null;
+  resultType?: EliminationResultType;
 }
 
 export interface EliminationAdvanceResult {
@@ -60,7 +72,7 @@ export const getEliminationLossCount = (
   teamId: TeamId
 ): number =>
   listEliminationMatches(bracket).filter(
-    (match) => match.status === "completed" && match.loserId === teamId
+    (match) => match.status === "completed" && getLoser(match) === teamId
   ).length;
 
 export const getEliminationWinCount = (
@@ -68,7 +80,7 @@ export const getEliminationWinCount = (
   teamId: TeamId
 ): number =>
   listEliminationMatches(bracket).filter(
-    (match) => match.status === "completed" && match.winnerId === teamId
+    (match) => match.status === "completed" && getWinner(match) === teamId
   ).length;
 
 const lastRoundWinner = (
@@ -76,19 +88,28 @@ const lastRoundWinner = (
 ): EliminationMatch | undefined => {
   const lastRound = Math.max(0, ...matches.map((match) => match.round));
   return matches.find(
-    (match) => match.round === lastRound && match.status === "completed" && match.winnerId
+    (match) =>
+      match.round === lastRound &&
+      match.status === "completed" &&
+      getWinner(match) !== null
   );
 };
 
 /** WB champion: winner of the last Winners-bracket round. */
 export const getWinnersBracketChampion = (
   bracket: EliminationBracket
-): TeamId | null => lastRoundWinner(bracket.winners)?.winnerId ?? null;
+): TeamId | null => {
+  const match = lastRoundWinner(bracket.winners);
+  return match ? getWinner(match) : null;
+};
 
 /** LB champion: winner of the last Losers-bracket round. */
 export const getLosersBracketChampion = (
   bracket: EliminationBracket
-): TeamId | null => lastRoundWinner(bracket.losers)?.winnerId ?? null;
+): TeamId | null => {
+  const match = lastRoundWinner(bracket.losers);
+  return match ? getWinner(match) : null;
+};
 
 /** A team with two losses is out and cannot be placed into another match. */
 const assertEligibleToAdvance = (
@@ -183,8 +204,8 @@ const firstFinalRequiresReset = (
     firstFinal.status !== "completed" ||
     !firstFinal.teamAId ||
     !firstFinal.teamBId ||
-    firstFinal.winnerId !== firstFinal.teamBId ||
-    firstFinal.loserId !== firstFinal.teamAId
+    getWinner(firstFinal) !== firstFinal.teamBId ||
+    getLoser(firstFinal) !== firstFinal.teamAId
   ) {
     return false;
   }
@@ -264,13 +285,51 @@ export const advanceEliminationMatch = (
     );
   }
 
-  const { winnerId, loserId } = outcome;
+  const resultType: EliminationResultType = outcome.resultType ?? "normal";
+  const hasScores =
+    outcome.scoreA !== undefined &&
+    outcome.scoreB !== undefined &&
+    outcome.scoreA !== null &&
+    outcome.scoreB !== null;
+
+  // Both null is the legacy no-score path; exactly one side is an error.
+  if ((outcome.scoreA == null) !== (outcome.scoreB == null)) {
+    throw new EliminationError(
+      "invalid-outcome",
+      "Both scores are required; an empty slot cannot be scored."
+    );
+  }
+  if (hasScores) {
+    if (!isScore(outcome.scoreA) || !isScore(outcome.scoreB)) {
+      throw new EliminationError(
+        "invalid-outcome",
+        "Scores must be non-negative integers."
+      );
+    }
+    if (outcome.scoreA === outcome.scoreB) {
+      throw new EliminationError(
+        "invalid-outcome",
+        "Single-set matches cannot end in a tie."
+      );
+    }
+    if (resultType !== "normal" && !isMarkerScore(outcome.scoreA, outcome.scoreB)) {
+      throw new EliminationError(
+        "invalid-outcome",
+        "Walkover and retired results must advance one team with a 1–0 marker score."
+      );
+    }
+  }
+
+  // Scores are authoritative. A stale winner flag in a legacy caller can
+  // never override the team that actually scored more points.
+  const resolved = resolveEliminationResult(match, outcome);
+  const { winnerId, loserId } = resolved;
   const winnerIsA = winnerId === match.teamAId;
   const winnerIsB = winnerId === match.teamBId;
   const loserIsA = loserId === match.teamAId;
   const loserIsB = loserId === match.teamBId;
 
-  if (!((winnerIsA && loserIsB) || (winnerIsB && loserIsA))) {
+  if (!winnerId || !loserId || !((winnerIsA && loserIsB) || (winnerIsB && loserIsA))) {
     throw new EliminationError(
       "invalid-outcome",
       `"${match.id}" is played by "${match.teamAId}" and "${match.teamBId}".`
@@ -286,36 +345,14 @@ export const advanceEliminationMatch = (
     );
   }
 
-  const hasScores = outcome.scoreA != null || outcome.scoreB != null;
-  if (hasScores) {
-    if (!isScore(outcome.scoreA) || !isScore(outcome.scoreB)) {
-      throw new EliminationError(
-        "invalid-outcome",
-        "Scores must be non-negative integers."
-      );
-    }
-    if (outcome.scoreA === outcome.scoreB) {
-      throw new EliminationError(
-        "invalid-outcome",
-        "Single-set matches cannot end in a tie."
-      );
-    }
-    const scoreWinnerIsA = outcome.scoreA > outcome.scoreB;
-    if (scoreWinnerIsA !== winnerIsA) {
-      throw new EliminationError(
-        "invalid-outcome",
-        "Scores and winner do not agree."
-      );
-    }
-  }
-
   const completed: EliminationMatch = {
     ...match,
-    scoreA: outcome.scoreA ?? null,
-    scoreB: outcome.scoreB ?? null,
+    scoreA: hasScores ? outcome.scoreA ?? null : null,
+    scoreB: hasScores ? outcome.scoreB ?? null : null,
     status: "completed",
     winnerId,
     loserId,
+    ...(resolved.resultType === "normal" ? {} : { resultType: resolved.resultType }),
     reviewRequired: false,
     reviewReason: null,
   };
@@ -365,16 +402,12 @@ export const getEliminationChampion = (
 ): TeamId | null => {
   const second = bracket.grandFinal.find((match) => match.round === 2);
   if (second?.status === "completed") {
-    return second.winnerId;
+    return getWinner(second);
   }
 
   const first = bracket.grandFinal.find((match) => match.round === 1);
-  if (
-    first?.status === "completed" &&
-    first.winnerId &&
-    !needsGrandFinalReset(bracket)
-  ) {
-    return first.winnerId;
+  if (first?.status === "completed" && !needsGrandFinalReset(bracket)) {
+    return getWinner(first);
   }
 
   return null;

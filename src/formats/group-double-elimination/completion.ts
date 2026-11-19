@@ -1,4 +1,5 @@
 import type { GsdeTournamentDocument } from "./persistence";
+import { getLoser, getWinner } from "./matchResult";
 import { generateDoubleEliminationBracket, listEliminationMatches } from "./bracket";
 import { calculateAllGroupStandings, seedTeamsFromGroupStandings } from "./groupStandings";
 import { getGroupStageProgress, isGroupStageMatchComplete } from "./groupStageMatches";
@@ -195,8 +196,8 @@ export const validateTournamentCompletion = (
       stored.status !== "completed" ||
       stored.teamAId === null ||
       stored.teamBId === null ||
-      stored.winnerId === null ||
-      stored.loserId === null
+      getWinner(stored) === null ||
+      getLoser(stored) === null
     );
   });
 
@@ -226,7 +227,7 @@ export const validateTournamentCompletion = (
   // fewer than two elimination losses can only be the champion.
   const aliveTeamIds = new Set<TeamId>(bracket.seededTeamIds ?? []);
   for (const match of allMatches) {
-    for (const teamId of [match.teamAId, match.teamBId, match.winnerId, match.loserId]) {
+    for (const teamId of [match.teamAId, match.teamBId, getWinner(match), getLoser(match)]) {
       if (teamId) aliveTeamIds.add(teamId);
     }
   }

@@ -20,6 +20,7 @@ export * from "./elimination";
 export * from "./bracket";
 export * from "./winnersBracket";
 export * from "./losersBracket";
+export * from "./matchResult";
 export * from "./progression";
 export * from "./eliminationStandings";
 export * from "./admin";

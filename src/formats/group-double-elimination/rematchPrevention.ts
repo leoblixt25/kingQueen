@@ -5,6 +5,7 @@ import type {
   MatchId,
   TeamId,
 } from "./types";
+import { getLoser, getWinner } from "./matchResult";
 import {
   findEliminationMatch,
   listEliminationMatches,
@@ -32,11 +33,13 @@ export const getPlayedOpponents = (
   for (const match of listEliminationMatches(bracket)) {
     if (match.status !== "completed") continue;
 
-    if (match.winnerId === teamId && match.loserId) {
-      opponents.add(match.loserId);
+    const winner = getWinner(match);
+    const loser = getLoser(match);
+    if (winner === teamId && loser) {
+      opponents.add(loser);
     }
-    if (match.loserId === teamId && match.winnerId) {
-      opponents.add(match.winnerId);
+    if (loser === teamId && winner) {
+      opponents.add(winner);
     }
   }
 

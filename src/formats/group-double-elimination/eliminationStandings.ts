@@ -1,4 +1,5 @@
 import type { EliminationBracket, MatchId, TeamId } from "./types";
+import { getLoser, getWinner } from "./matchResult";
 import { listEliminationMatches, loserMatchId } from "./bracket";
 import { GAME_IDS_16 } from "./gameNumbers";
 import {
@@ -56,8 +57,8 @@ const collectTeamIds = (bracket: EliminationBracket): TeamId[] => {
   for (const match of listEliminationMatches(bracket)) {
     add(match.teamAId);
     add(match.teamBId);
-    add(match.winnerId);
-    add(match.loserId);
+    add(getWinner(match));
+    add(getLoser(match));
   }
 
   return ids;
@@ -70,7 +71,7 @@ const eliminationMatchFor = (
   const candidates = listEliminationMatches(bracket).filter(
     (match) =>
       match.status === "completed" &&
-      match.loserId === teamId &&
+      getLoser(match) === teamId &&
       (match.phase === "losers" || match.phase === "grand-final")
   );
 
@@ -89,12 +90,9 @@ const buildPlacementMap = (
     bracket.grandFinal.find((match) => match.round === 2) ??
     bracket.grandFinal.find((match) => match.round === 1);
 
-  if (
-    deciding?.status === "completed" &&
-    deciding.loserId &&
-    !needsGrandFinalReset(bracket)
-  ) {
-    places.set(deciding.loserId, 2);
+  if (deciding?.status === "completed" && !needsGrandFinalReset(bracket)) {
+    const runnerUp = getLoser(deciding);
+    if (runnerUp) places.set(runnerUp, 2);
   }
 
   // Fixed 16-team bracket: derive each place from the exact game that
@@ -105,13 +103,13 @@ const buildPlacementMap = (
     const placeLosers = (ids: readonly MatchId[], place: number): void => {
       for (const id of ids) {
         const match = byId.get(id);
+        const eliminated = match?.status === "completed" ? getLoser(match) : null;
         if (
-          match?.status === "completed" &&
-          match.loserId &&
-          getEliminationLossCount(bracket, match.loserId) >= 2 &&
-          !places.has(match.loserId)
+          eliminated &&
+          getEliminationLossCount(bracket, eliminated) >= 2 &&
+          !places.has(eliminated)
         ) {
-          places.set(match.loserId, place);
+          places.set(eliminated, place);
         }
       }
     };
@@ -153,10 +151,10 @@ const buildPlacementMap = (
             (match) =>
               match.round === round &&
               match.status === "completed" &&
-              match.loserId !== null &&
-              getEliminationLossCount(bracket, match.loserId) >= 2
+              getLoser(match) !== null &&
+              getEliminationLossCount(bracket, getLoser(match) as TeamId) >= 2
           )
-          .map((match) => match.loserId as TeamId)
+          .map((match) => getLoser(match) as TeamId)
       ),
     ].filter((teamId) => !places.has(teamId));
 

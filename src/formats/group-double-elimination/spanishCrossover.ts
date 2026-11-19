@@ -5,6 +5,7 @@ import type {
   MatchId,
   TeamId,
 } from "./types";
+import { getWinner } from "./matchResult";
 import {
   findEliminationMatch,
   replaceEliminationMatch,
@@ -247,7 +248,9 @@ export const resolveSpanishSemifinalPairings = (
     const first = requireMatch(bracket, firstId);
     const second = requireMatch(bracket, secondId);
 
-    if (!first.winnerId || !second.winnerId) {
+    const firstWinner = getWinner(first);
+    const secondWinner = getWinner(second);
+    if (!firstWinner || !secondWinner) {
       throw new EliminationError(
         "invalid-outcome",
         `Semifinal "${spec.id}" needs the winners of Game ${spec.firstSourceGame} and Game ${spec.secondSourceGame}.`
@@ -257,8 +260,8 @@ export const resolveSpanishSemifinalPairings = (
     return {
       id: spec.id,
       matchId: spec.matchId,
-      teamAId: first.winnerId,
-      teamBId: second.winnerId,
+      teamAId: firstWinner,
+      teamBId: secondWinner,
       sourceGameA: spec.firstSourceGame,
       sourceGameB: spec.secondSourceGame,
     };

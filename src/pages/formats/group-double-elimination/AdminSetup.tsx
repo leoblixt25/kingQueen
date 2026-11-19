@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  FileText,
   Loader2,
   Pencil,
   Play,
@@ -83,6 +84,7 @@ import {
   TOURNAMENT_CATEGORY_OPTIONS,
 } from "@/formats/group-double-elimination/category";
 import { getCurrentUser } from "@/utils/authUtils";
+import { exportGsdeTournamentPdf } from "@/utils/gsdePdfExport";
 import {
   saveGsdeTournament,
   type GsdeTournamentDocument,
@@ -1701,6 +1703,23 @@ export default function GroupDoubleEliminationAdminSetup() {
 
               {section === "results" ? (
                 <div className="space-y-6">
+                  <SectionCard emoji="📄" title="Download tournament PDF">
+                    <div className="space-y-3 text-center">
+                      <p className="text-sm text-foreground/70">
+                        Export the teams, group standings and results, global ranking,
+                        elimination results, final placements and corrections in the same
+                        printable King &amp; Queen-style format.
+                      </p>
+                      <Button
+                        className={primaryBtn}
+                        disabled={!doc || saving}
+                        onClick={() => void exportGsdeTournamentPdf(doc)}
+                      >
+                        <FileText className="w-5 h-5 mr-2" />
+                        Download PDF
+                      </Button>
+                    </div>
+                  </SectionCard>
                   {finalResult?.complete ? (
                     <div className="rounded-2xl bg-beach-gradient p-6 text-white shadow-beach">
                       <div className="space-y-4 rounded-2xl border border-white/20 bg-white/15 p-6 text-center shadow-xl backdrop-blur-md">
@@ -2265,7 +2284,7 @@ export default function GroupDoubleEliminationAdminSetup() {
           </Link>
         </div>
         <p className="text-center text-[10px] text-foreground/40">
-          GSDE admin build 2026-11-19a
+          GSDE admin build 2026-11-19b
         </p>
       </div>
     </div>

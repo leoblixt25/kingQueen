@@ -1408,6 +1408,17 @@ Four new test files, **59 new tests**:
 - `AuditAction` gained `tournament-reset` and `selectCorrections()` includes it. `lifecycle.test.ts` (10 tests) covers a completed-tournament reset (all data cleared, setup/settings/audit kept, status `draft`, audit entry) and loading test data again afterwards.
 - Verification: **386 tests passed**, tsc 22 pre-existing baseline errors / 0 new, ESLint unchanged (3 pre-existing errors + 9 warnings), hosting deployed (`assets/index-mL_rrkP5.js`), `firestore.rules` byte-identical.
 
+## 13bc. GSDE downloadable tournament PDF (Nov 2026)
+- **User request:** extract the GSDE tournament data and results into a downloadable PDF similar to the King & Queen export.
+- Existing K&Q implementation was inspected: `src/utils/pdfExport.ts` (hand-drawn jsPDF A4 document, dark-blue header band, orange/blue division cards, gold final panel) triggered from `AdminPanel.tsx`. No GSDE PDF code existed; `jspdf`/`jspdf-autotable` were already installed but autotable was unused.
+- New pure model `src/formats/group-double-elimination/report.ts` / `buildGsdeTournamentReport(doc, { generatedAt? })` assembles the complete printable report from one `tournaments/{id}` document: metadata, counts, teams/players, group standings + group results, global group ranking, elimination matches + status, final placements, champion/runner-up and the correction audit subset. Deterministic names (`resolveTeamDisplayName`, including custom-name annotations) and ordering are inherited from the existing selectors; `generatedAt` is injectable for tests.
+- New renderer `src/utils/gsdePdfExport.ts`: `buildGsdePdf(report)` returns an in-memory jsPDF document and `exportGsdeTournamentPdf(doc)` downloads it as `GSDE-<Name>-<YYYY-MM-DD>.pdf`. Visual language mirrors K&Q: A4 millimetres, `HEADER_BG` band, orange/blue match cards, pagination with continued titles, zebra tables, gold placements/final panel and `Generated ... | Page i of n` footer. No K&Q collection is read.
+- PDF sections in order: Tournament Overview + Registered Players → Teams & Groups → Group Standings → Group Results → Global Group Ranking → Elimination Results (Winners / Losers / Grand Final) → Elimination Status → Final Placements + Champion/Runner-up → Corrections & Admin Actions (only when present).
+- `AdminSetup.tsx` → **Results** now starts with a **Download tournament PDF** card/button. The button is disabled until a tournament document is loaded. Admin footer marker bumped to `GSDE admin build 2026-11-19b`.
+- Tests: `report.test.ts` (4) covers empty docs, a fully simulated 8-team tournament (all standings/results/ranking/placements, winner-21 scores), custom names and corrections. `gsdePdfExport.test.ts` (2) renders complete and empty reports through jsPDF and verifies the output is a valid ArrayBuffer without throwing.
+- Verification: **36 files / 392 tests passed**, tsc **22 pre-existing baseline errors / 0 new**, targeted ESLint clean, `npx vite build` succeeds (`assets/index-DnMnMlv9.js`, CSS `assets/index-CXS04Zvf.css`), `firestore.rules` byte-identical.
+- Deployed with `npx firebase deploy --only hosting --project kingqueen-eu`; live bundle and `GSDE admin build 2026-11-19b` confirmed.
+
 ## 14. Deployment URLs
 
 ### EU Project (KingQueen_EU â€” LIVE)

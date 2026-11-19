@@ -63,8 +63,12 @@ export interface GsdeSettings {
   avoidRematches: boolean;
   /** Reset final when an undefeated finalist loses the first Grand Final. */
   grandFinalReset: boolean;
-  /** Fixed tiebreaker order for group ranking. */
+  /** Ordered group tiebreakers used for ranking and seeding. */
   groupTiebreakers: readonly string[];
+  /** Set-score rule enforced when a score is saved. */
+  scoreRule: "first-to-21-cap" | "win-by-2";
+  /** Optional hard cap for `win-by-2`. */
+  scoreCap: number | null;
 }
 
 export const DEFAULT_GSDE_SETTINGS: GsdeSettings = {
@@ -76,10 +80,13 @@ export const DEFAULT_GSDE_SETTINGS: GsdeSettings = {
   groupTiebreakers: [
     "wins",
     "head-to-head",
+    "mini-league-difference",
     "point-difference",
     "points-scored",
     "team-id",
   ],
+  scoreRule: "first-to-21-cap",
+  scoreCap: null,
 };
 
 export interface GsdeTournamentDocument {

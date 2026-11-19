@@ -13,18 +13,21 @@ import { isGroupStageMatchComplete } from "./groupStageMatches";
  * default (and the order displayed in the rules UI) is:
  * 1. Wins
  * 2. Head-to-head among teams tied on wins (wins, then point difference)
- * 3. Overall point difference
- * 4. Points scored
- * 5. Team id (code-point order, deterministic)
+ * 3. Mini-league point differential for 3+ way circular ties
+ * 4. Overall point difference
+ * 5. Points scored
+ * 6. Team id (code-point order, deterministic)
  *
- * Unknown or duplicated keys are ignored. `wins` is always mandatory and is
- * restored at the front so a group position can never be decided before the
- * number of wins has been compared.
+ * Every row records `tiebreakUsed`: the rule that actually separated it from
+ * the row directly above it. Unknown or duplicated keys are ignored. `wins`
+ * is always mandatory and is restored at the front so a group position can
+ * never be decided before the number of wins has been compared.
  */
 
 export type GroupTiebreaker =
   | "wins"
   | "head-to-head"
+  | "mini-league-difference"
   | "point-difference"
   | "points-scored"
   | "team-id";
@@ -32,10 +35,20 @@ export type GroupTiebreaker =
 export const DEFAULT_GROUP_TIEBREAKERS: readonly GroupTiebreaker[] = [
   "wins",
   "head-to-head",
+  "mini-league-difference",
   "point-difference",
   "points-scored",
   "team-id",
 ];
+
+export const GROUP_TIEBREAKER_LABELS: Record<GroupTiebreaker, string> = {
+  wins: "Wins",
+  "head-to-head": "Head-to-head",
+  "mini-league-difference": "Mini-league +/- (3+ way)",
+  "point-difference": "Overall +/-",
+  "points-scored": "Points for",
+  "team-id": "Team id",
+};
 
 const VALID_TIEBREAKERS = new Set<string>(DEFAULT_GROUP_TIEBREAKERS);
 
@@ -63,6 +76,8 @@ export interface GroupStanding {
   pointsFor: number;
   pointsAgainst: number;
   pointDifference: number;
+  /** The rule that separated this row from the row above it, if any. */
+  tiebreakUsed: GroupTiebreaker | null;
   /** Format rule: nobody is eliminated in the group stage. */
   qualified: true;
 }
@@ -142,46 +157,59 @@ const buildHeadToHeadForBlock = (
   return stats;
 };
 
+interface TiebreakDecision {
+  diff: number;
+  key: GroupTiebreaker | null;
+}
+
 const compareByTiebreakers = (
   a: BaseStat,
   b: BaseStat,
   headToHead: Map<TeamId, HeadToHeadStat>,
+  miniLeague: Map<TeamId, number>,
   tiebreakers: readonly GroupTiebreaker[]
-): number => {
+): TiebreakDecision => {
   for (const key of tiebreakers) {
     switch (key) {
       case "wins": {
         const diff = b.wins - a.wins;
-        if (diff !== 0) return diff;
+        if (diff !== 0) return { diff, key };
         break;
       }
       case "head-to-head": {
         const aHead = headToHead.get(a.teamId);
         const bHead = headToHead.get(b.teamId);
         const winsDiff = (bHead?.wins ?? 0) - (aHead?.wins ?? 0);
-        if (winsDiff !== 0) return winsDiff;
+        if (winsDiff !== 0) return { diff: winsDiff, key };
         const marginDiff = (bHead?.pointDifference ?? 0) - (aHead?.pointDifference ?? 0);
-        if (marginDiff !== 0) return marginDiff;
+        if (marginDiff !== 0) return { diff: marginDiff, key };
+        break;
+      }
+      case "mini-league-difference": {
+        // Only meaningful for 3+ way ties. In a two-team tie this is the same
+        // as head-to-head point difference and has already been applied.
+        const diff = (miniLeague.get(b.teamId) ?? 0) - (miniLeague.get(a.teamId) ?? 0);
+        if (diff !== 0) return { diff, key };
         break;
       }
       case "point-difference": {
         const diff = b.pointDifference - a.pointDifference;
-        if (diff !== 0) return diff;
+        if (diff !== 0) return { diff, key };
         break;
       }
       case "points-scored": {
         const diff = b.pointsFor - a.pointsFor;
-        if (diff !== 0) return diff;
+        if (diff !== 0) return { diff, key };
         break;
       }
       case "team-id": {
         const diff = compareText(a.teamId, b.teamId);
-        if (diff !== 0) return diff;
+        if (diff !== 0) return { diff, key };
         break;
       }
     }
   }
-  return 0;
+  return { diff: 0, key: null };
 };
 
 /** Standings for one group; incomplete matches are ignored. */
@@ -225,6 +253,7 @@ export const calculateGroupStandings = (
   // are actually tied use it, and every team in the block shares the same
   // mutual results.
   const headToHead = new Map<TeamId, HeadToHeadStat>();
+  const miniLeague = new Map<TeamId, number>();
   const winsBlocks = new Map<number, TeamId[]>();
   for (const stat of stats.values()) {
     const block = winsBlocks.get(stat.wins);
@@ -235,8 +264,12 @@ export const calculateGroupStandings = (
     }
   }
   for (const blockTeamIds of winsBlocks.values()) {
-    for (const [teamId, headStat] of buildHeadToHeadForBlock(blockTeamIds, completed)) {
+    const blockStats = buildHeadToHeadForBlock(blockTeamIds, completed);
+    for (const [teamId, headStat] of blockStats) {
       headToHead.set(teamId, headStat);
+      // Mini-league point differential is the same mutual-point calculation,
+      // but only applies to blocks of three or more teams.
+      if (blockTeamIds.length >= 3) miniLeague.set(teamId, headStat.pointDifference);
     }
   }
 
@@ -245,13 +278,25 @@ export const calculateGroupStandings = (
     return stat;
   });
 
-  ordered.sort((a, b) => compareByTiebreakers(a, b, headToHead, tiebreakers));
+  ordered.sort(
+    (a, b) => compareByTiebreakers(a, b, headToHead, miniLeague, tiebreakers).diff
+  );
 
   return {
     groupId: group.id,
     rows: ordered.map((stat, index) => ({
       ...stat,
       rank: index + 1,
+      tiebreakUsed:
+        index === 0
+          ? null
+          : compareByTiebreakers(
+              ordered[index - 1],
+              stat,
+              headToHead,
+              miniLeague,
+              tiebreakers
+            ).key,
       qualified: true as const,
     })),
   };

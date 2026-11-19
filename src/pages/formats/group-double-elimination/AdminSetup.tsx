@@ -45,6 +45,7 @@ import {
   removeTeam,
   resetEliminationBracket,
   resetGroupMatch,
+  recomputeBracketFromResults,
   resetTournament,
   saveSetup,
   scoreEliminationMatch,
@@ -96,6 +97,12 @@ import {
 } from "@/formats/group-double-elimination/category";
 import { getCurrentUser } from "@/utils/authUtils";
 import { exportGsdeTournamentPdf } from "@/utils/gsdePdfExport";
+import { downloadGsdeTournamentJson } from "@/utils/gsdeJsonExport";
+import {
+  GROUP_TIEBREAKER_LABELS,
+  resolveGroupTiebreakers,
+  type GroupTiebreaker,
+} from "@/formats/group-double-elimination/groupStandings";
 import {
   saveGsdeTournament,
   type GsdeTournamentDocument,
@@ -344,6 +351,13 @@ export default function GroupDoubleEliminationAdminSetup() {
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [resetConfirmed, setResetConfirmed] = useState(false);
+  const [backupBeforeReset, setBackupBeforeReset] = useState(true);
+  const [recomputeConfirmed, setRecomputeConfirmed] = useState(false);
+  const [scoreRule, setScoreRule] = useState<"first-to-21-cap" | "win-by-2">(
+    "first-to-21-cap"
+  );
+  const [scoreCap, setScoreCap] = useState("");
+  const [tiebreakOrder, setTiebreakOrder] = useState<GroupTiebreaker[]>([]);
   const [testResultMode, setTestResultMode] = useState<TestResultMode>("none");
 
   // The admin page is behind the GSDE admin guard, so the signed-in user is the
@@ -385,6 +399,11 @@ export default function GroupDoubleEliminationAdminSetup() {
     setTeamLimit(String(doc?.tournament.config.teamLimit ?? 16));
     setGroupCount(String(doc?.tournament.config.groupCount ?? 4));
     setGroupSize(String(doc?.tournament.config.teamsPerGroup ?? 4));
+    setScoreRule(doc?.settings.scoreRule === "win-by-2" ? "win-by-2" : "first-to-21-cap");
+    setScoreCap(
+      typeof doc?.settings.scoreCap === "number" ? String(doc.settings.scoreCap) : ""
+    );
+    setTiebreakOrder([...resolveGroupTiebreakers(doc?.settings.groupTiebreakers)]);
   }, [
     doc?.tournament.config.name,
     doc?.tournament.config.date,
@@ -393,6 +412,9 @@ export default function GroupDoubleEliminationAdminSetup() {
     doc?.tournament.config.teamLimit,
     doc?.tournament.config.groupCount,
     doc?.tournament.config.teamsPerGroup,
+    doc?.settings.scoreRule,
+    doc?.settings.scoreCap,
+    doc?.settings.groupTiebreakers,
   ]);
 
   const status = doc?.tournament.status ?? "draft";
@@ -419,9 +441,13 @@ export default function GroupDoubleEliminationAdminSetup() {
         : `${selectedTeamCount} approved ${category} pairs and ${expectedPlayers} players loaded; group schedule generated.`;
   const groupMatches = doc?.matches ?? [];
   const playableElimination = doc?.elimination
-    ? [...doc.elimination.winners, ...doc.elimination.losers, ...doc.elimination.grandFinal].filter(
-        (match) => match.teamAId !== null && match.teamBId !== null
-      )
+    ? [...doc.elimination.winners, ...doc.elimination.losers, ...doc.elimination.grandFinal]
+        .filter((match) => match.teamAId !== null && match.teamBId !== null)
+        .sort(
+          (a, b) =>
+            (getGameNumber(a.id) ?? Number.MAX_SAFE_INTEGER) -
+            (getGameNumber(b.id) ?? Number.MAX_SAFE_INTEGER)
+        )
     : [];
   const eliminationDone = playableElimination.filter(
     (match) => match.status === "completed"
@@ -573,16 +599,26 @@ export default function GroupDoubleEliminationAdminSetup() {
             I understand this permanently deletes all tournament data for this event.
           </span>
         </label>
+        <label className="flex items-start gap-3 rounded-xl border border-ocean/30 bg-ocean/5 p-3 text-sm text-foreground/80">
+          <input
+            type="checkbox"
+            className="mt-1 h-4 w-4 accent-ocean"
+            checked={backupBeforeReset}
+            onChange={(event) => setBackupBeforeReset(event.target.checked)}
+          />
+          <span>Download a JSON backup of the current state before the reset.</span>
+        </label>
         <Button
           className={dangerBtn}
           disabled={saving || !resetConfirmed}
-          onClick={() =>
-            apply(
+          onClick={() => {
+            if (backupBeforeReset && doc) downloadGsdeTournamentJson(doc);
+            void apply(
               (current) => resetTournament(current, actor),
               "All tournament data cleared. Setup, settings and activity history kept.",
               () => setResetConfirmed(false)
-            )
-          }
+            );
+          }}
         >
           <Trash2 className="w-5 h-5 mr-2" />
           Delete all tournament data
@@ -1777,12 +1813,22 @@ export default function GroupDoubleEliminationAdminSetup() {
                                       <Button
                                         className="flex-1 touch-target bg-white/70 hover:bg-coral hover:text-white border-coral/30 text-coral font-semibold py-3"
                                         disabled={saving}
-                                        onClick={() =>
-                                          apply(
+                                        onClick={() => {
+                                          if (
+                                            !window.confirm(
+                                              "Clear this group result? The score will be removed and the group stage will reopen."
+                                            )
+                                          ) {
+                                            return;
+                                          }
+                                          if (backupBeforeReset && doc) {
+                                            downloadGsdeTournamentJson(doc);
+                                          }
+                                          void apply(
                                             (current) => resetGroupMatch(current, match.id, actor),
                                             "Result cleared."
-                                          )
-                                        }
+                                          );
+                                        }}
                                       >
                                         <RotateCcw className="w-4 h-4 mr-1" />
                                         Clear
@@ -2005,8 +2051,8 @@ export default function GroupDoubleEliminationAdminSetup() {
                     <div className="space-y-3 text-center">
                       <p className="text-sm text-foreground/70">
                         Export the teams, group standings and results, global ranking,
-                        elimination results, final placements and corrections in the same
-                        printable King &amp; Queen-style format.
+                        elimination results and final placements in the same printable
+                        King &amp; Queen-style format. Admin action logs are not included.
                       </p>
                       <Button
                         className={primaryBtn}
@@ -2015,6 +2061,17 @@ export default function GroupDoubleEliminationAdminSetup() {
                       >
                         <FileText className="w-5 h-5 mr-2" />
                         Download PDF
+                      </Button>
+                      <Button
+                        className={outlineBtn}
+                        disabled={!doc || saving}
+                        onClick={() => {
+                          if (!doc) return;
+                          const file = downloadGsdeTournamentJson(doc);
+                          setNotice({ kind: "ok", text: `Backup saved: ${file}` });
+                        }}
+                      >
+                        Download JSON backup
                       </Button>
                     </div>
                   </SectionCard>
@@ -2072,7 +2129,11 @@ export default function GroupDoubleEliminationAdminSetup() {
                                       key={row.teamId}
                                       rank={row.rank}
                                       name={nameOf(names, row.teamId)}
-                                      detail={`${row.wins}W · ${row.losses}L`}
+                                      detail={`${row.wins}W · ${row.losses}L${
+                                        row.tiebreakUsed
+                                          ? ` · ${GROUP_TIEBREAKER_LABELS[row.tiebreakUsed]}`
+                                          : ""
+                                      }`}
                                       right={
                                         <p className="text-sm font-bold tabular-nums">
                                           {row.pointDifference > 0 ? "+" : ""}
@@ -2292,6 +2353,118 @@ export default function GroupDoubleEliminationAdminSetup() {
                       </p>
                     </SectionCard>
 
+                    <SectionCard emoji="⚙️" title="Scoring & tiebreak rules">
+                      <div className="space-y-3">
+                        <Field label="Score rule">
+                          <select
+                            aria-label="Score rule"
+                            className={selectCls}
+                            value={scoreRule}
+                            onChange={(event) =>
+                              setScoreRule(
+                                event.target.value as "first-to-21-cap" | "win-by-2"
+                              )
+                            }
+                          >
+                            <option value="first-to-21-cap">First to 21 (hard cap)</option>
+                            <option value="win-by-2">Win by 2 (optional cap)</option>
+                          </select>
+                        </Field>
+                        {scoreRule === "win-by-2" ? (
+                          <Field label="Score cap (leave blank for no cap)">
+                            <Input
+                              className={inputCls}
+                              type="number"
+                              min={2}
+                              value={scoreCap}
+                              onChange={(event) => setScoreCap(event.target.value)}
+                              placeholder="e.g. 30"
+                            />
+                          </Field>
+                        ) : null}
+                        <p className="text-sm font-semibold text-foreground/80">
+                          Group tiebreak order (first rule that breaks the tie wins):
+                        </p>
+                        <ol className="space-y-2">
+                          {tiebreakOrder.map((key, index) => (
+                            <li
+                              key={key}
+                              className="flex items-center justify-between rounded-xl border border-sand-dark/20 bg-white/70 px-3 py-2 text-sm"
+                            >
+                              <span>
+                                {index + 1}. {GROUP_TIEBREAKER_LABELS[key]}
+                              </span>
+                              <span className="flex gap-2">
+                                <button
+                                  type="button"
+                                  aria-label={`Move ${GROUP_TIEBREAKER_LABELS[key]} up`}
+                                  className="rounded-lg border border-ocean/30 px-2 py-1 text-xs text-ocean disabled:opacity-30"
+                                  disabled={index === 0}
+                                  onClick={() =>
+                                    setTiebreakOrder((previous) => {
+                                      const next = [...previous];
+                                      [next[index - 1], next[index]] = [
+                                        next[index],
+                                        next[index - 1],
+                                      ];
+                                      return next;
+                                    })
+                                  }
+                                >
+                                  ↑
+                                </button>
+                                <button
+                                  type="button"
+                                  aria-label={`Move ${GROUP_TIEBREAKER_LABELS[key]} down`}
+                                  className="rounded-lg border border-ocean/30 px-2 py-1 text-xs text-ocean disabled:opacity-30"
+                                  disabled={index === tiebreakOrder.length - 1}
+                                  onClick={() =>
+                                    setTiebreakOrder((previous) => {
+                                      const next = [...previous];
+                                      [next[index], next[index + 1]] = [
+                                        next[index + 1],
+                                        next[index],
+                                      ];
+                                      return next;
+                                    })
+                                  }
+                                >
+                                  ↓
+                                </button>
+                              </span>
+                            </li>
+                          ))}
+                        </ol>
+                        <Button
+                          className={outlineBtn}
+                          disabled={saving}
+                          onClick={() => {
+                            const cap = Number(scoreCap);
+                            void apply(
+                              (current) => ({
+                                ...current,
+                                settings: {
+                                  ...current.settings,
+                                  scoreRule,
+                                  scoreCap:
+                                    scoreRule === "win-by-2" &&
+                                    scoreCap.trim() !== "" &&
+                                    Number.isInteger(cap) &&
+                                    cap >= 2
+                                      ? cap
+                                      : null,
+                                  groupTiebreakers: tiebreakOrder,
+                                },
+                              }),
+                              "Scoring and tiebreak rules saved."
+                            );
+                          }}
+                        >
+                          Save rules
+                        </Button>
+                      </div>
+                    </SectionCard>
+
                     <SectionCard emoji="🧪" title="Test teams & players">
                       <div className="space-y-3">
                         <p className="text-sm text-foreground/70">
@@ -2437,16 +2610,60 @@ export default function GroupDoubleEliminationAdminSetup() {
                         <Button
                           className={outlineBtn}
                           disabled={saving || !doc.elimination}
-                          onClick={() =>
-                            apply(
+                          onClick={() => {
+                            if (
+                              !window.confirm(
+                                "Reset the unstarted bracket? Any unplayed match slots will be cleared. Entered results must be absent; otherwise use “Recompute bracket from results”."
+                              )
+                            ) {
+                              return;
+                            }
+                            if (backupBeforeReset && doc) downloadGsdeTournamentJson(doc);
+                            void apply(
                               (current) => resetEliminationBracket(current, actor),
                               "Unstarted bracket reset."
-                            )
-                          }
+                            );
+                          }}
                         >
                           <RotateCcw className="w-5 h-5 mr-2" />
                           Reset bracket
                         </Button>
+                        <div className="space-y-3 rounded-xl border-2 border-ocean/30 bg-ocean/5 p-4">
+                          <p className="text-sm font-semibold text-ocean-dark">
+                            Repair a saved bracket
+                          </p>
+                          <p className="text-xs text-foreground/70">
+                            Rebuild routing from the canonical source of truth and replay every
+                            saved result. Use this when Games 27/28 are crossed or Game 29 is
+                            missing. Scores are kept; incompatible results are flagged for review.
+                          </p>
+                          <label className="flex items-start gap-3 text-sm font-medium text-foreground/80">
+                            <input
+                              type="checkbox"
+                              className="mt-1 h-4 w-4 accent-ocean"
+                              checked={recomputeConfirmed}
+                              onChange={(event) => setRecomputeConfirmed(event.target.checked)}
+                            />
+                            <span>
+                              I understand the bracket will be recalculated from saved results.
+                            </span>
+                          </label>
+                          <Button
+                            className={outlineBtn}
+                            disabled={saving || !doc.elimination || !recomputeConfirmed}
+                            onClick={() => {
+                              if (backupBeforeReset && doc) downloadGsdeTournamentJson(doc);
+                              void apply(
+                                (current) => recomputeBracketFromResults(current, actor),
+                                "Bracket recomputed from saved results.",
+                                () => setRecomputeConfirmed(false)
+                              );
+                            }}
+                          >
+                            <Zap className="w-5 h-5 mr-2" />
+                            Recompute bracket from results
+                          </Button>
+                        </div>
                         {doc.tournament.seedingStale ? (
                           <div className="text-center">
                             <Pill tone="amber">Seeding changed — regenerate</Pill>

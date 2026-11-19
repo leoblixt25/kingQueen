@@ -73,6 +73,7 @@ export interface GsdeReportGroupStanding {
   pointsFor: number;
   pointsAgainst: number;
   pointDifference: number;
+  tiebreakUsed: string | null;
 }
 
 export interface GsdeReportGroup {
@@ -265,6 +266,7 @@ export const buildGsdeTournamentReport = (
       pointsFor: row.pointsFor,
       pointsAgainst: row.pointsAgainst,
       pointDifference: row.pointDifference,
+      tiebreakUsed: row.tiebreakUsed,
     })),
     results: doc.matches
       .filter((match) => match.groupId === table.groupId)

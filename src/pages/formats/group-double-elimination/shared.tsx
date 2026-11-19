@@ -122,8 +122,8 @@ export const STATUS_LABEL: Record<GsdeTournamentStatus, string> = {
   draft: "Draft",
   configured: "Configured",
   "group-stage": "Group stage",
-  elimination: "Double elimination",
-  "grand-final": "Grand Final",
+  elimination: "In progress",
+  "grand-final": "In progress",
   completed: "Completed",
 };
 

@@ -390,6 +390,7 @@ describe("E - group ranking ties", () => {
       "wins",
       "point-difference",
       "head-to-head",
+      "mini-league-difference",
       "points-scored",
       "team-id",
     ]);

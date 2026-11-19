@@ -53,6 +53,12 @@ import { validateTournamentCompletion } from "./completion";
 import { EliminationError, GroupStageError } from "./errors";
 import { validateTeamDraft } from "./teams";
 import {
+  normalizeScoreRuleConfig,
+  suspiciousScoreWarning,
+  validateScore,
+  type ScoreRuleConfig,
+} from "./scoreRules";
+import {
   findRegistrationByEmail,
   findRegistrationByUid,
   getRegistrations,
@@ -191,6 +197,33 @@ const commit = (
 
 /** Shared pure transition gate for the pairing module. */
 export const commitGsdeChange = commit;
+
+/** Read the configured score rule, tolerating legacy documents. */
+export const scoreConfigFor = (doc: GsdeTournamentDocument): ScoreRuleConfig =>
+  normalizeScoreRuleConfig(doc.settings.scoreRule, doc.settings.scoreCap);
+
+const enforceScoreRule = (
+  doc: GsdeTournamentDocument,
+  scoreA: number,
+  scoreB: number,
+  match?: GroupStageMatch | EliminationMatch
+): string | null => {
+  const validation = validateScore(scoreA, scoreB, scoreConfigFor(doc));
+  if (!validation.valid) {
+    fail("invalid-score", validation.message ?? "Invalid score.");
+  }
+  if (!match) return null;
+  return suspiciousScoreWarning(
+    doc.teams,
+    match.teamAId,
+    match.teamBId,
+    scoreA,
+    scoreB
+  );
+};
+
+const withWarning = (detail: string | undefined, warning: string | null): string | undefined =>
+  warning ? `${detail ? `${detail} — ` : ""}${warning}` : detail;
 
 /** Setup: update the tournament name/division without touching stage data. */
 export const saveSetup = (
@@ -723,6 +756,7 @@ export const scoreGroupMatch = (
     fail("match-completed", `Group match "${matchId}" is already completed.`);
   }
 
+  const warning = enforceScoreRule(doc, scoreA, scoreB, match);
   try {
     const updated = applyGroupMatchScore(match, scoreA, scoreB);
     return commit(
@@ -730,7 +764,7 @@ export const scoreGroupMatch = (
         ...doc,
         matches: doc.matches.map((item) => (item.id === matchId ? updated : item)),
       }),
-      { action: "group-score-entered", actor, matchId }
+      { action: "group-score-entered", actor, matchId, detail: warning ?? undefined }
     );
   } catch (error) {
     fail(asEngineError(error), "Invalid group score.");
@@ -753,6 +787,7 @@ export const correctGroupMatchScore = (
     fail("stage-sequence", "Reopen the tournament before correcting results.");
   }
   const match = findGroupMatch(doc, matchId);
+  const warning = enforceScoreRule(doc, scoreA, scoreB, match);
   let updated: GroupStageMatch;
 
   try {
@@ -782,7 +817,10 @@ export const correctGroupMatchScore = (
       action: "group-score-corrected",
       actor,
       matchId,
-      detail: `${match.scoreA ?? "–"}:${match.scoreB ?? "–"} → ${scoreA}:${scoreB}`,
+      detail: withWarning(
+        `${match.scoreA ?? "–"}:${match.scoreB ?? "–"} → ${scoreA}:${scoreB}`,
+        warning
+      ),
     }
   );
 };
@@ -930,7 +968,14 @@ export const scoreEliminationMatch = (
     );
   }
 
-  findEliminationMatchOrFail(doc.elimination, outcome.matchId);
+  const target = findEliminationMatchOrFail(doc.elimination, outcome.matchId);
+  const warning =
+    outcome.scoreA !== undefined &&
+    outcome.scoreB !== undefined &&
+    outcome.scoreA !== null &&
+    outcome.scoreB !== null
+      ? enforceScoreRule(doc, outcome.scoreA, outcome.scoreB, target)
+      : null;
 
   try {
     const result = advanceEliminationMatch(
@@ -950,6 +995,7 @@ export const scoreEliminationMatch = (
       action: "elimination-score-entered",
       actor,
       matchId: outcome.matchId,
+      detail: warning ?? undefined,
     });
   } catch (error) {
     if (error instanceof ScoringError) throw error;
@@ -1124,6 +1170,10 @@ export const correctEliminationResult = (
   }
 
   const target = findEliminationMatchOrFail(doc.elimination, matchId);
+  const warning =
+    outcome.scoreA !== null && outcome.scoreB !== null
+      ? enforceScoreRule(doc, outcome.scoreA, outcome.scoreB, target)
+      : null;
   const participants = [target.teamAId, target.teamBId];
   if (
     !outcome.winnerId ||
@@ -1182,10 +1232,60 @@ export const correctEliminationResult = (
     action: "elimination-result-corrected",
     actor,
     matchId,
-    detail:
+    detail: withWarning(
       invalidated.length > 0
         ? `Replayed bracket; ${invalidated.length} downstream result(s) invalidated: ${invalidated.join(", ")}.`
         : "Replayed bracket from corrected result.",
+      warning
+    ),
+  });
+};
+
+/**
+ * Repair action for saved tournaments whose stored links/participants were
+ * produced by an older build (crossed Games 27/28, missing Game 29, ...).
+ * Every entered result is replayed onto a freshly generated canonical bracket;
+ * scores are never deleted. Results that cannot apply to the canonical slots
+ * are flagged for admin review instead of being silently dropped.
+ */
+export const recomputeBracketFromResults = (
+  doc: GsdeTournamentDocument,
+  actor?: AuditActor
+): GsdeTournamentDocument => {
+  if (!doc.elimination) {
+    fail("bracket-not-generated", "Generate the elimination bracket first.");
+  }
+
+  const seeds =
+    doc.elimination.seededTeamIds ??
+    seedTeamsFromGroupStandings(
+      calculateAllGroupStandings(
+        doc.groups,
+        doc.matches,
+        doc.settings.groupTiebreakers
+      )
+    );
+  const results = collectResults(doc.elimination);
+  if (results.length === 0) {
+    fail("unknown-match", "There are no saved elimination results to replay.");
+  }
+
+  const { bracket, invalidated } = replayResults(seeds, results);
+  const next = touch({
+    ...doc,
+    elimination: bracket,
+    tournament: {
+      ...doc.tournament,
+      status: statusFromDoc({ ...doc, elimination: bracket }),
+    },
+  });
+  return commit(next, {
+    action: "bracket-recomputed",
+    actor,
+    detail:
+      invalidated.length > 0
+        ? `Rebuilt bracket from ${results.length} saved result(s); ${invalidated.length} result(s) need review: ${invalidated.join(", ")}.`
+        : `Rebuilt bracket from ${results.length} saved result(s) using canonical routing.`,
   });
 };
 

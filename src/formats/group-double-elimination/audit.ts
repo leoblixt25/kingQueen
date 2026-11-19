@@ -22,6 +22,7 @@ export type AuditAction =
   | "bracket-generated"
   | "bracket-override-generated"
   | "bracket-reset"
+  | "bracket-recomputed"
   | "elimination-score-entered"
   | "elimination-result-corrected"
   | "tournament-reopened"

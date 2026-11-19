@@ -23,6 +23,7 @@ import {
   GROUP_RANKING_SYSTEM,
   selectRankingSystems,
 } from "@/formats/group-double-elimination/rankingSystems";
+import { GROUP_TIEBREAKER_LABELS } from "@/formats/group-double-elimination/groupStandings";
 import { linkLabel, nameOf, teamNameMap } from "./shared";
 
 const th = "px-2 py-1.5 text-left text-xs font-semibold text-foreground/60";
@@ -61,6 +62,7 @@ export function GroupStandingsView({ doc }: ViewsProps) {
                     <th className={th}>W</th>
                     <th className={th}>L</th>
                     <th className={th}>+/−</th>
+                    <th className={th}>Tiebreak</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -76,6 +78,9 @@ export function GroupStandingsView({ doc }: ViewsProps) {
                       <td className={td}>
                         {row.pointDifference > 0 ? "+" : ""}
                         {row.pointDifference}
+                      </td>
+                      <td className={td}>
+                        {row.tiebreakUsed ? GROUP_TIEBREAKER_LABELS[row.tiebreakUsed] : "—"}
                       </td>
                     </tr>
                   ))}

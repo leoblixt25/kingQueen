@@ -268,8 +268,8 @@ describe("corrections and recalculation", () => {
     const corrected = correctEliminationResult(scored, first.id, {
       winnerId: first.teamAId!,
       loserId: first.teamBId!,
-      scoreA: 22,
-      scoreB: 20,
+      scoreA: 21,
+      scoreB: 19,
     });
 
     // Game 21 (Winners R3) feeds the Winners Final, never a crossover match.

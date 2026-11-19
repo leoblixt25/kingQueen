@@ -1,6 +1,10 @@
 import jsPDF from "jspdf";
 import type { GsdeTournamentDocument } from "@/formats/group-double-elimination/persistence";
 import {
+  GROUP_TIEBREAKER_LABELS,
+  type GroupTiebreaker,
+} from "@/formats/group-double-elimination/groupStandings";
+import {
   buildGsdeTournamentReport,
   type GsdeReportMatch,
   type GsdeTournamentReport,
@@ -556,13 +560,14 @@ export const buildGsdePdf = (report: GsdeTournamentReport): jsPDF => {
           `${group.name} — Standings`,
           [
             { header: "#", width: 12, align: "center" },
-            { header: "Team", width: 80 },
+            { header: "Team", width: 54 },
             { header: "P", width: 14, align: "center" },
             { header: "W", width: 14, align: "center" },
             { header: "L", width: 14, align: "center" },
             { header: "+/-", width: 20, align: "right" },
             { header: "PF", width: 16, align: "right" },
             { header: "PA", width: 16, align: "right" },
+            { header: "Tiebreak", width: 26 },
           ],
           group.standings.map((row) => [
             String(row.rank),
@@ -573,6 +578,9 @@ export const buildGsdePdf = (report: GsdeTournamentReport): jsPDF => {
             row.pointDifference > 0 ? `+${row.pointDifference}` : String(row.pointDifference),
             String(row.pointsFor ?? 0),
             String(row.pointsAgainst ?? 0),
+            row.tiebreakUsed
+              ? GROUP_TIEBREAKER_LABELS[row.tiebreakUsed as GroupTiebreaker]
+              : "-",
           ]),
           y,
           BLUE
@@ -616,8 +624,32 @@ export const buildGsdePdf = (report: GsdeTournamentReport): jsPDF => {
       );
     }
 
-    // Elimination bracket results.
-    if (report.eliminationMatches.length > 0 || report.eliminationStandings.length > 0) {
+    // Elimination results, ordered for readers: podium, then the matches that
+    // produced it, then per-team status. Admin/correction logs are intentionally
+    // not part of the exported report.
+    if (
+      report.finalPlacements.length > 0 ||
+      report.eliminationMatches.length > 0 ||
+      report.eliminationStandings.length > 0
+    ) {
+      if (report.finalPlacements.length > 0) {
+        y = addPage();
+        y = drawTable(
+          "Final Placements",
+          [
+            { header: "Place", width: 20, align: "center" },
+            { header: "Team(s)", width: 168 },
+          ],
+          report.finalPlacements.map((placement) => [
+            String(placement.place),
+            placement.teams.join(" / "),
+          ]),
+          y,
+          GOLD
+        );
+        if (report.complete) y = drawChampionPanel(y);
+      }
+
       if (report.eliminationMatches.length > 0) {
         y = addPage();
         const phaseSections: MatchSection[] = [
@@ -671,44 +703,6 @@ export const buildGsdePdf = (report: GsdeTournamentReport): jsPDF => {
         );
       }
 
-      if (report.finalPlacements.length > 0) {
-        y = addPage();
-        y = drawTable(
-          "Final Placements",
-          [
-            { header: "Place", width: 20, align: "center" },
-            { header: "Team(s)", width: 168 },
-          ],
-          report.finalPlacements.map((placement) => [
-            String(placement.place),
-            placement.teams.join(" / "),
-          ]),
-          y,
-          GOLD
-        );
-        if (report.complete) y = drawChampionPanel(y);
-      }
-    }
-
-    // Corrections are kept in the export so the result trail is auditable.
-    if (report.corrections.length > 0) {
-      y = addPage();
-      drawTable(
-        "Corrections & Admin Actions",
-        [
-          { header: "When", width: 38 },
-          { header: "Action", width: 42 },
-          { header: "Actor", width: 50 },
-          { header: "Detail", width: 58 },
-        ],
-        report.corrections.map((entry) => [
-          entry.at.replace("T", " ").slice(0, 16),
-          entry.action,
-          entry.actor,
-          entry.detail || entry.matchId || "-",
-        ]),
-        y
-      );
     }
 
     const totalPages = pdf.getNumberOfPages();

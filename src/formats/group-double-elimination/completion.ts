@@ -1,10 +1,11 @@
 import type { GsdeTournamentDocument } from "./persistence";
-import { listEliminationMatches } from "./bracket";
+import { generateDoubleEliminationBracket, listEliminationMatches } from "./bracket";
 import { calculateAllGroupStandings, seedTeamsFromGroupStandings } from "./groupStandings";
 import { getGroupStageProgress, isGroupStageMatchComplete } from "./groupStageMatches";
 import { expectedGroupMatchCount } from "./sizeAware";
 import {
   getEliminationChampion,
+  getEliminationLossCount,
   getLosersBracketChampion,
   getWinnersBracketChampion,
   needsGrandFinalReset,
@@ -177,11 +178,38 @@ export const validateTournamentCompletion = (
     );
   }
 
-  const unresolved = allMatches.filter(
-    (match) => match.teamAId !== null && match.teamBId !== null && match.status !== "completed"
-  );
-  if (unresolved.length > 0) {
-    issues.push(`${unresolved.length} elimination match(es) are still unresolved.`);
+  // Required games come from the canonical bracket, never from the stored
+  // match list. A corrupted saved bracket can be missing Game 29 entirely;
+  // counting only stored matches previously allowed a premature "Completed".
+  const canonical =
+    bracket.seededTeamIds && bracket.seededTeamIds.length >= 2
+      ? generateDoubleEliminationBracket(bracket.seededTeamIds).bracket
+      : bracket;
+  const requiredMatches = listEliminationMatches(canonical);
+  const storedById = new Map(allMatches.map((match) => [match.id, match]));
+  const missing = requiredMatches.filter((match) => !storedById.has(match.id));
+  const unresolved = requiredMatches.filter((match) => {
+    const stored = storedById.get(match.id);
+    if (!stored) return true;
+    return (
+      stored.status !== "completed" ||
+      stored.teamAId === null ||
+      stored.teamBId === null ||
+      stored.winnerId === null ||
+      stored.loserId === null
+    );
+  });
+
+  if (missing.length > 0) {
+    issues.push(
+      `${missing.length} required elimination game(s) are missing from the saved bracket: ${missing
+        .map((match) => match.id)
+        .join(", ")}. Recompute the bracket from results to repair it.`
+    );
+  }
+  const notMissing = unresolved.filter((match) => storedById.has(match.id));
+  if (notMissing.length > 0) {
+    issues.push(`${notMissing.length} elimination match(es) are still unresolved.`);
   }
 
   const winnersChampion = getWinnersBracketChampion(bracket);
@@ -193,6 +221,21 @@ export const validateTournamentCompletion = (
   const champion = getEliminationChampion(bracket);
   if (resetRequired) issues.push("A reset final is required to decide the champion.");
   if (!champion) issues.push("No tournament champion has been decided.");
+
+  // Nobody may still be alive once the tournament is finished. A team with
+  // fewer than two elimination losses can only be the champion.
+  const aliveTeamIds = new Set<TeamId>(bracket.seededTeamIds ?? []);
+  for (const match of allMatches) {
+    for (const teamId of [match.teamAId, match.teamBId, match.winnerId, match.loserId]) {
+      if (teamId) aliveTeamIds.add(teamId);
+    }
+  }
+  const stillAlive = [...aliveTeamIds].filter(
+    (teamId) => teamId !== champion && getEliminationLossCount(bracket, teamId) < 2
+  );
+  if (stillAlive.length > 0) {
+    issues.push(`${stillAlive.length} team(s) are still alive in the bracket.`);
+  }
 
   const firstFinal = bracket.grandFinal.find((match) => match.round === 1);
   if (!firstFinal || firstFinal.status !== "completed") {
@@ -215,8 +258,18 @@ export const validateTournamentCompletion = (
       isComplete: groupsComplete,
     },
     elimination: {
-      total: allMatches.length,
-      completed: allMatches.filter((match) => match.status === "completed").length,
+      // 30 required games for a 16-team bracket, plus the reset final only
+      // once the Grand Final has triggered it.
+      total:
+        requiredMatches.length +
+        (resetRequired || bracket.grandFinal.some((match) => match.round === 2) ? 1 : 0),
+      completed:
+        requiredMatches.filter(
+          (match) => storedById.get(match.id)?.status === "completed"
+        ).length +
+        (bracket.grandFinal.find((match) => match.round === 2)?.status === "completed"
+          ? 1
+          : 0),
       reviewRequired: reviewRequired.length,
     },
     resetRequired,

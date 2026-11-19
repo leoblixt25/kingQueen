@@ -1,7 +1,6 @@
 import type { EliminationBracket, MatchId, TeamId } from "./types";
-import {
-  listEliminationMatches,
-} from "./bracket";
+import { listEliminationMatches, loserMatchId } from "./bracket";
+import { GAME_IDS_16 } from "./gameNumbers";
 import {
   getEliminationChampion,
   getEliminationLossCount,
@@ -96,6 +95,40 @@ const buildPlacementMap = (
     !needsGrandFinalReset(bracket)
   ) {
     places.set(deciding.loserId, 2);
+  }
+
+  // Fixed 16-team bracket: derive each place from the exact game that
+  // eliminated the team. This guarantees 3rd comes from Game 29, 4th from
+  // Game 28, and the shared places from the corresponding LB rounds.
+  const byId = new Map(listEliminationMatches(bracket).map((match) => [match.id, match]));
+  if (bracket.bracketSize === 16 && byId.has(GAME_IDS_16.lowerFinal)) {
+    const placeLosers = (ids: readonly MatchId[], place: number): void => {
+      for (const id of ids) {
+        const match = byId.get(id);
+        if (
+          match?.status === "completed" &&
+          match.loserId &&
+          getEliminationLossCount(bracket, match.loserId) >= 2 &&
+          !places.has(match.loserId)
+        ) {
+          places.set(match.loserId, place);
+        }
+      }
+    };
+
+    placeLosers([GAME_IDS_16.lowerFinal], 3);
+    placeLosers([GAME_IDS_16.semiFinal2], 4);
+    placeLosers([GAME_IDS_16.game25, GAME_IDS_16.game26], 5);
+    placeLosers([loserMatchId(3, 1), loserMatchId(3, 2)], 7);
+    placeLosers(
+      [1, 2, 3, 4].map((index) => loserMatchId(2, index)),
+      9
+    );
+    placeLosers(
+      [1, 2, 3, 4].map((index) => loserMatchId(1, index)),
+      13
+    );
+    return places;
   }
 
   const rounds = [...new Set(bracket.losers.map((match) => match.round))].sort(

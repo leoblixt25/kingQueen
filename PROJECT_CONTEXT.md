@@ -150,7 +150,7 @@ KingQueen_EU/
 
 ### Verification baseline (Oct 2026) â€” check before shipping
 * Typecheck: `npx tsc -b --force` â†’ **22 errors is the BASELINE, not zero.** Pre-existing in `AuthModal`, `DatabaseInit`, `FinalMatch`, `MatchCard`, `AdminControl`, `AdminLogin`, `PublicDrawPage` (2Ã— `unknown[]`), `addAdminUser`, `liveRankingRepro.test` (2Ã—), `staticMatchups.test`. Never "fix" these as a side effect of other work.
-* Tests: `npx vitest run` â†’ **92 passing / 9 files** at `e0cb977`.
+* Tests: `npx vitest run` â†’ **92 passing / 9 files** at `e0cb977` (historical baseline; latest count is in 13be).
 * Browser check: `--dump-dom` exits before Firestore connects (realtime listener is a long-lived socket). Use CDP with a real 20s wait instead.
 
 ### Hosting cache gotcha
@@ -1017,7 +1017,7 @@ Four new test files, **59 new tests**:
 
 ### Spanish tail + reset/placement correctness (pure engine)
 - `spanishCrossover.ts` now rewires the WHOLE tail: G21→SF2-B, G22→SF1-B, G25→SF1-A, G26→SF2-A; BOTH semifinal winners→GF (G30/31); both semifinal losers→lower final (G29) for 3rd/4th; lower final `winnerTo` cleared so it no longer re-enters the GF. `hasSpanishCrossover()` verifies all 8 links.
-- `progression.ts`: reset detection is by LOSS COUNT of the first-GF loser (undefeated finalist loses once), not bracket slot — required because the crossover mixes slot loss counts. Champion logic updated to match.
+- `progression.ts`: reset detection is by LOSS COUNT of the first-GF loser (undefeated finalist loses once), not bracket slot — required because the crossover mixes slot loss counts. Champion logic updated to match. **Superseded in 13be:** reset is now detected from explicit GF slot roles (WB champion in slot A loses to the LB champion in slot B); the crossover is no longer operational.
 - `eliminationStandings.ts`: `buildSpanishPlacementMap()` when crossover detected — GF 1st/2nd, lower final 3rd/4th (shared 3rd if not playable), remaining teams by losers round. Ties SHARE a place; no invented tiebreakers.
 - `fixed16Progression.test.ts` assertions updated for the corrected Spanish loss distribution (champion + 3rd-place winner may finish on 1 loss; other 14 on 2).
 
@@ -1030,7 +1030,7 @@ Four new test files, **59 new tests**:
 ### Admin scoring service (`scoring.ts`, pure transitions; Firestore write in the caller)
 - `saveSetup`, `buildTeamsAndGroups`, `startGroupStage`, `scoreGroupMatch`, `correctGroupMatchScore`, `generateEliminationBracket`, `resetEliminationBracket`, `scoreEliminationMatch`, `correctEliminationResult`.
 - Selectors: `selectGroupStandings`, `selectGlobalRanking`, `selectEliminationStandings`, `selectPlacements`, `selectProgress`, `selectLossCount`.
-- Gates: all 24 group matches required for bracket generation; duplicate/invalid scores rejected; group corrections before any elimination result clear the bracket and set `seedingStale`; after an elimination result the bracket is `bracket-locked`; elimination corrections replay results in game order and drop stale downstream results; Spanish crossover preserved through replay.
+- Gates: all 24 group matches required for bracket generation; duplicate/invalid scores rejected; group corrections before any elimination result clear the bracket and set `seedingStale`; after an elimination result the bracket is `bracket-locked`; elimination corrections replay results in game order and drop stale downstream results; Spanish crossover preserved through replay (superseded in 13be — replay now uses canonical standard-bracket links and flags invalidated results for review).
 - `scoring.test.ts` (11): build 16/4/24, standings/ranking, invalid/duplicate, 24-match gate, Spanish bracket, auto-advance/loss counting, invalid/duplicate elimination, lock behavior, group correction recalculation, elimination replay, crossover preservation.
 
 ### Live UI (no K&Q tournament imports)
@@ -1150,7 +1150,7 @@ Four new test files, **59 new tests**:
 
 ### New reusable views (`views.tsx`)
 - `LiveMatchesView`: started group and elimination matches awaiting scores, plus the latest completed group/elimination results.
-- `TournamentRulesView`: 16 teams/4 groups, round robin, tiebreaker order, all-teams-qualify, no group eliminations, double-elimination loss rules, Spanish crossover (Games 21/22/25/26 → semifinals 27/28), Grand Final reset, independent rankings and shared tied places.
+- `TournamentRulesView`: 16 teams/4 groups, round robin, tiebreaker order, all-teams-qualify, no group eliminations, double-elimination loss rules, standard bracket (WB 8/4/2/1, LB 4/4/2/2/1/1, GF, optional reset), Grand Final reset, independent rankings and shared tied places. (Rules text updated in 13be; it previously described the Spanish crossover.)
 
 ### Verification
 - `npx vitest run` — **27 files / 291 tests passed** (no new engine logic in this phase).
@@ -1380,7 +1380,7 @@ Four new test files, **59 new tests**:
 - **Result simulation** (Nov 19): the loader has a `Results after loading` select with `none` (default, teams + schedule only), `groups` (random score for every group match) and `full` (groups + the entire elimination bracket through to a champion). Scores follow the padel rule requested by the admin: the winning side always has **21**, the losing side a random **0–20**; no ties are generated. `loadTestTeamsAndPlayers(doc, actor, { results, rng })` is still pure; `rng` is injectable so tests are deterministic. Every simulated match goes through the normal scoring transitions, so standings, bracket progression, audit entries (`group-score-entered`, `elimination-score-entered`), grand-final reset and final placements all behave exactly as if the admin had typed the scores.
 
 ### Scheduling by size
-- New `sizeAware.ts` facade: **16 teams keep the unchanged `fixed16.ts` path** (4 groups / 24 matches / Spanish crossover). Other supported sizes use the existing generic `groups.ts` / `elimination.ts` / `bracket.ts` engines with four teams per group.
+- New `sizeAware.ts` facade: **16 teams use the `fixed16.ts` path** (4 groups / 24 matches; standard double-elimination bracket — the Spanish crossover was removed from the operational engine in 13be). Other supported sizes use the existing generic `groups.ts` / `elimination.ts` / `bracket.ts` engines with four teams per group.
 - `scoring.ts` no longer hard-codes 16/24: `buildTeamsAndGroups` validates the configured team limit and persists `teamLimit`/`groupCount`/`teamsPerGroup`; stage start, completion, ranking, bracket gating and bracket generation all use `expectedGroupMatchCount()` / `canGenerateSizeAwareBracket()` / `getSizeAwareGlobalRanking()`.
 - Scoring rules, progression, audit, reopen and persistence are unchanged; only the group/bracket wiring became size-aware.
 
@@ -1458,6 +1458,37 @@ Four new test files, **59 new tests**:
 - `npx vitest run` — **37 files / 402 tests passed**. Targeted ESLint clean. `npx vite build` succeeded. `npx tsc -b --force` — **22 pre-existing baseline errors / 0 new**. Firestore rules dry-run compiled clean.
 - `npx firebase deploy --only firestore:rules,hosting` succeeded; live bundle `assets/index-DhyW1_zA.js`. Live smoke: `/formats/group-stage-double-elimination/pairing?id=default` shows the sign-in prompt, `/formats/group-stage-double-elimination/admin?id=default` shows the admin verification state, `/` still renders the unchanged K&Q/home flow, and the browser console is clean. The deployed bundle contains the new admin text “Create a pair manually”.
 - Live admin interaction was not exercised because admin credentials were unavailable; the route guard, bundle text and compiled/deployed rules were verified instead.
+
+## 13be. Standard double-elimination audit fixes (Nov 2026) — implemented, pushed, deployed
+
+**Scope: GSDE only.** K&Q code, routes, screens, data and Firestore rule blocks untouched. `firestore.rules` was NOT changed or deployed in this phase; the GSDE block from 13bd remains live. Every write still targets the single `tournaments/{id}` document.
+
+### Root causes fixed
+- **Dead tiebreaker config:** `settings.groupTiebreakers` is now honoured via `resolveGroupTiebreakers()` — wins mandatory, unknown/duplicate keys ignored, full default chain appended. Head-to-head evaluates all completed matches in the current tied-wins block, so transitive multi-team ties are preserved.
+- **Unenforced `seedingStale`:** elimination scoring refuses results on a provisional bracket; live/admin views show "Provisional bracket" banners.
+- **Champion-only completion:** one central `validateTournamentCompletion()` now drives status, progress, final result, report, PDF and live/admin views. It blocks unresolved required matches, review-flagged results, missing WB/LB champions, an unresolved reset final, multiple champions/runners-up and inconsistent placements, and lists every blocker.
+- **Unsafe replay:** corrections replay topologically from bracket links; discarded downstream results are flagged `reviewRequired` / `reviewReason` and recorded in `invalidatedResultIds`. Unknown correction match ids are rejected instead of accepted.
+- **Unconditional Spanish crossover:** operational fixed-16 uses the canonical `bracket.ts` standard links — WB `8/4/2/1`, LB `4/4/2/2/1/1`, GF `1`, optional reset `1` (30/31 matches). `spanishCrossover.ts` / `rematchPrevention.ts` remain only as legacy utilities and tests; `avoidRematches` is not wired into advancement.
+- **Stale reset flag in PDF:** the report uses `needsGrandFinalReset()` for current state plus `resetWasPlayed` for history. A reset is appended only when the WB champion (GF1 slot A) loses to the LB champion (slot B); no other scenario triggers one.
+- **Hardcoded `/30` and PDF/live divergence:** `progress.eliminationTotal`, `report.counts` and PDF progress all come from the same validator. PDF no longer uses Spanish wording.
+
+### Files
+- New: `completion.ts` (central validator), `completionScenarios.test.ts` (A–G plus regressions).
+- Modified: `types.ts`, `groupStandings.ts`, `groupStageMatches.ts`, `fixed16.ts`, `elimination.ts`, `progression.ts`, `eliminationStandings.ts`, `sizeAware.ts`, `scoring.ts`, `report.ts`, `gameNumbers.ts`, `gsdePdfExport.ts`, `views.tsx`, `AdminSetup.tsx`, `GroupStageDoubleElimination.tsx` and updated engine tests.
+- PDF: "FINAL RESULT - VALIDATED" vs "PROVISIONAL RESULT - NOT FINAL", result-status row and completion-blockers section.
+- Live/admin: standard-rules text, provisional/blocker banners, review badges on invalidated matches, `progress.eliminationTotal`, seeding-stale/completion gating.
+
+### Tests and verification
+- A–G scenarios: normal DE (30 matches, validated), reset final (31 matches), earlier-score correction with invalidation + bogus id + 8/24/32 replay, incomplete tournament, configurable group tiebreakers, team elimination, placement validation; plus PDF/live agreement and provisional-bracket gating.
+- `npx vitest run src/formats/group-double-elimination` — **26 files / 297 tests passed**.
+- `npx tsc -b --force` — 22 pre-existing K&Q baseline errors / 0 GSDE errors.
+- Targeted ESLint — 0 errors, 1 pre-existing `react-refresh/only-export-components` warning at `views.tsx:742`.
+- `npx vite build` — succeeded.
+
+### Deployment
+- Commit `b671e4f` pushed to `feature/group-stage-double-elimination` (from pairing commit `1510230`).
+- `npx firebase deploy --only hosting --project kingqueen-eu` — hosting only. Live `index.html` serves `assets/index-DNt7X6hl.js` (HTTP 200), replacing pairing bundle `index-DhyW1_zA.js`.
+- Firestore rules unchanged and not deployed; no K&Q data touched.
 
 ## 14. Deployment URLs
 

@@ -64,6 +64,16 @@ import {
   getRegistrationStats,
 } from "@/formats/group-double-elimination/registration";
 import {
+  adminChangePairing,
+  adminCreatePairTeam,
+  adminRemovePairing,
+  getPairingInvitations,
+  getPairingStatusForPlayer,
+  isPairingLocked,
+  selectUnpairedPlayers,
+} from "@/formats/group-double-elimination/pairing";
+import type { PairingInvitation } from "@/formats/group-double-elimination/types";
+import {
   UNKNOWN_ADMIN,
   selectCorrections,
   type AuditActor,
@@ -117,6 +127,7 @@ type AdminSection =
   | "overview"
   | "teams"
   | "players"
+  | "pairing"
   | "matches"
   | "results"
   | "manage";
@@ -323,6 +334,11 @@ export default function GroupDoubleEliminationAdminSetup() {
   const [reopenDiscardConfirmed, setReopenDiscardConfirmed] = useState(false);
   const [reopenTarget, setReopenTarget] = useState<"elimination" | "group-stage">("elimination");
   const [regTeamChoice, setRegTeamChoice] = useState<Record<string, string>>({});
+  const [pairFirstUid, setPairFirstUid] = useState("");
+  const [pairSecondUid, setPairSecondUid] = useState("");
+  const [pairChangeTeamId, setPairChangeTeamId] = useState("");
+  const [pairChangeFirstUid, setPairChangeFirstUid] = useState("");
+  const [pairChangeSecondUid, setPairChangeSecondUid] = useState("");
   const [actor, setActor] = useState<AuditActor>(UNKNOWN_ADMIN);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
@@ -415,6 +431,9 @@ export default function GroupDoubleEliminationAdminSetup() {
   const corrections = doc ? selectCorrections(doc) : [];
   const registrationStats = doc ? getRegistrationStats(doc) : null;
   const allRegistrations = doc ? getRegistrations(doc) : [];
+  const allInvitations: PairingInvitation[] = doc ? getPairingInvitations(doc) : [];
+  const unpairedPlayers = doc ? selectUnpairedPlayers(doc) : [];
+  const pairingLocked = doc ? isPairingLocked(doc) : true;
   const names = doc ? teamNameMap(doc.teams, doc.registrations ?? []) : new Map();
   const groupTables = doc ? selectGroupStandings(doc) : [];
   const globalRanking = doc ? selectGlobalRanking(doc) : [];
@@ -475,6 +494,52 @@ export default function GroupDoubleEliminationAdminSetup() {
   };
 
   const showError = (text: string) => setNotice({ kind: "error", text });
+
+  const playerLabel = (uid: string): string => {
+    const player = allRegistrations.find((item) => item.uid === uid);
+    return player
+      ? `${player.name}${player.gender ? ` (${player.gender})` : ""}`
+      : uid;
+  };
+
+  const invitationTone = (status: PairingInvitation["status"]): PillTone => {
+    if (status === "accepted") return "palm";
+    if (status === "pending") return "amber";
+    if (status === "declined") return "coral";
+    return "slate";
+  };
+
+  const playerSelect = (
+    value: string,
+    onChange: (value: string) => void,
+    label: string,
+    excludeUid?: string,
+    includeUids: string[] = []
+  ) => {
+    const unpairedUids = new Set(unpairedPlayers.map((player) => player.uid));
+    return (
+      <select
+        aria-label={label}
+        className={selectCls}
+        value={value}
+        disabled={saving || pairingLocked}
+        onChange={(event) => onChange(event.target.value)}
+      >
+        <option value="">Choose a player…</option>
+        {allRegistrations
+          .filter(
+            (player) =>
+              (unpairedUids.has(player.uid) || includeUids.includes(player.uid)) &&
+              player.uid !== excludeUid
+          )
+          .map((player) => (
+            <option key={player.uid} value={player.uid}>
+              {playerLabel(player.uid)} · {player.email}
+            </option>
+          ))}
+      </select>
+    );
+  };
 
   // Shared destructive control: rendered on Overview and Manage → Setup so it
   // is always one screen away from where the admin lands.
@@ -744,6 +809,7 @@ export default function GroupDoubleEliminationAdminSetup() {
     { key: "overview", label: "🏠 Overview" },
     { key: "teams", label: "👥 Teams" },
     { key: "players", label: "🙋 Players" },
+    { key: "pairing", label: "💞 Pairing" },
     { key: "matches", label: "🏐 Matches" },
     { key: "results", label: "🏆 Results" },
     { key: "manage", label: "⚙️ Manage" },
@@ -752,6 +818,7 @@ export default function GroupDoubleEliminationAdminSetup() {
   const quickLinks: ReadonlyArray<{ key: AdminSection; label: string }> = [
     { key: "teams", label: "👥 Teams" },
     { key: "players", label: "🙋 Players" },
+    { key: "pairing", label: "💞 Pairing" },
     { key: "matches", label: "🏐 Enter scores" },
     { key: "results", label: "🏆 Results" },
     { key: "manage", label: "⚙️ Tournament controls" },
@@ -1255,6 +1322,216 @@ export default function GroupDoubleEliminationAdminSetup() {
                   {doc.teams.length === 0 ? (
                     <p className="text-center text-xs font-semibold text-amber-800">
                       Add teams in the Teams section before approving players.
+                    </p>
+                  ) : null}
+                </SectionCard>
+              ) : null}
+
+              {section === "pairing" ? (
+                <SectionCard emoji="💞" title="Player pairing" gradient="sunset">
+                  <p className="text-center text-sm text-foreground/65">
+                    {unpairedPlayers.length} unpaired ·{" "}
+                    {allInvitations.filter((item) => item.status === "pending").length} pending ·{" "}
+                    {allInvitations.filter((item) => item.status === "accepted").length} accepted
+                  </p>
+                  <p className="text-center text-xs text-foreground/55">
+                    Players invite compatible partners themselves. Review those invitations below,
+                    or create, change and remove fixed pairs manually. Every change is logged.
+                  </p>
+                  {pairingLocked ? (
+                    <p className="rounded-xl border border-amber-300/60 bg-amber-50/80 p-3 text-center text-xs font-semibold text-amber-800">
+                      Pairings are locked — registration closes when the group stage starts.
+                    </p>
+                  ) : null}
+
+                  <div className="space-y-3 rounded-xl border-2 border-ocean/20 bg-ocean/5 p-4">
+                    <p className="text-sm font-bold text-ocean">Create a pair manually</p>
+                    <Field label="First player">
+                      {playerSelect(pairFirstUid, setPairFirstUid, "First player")}
+                    </Field>
+                    <Field label="Second player">
+                      {playerSelect(pairSecondUid, setPairSecondUid, "Second player", pairFirstUid)}
+                    </Field>
+                    <Button
+                      className={primaryBtn}
+                      disabled={saving || pairingLocked || !pairFirstUid || !pairSecondUid}
+                      onClick={() =>
+                        apply(
+                          (current) => adminCreatePairTeam(current, pairFirstUid, pairSecondUid, actor),
+                          "Pair created as a pending team.",
+                          () => {
+                            setPairFirstUid("");
+                            setPairSecondUid("");
+                          }
+                        )
+                      }
+                    >
+                      <Plus className="w-5 h-5 mr-2" />
+                      Create pair
+                    </Button>
+                  </div>
+
+                  <div className="space-y-3 rounded-xl border-2 border-sunset/20 bg-sunset/5 p-4">
+                    <p className="text-sm font-bold text-sunset-dark">Change or remove a pair</p>
+                    <Field label="Team">
+                      <select
+                        aria-label="Team to change"
+                        className={selectCls}
+                        value={pairChangeTeamId}
+                        disabled={saving || pairingLocked}
+                        onChange={(event) => {
+                          const teamId = event.target.value;
+                          setPairChangeTeamId(teamId);
+                          const team = doc.teams.find((item) => item.id === teamId);
+                          setPairChangeFirstUid(team?.playerIds[0] ?? "");
+                          setPairChangeSecondUid(team?.playerIds[1] ?? "");
+                        }}
+                      >
+                        <option value="">Choose a team…</option>
+                        {doc.teams.map((team) => (
+                          <option key={team.id} value={team.id}>
+                            {names.get(team.id) ?? team.name}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                    {pairChangeTeamId ? (
+                      <>
+                        <Field label="New first player">
+                          {playerSelect(
+                            pairChangeFirstUid,
+                            setPairChangeFirstUid,
+                            "New first player",
+                            undefined,
+                            doc.teams.find((item) => item.id === pairChangeTeamId)?.playerIds ?? []
+                          )}
+                        </Field>
+                        <Field label="New second player">
+                          {playerSelect(
+                            pairChangeSecondUid,
+                            setPairChangeSecondUid,
+                            "New second player",
+                            pairChangeFirstUid,
+                            doc.teams.find((item) => item.id === pairChangeTeamId)?.playerIds ?? []
+                          )}
+                        </Field>
+                        <Button
+                          className={primaryBtn}
+                          disabled={
+                            saving ||
+                            pairingLocked ||
+                            !pairChangeFirstUid ||
+                            !pairChangeSecondUid
+                          }
+                          onClick={() =>
+                            apply(
+                              (current) =>
+                                adminChangePairing(
+                                  current,
+                                  pairChangeTeamId,
+                                  pairChangeFirstUid,
+                                  pairChangeSecondUid,
+                                  actor
+                                ),
+                              "Pair updated.",
+                              () => {
+                                setPairChangeTeamId("");
+                                setPairChangeFirstUid("");
+                                setPairChangeSecondUid("");
+                              }
+                            )
+                          }
+                        >
+                          Save pair change
+                        </Button>
+                        <Button
+                          className={dangerBtn}
+                          disabled={saving || pairingLocked}
+                          onClick={() =>
+                            apply(
+                              (current) => adminRemovePairing(current, pairChangeTeamId, actor),
+                              "Pair removed and both players are unpaired.",
+                              () => {
+                                setPairChangeTeamId("");
+                                setPairChangeFirstUid("");
+                                setPairChangeSecondUid("");
+                              }
+                            )
+                          }
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Remove pair
+                        </Button>
+                      </>
+                    ) : null}
+                  </div>
+
+                  <div className="space-y-3">
+                    <p className="text-sm font-bold">Pairing invitations</p>
+                    {allInvitations.length === 0 ? (
+                      <p className="rounded-xl bg-sand-light/50 p-4 text-center text-sm font-semibold text-foreground/60">
+                        No invitations have been sent yet.
+                      </p>
+                    ) : (
+                      allInvitations.map((invite) => (
+                        <div
+                          key={invite.id}
+                          className="space-y-2 rounded-xl border border-sand-dark/20 bg-white/70 p-4 shadow-sand"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="break-words text-sm font-bold text-foreground">
+                              {playerLabel(invite.inviterUid)} → {playerLabel(invite.inviteeUid)}
+                            </p>
+                            <Pill tone={invitationTone(invite.status)}>{invite.status}</Pill>
+                          </div>
+                          <p className="text-xs text-foreground/60">
+                            Category: {invite.category} · Team:{" "}
+                            {invite.teamId ? names.get(invite.teamId) ?? invite.teamId : "—"}
+                          </p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="space-y-3">
+                    <p className="text-sm font-bold">All registered players</p>
+                    {allRegistrations.length === 0 ? (
+                      <p className="rounded-xl bg-sand-light/50 p-4 text-center text-sm font-semibold text-foreground/60">
+                        No players have registered yet.
+                      </p>
+                    ) : (
+                      allRegistrations.map((registration) => (
+                        <div
+                          key={registration.uid}
+                          className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-sand-dark/20 bg-white/70 p-3 shadow-sand"
+                        >
+                          <div className="min-w-0">
+                            <p className="break-words text-sm font-bold text-foreground">
+                              {registration.name}
+                            </p>
+                            <p className="break-all text-xs text-foreground/55">
+                              {registration.email}
+                            </p>
+                          </div>
+                          <Pill
+                            tone={
+                              getPairingStatusForPlayer(doc, registration.uid) === "paired"
+                                ? "palm"
+                                : getPairingStatusForPlayer(doc, registration.uid) === "searching"
+                                  ? "slate"
+                                  : "ocean"
+                            }
+                          >
+                            {getPairingStatusForPlayer(doc, registration.uid).replace("-", " ")}
+                          </Pill>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {unpairedPlayers.length > 0 ? (
+                    <p className="text-center text-xs font-semibold text-amber-800">
+                      {unpairedPlayers.length} registered player(s) are still unpaired.
                     </p>
                   ) : null}
                 </SectionCard>

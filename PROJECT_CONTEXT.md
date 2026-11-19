@@ -1419,6 +1419,46 @@ Four new test files, **59 new tests**:
 - Verification: **36 files / 392 tests passed**, tsc **22 pre-existing baseline errors / 0 new**, targeted ESLint clean, `npx vite build` succeeds (`assets/index-DnMnMlv9.js`, CSS `assets/index-CXS04Zvf.css`), `firestore.rules` byte-identical.
 - Deployed with `npx firebase deploy --only hosting --project kingqueen-eu`; live bundle and `GSDE admin build 2026-11-19b` confirmed.
 
+## 13bd. GSDE individual player pairing + admin pair management — Phase 13 (Nov 2026)
+
+**Scope: GSDE only.** K&Q code, routes, screens, data and Firestore rule blocks are untouched. The `firestore.rules` diff is additive and starts after the K&Q blocks (lines 5–33 remain byte-identical). Every GSDE write still targets the single `tournaments/{id}` document. No email notification service was added; invitations and statuses are live through Firestore `onSnapshot`.
+
+### Model and decisions
+- Registration is still **individual** (name, gender, email). Teams, invitations and registrations remain separate records so unpaired players stay listed as registered individuals.
+- `types.ts` adds optional `PairingInvitation` (`pending|accepted|declined|cancelled`) and `PairingResponse` (`accepted|declined`) maps in `persistence.ts`: `pairingInvitations` keyed by the **inviter uid**, `pairingResponses` keyed by the **invitee uid**. Legacy documents round-trip with `{}` defaults and both fields serialize to `tournaments/{id}`.
+- Firebase Auth `uid` stays authoritative; email is lower-cased only for display/dedupe. `Team.id` remains the join key for every tournament stage.
+- Sending an invitation never changes a registration or creates a team. Accepting one creates a deterministic `pair-<uid>-<uid>` **pending** team with both player names/ids (`createPairTeamId`); registrations are not mutated. The existing admin approval gate still controls tournament participation, so only approved teams reach groups, matches, standings, brackets, finals and rankings.
+- `getRegisteredTeamId()` now falls back to an accepted invitation when a registration is not yet approved, keeping both players linked from acceptance onward.
+- Category rules are reused from `category.ts`: `Male` = male+male, `Female` = female+female, `Mixto` = one of each (default). `selectAvailablePlayers()` hides rejected/genderless players, existing team members, players with active invitations and incompatible genders.
+
+### Domain and persistence (`pairing.ts`)
+- Player mutations: `sendPairingInvitation`, `acceptPairingInvitation`, `declinePairingInvitation`, `cancelPairingInvitation`. Guards reject self-pairs, duplicate/incompatible pairs, multiple active invitations, second teams and stale invitations.
+- Admin mutations: `adminCreatePairTeam`, `adminChangePairing`, `adminRemovePairing`. Manual creation creates a pending pair and approves both registrations; changing/removing a pair keeps the existing team id where applicable, detaches replaced players, cancels related invitations/responses and is audited.
+- Selectors: `getPairingInvitations`, `getPairingResponses`, `findInvitationByInviter`, `selectPendingInvitationsForPlayer`, `selectAvailablePlayers`, `selectUnpairedPlayers`, `getPairingStatusForPlayer` (`paired`, `invite-sent`, `invite-received`, `searching`, `not-registered`) and `isPairingLocked`.
+- All transitions go through the shared `commitGsdeChange()` gate, so audit + central integrity always run. New integrity codes detect invalid invitations/responses, accepted invitations without a valid two-player team and any player claiming more than one team/accepted pair.
+- Seven new audited actions were added (`pairing-invitation-sent/accepted/declined/cancelled`, `pairing-team-created/changed/removed`); team change/removal also appears in `selectCorrections()`.
+- Pairing closes with registration when the group stage starts. Admin composition changes additionally lock once groups or matches exist. `resetTournament()` clears both pairing maps and counts invitations in the audit detail.
+
+### UI and routes
+- New route `/formats/group-stage-double-elimination/pairing?id=...` → `Pairing.tsx`: sign-in prompt, registration/pairing status, compatible-player list with invite buttons, incoming pending invitations with accept/decline, sent invitations with cancel, and the current team card once accepted/approved.
+- `Register.tsx` and `RegistrationPending.tsx` link to the new page and explain the individual → pair flow.
+- `AdminSetup.tsx` gains a **💞 Pairing** tab and matching quick link: counts of unpaired/pending/accepted, all invitations with status and team, all registered players with pairing status, manual **Create a pair**, **Change or remove a pair**, and a visible lock notice.
+- Only confirmed/approved teams are used by the existing group, match, standings, bracket, final and ranking code; no stage logic was rewritten.
+
+### Firestore rules (GSDE-only additive block)
+- New helpers `gsdePairingSendWrite()`, `gsdePairingCancelWrite()` and `gsdePairingRespondWrite(accepted)` are ORed into the existing GSDE `gsdePlayerWrite()` branch.
+- A signed-in player may add/cancel only their own invitation (invitation map changes only) or write only their own response. Acceptance may additionally append exactly one `pending` two-player team whose id matches the invitation; admin-only fields such as registrations, groups, matches, bracket and setup cannot be touched through these player branches.
+- A Firestore variable-count compile error was fixed by simplifying the response helper; the final dry-run compiled with **no errors or warnings**.
+
+### Simulator and tests
+- `testData.ts` now simulates the real workflow: individual `registerPlayer` calls → compatible `sendPairingInvitation` → `acceptPairingInvitation` → admin team/player approval → normal group schedule. Stable 1..N seeds are reapplied so reports, bracket progression and regression tests keep their deterministic order.
+- New `pairing.test.ts` (10 tests) covers the lifecycle, category checks, one-team/duplicate guards, pending-team creation, decline/cancel, admin create/change/remove and locked states. `testData.test.ts` serializer whitelist now includes both pairing maps.
+
+### Verification and deployment
+- `npx vitest run` — **37 files / 402 tests passed**. Targeted ESLint clean. `npx vite build` succeeded. `npx tsc -b --force` — **22 pre-existing baseline errors / 0 new**. Firestore rules dry-run compiled clean.
+- `npx firebase deploy --only firestore:rules,hosting` succeeded; live bundle `assets/index-DhyW1_zA.js`. Live smoke: `/formats/group-stage-double-elimination/pairing?id=default` shows the sign-in prompt, `/formats/group-stage-double-elimination/admin?id=default` shows the admin verification state, `/` still renders the unchanged K&Q/home flow, and the browser console is clean. The deployed bundle contains the new admin text “Create a pair manually”.
+- Live admin interaction was not exercised because admin credentials were unavailable; the route guard, bundle text and compiled/deployed rules were verified instead.
+
 ## 14. Deployment URLs
 
 ### EU Project (KingQueen_EU â€” LIVE)

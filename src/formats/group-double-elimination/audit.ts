@@ -30,7 +30,14 @@ export type AuditAction =
   | "player-registered"
   | "player-registration-approved"
   | "player-registration-rejected"
-  | "player-registration-removed";
+  | "player-registration-removed"
+  | "pairing-invitation-sent"
+  | "pairing-invitation-accepted"
+  | "pairing-invitation-declined"
+  | "pairing-invitation-cancelled"
+  | "pairing-team-created"
+  | "pairing-team-changed"
+  | "pairing-team-removed";
 
 export interface AuditActor {
   id: string;
@@ -106,5 +113,7 @@ export const selectCorrections = (
       entry.action === "tournament-reset" ||
       entry.action === "player-registration-approved" ||
       entry.action === "player-registration-rejected" ||
-      entry.action === "player-registration-removed"
+      entry.action === "player-registration-removed" ||
+      entry.action === "pairing-team-changed" ||
+      entry.action === "pairing-team-removed"
   );

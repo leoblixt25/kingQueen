@@ -10,6 +10,7 @@ import { PageShell, useGsdeAuth, useGsdeTournament } from "./shared";
 
 const REGISTER_ROUTE = `${GROUP_DOUBLE_ELIMINATION_FORMAT.route}/register`;
 const PLAYER_ROUTE = `${GROUP_DOUBLE_ELIMINATION_FORMAT.route}/player`;
+const PAIRING_ROUTE = `${GROUP_DOUBLE_ELIMINATION_FORMAT.route}/pairing`;
 
 export default function GroupDoubleEliminationRegistrationPending() {
   const { id, doc } = useGsdeTournament();
@@ -102,8 +103,11 @@ export default function GroupDoubleEliminationRegistrationPending() {
           <CardContent className="space-y-2 text-sm text-amber-900">
             <p>
               <strong>{registration.name}</strong> is registered as <Badge variant="secondary">{registration.email}</Badge>.
-              An admin will approve your registration and assign you to a team.
+              Invite a compatible registered player to form your team, or wait for an admin to assign one.
             </p>
+            <Button size="sm" onClick={() => goTo(PAIRING_ROUTE)}>
+              Find a partner
+            </Button>
             <p className="text-xs text-amber-800/75">
               This page updates automatically — no refresh needed.
             </p>

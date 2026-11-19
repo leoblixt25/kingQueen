@@ -27,6 +27,7 @@ import GroupDoubleEliminationRanking from "./pages/formats/group-double-eliminat
 import GroupDoubleEliminationInfo from "./pages/formats/group-double-elimination/Info";
 import GroupDoubleEliminationPlayerAccess from "./pages/formats/group-double-elimination/PlayerAccess";
 import GroupDoubleEliminationPlayerView from "./pages/formats/group-double-elimination/PlayerView";
+import GroupDoubleEliminationPairing from "./pages/formats/group-double-elimination/Pairing";
 import GroupDoubleEliminationRegister from "./pages/formats/group-double-elimination/Register";
 import GroupDoubleEliminationRegistrationPending from "./pages/formats/group-double-elimination/RegistrationPending";
 import GsdeAdminRoute from "./pages/formats/group-double-elimination/GsdeAdminRoute";
@@ -74,6 +75,9 @@ const App = () => (
             } />
             <Route path="/formats/group-stage-double-elimination/player" element={
               <GroupDoubleEliminationPlayerView />
+            } />
+            <Route path="/formats/group-stage-double-elimination/pairing" element={
+              <GroupDoubleEliminationPairing />
             } />
             <Route path="/live-ranking" element={<LiveRanking />} />
             <Route path="/info" element={<InfoPage />} />

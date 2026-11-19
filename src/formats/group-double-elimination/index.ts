@@ -29,3 +29,4 @@ export * from "./rematchPrevention";
 export * from "./fixed16";
 export * from "./sizeAware";
 export * from "./report";
+export * from "./pairing";

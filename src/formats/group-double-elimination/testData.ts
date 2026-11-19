@@ -9,12 +9,16 @@ import type { GsdeTournamentDocument } from "./persistence";
 import { listEliminationMatches } from "./bracket";
 import { getGameNumber } from "./gameNumbers";
 import {
+  approvePlayerRegistration,
+  approveTeam,
   buildTeamsAndGroups,
   generateEliminationBracket,
+  registerPlayer,
   scoreEliminationMatch,
   scoreGroupMatch,
   startGroupStage,
 } from "./scoring";
+import { acceptPairingInvitation, sendPairingInvitation } from "./pairing";
 import { createTeamId } from "./teams";
 import type {
   PlayerGender,
@@ -317,47 +321,70 @@ export const loadTestTeamsAndPlayers = (
   const teamCount = resolveTestTeamCount(doc.tournament.config.teamLimit);
   const category = normalizeTournamentCategory(doc.tournament.config.category);
   const pairs = buildTestPairs(teamCount, category);
-  const teams = pairs.map((pair) => pair.team);
-  const now = new Date().toISOString();
-  const registrations: PlayerRegistration[] = pairs.flatMap((pair) =>
-    pair.players.map((player) => ({
-      uid: player.uid,
-      email: player.email,
-      name: player.name,
-      gender: player.gender,
-      status: "approved" as const,
-      teamId: pair.team.id,
-      registeredAt: now,
-      decidedAt: now,
-    }))
-  );
 
-  const seeded = buildTeamsAndGroups(
-    {
-      ...doc,
-      tournament: {
-        ...doc.tournament,
-        config: {
-          ...doc.tournament.config,
-          category,
-          teamLimit: teamCount,
-          groupCount: GROUP_COUNT_BY_TEAM_COUNT[teamCount],
-          teamsPerGroup: 4,
-        },
+  // Simulate the real player workflow rather than injecting finished teams:
+  // individual registrations → compatible invitations → accepted invitations
+  // (which create the fixed teams) → admin approval → group schedule.
+  let seeded: GsdeTournamentDocument = {
+    ...doc,
+    tournament: {
+      ...doc.tournament,
+      config: {
+        ...doc.tournament.config,
+        category,
+        teamLimit: teamCount,
+        groupCount: GROUP_COUNT_BY_TEAM_COUNT[teamCount],
+        teamsPerGroup: 4,
       },
-      teams,
-      registrations,
-      scoreSubmissions: {},
-      elimination: null,
     },
-    teams,
-    actor
-  );
+    teams: [],
+    groups: [],
+    matches: [],
+    registrations: [],
+    pairingInvitations: {},
+    pairingResponses: {},
+    scoreSubmissions: {},
+    elimination: null,
+  };
 
-  const loaded = appendAudit(seeded, {
+  // 1. Each player registers as an individual.
+  for (const pair of pairs) {
+    for (const player of pair.players) {
+      seeded = registerPlayer(seeded, player, actor);
+    }
+  }
+
+  // 2 & 3. A compatible invitation is sent and accepted, creating one fixed
+  // pending team per pair while registrations remain individual.
+  for (const pair of pairs) {
+    const [inviter, invitee] = pair.players;
+    const invited = sendPairingInvitation(seeded, inviter.uid, invitee.uid, actor);
+    seeded = acceptPairingInvitation(invited, invitee.uid, inviter.uid, actor);
+  }
+
+  // 4. Admin approves every pending team and both players on it.
+  for (const team of seeded.teams) {
+    let approved = approveTeam(seeded, team.id, true, actor);
+    for (const uid of team.playerIds) {
+      approved = approvePlayerRegistration(approved, uid, team.id, actor);
+    }
+    seeded = approved;
+  }
+
+  // Pair-created teams start unseeded; keep the simulator's stable 1..N order.
+  seeded = {
+    ...seeded,
+    teams: seeded.teams.map((team, index) => ({ ...team, seed: index + 1 })),
+  };
+
+  const teams = seeded.teams;
+  const registrations: PlayerRegistration[] = seeded.registrations ?? [];
+  const scheduled = buildTeamsAndGroups(seeded, teams, actor);
+
+  const loaded = appendAudit(scheduled, {
     action: "test-data-loaded",
     actor,
-    detail: `Loaded ${teams.length} approved ${category} test pairs and ${registrations.length} approved test players.`,
+    detail: `Loaded ${teams.length} approved ${category} test pairs and ${registrations.length} approved test players via individual registrations and accepted pairing invitations.`,
   });
 
   const mode = options.results ?? "none";

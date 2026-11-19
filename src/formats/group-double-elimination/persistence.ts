@@ -18,6 +18,8 @@ import type {
   Group,
   GroupStageMatch,
   GsdeTournamentStatus,
+  PairingInvitationMap,
+  PairingResponseMap,
   PlayerRegistration,
   ScoreSubmissionMap,
   Team,
@@ -105,6 +107,14 @@ export interface GsdeTournamentDocument {
   /** Self-registered players for this tournament (isolated from K&Q players). */
   registrations?: PlayerRegistration[];
   /**
+   * Player-to-player pairing requests, keyed by the inviter's uid. Kept
+   * separate from `registrations` and `teams` so unpaired players remain in the
+   * registered-player list and invitations never become team registrations.
+   */
+  pairingInvitations?: PairingInvitationMap;
+  /** Invitee acknowledgements, keyed by the invitee's uid. */
+  pairingResponses?: PairingResponseMap;
+  /**
    * Immutable player score submissions, keyed by uid then match id. Legacy
    * documents default to an empty map. Never stored outside this document.
    */
@@ -144,6 +154,8 @@ export const createGsdeTournamentDocument = (
   elimination: overrides.elimination ?? null,
   auditLog: overrides.auditLog ?? [],
   registrations: overrides.registrations ?? [],
+  pairingInvitations: overrides.pairingInvitations ?? {},
+  pairingResponses: overrides.pairingResponses ?? {},
   scoreSubmissions: overrides.scoreSubmissions ?? {},
   settings: { ...DEFAULT_GSDE_SETTINGS, ...(overrides.settings ?? {}) },
 });
@@ -185,6 +197,8 @@ export const toGsdeFirestoreData = (
   elimination: tournament.elimination,
   auditLog: tournament.auditLog ?? [],
   registrations: tournament.registrations ?? [],
+  pairingInvitations: tournament.pairingInvitations ?? {},
+  pairingResponses: tournament.pairingResponses ?? {},
   scoreSubmissions: tournament.scoreSubmissions ?? {},
   settings: tournament.settings,
 });
@@ -217,6 +231,14 @@ export const fromGsdeFirestoreData = (
     elimination: data.elimination ?? null,
     auditLog: Array.isArray(data.auditLog) ? data.auditLog : [],
     registrations: Array.isArray(data.registrations) ? data.registrations : [],
+    pairingInvitations:
+      data.pairingInvitations && typeof data.pairingInvitations === "object"
+        ? data.pairingInvitations
+        : {},
+    pairingResponses:
+      data.pairingResponses && typeof data.pairingResponses === "object"
+        ? data.pairingResponses
+        : {},
     scoreSubmissions:
       data.scoreSubmissions && typeof data.scoreSubmissions === "object"
         ? data.scoreSubmissions

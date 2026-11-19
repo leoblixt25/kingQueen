@@ -87,7 +87,19 @@ export const getRegisteredTeamId = (
   uid: string
 ): string | null => {
   const registration = findRegistrationByUid(doc, uid);
-  return registration?.status === "approved" ? registration.teamId : null;
+  if (registration?.status === "approved" && registration.teamId) {
+    return registration.teamId;
+  }
+  // A player-initiated pair creates the team before an admin confirms the
+  // registration. Fall back to an accepted invitation so the two players stay
+  // linked from the moment the invitation is accepted.
+  const accepted = Object.values(doc.pairingInvitations ?? {}).find(
+    (invitation) =>
+      invitation.status === "accepted" &&
+      (invitation.inviterUid === uid || invitation.inviteeUid === uid) &&
+      Boolean(invitation.teamId)
+  );
+  return accepted?.teamId ?? null;
 };
 
 export interface RegistrationStats {

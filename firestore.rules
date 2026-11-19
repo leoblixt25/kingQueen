@@ -55,6 +55,91 @@ service cloud.firestore {
              && request.resource.data.formatId == 'group-double-elimination';
     }
 
+    // Pairing invitations live only in this document. Each branch allows one
+    // specific player action and nothing else: sending/withdrawing touches only
+    // the invitation map; responding may additionally create the single fixed
+    // team on acceptance. Admin-only fields (registrations, groups, matches,
+    // bracket, setup) are never writable through these player branches.
+    function gsdePairingSendWrite() {
+      let before = resource.data;
+      let after = request.resource.data;
+      let beforeInvites = before.get('pairingInvitations', {});
+      let afterInvites = after.get('pairingInvitations', {});
+      let diff = afterInvites.diff(beforeInvites);
+      let mine = afterInvites.get(request.auth.uid, null);
+      return after.diff(before).affectedKeys().hasOnly([
+               'pairingInvitations', 'auditLog', 'tournament'
+             ])
+        && diff.addedKeys().size() == 1
+        && diff.addedKeys().hasOnly([request.auth.uid])
+        && diff.changedKeys().size() == 0
+        && diff.removedKeys().size() == 0
+        && mine != null
+        && mine.inviterUid == request.auth.uid
+        && mine.status == 'pending'
+        && mine.teamId == null;
+    }
+
+    function gsdePairingCancelWrite() {
+      let before = resource.data;
+      let after = request.resource.data;
+      let beforeInvites = before.get('pairingInvitations', {});
+      let afterInvites = after.get('pairingInvitations', {});
+      let diff = afterInvites.diff(beforeInvites);
+      let mine = afterInvites.get(request.auth.uid, null);
+      return after.diff(before).affectedKeys().hasOnly([
+               'pairingInvitations', 'auditLog', 'tournament'
+             ])
+        && diff.changedKeys().size() == 1
+        && diff.changedKeys().hasOnly([request.auth.uid])
+        && diff.addedKeys().size() == 0
+        && diff.removedKeys().size() == 0
+        && mine != null
+        && mine.inviterUid == request.auth.uid
+        && mine.status == 'cancelled'
+        && mine.teamId == null;
+    }
+
+    function gsdePairingRespondWrite(accepted) {
+      let before = resource.data;
+      let after = request.resource.data;
+      let beforeInvites = before.get('pairingInvitations', {});
+      let afterInvites = after.get('pairingInvitations', {});
+      let response = after.get('pairingResponses', {}).get(request.auth.uid, null);
+      let invitationId = response == null ? '' : response.invitationId;
+      let previous = beforeInvites.get(invitationId, null);
+      let invitation = afterInvites.get(invitationId, null);
+      return response != null
+        && previous != null
+        && invitation != null
+        && after.diff(before).affectedKeys().hasOnly(accepted
+             ? ['pairingInvitations', 'pairingResponses', 'teams', 'auditLog', 'tournament']
+             : ['pairingInvitations', 'pairingResponses', 'auditLog', 'tournament'])
+        && previous.status == 'pending'
+        && invitation.inviteeUid == request.auth.uid
+        && invitation.status == (accepted ? 'accepted' : 'declined')
+        && invitationId == invitation.id
+        && response.teamId == invitation.teamId
+        && afterInvites.diff(beforeInvites).changedKeys().size() == 1
+        && afterInvites.diff(beforeInvites).changedKeys().hasOnly([response.invitationId])
+        && afterInvites.diff(beforeInvites).addedKeys().size() == 0
+        && afterInvites.diff(beforeInvites).removedKeys().size() == 0
+        && after.get('pairingResponses', {}).diff(before.get('pairingResponses', {})).affectedKeys().hasOnly([request.auth.uid])
+        && (after.get('pairingResponses', {}).diff(before.get('pairingResponses', {})).addedKeys().size() == 1
+            || after.get('pairingResponses', {}).diff(before.get('pairingResponses', {})).changedKeys().size() == 1)
+        && (!accepted || (
+             after.teams.size() == before.teams.size() + 1
+             && after.teams.hasAll(before.teams)
+             && after.teams[after.teams.size() - 1].id == invitation.teamId
+             && after.teams[after.teams.size() - 1].status == 'pending'
+             && after.teams[after.teams.size() - 1].groupId == null
+             && after.teams[after.teams.size() - 1].playerIds.size() == 2
+             && after.teams[after.teams.size() - 1].playerIds.hasOnly([
+                  invitation.inviterUid, request.auth.uid
+                ])
+           ));
+    }
+
     function gsdePlayerWrite() {
       let before = resource.data;
       let after = request.resource.data;
@@ -83,6 +168,12 @@ service cloud.firestore {
             && myAfter.diff(myBefore).addedKeys().size() == 1
             && myAfter.diff(myBefore).changedKeys().size() == 0
             && myAfter.diff(myBefore).removedKeys().size() == 0)
+          ||
+          // Pairing invitation lifecycle (player-owned, GSDE only).
+          gsdePairingSendWrite()
+          || gsdePairingCancelWrite()
+          || gsdePairingRespondWrite(false)
+          || gsdePairingRespondWrite(true)
         );
     }
 

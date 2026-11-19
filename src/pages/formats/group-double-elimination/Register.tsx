@@ -29,6 +29,7 @@ const inputCls =
 
 const PENDING_ROUTE = `${GROUP_DOUBLE_ELIMINATION_FORMAT.route}/register/pending`;
 const PLAYER_ROUTE = `${GROUP_DOUBLE_ELIMINATION_FORMAT.route}/player`;
+const PAIRING_ROUTE = `${GROUP_DOUBLE_ELIMINATION_FORMAT.route}/pairing`;
 
 const firebaseMessage = (error: unknown): string => {
   const code = (error as { code?: string })?.code ?? "";
@@ -171,8 +172,8 @@ export default function GroupDoubleEliminationRegister() {
     >
       <Card className="border-ocean/20 bg-ocean/5 shadow-sm">
         <CardContent className="p-4 text-sm text-foreground/70">
-          Register with your name, gender and account, then an admin will approve your
-          registration and assign you to a fixed two-player team. Your registration is stored only
+          Register with your name, gender and email, then invite a compatible registered player
+          to form your fixed two-player team. An admin approves completed teams before play. Your registration is stored only
           in this tournament (
           <code className="rounded bg-white/70 px-1 py-0.5">
             tournaments/{`{id}`}
@@ -215,6 +216,9 @@ export default function GroupDoubleEliminationRegister() {
             <div className="flex flex-wrap gap-2 pt-1">
               <Button size="sm" variant="outline" onClick={() => goTo(PENDING_ROUTE)}>
                 View status
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => goTo(PAIRING_ROUTE)}>
+                Find a partner
               </Button>
               {existing.status === "approved" ? (
                 <Button size="sm" onClick={() => goTo(PLAYER_ROUTE)}>

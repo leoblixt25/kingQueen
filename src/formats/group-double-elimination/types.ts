@@ -108,6 +108,48 @@ export interface PlayerRegistration {
   gender?: PlayerGender;
 }
 
+/**
+ * Lifecycle of a player-to-player team request. Invitations are stored apart
+ * from registrations and teams so an unpaired player remains an individual
+ * registration until a request is accepted.
+ */
+export type PairingInvitationStatus =
+  | "pending"
+  | "accepted"
+  | "declined"
+  | "cancelled";
+
+/**
+ * One invitation from a registered player to another registered player.
+ * The map key is the inviter's uid, which also makes the Firestore player-write
+ * rule able to identify who is allowed to create/cancel the record.
+ */
+export interface PairingInvitation {
+  id: PlayerId;
+  inviterUid: PlayerId;
+  inviteeUid: PlayerId;
+  category: TournamentCategory;
+  status: PairingInvitationStatus;
+  createdAt: string;
+  respondedAt: string | null;
+  /** Set when acceptance creates the fixed two-player team. */
+  teamId: TeamId | null;
+}
+
+/** inviter uid → invitation. */
+export type PairingInvitationMap = Record<PlayerId, PairingInvitation>;
+
+/** Receipt written by the invitee when they accept or decline an invitation. */
+export interface PairingResponse {
+  invitationId: PlayerId;
+  status: "accepted" | "declined";
+  teamId: TeamId | null;
+  respondedAt: string;
+}
+
+/** invitee uid → most recent response. Used to authorise player responses. */
+export type PairingResponseMap = Record<PlayerId, PairingResponse>;
+
 export interface Group {
   id: GroupId;
   name: string;

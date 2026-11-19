@@ -1,7 +1,7 @@
 import type { GsdeTournamentDocument } from "./persistence";
 import { listEliminationMatches } from "./bracket";
 import { isGroupStageMatchComplete } from "./groupStageMatches";
-import { validateTeamsForCategory } from "./category";
+import { normalizeTournamentCategory, validateTeamsForCategory } from "./category";
 
 /**
  * Central integrity checks. A transition is only allowed to persist if the
@@ -25,7 +25,11 @@ export type IntegrityCode =
   | "duplicate-registration-email"
   | "invalid-registration-team"
   | "invalid-team-category"
-  | "invalid-team-size";
+  | "invalid-team-size"
+  | "invalid-pairing-invitation"
+  | "invalid-pairing-response"
+  | "invalid-pairing-team"
+  | "duplicate-player-pairing";
 
 export interface IntegrityIssue {
   code: IntegrityCode;
@@ -84,6 +88,92 @@ export const validateTournamentIntegrity = (
       add(
         "invalid-registration-team",
         `Approved registration "${registration.uid}" has no valid team.`
+      );
+    }
+  }
+
+  // Pairing invitations are a separate lifecycle from registrations and teams,
+  // but they must still resolve to real players and never give one player two
+  // simultaneous teams.
+  const invitations = Object.values(doc.pairingInvitations ?? {});
+  const registrationUids = new Set(registrations.map((item) => item.uid));
+  const teamById = new Map(doc.teams.map((team) => [team.id, team]));
+  const category = normalizeTournamentCategory(doc.tournament.config.category);
+  const pairClaims = new Map<string, Set<string>>();
+  const claim = (uid: string, teamId: string) => {
+    const teams = pairClaims.get(uid) ?? new Set<string>();
+    teams.add(teamId);
+    pairClaims.set(uid, teams);
+  };
+
+  for (const invitation of invitations) {
+    if (
+      !invitation.id ||
+      invitation.id !== invitation.inviterUid ||
+      invitation.inviterUid === invitation.inviteeUid ||
+      !registrationUids.has(invitation.inviterUid) ||
+      !registrationUids.has(invitation.inviteeUid) ||
+      invitation.category !== category ||
+      !["pending", "accepted", "declined", "cancelled"].includes(
+        invitation.status
+      )
+    ) {
+      add(
+        "invalid-pairing-invitation",
+        `Pairing invitation "${invitation.id}" has invalid participants, status or category.`
+      );
+    }
+    if (invitation.status === "accepted") {
+      const team = invitation.teamId ? teamById.get(invitation.teamId) : undefined;
+      if (
+        !team ||
+        team.playerIds.length !== 2 ||
+        !team.playerIds.includes(invitation.inviterUid) ||
+        !team.playerIds.includes(invitation.inviteeUid)
+      ) {
+        add(
+          "invalid-pairing-team",
+          `Accepted invitation "${invitation.id}" does not resolve to its two-player team.`
+        );
+      } else {
+        claim(invitation.inviterUid, team.id);
+        claim(invitation.inviteeUid, team.id);
+      }
+    } else if (invitation.teamId !== null) {
+      add(
+        "invalid-pairing-invitation",
+        `Non-accepted invitation "${invitation.id}" must not carry a team id.`
+      );
+    }
+  }
+
+  for (const [uid, response] of Object.entries(doc.pairingResponses ?? {})) {
+    const invitation = doc.pairingInvitations?.[response.invitationId];
+    if (
+      !uid ||
+      !response.invitationId ||
+      response.invitationId === uid ||
+      !invitation ||
+      invitation.inviteeUid !== uid ||
+      !registrationUids.has(uid) ||
+      (response.status !== "accepted" && response.status !== "declined") ||
+      response.teamId !== invitation.teamId
+    ) {
+      add(
+        "invalid-pairing-response",
+        `Pairing response for "${response.invitationId}" is invalid.`
+      );
+    }
+  }
+
+  for (const team of doc.teams) {
+    for (const uid of team.playerIds) claim(uid, team.id);
+  }
+  for (const [uid, teams] of pairClaims) {
+    if (teams.size > 1) {
+      add(
+        "duplicate-player-pairing",
+        `Player "${uid}" belongs to more than one team or accepted pairing.`
       );
     }
   }

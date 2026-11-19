@@ -200,6 +200,8 @@ describe("GSDE admin test-data loader", () => {
         "formatId",
         "groups",
         "matches",
+        "pairingInvitations",
+        "pairingResponses",
         "registrations",
         "scoreSubmissions",
         "settings",

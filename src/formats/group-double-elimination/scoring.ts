@@ -103,7 +103,10 @@ export type ScoringErrorCode =
   | "registration-closed"
   | "registration-invalid"
   | "already-registered"
-  | "registration-not-found";
+  | "registration-not-found"
+  | "pairing-invalid"
+  | "pairing-not-found"
+  | "pairing-unavailable";
 
 export class ScoringError extends Error {
   readonly code: ScoringErrorCode;
@@ -181,6 +184,9 @@ const commit = (
   return next;
 };
 
+/** Shared pure transition gate for the pairing module. */
+export const commitGsdeChange = commit;
+
 /** Setup: update the tournament name/division without touching stage data. */
 export const saveSetup = (
   doc: GsdeTournamentDocument,
@@ -219,6 +225,7 @@ export const resetTournament = (
     groups: doc.groups.length,
     matches: doc.matches.length,
     registrations: (doc.registrations ?? []).length,
+    invitations: Object.keys(doc.pairingInvitations ?? {}).length,
   };
 
   return commit(
@@ -242,13 +249,15 @@ export const resetTournament = (
       elimination: null,
       auditLog: doc.auditLog ?? [],
       registrations: [],
+      pairingInvitations: {},
+      pairingResponses: {},
       scoreSubmissions: {},
       settings: doc.settings,
     },
     {
       action: "tournament-reset",
       actor,
-      detail: `Cleared ${cleared.teams} teams, ${cleared.groups} groups, ${cleared.matches} matches and ${cleared.registrations} registrations.`,
+      detail: `Cleared ${cleared.teams} teams, ${cleared.groups} groups, ${cleared.matches} matches, ${cleared.registrations} registrations and ${cleared.invitations} pairing invitations.`,
     }
   );
 };
@@ -284,6 +293,9 @@ const guardRegistrationOpen = (doc: GsdeTournamentDocument): void => {
     throw error;
   }
 };
+
+/** Shared registration lock for the pairing module. */
+export const assertRegistrationOpen = guardRegistrationOpen;
 
 /** Remove a player id from every team roster (used on reject/removal/reassign). */
 const detachPlayerFromTeams = (

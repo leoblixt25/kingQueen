@@ -186,8 +186,9 @@ describe("fixed 16-team bracket generation", () => {
     expect(validateEliminationBracket(elimination.bracket)).toEqual([]);
   });
 
-  it("applies the mandatory Spanish crossover", () => {
-    expect(hasSpanishCrossover(elimination.bracket)).toBe(true);
+  it("uses the canonical standard bracket without a crossover", () => {
+    expect(hasSpanishCrossover(elimination.bracket)).toBe(false);
+    expect(validateEliminationBracket(elimination.bracket)).toEqual([]);
   });
 
   it("starts every team with zero elimination losses", () => {

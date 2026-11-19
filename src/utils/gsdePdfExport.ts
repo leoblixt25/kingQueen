@@ -421,7 +421,7 @@ export const buildGsdePdf = (report: GsdeTournamentReport): jsPDF => {
         pdf.setFont(undefined, "normal");
         pdf.setTextColor(110, 110, 110);
         const note = card.isWinner
-          ? report.resetFinalRequired
+          ? report.resetWasPlayed
             ? "Won after the reset final"
             : "Tournament winner"
           : "Second place";
@@ -433,17 +433,56 @@ export const buildGsdePdf = (report: GsdeTournamentReport): jsPDF => {
       pdf.setFillColor(252, 248, 235);
       pdf.setDrawColor(...GOLD);
       pdf.setLineWidth(0.4);
-      pdf.roundedRect(MARGIN, panelY, CONTENT_W, 28, 2.5, 2.5, "FD");
+      const panelH = report.validated ? 28 : 35;
+      pdf.roundedRect(MARGIN, panelY, CONTENT_W, panelH, 2.5, 2.5, "FD");
       pdf.setFontSize(9);
       pdf.setFont(undefined, "bold");
       pdf.setTextColor(...GOLD);
-      pdf.text("FINAL RESULT", 105, panelY + 6, { align: "center" });
+      const resultHeading = report.validated
+        ? "FINAL RESULT - VALIDATED"
+        : "PROVISIONAL RESULT - NOT FINAL";
+      pdf.text(resultHeading, 105, panelY + 6, { align: "center" });
       pdf.setFontSize(10);
       pdf.setFont(undefined, "normal");
       pdf.setTextColor(40, 40, 40);
       pdf.text(`Champion: ${report.champions.join(" / ") || "TBD"}`, MARGIN + 8, panelY + 15);
       pdf.text(`Runner-up: ${report.runnersUp.join(" / ") || "TBD"}`, MARGIN + 8, panelY + 23);
-      return panelY + 32;
+      if (!report.validated) {
+        pdf.setFontSize(8);
+        pdf.setTextColor(...ORANGE);
+        pdf.text(
+          "This bracket is provisional and must not be treated as an official result.",
+          MARGIN + 8,
+          panelY + 30
+        );
+      }
+      return panelY + panelH + 4;
+    };
+
+    /** Print the central validator's blockers so the PDF explains what is pending. */
+    const drawCompletionBlockers = (startY: number): number => {
+      if (report.completionIssues.length === 0) return startY;
+      let blockY = startY;
+      if (blockY + 14 > PAGE_BOTTOM) blockY = addPage();
+      pdf.setFillColor(...LIGHT_ORANGE);
+      pdf.setDrawColor(...ORANGE);
+      pdf.setLineWidth(0.4);
+      const lines = report.completionIssues.flatMap((issue) =>
+        pdf.splitTextToSize(`- ${issue}`, CONTENT_W - 12) as string[]
+      );
+      const blockH = 10 + lines.length * 4.5;
+      pdf.roundedRect(MARGIN, blockY, CONTENT_W, blockH, 2.5, 2.5, "FD");
+      pdf.setFontSize(9);
+      pdf.setFont(undefined, "bold");
+      pdf.setTextColor(...ORANGE);
+      pdf.text("Completion blockers", MARGIN + 5, blockY + 6);
+      pdf.setFontSize(8);
+      pdf.setFont(undefined, "normal");
+      pdf.setTextColor(60, 45, 30);
+      lines.forEach((line, index) => {
+        pdf.text(line, MARGIN + 5, blockY + 12 + index * 4.5);
+      });
+      return blockY + blockH + 4;
     };
 
     // Page 1 — overview and registered players.
@@ -455,6 +494,14 @@ export const buildGsdePdf = (report: GsdeTournamentReport): jsPDF => {
       ["Category", report.category],
       ["Date", prettyDate || "Not set"],
       ["Status", report.status],
+      [
+        "Result status",
+        report.validated
+          ? "Validated - official final result"
+          : report.provisional
+            ? "Provisional - not an official result"
+            : "In progress",
+      ],
       ["Teams / Players", `${report.counts.teams} / ${report.counts.players}`],
       ["Groups", String(report.counts.groups)],
       [
@@ -477,6 +524,7 @@ export const buildGsdePdf = (report: GsdeTournamentReport): jsPDF => {
       y += 6.4;
     });
     y += 6;
+    y = drawCompletionBlockers(y);
     if (report.players.length > 0) y = drawPlayerRoster(y);
 
     // Teams and group allocation.

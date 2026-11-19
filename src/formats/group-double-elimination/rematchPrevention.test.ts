@@ -68,7 +68,7 @@ describe("rematch-safe loser drops", () => {
     expect(teamsHavePlayed(bracket, "s1", "s7")).toBe(false);
   });
 
-  it("redirects dropping loser away from an immediate rematch", () => {
+  it("keeps canonical loser routing even when a rematch is possible", () => {
     const before = setupRematchScenario();
 
     expect(matchFor(before, "losers-r2-m1").teamBId).toBeNull();
@@ -76,17 +76,18 @@ describe("rematch-safe loser drops", () => {
     expect(matchFor(before, "losers-r2-m1").teamAId).toBe("s8");
     expect(matchFor(before, "losers-r2-m2").teamAId).toBe("s7");
 
-    // s5 beats s1 in Winners Round 2. Canonical routing sends s1 to s8,
-    // whom s1 already beat in Winners Round 1.
+    // The standalone legacy helper still detects that s1 would meet s8 again.
     const drop = chooseRematchSafeDrop(before, "winners-r2-m1", "s1");
     expect(drop.redirected).toBe(true);
     expect(drop.link).toEqual({ matchId: "losers-r2-m2", slot: "teamB" });
 
+    // The operational engine, however, always uses the canonical links from
+    // bracket.ts; avoidRematches is no longer wired into advancement.
     const after = play(before, "winners-r2-m1", "s5");
-    expect(matchFor(after, "losers-r2-m2").teamBId).toBe("s1");
-    expect(matchFor(after, "losers-r2-m1").teamBId).toBeNull();
+    expect(matchFor(after, "losers-r2-m1").teamBId).toBe("s1");
+    expect(matchFor(after, "losers-r2-m2").teamBId).toBeNull();
     expect(matchFor(after, "winners-r2-m1").loserTo).toEqual({
-      matchId: "losers-r2-m2",
+      matchId: "losers-r2-m1",
       slot: "teamB",
     });
   });
@@ -99,7 +100,7 @@ describe("rematch-safe loser drops", () => {
     expect(drop.link).toEqual({ matchId: "losers-r2-m2", slot: "teamB" });
   });
 
-  it("never creates a rematch when dropping with avoidance enabled", () => {
+  it("keeps a valid bracket shape with the avoidance option present", () => {
     let bracket = setupRematchScenario();
     bracket = play(bracket, "winners-r2-m1", "s5");
     bracket = play(bracket, "winners-r2-m2", "s2");

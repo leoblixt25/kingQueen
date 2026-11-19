@@ -131,7 +131,7 @@ describe("group scoring service", () => {
 describe("elimination scoring service", () => {
   const makeEliminationDoc = () => generateEliminationBracket(playGroups(readyDoc()));
 
-  it("generates the Spanish 16-team bracket", () => {
+  it("generates the standard 16-team bracket", () => {
     const doc = makeEliminationDoc();
 
     expect(doc.elimination).not.toBeNull();
@@ -257,7 +257,7 @@ describe("corrections and recalculation", () => {
     expect(selectLossCount(corrected, first.teamAId!)).toBe(1);
   });
 
-  it("keeps the Spanish crossover after recalculation", () => {
+  it("keeps canonical standard-bracket links after recalculation", () => {
     const doc = makeEliminationDoc();
     const first = findEliminationMatch(doc.elimination!, "winners-r1-m1")!;
     const scored = scoreEliminationMatch(doc, {
@@ -272,10 +272,11 @@ describe("corrections and recalculation", () => {
       scoreB: 20,
     });
 
+    // Game 21 (Winners R3) feeds the Winners Final, never a crossover match.
     const game21 = findEliminationMatch(corrected.elimination!, GAME_IDS_16.game21);
     expect(game21?.winnerTo).toMatchObject({
-      matchId: GAME_IDS_16.semiFinal2,
-      slot: "teamB",
+      matchId: GAME_IDS_16.semiFinal1,
+      slot: "teamA",
     });
     expect(listEliminationMatches(corrected.elimination!)).toHaveLength(30);
   });

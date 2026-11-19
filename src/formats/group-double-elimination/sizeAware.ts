@@ -13,7 +13,6 @@ import type { EliminationBracket } from "./types";
 import type { EliminationStage } from "./elimination";
 import { buildEliminationStage } from "./elimination";
 import { generateDoubleEliminationBracket } from "./bracket";
-import { applySpanishCrossover } from "./spanishCrossover";
 import {
   getGroupStageProgress,
   isGroupStageComplete,
@@ -28,10 +27,10 @@ import type { Team } from "./types";
 /**
  * Size-aware facade around the existing engines.
  *
- * The 16-team branch delegates to `fixed16.ts` unchanged, including the
- * mandatory Spanish crossover. Other supported sizes use the already-generic
- * `groups.ts` / `elimination.ts` / `bracket.ts` engines with four teams per
- * group. No scoring or progression rules are reimplemented here.
+ * The 16-team branch delegates to `fixed16.ts`, which enforces the fixed
+ * 4-group schedule and the standard double-elimination bracket. Other
+ * supported sizes use the same generic engines with four teams per group.
+ * No scoring or progression rules are reimplemented here.
  */
 
 export const isFixed16TeamCount = (teamCount: number): boolean =>
@@ -90,35 +89,52 @@ export const buildSizeAwareEliminationStage = (
   doc: GsdeTournamentDocument
 ): EliminationStage => {
   if (usesFixed16Engine(doc)) {
-    return buildFixed16EliminationStage({
+    return buildFixed16EliminationStage(
+      {
+        groups: doc.groups,
+        matches: doc.matches,
+        rounds: [],
+      },
+      doc.settings.groupTiebreakers
+    );
+  }
+  return buildEliminationStage(
+    {
       groups: doc.groups,
       matches: doc.matches,
       rounds: [],
-    });
-  }
-  return buildEliminationStage({
-    groups: doc.groups,
-    matches: doc.matches,
-    rounds: [],
-  });
+    },
+    { tiebreakers: doc.settings.groupTiebreakers }
+  );
 };
 
-/** Seed order used by the admin override path, including the fixed-16 crossover. */
+/** Preview-only bracket from the current (possibly partial) standings. */
 export const buildOverrideBracket = (
   doc: GsdeTournamentDocument
 ): EliminationBracket => {
   const seeds = seedTeamsFromGroupStandings(
-    calculateAllGroupStandings(doc.groups, doc.matches)
+    calculateAllGroupStandings(
+      doc.groups,
+      doc.matches,
+      doc.settings.groupTiebreakers
+    )
   );
-  const bracket = generateDoubleEliminationBracket(seeds).bracket;
-  return usesFixed16Engine(doc) ? applySpanishCrossover(bracket) : bracket;
+  return generateDoubleEliminationBracket(seeds).bracket;
 };
 
 export const getSizeAwareGlobalRanking = (
   doc: GsdeTournamentDocument
 ): GlobalRankingRow[] => {
-  const tables = calculateAllGroupStandings(doc.groups, doc.matches);
+  const tables = calculateAllGroupStandings(
+    doc.groups,
+    doc.matches,
+    doc.settings.groupTiebreakers
+  );
   return usesFixed16Engine(doc)
-    ? getFixed16GlobalRanking(doc.groups, doc.matches)
+    ? getFixed16GlobalRanking(
+        doc.groups,
+        doc.matches,
+        doc.settings.groupTiebreakers
+      )
     : getGlobalRanking(tables);
 };

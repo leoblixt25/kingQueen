@@ -14,6 +14,7 @@ import {
   startGroupStage,
 } from "./scoring";
 import { validateTournamentIntegrity } from "./integrity";
+import { listEliminationMatches } from "./bracket";
 import { hasSpanishCrossover } from "./spanishCrossover";
 import { createGsdeTournamentDocument } from "./persistence";
 import {
@@ -186,7 +187,7 @@ describe("size-aware tournament flow", () => {
     }
   );
 
-  it("keeps the fixed 16-team Spanish crossover path", () => {
+  it("uses the canonical standard bracket for the fixed 16-team path", () => {
     let doc = startGroupStage(loadTestTeamsAndPlayers(makeDoc(16), ADMIN), ADMIN);
     for (const match of [...doc.matches]) {
       doc = scoreGroupMatch(doc, match.id, 21, 10);
@@ -195,6 +196,7 @@ describe("size-aware tournament flow", () => {
 
     expect(doc.matches).toHaveLength(24);
     expect(doc.elimination?.seededTeamIds).toHaveLength(16);
-    expect(hasSpanishCrossover(doc.elimination!)).toBe(true);
+    expect(hasSpanishCrossover(doc.elimination!)).toBe(false);
+    expect(listEliminationMatches(doc.elimination!)).toHaveLength(30);
   });
 });

@@ -9,13 +9,49 @@ import { isGroupStageMatchComplete } from "./groupStageMatches";
  * stage, but they never eliminate a team and never count as an elimination
  * loss — every row is marked `qualified: true`.
  *
- * Tiebreaker order:
+ * Tiebreaker order is configurable through `settings.groupTiebreakers`. The
+ * default (and the order displayed in the rules UI) is:
  * 1. Wins
  * 2. Head-to-head among teams tied on wins (wins, then point difference)
  * 3. Overall point difference
  * 4. Points scored
  * 5. Team id (code-point order, deterministic)
+ *
+ * Unknown or duplicated keys are ignored. `wins` is always mandatory and is
+ * restored at the front so a group position can never be decided before the
+ * number of wins has been compared.
  */
+
+export type GroupTiebreaker =
+  | "wins"
+  | "head-to-head"
+  | "point-difference"
+  | "points-scored"
+  | "team-id";
+
+export const DEFAULT_GROUP_TIEBREAKERS: readonly GroupTiebreaker[] = [
+  "wins",
+  "head-to-head",
+  "point-difference",
+  "points-scored",
+  "team-id",
+];
+
+const VALID_TIEBREAKERS = new Set<string>(DEFAULT_GROUP_TIEBREAKERS);
+
+/** Normalize persisted configuration into a safe, complete tiebreaker order. */
+export const resolveGroupTiebreakers = (
+  configured: readonly string[] | undefined
+): readonly GroupTiebreaker[] => {
+  const normalized: GroupTiebreaker[] = [];
+  for (const key of configured ?? []) {
+    if (VALID_TIEBREAKERS.has(key) && !normalized.includes(key as GroupTiebreaker)) {
+      normalized.push(key as GroupTiebreaker);
+    }
+  }
+
+  return [...new Set<GroupTiebreaker>(["wins", ...normalized, ...DEFAULT_GROUP_TIEBREAKERS])];
+};
 
 export interface GroupStanding {
   /** Unique position within the group, 1-based. */
@@ -72,42 +108,89 @@ const completedMatchesForGroup = (
       isGroupStageMatchComplete(match)
   );
 
-const buildHeadToHead = (
+/**
+ * Head-to-head record within one block of teams tied on wins. Only matches
+ * where both teams belong to the block count. This keeps the comparison
+ * transitive for three-way (or larger) ties: every team in the block is
+ * ranked by the same set of mutual results.
+ */
+const buildHeadToHeadForBlock = (
   teamIds: readonly TeamId[],
   matches: readonly GroupStageMatch[]
 ): Map<TeamId, HeadToHeadStat> => {
-  const ids = new Set(teamIds);
+  const members = new Set(teamIds);
   const stats = new Map<TeamId, HeadToHeadStat>(
     teamIds.map((teamId) => [teamId, { wins: 0, pointDifference: 0 }])
   );
 
   for (const match of matches) {
-    if (!ids.has(match.teamAId) || !ids.has(match.teamBId)) continue;
-
-    const teamA = stats.get(match.teamAId);
-    const teamB = stats.get(match.teamBId);
-    if (!teamA || !teamB || match.scoreA === null || match.scoreB === null) {
-      continue;
-    }
+    if (!members.has(match.teamAId) || !members.has(match.teamBId)) continue;
+    if (match.scoreA === null || match.scoreB === null) continue;
 
     const margin = Math.abs(match.scoreA - match.scoreB);
-    const teamAWon = match.scoreA > match.scoreB;
-    const winner = teamAWon ? teamA : teamB;
-    const loser = teamAWon ? teamB : teamA;
+    const winner = match.scoreA > match.scoreB ? match.teamAId : match.teamBId;
+    const loser = match.scoreA > match.scoreB ? match.teamBId : match.teamAId;
+    const winnerStat = stats.get(winner);
+    const loserStat = stats.get(loser);
+    if (!winnerStat || !loserStat) continue;
 
-    winner.wins += 1;
-    winner.pointDifference += margin;
-    loser.pointDifference -= margin;
+    winnerStat.wins += 1;
+    winnerStat.pointDifference += margin;
+    loserStat.pointDifference -= margin;
   }
 
   return stats;
 };
 
+const compareByTiebreakers = (
+  a: BaseStat,
+  b: BaseStat,
+  headToHead: Map<TeamId, HeadToHeadStat>,
+  tiebreakers: readonly GroupTiebreaker[]
+): number => {
+  for (const key of tiebreakers) {
+    switch (key) {
+      case "wins": {
+        const diff = b.wins - a.wins;
+        if (diff !== 0) return diff;
+        break;
+      }
+      case "head-to-head": {
+        const aHead = headToHead.get(a.teamId);
+        const bHead = headToHead.get(b.teamId);
+        const winsDiff = (bHead?.wins ?? 0) - (aHead?.wins ?? 0);
+        if (winsDiff !== 0) return winsDiff;
+        const marginDiff = (bHead?.pointDifference ?? 0) - (aHead?.pointDifference ?? 0);
+        if (marginDiff !== 0) return marginDiff;
+        break;
+      }
+      case "point-difference": {
+        const diff = b.pointDifference - a.pointDifference;
+        if (diff !== 0) return diff;
+        break;
+      }
+      case "points-scored": {
+        const diff = b.pointsFor - a.pointsFor;
+        if (diff !== 0) return diff;
+        break;
+      }
+      case "team-id": {
+        const diff = compareText(a.teamId, b.teamId);
+        if (diff !== 0) return diff;
+        break;
+      }
+    }
+  }
+  return 0;
+};
+
 /** Standings for one group; incomplete matches are ignored. */
 export const calculateGroupStandings = (
   group: Group,
-  matches: readonly GroupStageMatch[]
+  matches: readonly GroupStageMatch[],
+  configuredTiebreakers?: readonly string[]
 ): GroupStandingsTable => {
+  const tiebreakers = resolveGroupTiebreakers(configuredTiebreakers);
   const stats = new Map<TeamId, BaseStat>(
     group.teamIds.map((teamId) => [teamId, createBaseStat(teamId)])
   );
@@ -138,45 +221,31 @@ export const calculateGroupStandings = (
     }
   }
 
-  const byWins = new Map<number, BaseStat[]>();
+  // Build head-to-head independently for each wins block so only teams that
+  // are actually tied use it, and every team in the block shares the same
+  // mutual results.
+  const headToHead = new Map<TeamId, HeadToHeadStat>();
+  const winsBlocks = new Map<number, TeamId[]>();
   for (const stat of stats.values()) {
-    stat.pointDifference = stat.pointsFor - stat.pointsAgainst;
-    const block = byWins.get(stat.wins);
+    const block = winsBlocks.get(stat.wins);
     if (block) {
-      block.push(stat);
+      block.push(stat.teamId);
     } else {
-      byWins.set(stat.wins, [stat]);
+      winsBlocks.set(stat.wins, [stat.teamId]);
+    }
+  }
+  for (const blockTeamIds of winsBlocks.values()) {
+    for (const [teamId, headStat] of buildHeadToHeadForBlock(blockTeamIds, completed)) {
+      headToHead.set(teamId, headStat);
     }
   }
 
-  const ordered: BaseStat[] = [];
-  const winCounts = [...byWins.keys()].sort((a, b) => b - a);
+  const ordered = [...stats.values()].map((stat) => {
+    stat.pointDifference = stat.pointsFor - stat.pointsAgainst;
+    return stat;
+  });
 
-  for (const wins of winCounts) {
-    const block = byWins.get(wins) ?? [];
-
-    if (block.length > 1) {
-      const headToHead = buildHeadToHead(
-        block.map((stat) => stat.teamId),
-        completed
-      );
-
-      block.sort((a, b) => {
-        const aHead = headToHead.get(a.teamId);
-        const bHead = headToHead.get(b.teamId);
-
-        return (
-          (bHead?.wins ?? 0) - (aHead?.wins ?? 0) ||
-          (bHead?.pointDifference ?? 0) - (aHead?.pointDifference ?? 0) ||
-          b.pointDifference - a.pointDifference ||
-          b.pointsFor - a.pointsFor ||
-          compareText(a.teamId, b.teamId)
-        );
-      });
-    }
-
-    ordered.push(...block);
-  }
+  ordered.sort((a, b) => compareByTiebreakers(a, b, headToHead, tiebreakers));
 
   return {
     groupId: group.id,
@@ -190,14 +259,21 @@ export const calculateGroupStandings = (
 
 export const calculateAllGroupStandings = (
   groups: readonly Group[],
-  matches: readonly GroupStageMatch[]
+  matches: readonly GroupStageMatch[],
+  configuredTiebreakers?: readonly string[]
 ): GroupStandingsTable[] =>
-  groups.map((group) => calculateGroupStandings(group, matches));
+  groups.map((group) =>
+    calculateGroupStandings(group, matches, configuredTiebreakers)
+  );
 
 /**
  * Cross-group elimination seeding: all group winners first, then every
  * runner-up, and so on. Ties across groups are resolved deterministically.
  * Every team appears exactly once, so all teams are qualified.
+ *
+ * Head-to-head is intentionally omitted here: teams in different groups never
+ * played each other. The configured in-group tiebreakers have already decided
+ * each `groupRank`.
  */
 export const seedTeamsFromGroupStandings = (
   tables: readonly GroupStandingsTable[]

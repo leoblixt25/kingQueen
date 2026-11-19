@@ -51,7 +51,7 @@ export default function GroupStageDoubleElimination() {
           <GsdeMainTitle />
         </div>
         <p className="mb-6 text-sm text-foreground/65">
-          16 teams · 4 groups of 4 · Spanish double elimination
+          16 teams · 4 groups of 4 · standard double elimination
         </p>
 
         <div className="space-y-4">

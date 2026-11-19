@@ -7,26 +7,26 @@ import {
 } from "./bracket";
 
 /**
- * Global game numbers for the 16-team elimination bracket.
+ * Stable presentation labels for the standard 16-team elimination bracket.
  *
- * The numbers follow the common esports convention so that the mandatory
- * Spanish semifinal crossover has a stable, unambiguous meaning:
+ * The numbers follow the common esports convention:
  *
  *   1-8   Winners Round 1
  *   9-12  Winners Round 2
  *   13-16 Losers Round 1
  *   17-20 Losers Round 2
- *   21-22 Winners Round 3 (last Winners round before the tail)
+ *   21-22 Winners Round 3
  *   23-24 Losers Round 3
  *   25-26 Losers Round 4
- *   27    Winners Final  -> redefined as Spanish Semi-final 1
- *   28    Losers Round 5 -> redefined as Spanish Semi-final 2
+ *   27    Winners Final
+ *   28    Losers Round 5
  *   29    Losers Round 6 (lower final)
  *   30    Grand Final
  *   31    Reset Final (only when required)
  *
- * Game numbers are presentation metadata; the engine still routes with the
- * deterministic match ids.
+ * Game numbers are presentation metadata only. The operational engine always
+ * routes with deterministic match ids; the legacy semifinal-crossover helpers
+ * below are retained for compatibility and are not used to build brackets.
  */
 
 export const GAME_IDS_16 = {
@@ -52,10 +52,9 @@ export interface SpanishSemifinalSpec {
 }
 
 /**
- * Mandatory Spanish crossover. The order is significant: Semi-final 1 takes
- * the winner of Game 25 against the winner of Game 22, and Semi-final 2 takes
- * the winner of Game 26 against the winner of Game 21. Same-path pairings
- * (21/22 together and 25/26 together) are deliberately not used.
+ * Legacy semifinal-crossover specification, retained only for the standalone
+ * `spanishCrossover` utility and its tests. The operational fixed-16 bracket
+ * uses the canonical winner/loser links from `bracket.ts` instead.
  */
 export const SPANISH_SEMIFINAL_SPECS: readonly SpanishSemifinalSpec[] = [
   {

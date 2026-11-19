@@ -50,6 +50,7 @@ import {
   scoreEliminationMatch,
   scoreGroupMatch,
   selectApprovedTeamCount,
+  selectCompletion,
   selectEliminationStandings,
   selectFinalResult,
   selectGlobalRanking,
@@ -427,6 +428,7 @@ export default function GroupDoubleEliminationAdminSetup() {
   ).length;
   const completion = doc ? verifyGroupStageCompletion(doc) : null;
   const finalResult = doc ? selectFinalResult(doc) : null;
+  const tournamentCompletion = doc ? selectCompletion(doc) : null;
   const approvedCount = doc ? selectApprovedTeamCount(doc) : 0;
   const corrections = doc ? selectCorrections(doc) : [];
   const registrationStats = doc ? getRegistrationStats(doc) : null;
@@ -801,8 +803,8 @@ export default function GroupDoubleEliminationAdminSetup() {
                 ? "Generate the elimination bracket in Manage → Bracket."
                 : eliminationDone < playableElimination.length
                   ? `Enter the remaining ${playableElimination.length - eliminationDone} bracket results in Matches.`
-                  : !finalResult?.complete
-                    ? "Bracket is complete — check Results."
+                  : tournamentCompletion && !tournamentCompletion.isComplete
+                    ? `Resolve completion blocker: ${tournamentCompletion.issues[0] ?? "check Results."}`
                     : "Tournament complete — results are in Results.";
 
   const sectionOptions: ReadonlyArray<{ key: AdminSection; label: string }> = [
@@ -989,6 +991,25 @@ export default function GroupDoubleEliminationAdminSetup() {
                   </SectionCard>
 
                   {resetCard}
+
+                  {doc.tournament.seedingStale ? (
+                    <div className="rounded-xl border border-amber-300/60 bg-amber-50/70 p-4 text-sm text-amber-900">
+                      <strong>Provisional bracket.</strong> Seeded from provisional group standings.
+                      Regenerate from the final verified standings before entering results.
+                    </div>
+                  ) : null}
+
+                  {tournamentCompletion && !tournamentCompletion.isComplete &&
+                  tournamentCompletion.issues.length > 0 ? (
+                    <div className="rounded-xl border border-amber-300/60 bg-amber-50/70 p-4 text-sm text-amber-900">
+                      <strong>Completion blockers:</strong>
+                      <ul className="mt-1 list-disc pl-5">
+                        {tournamentCompletion.issues.map((issue) => (
+                          <li key={issue}>{issue}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
 
                   {finalResult?.complete ? (
                     <div className="rounded-2xl bg-beach-gradient p-6 text-white shadow-beach">
@@ -2407,7 +2428,7 @@ export default function GroupDoubleEliminationAdminSetup() {
                           onClick={() =>
                             apply(
                               (current) => generateEliminationBracket(current, {}, actor),
-                              "Spanish bracket generated."
+                              "Standard double-elimination bracket generated."
                             )
                           }
                         >

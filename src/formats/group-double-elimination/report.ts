@@ -8,6 +8,7 @@ import { compareText } from "./compare";
 import { getGameLabel } from "./gameNumbers";
 import type { GsdeTournamentDocument } from "./persistence";
 import {
+  selectCompletion,
   selectEliminationStandings,
   selectFinalResult,
   selectGlobalRanking,
@@ -139,10 +140,19 @@ export interface GsdeTournamentReport {
   eliminationMatches: GsdeReportMatch[];
   eliminationStandings: GsdeReportEliminationStanding[];
   finalPlacements: GsdeReportPlacement[];
+  /** True only when central completion validation passes. */
   complete: boolean;
+  validated: boolean;
+  /** True for provisional/override brackets or unplayed groups. */
+  provisional: boolean;
+  /** Blockers from the central completion validator, safe to print. */
+  completionIssues: string[];
   champions: string[];
   runnersUp: string[];
+  /** Current pending reset requirement (not the historical flag). */
   resetFinalRequired: boolean;
+  /** True once a reset final was appended, even after it is decided. */
+  resetWasPlayed: boolean;
   corrections: GsdeReportCorrection[];
 }
 
@@ -225,10 +235,10 @@ export const buildGsdeTournamentReport = (
 
   const groupMatchToReport = (
     match: GroupStageMatch,
-    ordinal: number
+    _ordinal: number
   ): GsdeReportMatch => ({
     id: match.id,
-    label: `Match ${ordinal}`,
+    label: `R${match.round}`,
     phase: "group",
     groupName: groupNameById.get(match.groupId) ?? match.groupId,
     round: match.round,
@@ -279,7 +289,13 @@ export const buildGsdeTournamentReport = (
   });
 
   const eliminationMatches = doc.elimination
-    ? listEliminationMatches(doc.elimination).map(eliminationMatchToReport)
+    ? listEliminationMatches(doc.elimination)
+        .slice()
+        .sort(
+          (a, b) =>
+            a.round - b.round || a.index - b.index || compareText(a.id, b.id)
+        )
+        .map(eliminationMatchToReport)
     : [];
 
   const globalRanking = selectGlobalRanking(doc).map((row) => ({
@@ -299,10 +315,11 @@ export const buildGsdeTournamentReport = (
     team: nameOf(row.teamId),
     wins: row.wins,
     losses: row.losses,
-    status: STATUS_LABEL[row.status] ?? actionLabel(row.status),
+    status: actionLabel(row.status),
   }));
 
   const finalResult = selectFinalResult(doc);
+  const completion = selectCompletion(doc);
 
   return {
     id: doc.id,
@@ -317,14 +334,10 @@ export const buildGsdeTournamentReport = (
       teams: doc.teams.length,
       players: registrations.length,
       groups: doc.groups.length,
-      groupMatchesCompleted: doc.matches.filter(
-        (match) => match.status === "completed"
-      ).length,
-      groupMatchesTotal: doc.matches.length,
-      eliminationMatchesCompleted: eliminationMatches.filter(
-        (match) => match.status === "completed"
-      ).length,
-      eliminationMatchesTotal: eliminationMatches.length,
+      groupMatchesCompleted: completion.groups.completed,
+      groupMatchesTotal: completion.groups.total,
+      eliminationMatchesCompleted: completion.elimination.completed,
+      eliminationMatchesTotal: completion.elimination.total,
     },
     teams,
     players,
@@ -337,9 +350,16 @@ export const buildGsdeTournamentReport = (
       teams: placement.teamIds.map(nameOf),
     })),
     complete: finalResult.complete,
+    validated: completion.isComplete,
+    provisional:
+      !completion.groups.isComplete ||
+      doc.tournament.seedingStale ||
+      Boolean(doc.tournament.bracketOverrideUsed),
+    completionIssues: completion.issues,
     champions: finalResult.championTeamIds.map(nameOf),
     runnersUp: finalResult.runnerUpTeamIds.map(nameOf),
-    resetFinalRequired: doc.elimination?.resetFinalRequired ?? false,
+    resetFinalRequired: completion.resetRequired,
+    resetWasPlayed: completion.resetWasPlayed,
     corrections: selectCorrections(doc).map((entry) => ({
       at: entry.at,
       action: actionLabel(entry.action),

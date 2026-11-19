@@ -36,22 +36,20 @@ import {
   findEliminationMatch,
   generateDoubleEliminationBracket,
   listEliminationMatches,
+  validateEliminationBracket,
 } from "./bracket";
 import {
   advanceEliminationMatch,
-  getEliminationChampion,
   getEliminationLossCount,
-  needsGrandFinalReset,
   type EliminationMatchOutcome,
 } from "./progression";
-import { applySpanishCrossover } from "./spanishCrossover";
-import { getGameNumber } from "./gameNumbers";
 import {
   calculateEliminationStandings,
   calculateFinalPlacements,
   type EliminationStanding,
   type FinalPlacement,
 } from "./eliminationStandings";
+import { validateTournamentCompletion } from "./completion";
 import { EliminationError, GroupStageError } from "./errors";
 import { validateTeamDraft } from "./teams";
 import {
@@ -106,7 +104,8 @@ export type ScoringErrorCode =
   | "registration-not-found"
   | "pairing-invalid"
   | "pairing-not-found"
-  | "pairing-unavailable";
+  | "pairing-unavailable"
+  | "seeding-stale";
 
 export class ScoringError extends Error {
   readonly code: ScoringErrorCode;
@@ -173,6 +172,12 @@ const commit = (
   audit?: AuditCall
 ): GsdeTournamentDocument => {
   const next = audit ? appendAudit(doc, audit) : doc;
+  if (next.elimination) {
+    const bracketProblems = validateEliminationBracket(next.elimination);
+    if (bracketProblems.length > 0) {
+      fail("integrity-violation", bracketProblems[0]);
+    }
+  }
   try {
     assertTournamentIntegrity(next);
   } catch (error) {
@@ -881,13 +886,20 @@ export const resetEliminationBracket = (
   );
 };
 
-const statusFromBracket = (bracket: EliminationBracket): GsdeTournamentDocument["tournament"]["status"] => {
-  if (getEliminationChampion(bracket)) return "completed";
-  const grandFinal = bracket.grandFinal.find((match) => match.round === 1);
+/**
+ * Tournament status is derived from the central completion validator, so a
+ * champion alone can never mark a half-played bracket as `completed`.
+ */
+const statusFromDoc = (
+  doc: GsdeTournamentDocument
+): GsdeTournamentDocument["tournament"]["status"] => {
+  if (validateTournamentCompletion(doc).isComplete) return "completed";
+  const grandFinal = doc.elimination?.grandFinal.find((match) => match.round === 1);
   if (grandFinal?.status === "ready" || grandFinal?.status === "completed") {
     return "grand-final";
   }
-  return "elimination";
+  if (doc.elimination) return "elimination";
+  return doc.matches.length > 0 ? "group-stage" : "configured";
 };
 
 const findEliminationMatchOrFail = (
@@ -911,26 +923,36 @@ export const scoreEliminationMatch = (
   if (!doc.elimination) {
     fail("bracket-not-generated", "Generate the elimination bracket first.");
   }
+  if (doc.tournament.seedingStale) {
+    fail(
+      "seeding-stale",
+      "This bracket was seeded from provisional group standings. Regenerate it before entering results."
+    );
+  }
 
   findEliminationMatchOrFail(doc.elimination, outcome.matchId);
+
   try {
     const result = advanceEliminationMatch(
       doc.elimination,
       outcome,
       FIXED16_ADVANCE_OPTIONS
     );
-    return commit(
-      touch({
-        ...doc,
-        elimination: result.bracket,
-        tournament: {
-          ...doc.tournament,
-          status: statusFromBracket(result.bracket),
-        },
-      }),
-      { action: "elimination-score-entered", actor, matchId: outcome.matchId }
-    );
+    const next = touch({
+      ...doc,
+      elimination: result.bracket,
+      tournament: {
+        ...doc.tournament,
+        status: statusFromDoc({ ...doc, elimination: result.bracket }),
+      },
+    });
+    return commit(next, {
+      action: "elimination-score-entered",
+      actor,
+      matchId: outcome.matchId,
+    });
   } catch (error) {
+    if (error instanceof ScoringError) throw error;
     return fail(asEngineError(error), "Invalid elimination result.");
   }
 };
@@ -960,43 +982,125 @@ const collectResults = (bracket: EliminationBracket): StoredResult[] =>
     }));
 
 /**
- * Rebuilds the bracket from the generated state and replays every stored
- * result in game order. Results that no longer apply after a correction are
- * dropped, so the bracket is always internally consistent.
+ * Topological order of every match in the generated bracket, derived from the
+ * winner/loser links themselves. Presentation metadata (game numbers) is never
+ * used for execution order, so correction replay works for any bracket size.
+ */
+const topologicalMatchOrder = (bracket: EliminationBracket): MatchId[] => {
+  const all = listEliminationMatches(bracket);
+  const ids = new Set(all.map((match) => match.id));
+  const prereqs = new Map<MatchId, Set<MatchId>>(
+    all.map((match) => [match.id, new Set<MatchId>()])
+  );
+
+  for (const match of all) {
+    for (const link of [match.winnerTo, match.loserTo]) {
+      if (link && ids.has(link.matchId) && link.matchId !== match.id) {
+        prereqs.get(link.matchId)!.add(match.id);
+      }
+    }
+  }
+
+  const ordered: MatchId[] = [];
+  const remaining = new Set(all.map((match) => match.id));
+  while (remaining.size > 0) {
+    const ready = all
+      .filter((match) => remaining.has(match.id))
+      .filter((match) =>
+        [...prereqs.get(match.id)!].every((id) => !remaining.has(id))
+      );
+    if (ready.length === 0) {
+      // Defensive: a dependency cycle should be impossible for a generated
+      // bracket, but never loop forever on a malformed one.
+      for (const match of all) {
+        if (remaining.has(match.id)) {
+          ordered.push(match.id);
+          remaining.delete(match.id);
+        }
+      }
+      break;
+    }
+    for (const match of ready) {
+      ordered.push(match.id);
+      remaining.delete(match.id);
+    }
+  }
+  return ordered;
+};
+
+interface ReplayOutcome {
+  bracket: EliminationBracket;
+  invalidated: MatchId[];
+}
+
+/**
+ * Rebuilds the canonical bracket from its seeds and replays every stored
+ * result in dependency order. Results that no longer apply after a correction
+ * are flagged on their matches and listed on the bracket for admin review.
  */
 const replayResults = (
   seededTeamIds: readonly TeamId[],
   results: readonly StoredResult[]
-): EliminationBracket => {
-  let bracket = applySpanishCrossover(
-    generateDoubleEliminationBracket(seededTeamIds).bracket
-  );
+): ReplayOutcome => {
+  let bracket = generateDoubleEliminationBracket(seededTeamIds).bracket;
+  const pending = new Map(results.map((result) => [result.matchId, result]));
+  const applied = new Set<MatchId>();
 
-  const ordered = [...results].sort((a, b) => {
-    const gameA = getGameNumber(a.matchId) ?? 999;
-    const gameB = getGameNumber(b.matchId) ?? 999;
-    return gameA - gameB || a.matchId.localeCompare(b.matchId);
-  });
-
-  for (const result of ordered) {
-    try {
-      bracket = advanceEliminationMatch(
-        bracket,
-        {
-          matchId: result.matchId,
-          winnerId: result.winnerId,
-          loserId: result.loserId,
-          scoreA: result.scoreA,
-          scoreB: result.scoreB,
-        },
-        FIXED16_ADVANCE_OPTIONS
-      ).bracket;
-    } catch {
-      // A stale downstream result (participants changed) is dropped.
+  // The reset final is appended after GF1, so replay in passes until stable.
+  let progressed = true;
+  while (progressed && pending.size > 0) {
+    progressed = false;
+    for (const matchId of topologicalMatchOrder(bracket)) {
+      const result = pending.get(matchId);
+      if (!result || applied.has(matchId)) continue;
+      try {
+        bracket = advanceEliminationMatch(
+          bracket,
+          {
+            matchId: result.matchId,
+            winnerId: result.winnerId,
+            loserId: result.loserId,
+            scoreA: result.scoreA,
+            scoreB: result.scoreB,
+          },
+          FIXED16_ADVANCE_OPTIONS
+        ).bracket;
+        applied.add(matchId);
+        progressed = true;
+      } catch {
+        // A stale result (participants changed upstream) is flagged below.
+      }
     }
   }
 
-  return bracket;
+  const invalidated = results
+    .map((result) => result.matchId)
+    .filter((matchId) => !applied.has(matchId));
+  const flagged = new Set(invalidated);
+  const reason =
+    "Result discarded after a score correction changed downstream participants; review required.";
+
+  bracket = {
+    ...bracket,
+    invalidatedResultIds: invalidated,
+    winners: bracket.winners.map((match) =>
+      flagged.has(match.id)
+        ? { ...match, reviewRequired: true, reviewReason: reason }
+        : match
+    ),
+    losers: bracket.losers.map((match) =>
+      flagged.has(match.id)
+        ? { ...match, reviewRequired: true, reviewReason: reason }
+        : match
+    ),
+    grandFinal: bracket.grandFinal.map((match) =>
+      flagged.has(match.id)
+        ? { ...match, reviewRequired: true, reviewReason: reason }
+        : match
+    ),
+  };
+
+  return { bracket, invalidated };
 };
 
 /** Correct one elimination result and recalculate the whole bracket. */
@@ -1012,29 +1116,77 @@ export const correctEliminationResult = (
   if (!doc.elimination) {
     fail("bracket-not-generated", "Generate the elimination bracket first.");
   }
+  if (doc.tournament.seedingStale) {
+    fail(
+      "seeding-stale",
+      "Regenerate the provisional bracket before correcting a result."
+    );
+  }
+
+  const target = findEliminationMatchOrFail(doc.elimination, matchId);
+  const participants = [target.teamAId, target.teamBId];
+  if (
+    !outcome.winnerId ||
+    !outcome.loserId ||
+    outcome.winnerId === outcome.loserId ||
+    !participants.includes(outcome.winnerId) ||
+    !participants.includes(outcome.loserId)
+  ) {
+    fail(
+      "invalid-score",
+      "Correction winner and loser must be the two match participants."
+    );
+  }
+  if (outcome.scoreA !== null || outcome.scoreB !== null) {
+    const validScores =
+      outcome.scoreA !== null &&
+      outcome.scoreB !== null &&
+      Number.isInteger(outcome.scoreA) &&
+      Number.isInteger(outcome.scoreB) &&
+      outcome.scoreA >= 0 &&
+      outcome.scoreB >= 0 &&
+      outcome.scoreA !== outcome.scoreB &&
+      (outcome.scoreA > outcome.scoreB) === (outcome.winnerId === target.teamAId);
+    if (!validScores) {
+      fail("invalid-score", "Correction scores do not agree with the winner.");
+    }
+  }
+
+  const storedResults = collectResults(doc.elimination);
+  if (!storedResults.some((result) => result.matchId === matchId)) {
+    fail("unknown-match", `Match "${matchId}" has no result to correct.`);
+  }
 
   const seeds =
     doc.elimination.seededTeamIds ??
     seedTeamsFromGroupStandings(
-      calculateAllGroupStandings(doc.groups, doc.matches)
+      calculateAllGroupStandings(
+        doc.groups,
+        doc.matches,
+        doc.settings.groupTiebreakers
+      )
     );
-  const results = collectResults(doc.elimination).filter(
-    (result) => result.matchId !== matchId
-  );
+  const results = storedResults.filter((result) => result.matchId !== matchId);
   results.push({ matchId, ...outcome });
 
-  const bracket = replayResults(seeds, results);
-  return commit(
-    touch({
-      ...doc,
-      elimination: bracket,
-      tournament: {
-        ...doc.tournament,
-        status: statusFromBracket(bracket),
-      },
-    }),
-    { action: "elimination-result-corrected", actor, matchId }
-  );
+  const { bracket, invalidated } = replayResults(seeds, results);
+  const next = touch({
+    ...doc,
+    elimination: bracket,
+    tournament: {
+      ...doc.tournament,
+      status: statusFromDoc({ ...doc, elimination: bracket }),
+    },
+  });
+  return commit(next, {
+    action: "elimination-result-corrected",
+    actor,
+    matchId,
+    detail:
+      invalidated.length > 0
+        ? `Replayed bracket; ${invalidated.length} downstream result(s) invalidated: ${invalidated.join(", ")}.`
+        : "Replayed bracket from corrected result.",
+  });
 };
 
 /** Authorized reopen of a completed tournament, with integrity validation. */
@@ -1049,11 +1201,20 @@ export const reopenTournament = (
 
 export const selectGroupStandings = (
   doc: GsdeTournamentDocument
-): GroupStandingsTable[] => calculateAllGroupStandings(doc.groups, doc.matches);
+): GroupStandingsTable[] =>
+  calculateAllGroupStandings(
+    doc.groups,
+    doc.matches,
+    doc.settings.groupTiebreakers
+  );
 
 export const selectGlobalRanking = (
   doc: GsdeTournamentDocument
 ): GlobalRankingRow[] => getSizeAwareGlobalRanking(doc);
+
+/** Central completion state shared by status, report, PDF and live views. */
+export const selectCompletion = (doc: GsdeTournamentDocument) =>
+  validateTournamentCompletion(doc);
 
 export const selectEliminationStandings = (
   doc: GsdeTournamentDocument
@@ -1065,14 +1226,18 @@ export const selectPlacements = (
 ): FinalPlacement[] =>
   doc.elimination ? calculateFinalPlacements(doc.elimination) : [];
 
-export const selectProgress = (doc: GsdeTournamentDocument) => ({
-  groups: getGroupStageProgress(doc.matches),
-  eliminationComplete: doc.elimination
-    ? listEliminationMatches(doc.elimination).filter((m) => m.status === "completed").length
-    : 0,
-  resetRequired: doc.elimination ? needsGrandFinalReset(doc.elimination) : false,
-  champion: doc.elimination ? getEliminationChampion(doc.elimination) : null,
-});
+export const selectProgress = (doc: GsdeTournamentDocument) => {
+  const completion = validateTournamentCompletion(doc);
+  return {
+    groups: getGroupStageProgress(doc.matches),
+    eliminationComplete: completion.elimination.completed,
+    eliminationTotal: completion.elimination.total,
+    resetRequired: completion.resetRequired,
+    champion: completion.champion,
+    isComplete: completion.isComplete,
+    issues: completion.issues,
+  };
+};
 
 export const selectLossCount = (
   doc: GsdeTournamentDocument,
@@ -1085,8 +1250,13 @@ export const selectFinalResult = (doc: GsdeTournamentDocument) => {
   const placements = selectPlacements(doc);
   const first = placements.find((placement) => placement.place === 1);
   const second = placements.find((placement) => placement.place === 2);
+  const completion = validateTournamentCompletion(doc);
   return {
-    complete: Boolean(doc.elimination && getEliminationChampion(doc.elimination)),
+    complete: completion.isComplete,
+    validated: completion.isComplete,
+    issues: completion.issues,
+    resetRequired: completion.resetRequired,
+    resetWasPlayed: completion.resetWasPlayed,
     championTeamIds: first?.teamIds ?? [],
     runnerUpTeamIds: second?.teamIds ?? [],
     placements,

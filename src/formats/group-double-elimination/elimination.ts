@@ -24,6 +24,8 @@ export interface EliminationStage {
 export interface BuildEliminationOptions {
   /** Preview support: seed from a partially played group stage. */
   allowIncompleteGroupStage?: boolean;
+  /** Configured in-group tiebreaker order, used to derive group ranks. */
+  tiebreakers?: readonly string[];
 }
 
 export const buildEliminationStage = (
@@ -40,7 +42,11 @@ export const buildEliminationStage = (
     );
   }
 
-  const tables = calculateAllGroupStandings(stage.groups, stage.matches);
+  const tables = calculateAllGroupStandings(
+    stage.groups,
+    stage.matches,
+    options.tiebreakers
+  );
   const seededTeamIds = seedTeamsFromGroupStandings(tables);
   const plan = generateDoubleEliminationBracket(seededTeamIds);
 

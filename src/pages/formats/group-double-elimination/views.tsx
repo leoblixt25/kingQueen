@@ -11,6 +11,7 @@ import type { EliminationMatch, TeamId } from "@/formats/group-double-eliminatio
 import { getGameLabel, getGameNumber } from "@/formats/group-double-elimination";
 import type { GsdeTournamentDocument } from "@/formats/group-double-elimination/persistence";
 import {
+  selectCompletion,
   selectEliminationStandings,
   selectGlobalRanking,
   selectGroupStandings,
@@ -201,6 +202,11 @@ export function GlobalRankingView({ doc }: ViewsProps) {
 }
 
 function statusBadge(match: EliminationMatch) {
+  if (match.reviewRequired) {
+    return (
+      <Badge className="bg-rose-100 text-rose-800 hover:bg-rose-100">Needs review</Badge>
+    );
+  }
   if (match.status === "completed") {
     return (
       <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">Done</Badge>
@@ -225,19 +231,11 @@ function EliminationMatchRow({
 }) {
   const gameNumber = getGameNumber(match.id);
   const gameLabel = gameNumber === null ? match.id : `Game ${gameNumber}`;
-  const promoted = gameNumber === 27 || gameNumber === 28;
 
   return (
     <div className="rounded-xl border border-sand-dark/30 bg-white/60 p-2.5">
       <div className="mb-1.5 flex items-center justify-between gap-2">
-        <span
-          className={`text-xs font-bold ${
-            promoted ? "text-amber-700" : "text-ocean"
-          }`}
-        >
-          {gameLabel}
-          {promoted ? " · Spanish semi" : ""}
-        </span>
+        <span className="text-xs font-bold text-ocean">{gameLabel}</span>
         {statusBadge(match)}
       </div>
       {[match.teamAId, match.teamBId].map((teamId, index) => {
@@ -263,6 +261,14 @@ function EliminationMatchRow({
           <span>W → {linkLabel(match.winnerTo)}</span>
           <span>L → {linkLabel(match.loserTo)}</span>
         </div>
+      ) : null}
+      {match.reviewRequired ? (
+        <p
+          className="mt-1.5 text-[11px] leading-snug text-rose-700"
+          title={match.reviewReason ?? "Result invalidated by a score correction."}
+        >
+          {match.reviewReason ?? "Result invalidated by a score correction."}
+        </p>
       ) : null}
     </div>
   );
@@ -316,16 +322,38 @@ export function EliminationBracketView({ doc }: ViewsProps) {
     return <EmptyView text="The double-elimination bracket has not been generated yet." />;
   }
   const names = teamNameMap(doc.teams, doc.registrations ?? []);
+  const completion = selectCompletion(doc);
 
   return (
     <div className="space-y-4">
-      <Card className="border-amber-300/60 bg-amber-50/70 shadow-sm">
-        <CardContent className="p-3 text-sm text-amber-900">
-          <strong>Spanish crossover:</strong> Game 27 pits the winners of Games 25 &amp; 22, and Game 28
-          pits the winners of Games 26 &amp; 21. Both semifinal winners reach the Grand Final; the losers
-          meet for 3rd place. A reset (Game 31) is used only when an undefeated finalist loses Game 30.
+      <Card className="border-ocean/20 bg-ocean/5 shadow-sm">
+        <CardContent className="p-3 text-sm text-foreground/75">
+          <strong>Standard 16-team double elimination.</strong> Winners Bracket rounds are
+          8 → 4 → 2 → 1; Losers Bracket rounds are 4 → 4 → 2 → 2 → 1 → 1; then one Grand
+          Final, plus a reset final only if the undefeated finalist loses the first Grand
+          Final. A first loss drops a team to the Losers Bracket; a second loss eliminates it.
         </CardContent>
       </Card>
+      {doc.tournament.seedingStale ? (
+        <Card className="border-amber-300/60 bg-amber-50/70 shadow-sm">
+          <CardContent className="p-3 text-sm text-amber-900">
+            <strong>Provisional bracket.</strong> This bracket was seeded from provisional
+            group standings. It must be regenerated from the final verified standings.
+          </CardContent>
+        </Card>
+      ) : null}
+      {completion.issues.length > 0 ? (
+        <Card className="border-amber-300/60 bg-amber-50/70 shadow-sm">
+          <CardContent className="p-3 text-sm text-amber-900">
+            <strong>Completion blockers:</strong>
+            <ul className="mt-1 list-disc pl-5">
+              {completion.issues.map((issue) => (
+                <li key={issue}>{issue}</li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      ) : null}
       <div className="grid gap-4 lg:grid-cols-2">
         <BracketColumn title="Winners bracket" matches={bracket.winners} names={names} />
         <BracketColumn title="Losers bracket" matches={bracket.losers} names={names} />
@@ -585,15 +613,15 @@ export function TournamentRulesView() {
     },
     {
       title: "Elimination bracket",
-      body: "The global group ranking seeds a 16-team double-elimination bracket. A first elimination loss drops a team to the Losers Bracket; a second loss eliminates it.",
+      body: "The global group ranking seeds a standard 16-team double-elimination bracket: Winners Bracket rounds of 8, 4, 2 and 1; Losers Bracket rounds of 4, 4, 2, 2, 1 and 1; then the Grand Final. A first elimination loss drops a team to the Losers Bracket; a second loss eliminates it. A full bracket is 30 matches, or 31 when a reset final is needed.",
     },
     {
-      title: "Spanish crossover",
-      body: "Spanish crossover: Game 25 meets the Game 22 winner and Game 26 meets the Game 21 winner in the semifinals (Games 27–28). Both semifinal winners reach the Grand Final. Semifinal losers meet for 3rd/4th; that lower final does not feed the Grand Final.",
+      title: "Grand Final",
+      body: "The Winners Bracket champion meets the Losers Bracket champion in the Grand Final. Both finalists enter with one loss, so the winner is the champion and the loser finishes second.",
     },
     {
       title: "Grand Final reset",
-      body: "If the undefeated finalist loses the first Grand Final, a reset final is played to decide the champion.",
+      body: "A reset final is appended only when the undefeated Winners Bracket champion loses the first Grand Final. The tournament is not complete until the required reset final is played.",
     },
     {
       title: "Two independent rankings",
@@ -660,23 +688,44 @@ export function IndependentRankingsView({ doc }: ViewsProps) {
 /** Small progress summary used at the top of both pages. */
 export function ProgressSummary({ doc }: ViewsProps) {
   const progress = selectProgress(doc);
+  const provisional =
+    !progress.groups.isComplete ||
+    doc.tournament.seedingStale ||
+    Boolean(doc.tournament.bracketOverrideUsed);
   return (
-    <div className="flex flex-wrap gap-2 text-xs">
-      <Badge variant="secondary">
-        Groups {progress.groups.completed}/{progress.groups.total}
-      </Badge>
-      {doc.elimination ? (
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-2 text-xs">
         <Badge variant="secondary">
-          Elimination matches {progress.eliminationComplete}/30
+          Groups {progress.groups.completed}/{progress.groups.total}
         </Badge>
-      ) : null}
-      {progress.resetRequired ? (
-        <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">Reset required</Badge>
-      ) : null}
-      {progress.champion ? (
-        <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">
-          Champion: {nameOf(teamNameMap(doc.teams, doc.registrations ?? []), progress.champion)}
-        </Badge>
+        {doc.elimination ? (
+          <Badge variant="secondary">
+            Elimination matches {progress.eliminationComplete}/{progress.eliminationTotal}
+          </Badge>
+        ) : null}
+        {provisional ? (
+          <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">Provisional</Badge>
+        ) : null}
+        {progress.resetRequired ? (
+          <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">Reset required</Badge>
+        ) : null}
+        {progress.champion ? (
+          <Badge
+            className={
+              progress.isComplete
+                ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-100"
+                : "bg-amber-100 text-amber-800 hover:bg-amber-100"
+            }
+          >
+            {progress.isComplete ? "Champion" : "Provisional champion"}:{" "}
+            {nameOf(teamNameMap(doc.teams, doc.registrations ?? []), progress.champion)}
+          </Badge>
+        ) : null}
+      </div>
+      {progress.issues.length > 0 ? (
+        <p className="text-[11px] text-amber-800" title={progress.issues.join("\n")}>
+          {progress.issues.length} completion blocker(s): {progress.issues[0]}
+        </p>
       ) : null}
     </div>
   );

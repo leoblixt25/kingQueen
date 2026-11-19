@@ -188,6 +188,14 @@ export interface EliminationMatch extends MatchScore {
   winnerTo: BracketLink | null;
   /** Where the loser drops; `null` means the team is eliminated. */
   loserTo: BracketLink | null;
+  /**
+   * Set when a score correction invalidated this match's stored result. The
+   * result is cleared, and the match must be reviewed/reset by an admin before
+   * the tournament can complete.
+   */
+  reviewRequired?: boolean;
+  /** Human-readable reason shown alongside `reviewRequired`. */
+  reviewReason?: string | null;
 }
 
 /**
@@ -218,8 +226,13 @@ export interface EliminationBracket {
   winners: EliminationMatch[];
   losers: EliminationMatch[];
   grandFinal: EliminationMatch[];
-  /** Set once the Losers champion wins the first Grand Final. */
+  /** Historical marker: a reset final was appended after Grand Final 1. */
   resetFinalRequired: boolean;
+  /**
+   * Match ids whose stored results were discarded by a correction because the
+   * downstream participants changed. Surfaced in reports and admin review.
+   */
+  invalidatedResultIds?: MatchId[];
   /** Seeds in bracket order, best first. Never contains group-stage records. */
   seededTeamIds?: TeamId[];
   /** Bracket size: the next power of two >= `seededTeamIds.length`. */

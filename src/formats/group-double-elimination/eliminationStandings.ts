@@ -1,15 +1,13 @@
 import type { EliminationBracket, MatchId, TeamId } from "./types";
 import {
-  findEliminationMatch,
   listEliminationMatches,
 } from "./bracket";
 import {
   getEliminationChampion,
   getEliminationLossCount,
   getEliminationWinCount,
+  needsGrandFinalReset,
 } from "./progression";
-import { GAME_IDS_16 } from "./gameNumbers";
-import { hasSpanishCrossover } from "./spanishCrossover";
 
 /**
  * Elimination standings and final placements.
@@ -17,6 +15,10 @@ import { hasSpanishCrossover } from "./spanishCrossover";
  * Only results from the elimination stage count here. Losses suffered in the
  * group stage are ignored by design, so a team that lost every group match
  * still starts this stage with zero losses.
+ *
+ * Placement is derived from bracket outcomes, never from seed order or array
+ * order: champion, deciding-final loser, then Losers Bracket elimination
+ * rounds from last to first. Teams eliminated in the same round share a place.
  */
 export type EliminationStatus =
   | "winners"
@@ -76,16 +78,7 @@ const eliminationMatchFor = (
   return candidates.length > 0 ? candidates[candidates.length - 1].id : null;
 };
 
-/**
- * Placements for the Spanish fixed-16 crossover.
- *
- * The two semifinal winners contest the Grand Final (1st/2nd) and the two
- * semifinal losers contest the lower final (3rd/4th). When the lower final is
- * not playable because both semifinal losers already took their second loss,
- * they share 3rd. The remaining teams are placed by their Losers Bracket
- * elimination round, with teams from the same round sharing a place.
- */
-const buildSpanishPlacementMap = (
+const buildPlacementMap = (
   bracket: EliminationBracket
 ): Map<TeamId, number> => {
   const places = new Map<TeamId, number>();
@@ -100,100 +93,9 @@ const buildSpanishPlacementMap = (
   if (
     deciding?.status === "completed" &&
     deciding.loserId &&
-    !places.has(deciding.loserId)
+    !needsGrandFinalReset(bracket)
   ) {
     places.set(deciding.loserId, 2);
-  }
-
-  const lowerFinal = findEliminationMatch(bracket, GAME_IDS_16.lowerFinal);
-  if (
-    lowerFinal?.status === "completed" &&
-    lowerFinal.winnerId &&
-    lowerFinal.loserId
-  ) {
-    if (!places.has(lowerFinal.winnerId)) {
-      places.set(lowerFinal.winnerId, 3);
-    }
-    if (!places.has(lowerFinal.loserId)) {
-      places.set(lowerFinal.loserId, 4);
-    }
-  }
-
-  // Semifinal losers not already placed via the lower final share 3rd. This
-  // covers both the "lower final not played" case and a single-team lower
-  // final left over from mixed-loss semifinals.
-  for (const id of [GAME_IDS_16.semiFinal1, GAME_IDS_16.semiFinal2]) {
-    const semi = findEliminationMatch(bracket, id);
-    if (
-      semi?.status === "completed" &&
-      semi.loserId &&
-      !places.has(semi.loserId)
-    ) {
-      places.set(semi.loserId, 3);
-    }
-  }
-
-  const losersRounds = [...new Set(bracket.losers.map((match) => match.round))]
-    .sort((a, b) => b - a);
-  let nextPlace = 5;
-
-  for (const round of losersRounds) {
-    if (lowerFinal?.round === round) continue;
-
-    const eliminated = [
-      ...new Set(
-        bracket.losers
-          .filter(
-            (match) =>
-              match.round === round &&
-              match.status === "completed" &&
-              match.loserId !== null &&
-              getEliminationLossCount(bracket, match.loserId) >= 2
-          )
-          .map((match) => match.loserId as TeamId)
-      ),
-    ].filter((teamId) => !places.has(teamId));
-
-    if (eliminated.length === 0) continue;
-    for (const teamId of eliminated) {
-      places.set(teamId, nextPlace);
-    }
-    nextPlace += eliminated.length;
-  }
-
-  return places;
-};
-
-/**
- * Ranks every team whose tournament is over.
- *
- * Winner 1st, deciding-final loser 2nd, then Losers Bracket rounds from the
- * last to the first. Teams eliminated in the same round share a place, so the
- * next place skips by the size of the tie (1, 2, 3, 4, 5, 5, 7, 7 …).
- */
-const buildPlacementMap = (
-  bracket: EliminationBracket
-): Map<TeamId, number> => {
-  if (hasSpanishCrossover(bracket)) {
-    return buildSpanishPlacementMap(bracket);
-  }
-
-  const places = new Map<TeamId, number>();
-  const champion = getEliminationChampion(bracket);
-
-  if (champion) places.set(champion, 1);
-
-  const deciding =
-    bracket.grandFinal.find((match) => match.round === 2) ??
-    bracket.grandFinal.find((match) => match.round === 1);
-
-  if (deciding?.status === "completed" && deciding.loserId) {
-    const resetTriggered =
-      deciding.round === 1 &&
-      deciding.loserId !== null &&
-      getEliminationLossCount(bracket, deciding.loserId) === 1;
-
-    if (!resetTriggered) places.set(deciding.loserId, 2);
   }
 
   const rounds = [...new Set(bracket.losers.map((match) => match.round))].sort(
@@ -253,6 +155,61 @@ export const calculateFinalPlacements = (
   return [...byPlace.keys()]
     .sort((a, b) => a - b)
     .map((place) => ({ place, teamIds: byPlace.get(place) ?? [] }));
+};
+
+export interface PlacementValidation {
+  isConsistent: boolean;
+  issues: string[];
+}
+
+/**
+ * Cross-check placements against the bracket. With `requireComplete`, every
+ * seeded team must appear exactly once and 1st/2nd must each be a single team.
+ */
+export const validateFinalPlacements = (
+  bracket: EliminationBracket,
+  requireComplete = false
+): PlacementValidation => {
+  const issues: string[] = [];
+  const placements = calculateFinalPlacements(bracket);
+  const champion = getEliminationChampion(bracket);
+  const placeOne = placements.find((placement) => placement.place === 1);
+  const placeTwo = placements.find((placement) => placement.place === 2);
+
+  if (champion && (!placeOne || placeOne.teamIds.length !== 1 || placeOne.teamIds[0] !== champion)) {
+    issues.push("The champion is not the sole team in 1st place.");
+  }
+  if (champion && placeTwo && placeTwo.teamIds.length !== 1) {
+    issues.push("More than one team is listed in 2nd place.");
+  }
+
+  const allPlaced = placements.flatMap((placement) => placement.teamIds);
+  const duplicates = allPlaced.filter(
+    (teamId, index) => allPlaced.indexOf(teamId) !== index
+  );
+  if (duplicates.length > 0) {
+    issues.push(`Duplicate final placements: ${[...new Set(duplicates)].join(", ")}.`);
+  }
+
+  if (requireComplete) {
+    const expected = bracket.seededTeamIds ?? collectTeamIds(bracket);
+    const missing = expected.filter((teamId) => !allPlaced.includes(teamId));
+    const unexpected = allPlaced.filter((teamId) => !expected.includes(teamId));
+    if (missing.length > 0) {
+      issues.push(`Unplaced teams: ${missing.join(", ")}.`);
+    }
+    if (unexpected.length > 0) {
+      issues.push(`Placed teams outside the bracket: ${unexpected.join(", ")}.`);
+    }
+    if (!placeOne || placeOne.teamIds.length !== 1) {
+      issues.push("A completed tournament needs exactly one champion.");
+    }
+    if (!placeTwo || placeTwo.teamIds.length !== 1) {
+      issues.push("A completed tournament needs exactly one runner-up.");
+    }
+  }
+
+  return { isConsistent: issues.length === 0, issues };
 };
 
 export const calculateEliminationStandings = (

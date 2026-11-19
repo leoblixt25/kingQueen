@@ -196,13 +196,20 @@ export const resetGroupMatchScore = (
 
 export const isGroupStageMatchComplete = (
   match: GroupStageMatch
-): boolean =>
-  match.phase === "group" &&
-  match.status === "completed" &&
-  match.scoreA !== null &&
-  match.scoreB !== null &&
-  match.scoreA !== match.scoreB &&
-  match.winnerId !== null;
+): boolean => {
+  if (
+    match.phase !== "group" ||
+    match.status !== "completed" ||
+    match.scoreA === null ||
+    match.scoreB === null ||
+    match.scoreA === match.scoreB ||
+    match.winnerId === null
+  ) {
+    return false;
+  }
+  const expectedWinner = match.scoreA > match.scoreB ? match.teamAId : match.teamBId;
+  return match.winnerId === expectedWinner;
+};
 
 /** A stage is complete only when it has matches and all of them are done. */
 export const isGroupStageComplete = (

@@ -16,7 +16,6 @@ import {
   buildEliminationStage,
   type EliminationStage,
 } from "./elimination";
-import { applySpanishCrossover, hasSpanishCrossover } from "./spanishCrossover";
 import {
   isGroupStageComplete,
   getGroupStageProgress,
@@ -25,7 +24,7 @@ import { GroupStageError, EliminationError } from "./errors";
 import type { EliminationAdvanceOptions } from "./progression";
 
 /**
- * Fixed 16-team facade for the Group Stage + Spanish Double Elimination
+ * Fixed 16-team facade for the Group Stage + standard Double Elimination
  * format. This is the only module that combines the two stages; the pure
  * engines remain usable independently.
  */
@@ -37,10 +36,12 @@ export const FIXED16_MATCHES_PER_GROUP = 6;
 export const FIXED16_GROUP_MATCH_COUNT =
   FIXED16_GROUP_COUNT * FIXED16_MATCHES_PER_GROUP;
 
-/** Progression for this format always avoids immediate rematches. */
-export const FIXED16_ADVANCE_OPTIONS: EliminationAdvanceOptions = {
-  avoidRematches: true,
-};
+/**
+ * Progression for this format uses the canonical bracket links. Rematch
+ * avoidance is deliberately disabled: redirecting loser drops changes the
+ * standard bracket structure and can leave orphaned matches.
+ */
+export const FIXED16_ADVANCE_OPTIONS: EliminationAdvanceOptions = {};
 
 export interface GlobalRankingRow {
   /** Global group-stage rank, 1 through 16. */
@@ -139,9 +140,12 @@ export const getGlobalRanking = (
 
 export const getFixed16GlobalRanking = (
   groups: readonly Group[],
-  matches: readonly GroupStageMatch[]
+  matches: readonly GroupStageMatch[],
+  configuredTiebreakers?: readonly string[]
 ): GlobalRankingRow[] =>
-  getGlobalRanking(calculateAllGroupStandings(groups, matches));
+  getGlobalRanking(
+    calculateAllGroupStandings(groups, matches, configuredTiebreakers)
+  );
 
 export const canGenerateFixed16Bracket = (
   matches: readonly GroupStageMatch[]
@@ -150,11 +154,12 @@ export const canGenerateFixed16Bracket = (
   getGroupStageProgress(matches).total === FIXED16_GROUP_MATCH_COUNT;
 
 /**
- * Builds the elimination stage from a completed 16-team group stage and
- * applies the mandatory Spanish semifinal crossover.
+ * Builds the standard 16-team double-elimination stage from a completed group
+ * stage. No crossover or dynamic loser-drop rewriting is applied.
  */
 export const buildFixed16EliminationStage = (
-  stage: GroupStageState
+  stage: GroupStageState,
+  configuredTiebreakers?: readonly string[]
 ): EliminationStage => {
   if (!canGenerateFixed16Bracket(stage.matches)) {
     throw new EliminationError(
@@ -163,7 +168,9 @@ export const buildFixed16EliminationStage = (
     );
   }
 
-  const elimination = buildEliminationStage(stage);
+  const elimination = buildEliminationStage(stage, {
+    tiebreakers: configuredTiebreakers,
+  });
   if (elimination.seededTeamIds.length !== FIXED16_TEAM_COUNT) {
     throw new EliminationError(
       "invalid-team-count",
@@ -171,13 +178,5 @@ export const buildFixed16EliminationStage = (
     );
   }
 
-  const bracket = applySpanishCrossover(elimination.bracket);
-  if (!hasSpanishCrossover(bracket)) {
-    throw new EliminationError(
-      "invalid-bracket",
-      "The Spanish semifinal crossover was not applied."
-    );
-  }
-
-  return { ...elimination, bracket };
+  return elimination;
 };

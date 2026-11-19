@@ -373,6 +373,7 @@ export default function GroupDoubleEliminationAdminSetup() {
   const [scoreCap, setScoreCap] = useState("");
   const [tiebreakOrder, setTiebreakOrder] = useState<GroupTiebreaker[]>([]);
   const [testResultMode, setTestResultMode] = useState<TestResultMode>("none");
+  const [includeAuditLog, setIncludeAuditLog] = useState(false);
 
   // The admin page is behind the GSDE admin guard, so the signed-in user is the
   // actor recorded on every audit entry. Fall back to UNKNOWN_ADMIN if identity
@@ -2196,12 +2197,24 @@ export default function GroupDoubleEliminationAdminSetup() {
                       <p className="text-sm text-foreground/70">
                         Export the teams, group standings and results, global ranking,
                         elimination results and final placements in the same printable
-                        King &amp; Queen-style format. Admin action logs are not included.
+                        King &amp; Queen-style format. Admin action logs are not included
+                        unless you opt in below.
                       </p>
+                      <label className="flex items-center justify-center gap-2 text-sm font-medium text-foreground/80">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 accent-ocean"
+                          checked={includeAuditLog}
+                          onChange={(event) => setIncludeAuditLog(event.target.checked)}
+                        />
+                        Include audit log (separate final page)
+                      </label>
                       <Button
                         className={primaryBtn}
                         disabled={!doc || saving}
-                        onClick={() => void exportGsdeTournamentPdf(doc)}
+                        onClick={() =>
+                          void exportGsdeTournamentPdf(doc, { includeAuditLog })
+                        }
                       >
                         <FileText className="w-5 h-5 mr-2" />
                         Download PDF

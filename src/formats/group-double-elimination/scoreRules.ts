@@ -1,17 +1,23 @@
 import type { Team, TeamId } from "./types";
 
 /**
- * Score rules shared by group and elimination entry.
+ * Beach-volleyball set scoring shared by group and elimination entry.
  *
- * Both rules only police completed-length games (a winner on 21 or more).
- * Short games (for example a 7-3 warm-up set) remain valid so historical
- * tournaments and imported results are not rejected retroactively.
+ * A completed set is won by the first team to reach at least 21 points with a
+ * lead of at least 2. There is no upper cap: from 20-20 play continues until
+ * one team leads by 2 (22-20, 23-21, 25-23, ...). The identical rule applies to
+ * group-stage and elimination matches.
+ *
+ * `ScoreRule`/`ScoreRuleConfig` are retained for persisted-document
+ * compatibility. Every stored variant normalises to this one rule, so legacy
+ * tournaments configured with "first to 21" also accept extended scores.
  */
 export type ScoreRule = "first-to-21-cap" | "win-by-2";
 
 export interface ScoreRuleConfig {
+  /** Kept for legacy documents; no longer affects validation. */
   rule: ScoreRule;
-  /** Optional hard cap for `win-by-2`, e.g. 30. `null` means no cap. */
+  /** @deprecated Extended sets have no cap. Kept for legacy documents. */
   cap: number | null;
 }
 
@@ -23,30 +29,28 @@ export interface ScoreValidation {
   ruleApplied: boolean;
 }
 
+export const BEACH_WINNING_POINTS = 21;
+export const BEACH_WINNING_MARGIN = 2;
+
 export const DEFAULT_SCORE_RULE: ScoreRuleConfig = {
-  rule: "first-to-21-cap",
+  rule: "win-by-2",
   cap: null,
 };
 
 export const normalizeScoreRuleConfig = (
-  rule: unknown,
-  cap: unknown
-): ScoreRuleConfig => ({
-  rule: rule === "win-by-2" ? "win-by-2" : "first-to-21-cap",
-  cap:
-    typeof cap === "number" && Number.isInteger(cap) && cap >= 2
-      ? cap
-      : null,
-});
+  _rule: unknown,
+  _cap: unknown
+): ScoreRuleConfig => DEFAULT_SCORE_RULE;
 
 /**
- * Validate a score pair. Ties and non-integers are always rejected; the
- * configured rule is then applied when the winning score reached 21.
+ * Validate any score pair with the same beach-volleyball rule. Ties,
+ * non-integers and a winner below 21 are rejected; from 21 onward the winner
+ * must lead by at least 2 with no upper limit.
  */
 export const validateScore = (
   scoreA: number,
   scoreB: number,
-  config: ScoreRuleConfig
+  _config: ScoreRuleConfig = DEFAULT_SCORE_RULE
 ): ScoreValidation => {
   if (
     !Number.isInteger(scoreA) ||
@@ -72,30 +76,28 @@ export const validateScore = (
 
   const winner = Math.max(scoreA, scoreB);
   const loser = Math.min(scoreA, scoreB);
-  let message: string | null = null;
-  let ruleApplied = false;
-
-  if (winner >= 21) {
-    if (config.rule === "first-to-21-cap") {
-      ruleApplied = winner === 21;
-      if (winner !== 21) {
-        message = `This tournament uses first to 21 with a hard cap: ${winner}-${loser} is not a valid result.`;
-      }
-    } else {
-      ruleApplied = winner - loser >= 2 && (config.cap === null || winner <= config.cap);
-      if (winner - loser < 2) {
-        message = `This tournament requires a two-point margin (for example 21-${loser >= 19 ? loser - 2 : 19}).`;
-      } else if (config.cap !== null && winner > config.cap) {
-        message = `The score cap is ${config.cap}; ${winner}-${loser} exceeds it.`;
-      }
-    }
+  if (winner < BEACH_WINNING_POINTS) {
+    return {
+      valid: false,
+      message: `The winning team must score at least ${BEACH_WINNING_POINTS} points.`,
+      warning: null,
+      ruleApplied: false,
+    };
+  }
+  if (winner - loser < BEACH_WINNING_MARGIN) {
+    return {
+      valid: false,
+      message: `The winner must lead by at least ${BEACH_WINNING_MARGIN} points (for example 21-19, 22-20 or 25-23).`,
+      warning: null,
+      ruleApplied: false,
+    };
   }
 
   return {
-    valid: message === null,
-    message,
+    valid: true,
+    message: null,
     warning: null,
-    ruleApplied,
+    ruleApplied: true,
   };
 };
 

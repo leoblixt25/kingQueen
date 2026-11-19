@@ -229,14 +229,15 @@ const randomInt = (rng: () => number, maxInclusive: number): number =>
   Math.min(maxInclusive, Math.max(0, Math.floor(rng() * (maxInclusive + 1))));
 
 /**
- * Random single-set score: the winner always has 21, the loser 0–20.
+ * Random single-set score: the winner has 21, the loser 0–19 so the result is
+ * always a valid beach-volleyball win (at least 21 with a two-point lead).
  * `winnerIsTeamA` decides which side receives the 21.
  */
 const randomScore = (
   rng: () => number,
   winnerIsTeamA: boolean
 ): { scoreA: number; scoreB: number } => {
-  const loserScore = randomInt(rng, 20);
+  const loserScore = randomInt(rng, 19);
   return winnerIsTeamA
     ? { scoreA: 21, scoreB: loserScore }
     : { scoreA: loserScore, scoreB: 21 };
@@ -303,7 +304,7 @@ const simulateEliminationResults = (
  * group schedule. Pure: the caller persists the returned document.
  *
  * `options.results` can additionally fill random scores (winner 21, loser
- * 0–20) for the group stage and, with `full`, play the entire elimination
+ * 0–19) for the group stage and, with `full`, play the entire elimination
  * bracket through to a champion. Passing `rng` makes the simulation
  * deterministic for tests.
  */

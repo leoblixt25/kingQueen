@@ -8,9 +8,13 @@ import type {
 /**
  * Single source of truth for an elimination result.
  *
- * The winner is always derived from the scores. `winnerId`/`loserId` remain on
- * stored matches for compatibility with older documents, but no UI or routing
- * decision may supply them independently: call `getWinner(match)` instead.
+ * The winner is always derived from the scores. New scores are checked by
+ * `scoreRules.validateScore` before they reach this module, so a stored result
+ * always reflects a valid beach-volleyball set (at least 21 points and a
+ * two-point lead). `winnerId`/`loserId` remain on stored matches for legacy
+ * documents, but no UI or routing decision may supply them independently:
+ * call `getWinner(match)` instead. Legacy marker/short scores stay derivable so
+ * existing tournaments keep their original progression.
  */
 
 /** Non-played results are stored as a 1–0 marker plus a `resultType`. */

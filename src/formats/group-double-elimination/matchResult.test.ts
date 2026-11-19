@@ -79,6 +79,14 @@ describe("elimination result helpers", () => {
     expect(deriveWinner("a", "b", 21, 21)).toBeNull();
   });
 
+  it("derives the winner from extended beach-volleyball scores", () => {
+    expect(deriveWinner("a", "b", 22, 20)).toBe("a");
+    expect(deriveWinner("a", "b", 23, 21)).toBe("a");
+    expect(deriveWinner("a", "b", 25, 23)).toBe("a");
+    expect(deriveWinner("a", "b", 23, 25)).toBe("b");
+    expect(deriveWinner("a", "b", 20, 20)).toBeNull();
+  });
+
   it("ignores a supplied winner flag when scores are present", () => {
     const match = {
       teamAId: "a",
@@ -138,6 +146,22 @@ describe("score-driven elimination results", () => {
     expect(getLoser(saved)).toBe(match.teamAId);
     expect(saved.winnerId).toBe(match.teamBId);
     expect(saved.loserId).toBe(match.teamAId);
+  });
+
+  it("advances the team with the higher valid extended score", () => {
+    const doc = makeEliminationDoc();
+    const match = firstEliminationMatch(doc);
+
+    const next = scoreEliminationMatch(doc, {
+      matchId: match.id,
+      scoreA: 22,
+      scoreB: 20,
+    });
+    const saved = findEliminationMatch(next.elimination!, match.id)!;
+
+    expect(getWinner(saved)).toBe(match.teamAId);
+    expect(getLoser(saved)).toBe(match.teamBId);
+    expect(saved.status).toBe("completed");
   });
 
   it("rejects a tie", () => {

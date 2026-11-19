@@ -26,13 +26,14 @@ import {
   getGameLabel,
   getGameNumber,
   getWinner,
-  resultTypeBadge,
   validateTeamDraft,
-  walkoverScores,
   type EliminationMatch,
-  type EliminationResultType,
   type TournamentCategory,
 } from "@/formats/group-double-elimination";
+import {
+  DEFAULT_SCORE_RULE,
+  validateScore,
+} from "@/formats/group-double-elimination/scoreRules";
 import { findWinnerScoreConflicts } from "@/formats/group-double-elimination/integrity";
 import {
   addTeam as addGsdeTeam,
@@ -132,17 +133,12 @@ interface ScoreDraft {
   b: string;
 }
 
-interface EliminationDraft extends ScoreDraft {
-  resultType: EliminationResultType;
-  /** Only used for walkover/retired, where the higher marker score advances. */
-  advancingTeam: "A" | "B";
-}
+/** Elimination cards use the same plain score entry as group cards. */
+type EliminationDraft = ScoreDraft;
 
 const elDraftFromMatch = (match: EliminationMatch): EliminationDraft => ({
   a: match.scoreA === null ? "" : String(match.scoreA),
   b: match.scoreB === null ? "" : String(match.scoreB),
-  resultType: match.resultType ?? "normal",
-  advancingTeam: getWinner(match) === match.teamBId ? "B" : "A",
 });
 
 type AdminSection =
@@ -367,10 +363,6 @@ export default function GroupDoubleEliminationAdminSetup() {
   const [resetConfirmed, setResetConfirmed] = useState(false);
   const [backupBeforeReset, setBackupBeforeReset] = useState(true);
   const [recomputeConfirmed, setRecomputeConfirmed] = useState(false);
-  const [scoreRule, setScoreRule] = useState<"first-to-21-cap" | "win-by-2">(
-    "first-to-21-cap"
-  );
-  const [scoreCap, setScoreCap] = useState("");
   const [tiebreakOrder, setTiebreakOrder] = useState<GroupTiebreaker[]>([]);
   const [testResultMode, setTestResultMode] = useState<TestResultMode>("none");
   const [includeAuditLog, setIncludeAuditLog] = useState(false);
@@ -414,10 +406,6 @@ export default function GroupDoubleEliminationAdminSetup() {
     setTeamLimit(String(doc?.tournament.config.teamLimit ?? 16));
     setGroupCount(String(doc?.tournament.config.groupCount ?? 4));
     setGroupSize(String(doc?.tournament.config.teamsPerGroup ?? 4));
-    setScoreRule(doc?.settings.scoreRule === "win-by-2" ? "win-by-2" : "first-to-21-cap");
-    setScoreCap(
-      typeof doc?.settings.scoreCap === "number" ? String(doc.settings.scoreCap) : ""
-    );
     setTiebreakOrder([...resolveGroupTiebreakers(doc?.settings.groupTiebreakers)]);
   }, [
     doc?.tournament.config.name,
@@ -427,8 +415,6 @@ export default function GroupDoubleEliminationAdminSetup() {
     doc?.tournament.config.teamLimit,
     doc?.tournament.config.groupCount,
     doc?.tournament.config.teamsPerGroup,
-    doc?.settings.scoreRule,
-    doc?.settings.scoreCap,
     doc?.settings.groupTiebreakers,
   ]);
 
@@ -444,9 +430,9 @@ export default function GroupDoubleEliminationAdminSetup() {
   const expectedGroupMatches = selectedGroupCount * 6;
   const testResultSummary =
     testResultMode === "groups"
-      ? `Random results for all ${expectedGroupMatches} group matches: winner 21, loser 0–20.`
+      ? `Random results for all ${expectedGroupMatches} group matches: winner 21, loser 0–19.`
       : testResultMode === "full"
-        ? "Random results for the group stage and the entire elimination bracket, through to a champion: winner 21, loser 0–20."
+        ? "Random results for the group stage and the entire elimination bracket, through to a champion: winner 21, loser 0–19."
         : "Only teams and the schedule are created; you enter the scores yourself.";
   const testLoadSuccess =
     testResultMode === "groups"
@@ -661,41 +647,8 @@ export default function GroupDoubleEliminationAdminSetup() {
 
   const setElValue = (matchId: string, patch: Partial<EliminationDraft>) =>
     setEliminationScores((previous) => {
-      const base = previous[matchId] ?? {
-        a: "",
-        b: "",
-        resultType: "normal" as const,
-        advancingTeam: "A" as const,
-      };
+      const base = previous[matchId] ?? { a: "", b: "" };
       return { ...previous, [matchId]: { ...base, ...patch } };
-    });
-
-  const chooseEliminationResultType = (
-    match: EliminationMatch,
-    resultType: EliminationResultType
-  ) => {
-    if (resultType === "normal") {
-      setElValue(match.id, { resultType });
-      return;
-    }
-    const draft = elValue(match);
-    const advanceB =
-      draft.a.trim() !== "" &&
-      draft.b.trim() !== "" &&
-      Number(draft.b) > Number(draft.a);
-    setElValue(match.id, {
-      resultType,
-      advancingTeam: advanceB ? "B" : "A",
-      a: advanceB ? "0" : "1",
-      b: advanceB ? "1" : "0",
-    });
-  };
-
-  const chooseAdvancingTeam = (matchId: string, advancingTeam: "A" | "B") =>
-    setElValue(matchId, {
-      advancingTeam,
-      a: advancingTeam === "A" ? "1" : "0",
-      b: advancingTeam === "A" ? "0" : "1",
     });
 
   const advanceToNextOpen = (
@@ -827,34 +780,21 @@ export default function GroupDoubleEliminationAdminSetup() {
       return;
     }
     const draft = elValue(match);
-    const resultType = draft.resultType;
-    let a: number;
-    let b: number;
-
-    if (resultType === "normal") {
-      if (draft.a.trim() === "" || draft.b.trim() === "") {
-        showError("Enter both scores.");
-        return;
-      }
-      a = Number(draft.a);
-      b = Number(draft.b);
-      if (!Number.isInteger(a) || !Number.isInteger(b) || a < 0 || b < 0) {
-        showError("Scores must be non-negative whole numbers.");
-        return;
-      }
-      if (a === b) {
-        showError("Elimination matches cannot end in a tie — give the winning team the higher score.");
-        return;
-      }
-    } else {
-      const marker = walkoverScores(draft.advancingTeam === "A");
-      a = marker.scoreA ?? 1;
-      b = marker.scoreB ?? 0;
+    if (draft.a.trim() === "" || draft.b.trim() === "") {
+      showError("Enter both scores.");
+      return;
+    }
+    const a = Number(draft.a);
+    const b = Number(draft.b);
+    const validation = validateScore(a, b, DEFAULT_SCORE_RULE);
+    if (!validation.valid) {
+      showError(validation.message ?? "Invalid score.");
+      return;
     }
 
-    // Only scores and resultType are submitted. The winner is derived from
-    // these by the scoring engine, so a stored flag can never disagree.
-    const outcome = { scoreA: a, scoreB: b, resultType };
+    // Only scores are submitted. The winner is derived from them by the
+    // scoring engine and advances automatically — no manual result type.
+    const outcome = { scoreA: a, scoreB: b };
     const wasComplete = match.status === "completed";
     const transform =
       wasComplete
@@ -1967,20 +1907,20 @@ export default function GroupDoubleEliminationAdminSetup() {
                           const teamA = nameOf(names, match.teamAId);
                           const teamB = nameOf(names, match.teamBId);
                           const winnerId = getWinner(match);
-                          const badge = resultTypeBadge(match.resultType);
                           const showInputs = !complete || editing;
-                          const nonPlayed = draft.resultType !== "normal";
-                          const previewWinner =
-                            draft.resultType === "normal" &&
+                          const previewValid =
                             draft.a.trim() !== "" &&
                             draft.b.trim() !== "" &&
-                            Number.isInteger(Number(draft.a)) &&
-                            Number.isInteger(Number(draft.b)) &&
-                            Number(draft.a) !== Number(draft.b)
-                              ? Number(draft.a) > Number(draft.b)
-                                ? teamA
-                                : teamB
-                              : null;
+                            validateScore(
+                              Number(draft.a),
+                              Number(draft.b),
+                              DEFAULT_SCORE_RULE
+                            ).valid;
+                          const previewWinner = previewValid
+                            ? Number(draft.a) > Number(draft.b)
+                              ? teamA
+                              : teamB
+                            : null;
                           return (
                             <div
                               className={`space-y-3 rounded-xl border-2 p-4 shadow-beach ${
@@ -2001,7 +1941,6 @@ export default function GroupDoubleEliminationAdminSetup() {
                                   <Pill tone={complete ? "palm" : match.status === "ready" ? "ocean" : "slate"}>
                                     {complete ? "Final" : match.status === "ready" ? "Ready" : "Pending"}
                                   </Pill>
-                                  {badge ? <Pill tone="amber">{badge}</Pill> : null}
                                 </div>
                               </div>
 
@@ -2009,7 +1948,7 @@ export default function GroupDoubleEliminationAdminSetup() {
                                 <div className="rounded-xl bg-ocean px-4 py-4 text-white shadow-beach">
                                   <p className="break-words text-xl font-bold">{teamA}</p>
                                 </div>
-                                {showInputs && !nonPlayed ? (
+                                {showInputs ? (
                                   <Input
                                     aria-label={`${teamA} score`}
                                     className={scoreInputCls}
@@ -2021,13 +1960,7 @@ export default function GroupDoubleEliminationAdminSetup() {
                                   />
                                 ) : (
                                   <div className="rounded-xl bg-ocean py-4 text-white shadow-beach">
-                                    <p className="text-4xl font-bold">
-                                      {showInputs
-                                        ? draft.advancingTeam === "A"
-                                          ? 1
-                                          : 0
-                                        : match.scoreA}
-                                    </p>
+                                    <p className="text-4xl font-bold">{match.scoreA}</p>
                                   </div>
                                 )}
                               </div>
@@ -2042,7 +1975,7 @@ export default function GroupDoubleEliminationAdminSetup() {
                                 <div className="rounded-xl bg-sunset px-4 py-4 text-white shadow-beach">
                                   <p className="break-words text-xl font-bold">{teamB}</p>
                                 </div>
-                                {showInputs && !nonPlayed ? (
+                                {showInputs ? (
                                   <Input
                                     aria-label={`${teamB} score`}
                                     className={scoreInputSunsetCls}
@@ -2054,92 +1987,21 @@ export default function GroupDoubleEliminationAdminSetup() {
                                   />
                                 ) : (
                                   <div className="rounded-xl bg-sunset py-4 text-white shadow-beach">
-                                    <p className="text-4xl font-bold">
-                                      {showInputs
-                                        ? draft.advancingTeam === "B"
-                                          ? 1
-                                          : 0
-                                        : match.scoreB}
-                                    </p>
+                                    <p className="text-4xl font-bold">{match.scoreB}</p>
                                   </div>
                                 )}
                               </div>
 
                               {showInputs ? (
-                                <div className="space-y-3">
-                                  <div>
-                                    <p className="mb-1 text-center text-xs font-semibold text-foreground/60">
-                                      Result type
-                                    </p>
-                                    <div className="grid grid-cols-3 gap-2">
-                                      {(
-                                        [
-                                          ["normal", "Played"],
-                                          ["walkover", "W/O"],
-                                          ["retired", "Retired"],
-                                        ] as const
-                                      ).map(([value, label]) => (
-                                        <button
-                                          key={value}
-                                          type="button"
-                                          disabled={saving}
-                                          onClick={() => chooseEliminationResultType(match, value)}
-                                          className={`touch-target rounded-xl px-2 py-2 text-xs font-bold transition-all ${
-                                            draft.resultType === value
-                                              ? "bg-ocean text-white shadow-beach"
-                                              : "border border-ocean/30 bg-ocean/10 text-ocean-dark"
-                                          }`}
-                                        >
-                                          {label}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  </div>
-                                  {nonPlayed ? (
-                                    <div>
-                                      <p className="mb-1 text-center text-xs font-semibold text-foreground/60">
-                                        Team that advances
-                                      </p>
-                                      <div className="grid grid-cols-2 gap-2">
-                                        <button
-                                          type="button"
-                                          disabled={saving}
-                                          onClick={() => chooseAdvancingTeam(match.id, "A")}
-                                          className={`touch-target rounded-xl px-2 py-3 text-sm font-bold transition-all ${
-                                            draft.advancingTeam === "A"
-                                              ? "bg-ocean text-white shadow-beach"
-                                              : "border border-ocean/30 bg-ocean/10 text-ocean-dark"
-                                          }`}
-                                        >
-                                          {teamA} advances
-                                        </button>
-                                        <button
-                                          type="button"
-                                          disabled={saving}
-                                          onClick={() => chooseAdvancingTeam(match.id, "B")}
-                                          className={`touch-target rounded-xl px-2 py-3 text-sm font-bold transition-all ${
-                                            draft.advancingTeam === "B"
-                                              ? "bg-sunset text-white shadow-beach"
-                                              : "border border-sunset/30 bg-sunset/10 text-sunset-dark"
-                                          }`}
-                                        >
-                                          {teamB} advances
-                                        </button>
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <p className="text-center text-xs text-foreground/60">
-                                      {previewWinner
-                                        ? `Higher score wins · ${previewWinner} advances`
-                                        : "Enter both scores — the higher score wins."}
-                                    </p>
-                                  )}
-                                </div>
+                                <p className="text-center text-xs text-foreground/60">
+                                  {previewWinner
+                                    ? `Higher valid score wins · ${previewWinner} advances`
+                                    : "Enter both scores — the winner must reach 21 and lead by 2."}
+                                </p>
                               ) : (
                                 <div className="text-center">
                                   <Pill tone="palm">
                                     👑 {nameOf(names, winnerId)} won {match.scoreA} - {match.scoreB}
-                                    {badge ? ` · ${badge}` : ""}
                                   </Pill>
                                 </div>
                               )}
@@ -2512,33 +2374,11 @@ export default function GroupDoubleEliminationAdminSetup() {
 
                     <SectionCard emoji="⚙️" title="Scoring & tiebreak rules">
                       <div className="space-y-3">
-                        <Field label="Score rule">
-                          <select
-                            aria-label="Score rule"
-                            className={selectCls}
-                            value={scoreRule}
-                            onChange={(event) =>
-                              setScoreRule(
-                                event.target.value as "first-to-21-cap" | "win-by-2"
-                              )
-                            }
-                          >
-                            <option value="first-to-21-cap">First to 21 (hard cap)</option>
-                            <option value="win-by-2">Win by 2 (optional cap)</option>
-                          </select>
-                        </Field>
-                        {scoreRule === "win-by-2" ? (
-                          <Field label="Score cap (leave blank for no cap)">
-                            <Input
-                              className={inputCls}
-                              type="number"
-                              min={2}
-                              value={scoreCap}
-                              onChange={(event) => setScoreCap(event.target.value)}
-                              placeholder="e.g. 30"
-                            />
-                          </Field>
-                        ) : null}
+                        <p className="text-sm text-foreground/70">
+                          Every match uses beach-volleyball scoring: the winner must
+                          reach at least 21 points and lead by 2 (22–20, 23–21,
+                          25–23, …). There is no upper score cap.
+                        </p>
                         <p className="text-sm font-semibold text-foreground/80">
                           Group tiebreak order (first rule that breaks the tie wins):
                         </p>
@@ -2596,20 +2436,13 @@ export default function GroupDoubleEliminationAdminSetup() {
                           className={outlineBtn}
                           disabled={saving}
                           onClick={() => {
-                            const cap = Number(scoreCap);
                             void apply(
                               (current) => ({
                                 ...current,
                                 settings: {
                                   ...current.settings,
-                                  scoreRule,
-                                  scoreCap:
-                                    scoreRule === "win-by-2" &&
-                                    scoreCap.trim() !== "" &&
-                                    Number.isInteger(cap) &&
-                                    cap >= 2
-                                      ? cap
-                                      : null,
+                                  scoreRule: DEFAULT_SCORE_RULE.rule,
+                                  scoreCap: null,
                                   groupTiebreakers: tiebreakOrder,
                                 },
                               }),

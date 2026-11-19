@@ -92,6 +92,34 @@ describe("group scoring service", () => {
     expect(ranking[0].teamId).toBe(first.teamAId);
   });
 
+  it("accepts extended beach-volleyball scores above 21", () => {
+    const doc = readyDoc();
+    const first = doc.matches[0];
+    const scored = scoreGroupMatch(doc, first.id, 22, 20);
+
+    expect(scored.matches.find((match) => match.id === first.id)).toMatchObject({
+      status: "completed",
+      scoreA: 22,
+      scoreB: 20,
+      winnerId: first.teamAId,
+    });
+  });
+
+  it("rejects scores that are not a valid beach-volleyball set", () => {
+    const doc = readyDoc();
+    const first = doc.matches[0];
+
+    expect(capture(() => scoreGroupMatch(doc, first.id, 21, 20)).code).toBe(
+      "invalid-score"
+    );
+    expect(capture(() => scoreGroupMatch(doc, first.id, 25, 24)).code).toBe(
+      "invalid-score"
+    );
+    expect(capture(() => scoreGroupMatch(doc, first.id, 20, 18)).code).toBe(
+      "invalid-score"
+    );
+  });
+
   it("rejects invalid and duplicate scores", () => {
     const doc = readyDoc();
     const first = doc.matches[0];
@@ -157,6 +185,55 @@ describe("elimination scoring service", () => {
     expect(completed?.winnerId).toBe(winnerId);
     expect(selectLossCount(next, loserId)).toBe(1);
     expect(selectLossCount(next, winnerId)).toBe(0);
+  });
+
+  it("derives the winner from an extended score and advances automatically", () => {
+    const doc = makeEliminationDoc();
+    const match = findEliminationMatch(doc.elimination!, "winners-r1-m1")!;
+
+    const next = scoreEliminationMatch(doc, {
+      matchId: match.id,
+      scoreA: 23,
+      scoreB: 21,
+    });
+    const completed = findEliminationMatch(next.elimination!, match.id);
+    expect(completed).toMatchObject({
+      status: "completed",
+      scoreA: 23,
+      scoreB: 21,
+      winnerId: match.teamAId,
+      loserId: match.teamBId,
+    });
+
+    const link = match.winnerTo!;
+    const destination = findEliminationMatch(next.elimination!, link.matchId)!;
+    expect(destination[link.slot === "teamA" ? "teamAId" : "teamBId"]).toBe(
+      match.teamAId
+    );
+  });
+
+  it("rejects one-point wins and short sets in elimination", () => {
+    const doc = makeEliminationDoc();
+    const match = findEliminationMatch(doc.elimination!, "winners-r1-m1")!;
+
+    expect(
+      capture(() =>
+        scoreEliminationMatch(doc, {
+          matchId: match.id,
+          scoreA: 21,
+          scoreB: 20,
+        })
+      ).code
+    ).toBe("invalid-score");
+    expect(
+      capture(() =>
+        scoreEliminationMatch(doc, {
+          matchId: match.id,
+          scoreA: 20,
+          scoreB: 18,
+        })
+      ).code
+    ).toBe("invalid-score");
   });
 
   it("blocks invalid and duplicate elimination results", () => {

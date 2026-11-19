@@ -91,14 +91,14 @@ describe("GSDE player score submission", () => {
     const next = submitPlayerGroupScore(doc, {
       uid: "uid-1",
       matchId: match.id,
-      scoreFor: 7,
-      scoreAgainst: 3,
+      scoreFor: 21,
+      scoreAgainst: 10,
     });
 
     const scored = next.matches.find((item) => item.id === match.id)!;
     expect(scored.status).toBe("completed");
-    expect(scored.scoreA).toBe(isA ? 7 : 3);
-    expect(scored.scoreB).toBe(isA ? 3 : 7);
+    expect(scored.scoreA).toBe(isA ? 21 : 10);
+    expect(scored.scoreB).toBe(isA ? 10 : 21);
     expect(scored.winnerId).toBe("t1");
 
     const submission = findPlayerSubmission(next, "uid-1", match.id);
@@ -114,8 +114,8 @@ describe("GSDE player score submission", () => {
     const submitted = submitPlayerGroupScore(doc, {
       uid: "uid-1",
       matchId: match.id,
-      scoreFor: 7,
-      scoreAgainst: 3,
+      scoreFor: 21,
+      scoreAgainst: 10,
     });
 
     expectError(
@@ -123,8 +123,8 @@ describe("GSDE player score submission", () => {
         submitPlayerGroupScore(submitted, {
           uid: "uid-1",
           matchId: match.id,
-          scoreFor: 9,
-          scoreAgainst: 1,
+          scoreFor: 21,
+          scoreAgainst: 5,
         }),
       "already-submitted"
     );
@@ -134,8 +134,8 @@ describe("GSDE player score submission", () => {
         submitPlayerGroupScore(submitted, {
           uid: "uid-2",
           matchId: match.id,
-          scoreFor: 9,
-          scoreAgainst: 1,
+          scoreFor: 21,
+          scoreAgainst: 5,
         }),
       "not-your-match"
     );
@@ -153,8 +153,8 @@ describe("GSDE player score submission", () => {
         submitPlayerGroupScore(doc, {
           uid: "not-registered",
           matchId: match.id,
-          scoreFor: 7,
-          scoreAgainst: 3,
+          scoreFor: 21,
+          scoreAgainst: 10,
         }),
       "not-registered"
     );
@@ -163,8 +163,8 @@ describe("GSDE player score submission", () => {
         submitPlayerGroupScore(doc, {
           uid: "uid-1",
           matchId: other.id,
-          scoreFor: 7,
-          scoreAgainst: 3,
+          scoreFor: 21,
+          scoreAgainst: 10,
         }),
       "not-your-match"
     );
@@ -189,7 +189,7 @@ describe("GSDE player score submission", () => {
           uid: "uid-1",
           matchId: match.id,
           scoreFor: -1,
-          scoreAgainst: 3,
+          scoreAgainst: 10,
         }),
       "invalid-score"
     );
@@ -202,20 +202,20 @@ describe("GSDE player score submission", () => {
     const submitted = submitPlayerGroupScore(doc, {
       uid: "uid-1",
       matchId: match.id,
-      scoreFor: 7,
-      scoreAgainst: 3,
+      scoreFor: 21,
+      scoreAgainst: 10,
     });
     const corrected = correctGroupMatchScore(
       submitted,
       match.id,
-      isA ? 1 : 9,
-      isA ? 9 : 1,
+      isA ? 10 : 21,
+      isA ? 21 : 10,
       ADMIN
     );
     const scored = corrected.matches.find((item) => item.id === match.id)!;
 
-    expect(scored.scoreA).toBe(isA ? 1 : 9);
-    expect(scored.scoreB).toBe(isA ? 9 : 1);
+    expect(scored.scoreA).toBe(isA ? 10 : 21);
+    expect(scored.scoreB).toBe(isA ? 21 : 10);
     expect(corrected.auditLog?.some((entry) => entry.action === "group-score-corrected")).toBe(
       true
     );
@@ -232,8 +232,8 @@ describe("GSDE player score submission", () => {
     const submitted = submitPlayerGroupScore(doc, {
       uid: "uid-1",
       matchId: all[0].matchId,
-      scoreFor: 7,
-      scoreAgainst: 3,
+      scoreFor: 21,
+      scoreAgainst: 10,
     });
     const remaining = listPlayerSubmittableMatches(submitted, "t1");
     expect(remaining).toHaveLength(2);
@@ -243,7 +243,7 @@ describe("GSDE player score submission", () => {
   it("lets a player submit an elimination match without mixing the two ranking systems", () => {
     let doc = readyDoc();
     for (const match of doc.matches) {
-      doc = scoreGroupMatch(doc, match.id, 7, 3, ADMIN);
+      doc = scoreGroupMatch(doc, match.id, 21, 10, ADMIN);
     }
     const bracketReady = generateEliminationBracket(
       completeGroupStage(doc, ADMIN),
@@ -258,8 +258,8 @@ describe("GSDE player score submission", () => {
     const submitted = submitPlayerEliminationScore(bracketReady, {
       uid: "uid-1",
       matchId: eliminationMatch.id,
-      scoreFor: 9,
-      scoreAgainst: 4,
+      scoreFor: 23,
+      scoreAgainst: 21,
     });
     const scored = listEliminationMatches(submitted.elimination!).find(
       (match) => match.id === eliminationMatch.id

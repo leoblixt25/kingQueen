@@ -1490,6 +1490,27 @@ Four new test files, **59 new tests**:
 - `npx firebase deploy --only hosting --project kingqueen-eu` — hosting only. Live `index.html` serves `assets/index-DNt7X6hl.js` (HTTP 200), replacing pairing bundle `index-DhyW1_zA.js`.
 - Firestore rules unchanged and not deployed; no K&Q data touched.
 
+## 13bf. Landing page polish + GSDE UI follow-ups (Nov 2026) — implemented, pushed, deployed
+
+**Scope:** only the root landing page was restyled. No tournament logic, routes, auth, registration or Firestore rule content changed. `src/pages/Landing.tsx` (`/king-queen`) and internal tournament pages were left untouched.
+
+### Landing page (`src/pages/Home.tsx`)
+- Kept the warm sand identity: `bg-sand-gradient` plus a soft `from-white/70 via-white/10 to-ocean-light/15` overlay; orange and blue remain the only accents.
+- Header: refined Lucide `Volleyball` tile (replaces the emoji and its bounce loop), balanced spacing, bold two-tone title with an orange→blue gradient on "Beach Volleyball", and a clearer subtitle. Exact copy retained.
+- Cards: equal-height, two-column desktop / stacked mobile grid with themed `!shadow-sand` and desktop-only (`md:hover`) lift + `!shadow-beach`; tinted icon tiles, consistent Live / Coming soon badges, aligned descriptions and bottom-aligned full-width CTAs. Card accent bars use the existing amber/orange and ocean gradients.
+- Buttons: existing amber→orange and ocean gradients, 48px height, rounded-xl, refined arrow chips, hover/active/focus states. Install App stays a smaller outlined pill with the download icon and still navigates to `/install`. Footer wording unchanged.
+
+### GSDE follow-ups since 13be
+- `dd9dbed` — bottom menu now appears on every GSDE route via `GsdeLayout`; duplicated navs removed (10 routes verified with exactly one nav).
+- `6a24391` — Draw Live panel shows **Tournament complete** with the champion when the tournament is finished instead of the generic empty message.
+- `f898ef0` — admin completed-match status pills changed from **Final** to **Complete** in group and elimination cards; the real **Grand Final** label and **Final** results tab are unchanged.
+- `c4a77c8` — Live Ranking uses the wide `max-w-6xl` shell like Draw while staying full-width on mobile.
+
+### Verification and deployment
+- Targeted ESLint clean; `npm run build` succeeds; `npm test` — **42 files / 458 tests passed**.
+- Browser checks at 375px, 691px and 1280px: no horizontal overflow, equal card heights per breakpoint, 48px tournament buttons, 44px mobile / 36px desktop Install App, exact copy, and all three buttons navigate to `/king-queen`, `/formats/group-stage-double-elimination` and `/install`.
+- `npm run deploy` succeeded (hosting + Firestore rules; rules were already up to date and unchanged). Live bundle `assets/index-BCEJSpSq.js`, CSS `assets/index-CqCbFUjY.css` (replacing `index-BZpOJpHC.js`); live `/` verified with the new layout and no console errors.
+
 ## 14. Deployment URLs
 
 ### EU Project (KingQueen_EU â€” LIVE)

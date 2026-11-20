@@ -1,6 +1,8 @@
+import { type ReactNode } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
+  BookOpen,
   Crown,
   GitBranch,
   Layers,
@@ -30,67 +32,235 @@ import {
 import { GROUP_TIEBREAKER_LABELS } from "@/formats/group-double-elimination/groupStandings";
 import { linkLabel, nameOf, teamNameMap } from "./shared";
 
-const th = "px-2 py-1.5 text-left text-xs font-semibold text-foreground/60";
-const td = "px-2 py-1.5 text-sm text-foreground/85";
+const CARD =
+  "bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach";
+const CARD_TITLE =
+  "text-lg font-bold bg-beach-gradient bg-clip-text text-transparent flex items-center gap-2";
 
 interface ViewsProps {
   doc: GsdeTournamentDocument;
 }
 
-/** Group standings, one table per group. All teams show as qualified. */
+interface MatchTeams {
+  id: string;
+  teamAId: TeamId;
+  teamBId: TeamId;
+  scoreA?: number | null;
+  scoreB?: number | null;
+  winnerId?: TeamId | null;
+}
+
+/** K&Q-style rank row: orange for first, blue for second, green for third. */
+function rankTone(index: number): string {
+  if (index === 0) return "bg-sunset-gradient text-white shadow-beach";
+  if (index === 1) return "bg-ocean/20 border-2 border-ocean/30 shadow-sand";
+  if (index === 2) return "bg-palm/20 border-2 border-palm/30 shadow-sand";
+  return "bg-sand-light/60 shadow-sand";
+}
+
+function rankText(index: number): string {
+  if (index === 0) return "text-white";
+  if (index === 1) return "text-ocean";
+  if (index === 2) return "text-palm";
+  return "text-foreground";
+}
+
+function RankRow({
+  rank,
+  name,
+  detail,
+  stat,
+  index,
+}: {
+  rank: string | number;
+  name: string;
+  detail?: string;
+  stat?: ReactNode;
+  index: number;
+}) {
+  return (
+    <div
+      className={`flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 ${rankTone(
+        index
+      )}`}
+    >
+      <div className="flex min-w-0 items-center gap-3">
+        <span className={`text-xl font-bold ${rankText(index)}`}>#{rank}</span>
+        <div className="min-w-0">
+          <p
+            className={`truncate font-semibold ${
+              index === 0 ? "text-white" : "text-foreground"
+            }`}
+          >
+            {name}
+          </p>
+          {detail ? (
+            <p
+              className={`truncate text-xs ${
+                index === 0 ? "text-white/75" : "text-foreground/55"
+              }`}
+            >
+              {detail}
+            </p>
+          ) : null}
+        </div>
+      </div>
+      {stat ? (
+        <div
+          className={`shrink-0 text-right text-sm font-semibold ${
+            index === 0 ? "text-white" : "text-foreground/80"
+          }`}
+        >
+          {stat}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** Team row with an ocean/sunset bar and a highlighted winner score. */
+function TeamLine({
+  name,
+  score,
+  winner,
+  bar,
+}: {
+  name: string;
+  score?: number | null;
+  winner: boolean;
+  bar: "a" | "b";
+}) {
+  return (
+    <div
+      className={`flex items-center gap-2 rounded-lg px-2 py-1 ${
+        winner ? "bg-emerald-50/80" : "bg-white/50"
+      }`}
+    >
+      <span
+        className={`h-6 w-1 shrink-0 rounded-full ${
+          bar === "a" ? "bg-ocean" : "bg-sunset"
+        }`}
+      />
+      <span
+        className={`min-w-0 flex-1 truncate text-sm ${
+          winner ? "font-bold text-emerald-900" : "text-foreground/80"
+        }`}
+      >
+        {winner ? "👑 " : ""}
+        {name}
+      </span>
+      <span
+        className={`tabular-nums text-sm font-bold ${
+          winner ? "text-ocean" : "text-foreground/55"
+        }`}
+      >
+        {score ?? "–"}
+      </span>
+    </div>
+  );
+}
+
+/** Compact match card used by both live matches and latest results. */
+function CompactMatchCard({
+  match,
+  names,
+  label,
+  live,
+}: {
+  match: MatchTeams;
+  names: Map<TeamId, string>;
+  label: string;
+  live: boolean;
+}) {
+  return (
+    <div
+      className={`rounded-xl border p-2.5 shadow-sand ${
+        live
+          ? "border-amber-300/60 bg-amber-50/70"
+          : "border-sand-dark/20 bg-white/60"
+      }`}
+    >
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <span
+          className={`text-xs font-bold ${live ? "text-amber-800" : "text-ocean"}`}
+        >
+          {label}
+        </span>
+        <Badge
+          variant={live ? "default" : "outline"}
+          className={
+            live
+              ? "bg-amber-100 text-amber-800 hover:bg-amber-100"
+              : "border-emerald-300 text-emerald-700"
+          }
+        >
+          {live ? "Awaiting result" : "Final"}
+        </Badge>
+      </div>
+      <div className="space-y-1">
+        <TeamLine
+          bar="a"
+          name={nameOf(names, match.teamAId)}
+          score={match.scoreA}
+          winner={match.winnerId === match.teamAId}
+        />
+        <TeamLine
+          bar="b"
+          name={nameOf(names, match.teamBId)}
+          score={match.scoreB}
+          winner={match.winnerId === match.teamBId}
+        />
+      </div>
+    </div>
+  );
+}
+
+/** Group standings, one card per group. All teams show as qualified. */
 export function GroupStandingsView({ doc }: ViewsProps) {
   const tables = selectGroupStandings(doc);
   if (tables.length === 0) {
     return <EmptyView text="Groups have not been generated yet." />;
   }
+  const names = teamNameMap(doc.teams, doc.registrations ?? []);
 
   return (
     <div className="grid gap-4 md:grid-cols-2">
       {tables.map((table) => {
         const group = doc.groups.find((item) => item.id === table.groupId);
         return (
-          <Card key={table.groupId} className="border-sand-dark/40 shadow-beach bg-card/95">
+          <Card key={table.groupId} className={CARD}>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Layers className="h-4 w-4 text-ocean" />
+              <CardTitle className={CARD_TITLE}>
+                <Layers className="h-5 w-5 text-ocean" />
                 {group?.name ?? table.groupId}
               </CardTitle>
             </CardHeader>
-            <CardContent className="overflow-x-auto p-2">
-              <table className="min-w-full">
-                <thead>
-                  <tr className="border-b border-sand-dark/30">
-                    <th className={th}>#</th>
-                    <th className={th}>Team</th>
-                    <th className={th}>P</th>
-                    <th className={th}>W</th>
-                    <th className={th}>L</th>
-                    <th className={th}>+/−</th>
-                    <th className={th}>Tiebreak</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {table.rows.map((row) => (
-                    <tr key={row.teamId} className="border-b border-sand-dark/15 last:border-0">
-                      <td className={td}>{row.rank}</td>
-                      <td className={`${td} font-semibold`}>
-                        {nameOf(teamNameMap(doc.teams, doc.registrations ?? []), row.teamId)}
-                      </td>
-                      <td className={td}>{row.played}</td>
-                      <td className={td}>{row.wins}</td>
-                      <td className={td}>{row.losses}</td>
-                      <td className={td}>
+            <CardContent className="space-y-2 p-3">
+              {table.rows.map((row, index) => (
+                <RankRow
+                  key={row.teamId}
+                  index={index}
+                  rank={row.rank}
+                  name={nameOf(names, row.teamId)}
+                  detail={
+                    row.tiebreakUsed
+                      ? GROUP_TIEBREAKER_LABELS[row.tiebreakUsed]
+                      : undefined
+                  }
+                  stat={
+                    <span className="flex items-center gap-2">
+                      <span>
+                        {row.wins}W · {row.losses}L
+                      </span>
+                      <span>
                         {row.pointDifference > 0 ? "+" : ""}
                         {row.pointDifference}
-                      </td>
-                      <td className={td}>
-                        {row.tiebreakUsed ? GROUP_TIEBREAKER_LABELS[row.tiebreakUsed] : "—"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <p className="mt-2 px-2 text-xs text-foreground/55">
+                      </span>
+                    </span>
+                  }
+                />
+              ))}
+              <p className="px-1 pt-1 text-xs text-foreground/55">
                 All four teams qualify. Group losses never count as elimination losses.
               </p>
             </CardContent>
@@ -101,7 +271,7 @@ export function GroupStandingsView({ doc }: ViewsProps) {
   );
 }
 
-/** All 24 group-stage match results, grouped by group. */
+/** All group-stage match results, grouped in compact mobile cards. */
 export function GroupMatchesView({ doc }: ViewsProps) {
   if (doc.matches.length === 0) {
     return <EmptyView text="Group matches have not been generated yet." />;
@@ -109,50 +279,24 @@ export function GroupMatchesView({ doc }: ViewsProps) {
   const names = teamNameMap(doc.teams, doc.registrations ?? []);
 
   return (
-    <Card className="border-sand-dark/40 shadow-beach bg-card/95">
+    <Card className={CARD}>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base flex items-center gap-2">
-          <Layers className="h-4 w-4 text-ocean" />
+        <CardTitle className={CARD_TITLE}>
+          <Layers className="h-5 w-5 text-ocean" />
           Group stage matches
         </CardTitle>
       </CardHeader>
       <CardContent className="grid gap-2 p-3 sm:grid-cols-2 lg:grid-cols-3">
         {doc.matches.map((match) => {
-          const complete = match.status === "completed";
           const group = doc.groups.find((item) => item.id === match.groupId);
           return (
-            <div
+            <CompactMatchCard
               key={match.id}
-              className="rounded-lg border border-sand-dark/25 bg-white/60 p-2 text-sm"
-            >
-              <div className="mb-1 flex items-center justify-between text-[11px] text-foreground/50">
-                <span>{group?.name ?? match.groupId} · R{match.round}</span>
-                <span>{complete ? "Final" : "Pending"}</span>
-              </div>
-              <div className="flex items-center justify-between gap-2">
-                <span
-                  className={
-                    match.winnerId === match.teamAId
-                      ? "font-bold text-emerald-800"
-                      : "text-foreground/80"
-                  }
-                >
-                  {nameOf(names, match.teamAId)}
-                </span>
-                <span className="tabular-nums font-semibold">
-                  {match.scoreA ?? "–"} : {match.scoreB ?? "–"}
-                </span>
-                <span
-                  className={
-                    match.winnerId === match.teamBId
-                      ? "font-bold text-emerald-800"
-                      : "text-foreground/80"
-                  }
-                >
-                  {nameOf(names, match.teamBId)}
-                </span>
-              </div>
-            </div>
+              match={match}
+              names={names}
+              label={`${group?.name ?? match.groupId} · R${match.round}`}
+              live={false}
+            />
           );
         })}
       </CardContent>
@@ -166,45 +310,37 @@ export function GlobalRankingView({ doc }: ViewsProps) {
   if (ranking.length === 0) {
     return <EmptyView text="Play group matches to build the global ranking." />;
   }
+  const names = teamNameMap(doc.teams, doc.registrations ?? []);
 
   return (
-    <Card className="border-sand-dark/40 shadow-beach bg-card/95">
+    <Card className={CARD}>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base flex items-center gap-2">
-          <Trophy className="h-4 w-4 text-ocean" />
+        <CardTitle className={CARD_TITLE}>
+          <Trophy className="h-5 w-5 text-ocean" />
           Global group ranking (1–16)
         </CardTitle>
       </CardHeader>
-      <CardContent className="overflow-x-auto p-2">
-        <table className="min-w-full">
-          <thead>
-            <tr className="border-b border-sand-dark/30">
-              <th className={th}>Seed</th>
-              <th className={th}>Team</th>
-              <th className={th}>Group</th>
-              <th className={th}>W</th>
-              <th className={th}>L</th>
-              <th className={th}>+/−</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ranking.map((row) => (
-              <tr key={row.teamId} className="border-b border-sand-dark/15 last:border-0">
-                <td className={`${td} font-bold text-ocean`}>{row.globalRank}</td>
-                <td className={`${td} font-semibold`}>
-                  {nameOf(teamNameMap(doc.teams, doc.registrations ?? []), row.teamId)}
-                </td>
-                <td className={td}>#{row.groupRank}</td>
-                <td className={td}>{row.wins}</td>
-                <td className={td}>{row.losses}</td>
-                <td className={td}>
+      <CardContent className="space-y-2 p-3">
+        {ranking.map((row, index) => (
+          <RankRow
+            key={row.teamId}
+            index={index}
+            rank={row.globalRank}
+            name={nameOf(names, row.teamId)}
+            detail={`Group rank #${row.groupRank}`}
+            stat={
+              <span className="flex items-center gap-2">
+                <span>
+                  {row.wins}W · {row.losses}L
+                </span>
+                <span>
                   {row.pointDifference > 0 ? "+" : ""}
                   {row.pointDifference}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </span>
+              </span>
+            }
+          />
+        ))}
       </CardContent>
     </Card>
   );
@@ -213,12 +349,16 @@ export function GlobalRankingView({ doc }: ViewsProps) {
 function statusBadge(match: EliminationMatch) {
   if (match.reviewRequired) {
     return (
-      <Badge className="bg-rose-100 text-rose-800 hover:bg-rose-100">Needs review</Badge>
+      <Badge className="bg-rose-100 text-rose-800 hover:bg-rose-100">
+        Needs review
+      </Badge>
     );
   }
   if (match.status === "completed") {
     return (
-      <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">Done</Badge>
+      <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">
+        Done
+      </Badge>
     );
   }
   if (match.status === "ready") {
@@ -243,31 +383,27 @@ function EliminationMatchRow({
   const winnerId = getWinner(match);
 
   return (
-    <div className="rounded-xl border border-sand-dark/30 bg-white/60 p-2.5">
+    <div className="rounded-xl border border-sand-dark/20 bg-white/60 p-2.5 shadow-sand">
       <div className="mb-1.5 flex items-center justify-between gap-2">
         <span className="flex items-center gap-1.5 text-xs font-bold text-ocean">
           {gameLabel}
         </span>
         {statusBadge(match)}
       </div>
-      {[match.teamAId, match.teamBId].map((teamId, index) => {
-        const score = index === 0 ? match.scoreA : match.scoreB;
-        const isWinner = winnerId !== null && winnerId === teamId;
-        return (
-          <div
-            key={`${match.id}-slot-${index}`}
-            className={`flex items-center justify-between gap-2 rounded-md px-1.5 py-0.5 text-sm ${
-              isWinner ? "bg-emerald-50 font-semibold text-emerald-900" : "text-foreground/80"
-            }`}
-          >
-            <span className="flex items-center gap-1 truncate">
-              {isWinner ? <Crown className="h-3.5 w-3.5 text-amber-500" /> : null}
-              {nameOf(names, teamId)}
-            </span>
-            <span className="tabular-nums">{score ?? "–"}</span>
-          </div>
-        );
-      })}
+      <div className="space-y-1">
+        <TeamLine
+          bar="a"
+          name={nameOf(names, match.teamAId)}
+          score={match.scoreA}
+          winner={winnerId === match.teamAId}
+        />
+        <TeamLine
+          bar="b"
+          name={nameOf(names, match.teamBId)}
+          score={match.scoreB}
+          winner={winnerId === match.teamBId}
+        />
+      </div>
       {match.status === "completed" ? (
         <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-foreground/55">
           <span>W → {linkLabel(match.winnerTo)}</span>
@@ -299,10 +435,10 @@ function BracketColumn({
     (a, b) => a - b
   );
   return (
-    <Card className="border-sand-dark/40 shadow-beach bg-card/95">
+    <Card className={CARD}>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base flex items-center gap-2">
-          <GitBranch className="h-4 w-4 text-ocean" />
+        <CardTitle className={CARD_TITLE}>
+          <GitBranch className="h-5 w-5 text-ocean" />
           {title}
         </CardTitle>
       </CardHeader>
@@ -384,10 +520,10 @@ export function PlacementsView({ doc }: ViewsProps) {
   const names = teamNameMap(doc.teams, doc.registrations ?? []);
 
   return (
-    <Card className="border-sand-dark/40 shadow-beach bg-card/95">
+    <Card className={CARD}>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base flex items-center gap-2">
-          <Trophy className="h-4 w-4 text-ocean" />
+        <CardTitle className={CARD_TITLE}>
+          <Trophy className="h-5 w-5 text-ocean" />
           Final placements
         </CardTitle>
       </CardHeader>
@@ -395,12 +531,12 @@ export function PlacementsView({ doc }: ViewsProps) {
         {placements.map((placement) => (
           <div
             key={placement.place}
-            className="flex items-start gap-3 rounded-xl border border-sand-dark/25 bg-white/60 p-2.5"
+            className="flex items-start gap-3 rounded-xl border border-sand-dark/20 bg-white/60 p-2.5 shadow-sand"
           >
             <span
-              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
+              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
                 placement.place === 1
-                  ? "bg-amber-400 text-white"
+                  ? "bg-sunset-gradient text-white shadow-beach"
                   : "bg-ocean/10 text-ocean"
               }`}
             >
@@ -432,49 +568,37 @@ export function EliminationStandingsView({ doc }: ViewsProps) {
   const names = teamNameMap(doc.teams, doc.registrations ?? []);
 
   return (
-    <Card className="border-sand-dark/40 shadow-beach bg-card/95">
+    <Card className={CARD}>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base flex items-center gap-2">
-          <ShieldAlert className="h-4 w-4 text-ocean" />
+        <CardTitle className={CARD_TITLE}>
+          <ShieldAlert className="h-5 w-5 text-ocean" />
           Elimination status
         </CardTitle>
       </CardHeader>
-      <CardContent className="overflow-x-auto p-2">
-        <table className="min-w-full">
-          <thead>
-            <tr className="border-b border-sand-dark/30">
-              <th className={th}>Team</th>
-              <th className={th}>W</th>
-              <th className={th}>L</th>
-              <th className={th}>Status</th>
-              <th className={th}>Place</th>
-            </tr>
-          </thead>
-          <tbody>
-            {standings.map((row) => (
-              <tr key={row.teamId} className="border-b border-sand-dark/15 last:border-0">
-                <td className={`${td} font-semibold`}>{nameOf(names, row.teamId)}</td>
-                <td className={td}>{row.wins}</td>
-                <td className={td}>{row.losses}</td>
-                <td className={td}>
-                  <Badge
-                    variant={row.status === "champion" ? "default" : "outline"}
-                    className={
-                      row.status === "eliminated"
-                        ? "text-foreground/55"
-                        : row.status === "champion"
-                          ? "bg-amber-400 text-white hover:bg-amber-400"
-                          : ""
-                    }
-                  >
-                    {row.status}
-                  </Badge>
-                </td>
-                <td className={td}>{row.rank ?? "—"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <CardContent className="space-y-2 p-3">
+        {standings.map((row, index) => (
+          <RankRow
+            key={row.teamId}
+            index={index}
+            rank={row.rank ?? "–"}
+            name={nameOf(names, row.teamId)}
+            detail={`${row.wins}W · ${row.losses}L elimination`}
+            stat={
+              <Badge
+                variant={row.status === "champion" ? "default" : "outline"}
+                className={
+                  row.status === "eliminated"
+                    ? "text-foreground/55"
+                    : row.status === "champion"
+                      ? "bg-amber-400 text-white hover:bg-amber-400"
+                      : ""
+                }
+              >
+                {row.status}
+              </Badge>
+            }
+          />
+        ))}
       </CardContent>
     </Card>
   );
@@ -503,34 +627,19 @@ export function LiveMatchesView({ doc }: ViewsProps) {
         .slice(0, 6)
     : [];
 
-  const liveRow = (match: EliminationMatch) => (
-    <div
-      key={match.id}
-      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-300/50 bg-amber-50/70 px-2.5 py-1.5 text-sm"
-    >
-      <span className="text-xs font-semibold text-amber-800">
-        {getGameNumber(match.id) === null ? match.id : getGameLabel(match.id)}
-      </span>
-      <span className="flex-1 text-foreground/80">
-        {nameOf(names, match.teamAId)} vs {nameOf(names, match.teamBId)}
-      </span>
-      <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">Awaiting result</Badge>
-    </div>
-  );
-
   return (
     <div className="space-y-4">
-      <Card className="border-sand-dark/40 shadow-beach bg-card/95">
+      <Card className={CARD}>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <span className="relative flex h-2.5 w-2.5">
+          <CardTitle className={CARD_TITLE}>
+            <span className="relative flex h-3 w-3">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+              <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-500" />
             </span>
             Live matches
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-1.5">
+        <CardContent className="space-y-2 p-3">
           {liveGroups.length === 0 && liveElimination.length === 0 ? (
             <p className="text-sm text-foreground/60">
               No matches are live right now. Started matches awaiting a score appear here.
@@ -538,67 +647,65 @@ export function LiveMatchesView({ doc }: ViewsProps) {
           ) : (
             <>
               {liveGroups.map((match) => (
-                <div
+                <CompactMatchCard
                   key={match.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-300/50 bg-amber-50/70 px-2.5 py-1.5 text-sm"
-                >
-                  <span className="text-xs font-semibold text-amber-800">
-                    Group · Round {match.round}
-                  </span>
-                  <span className="flex-1 text-foreground/80">
-                    {nameOf(names, match.teamAId)} vs {nameOf(names, match.teamBId)}
-                  </span>
-                  <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">
-                    Awaiting result
-                  </Badge>
-                </div>
+                  match={match}
+                  names={names}
+                  label={`Group · Round ${match.round}`}
+                  live
+                />
               ))}
-              {liveElimination.map(liveRow)}
+              {liveElimination.map((match) => (
+                <CompactMatchCard
+                  key={match.id}
+                  match={match}
+                  names={names}
+                  label={
+                    getGameNumber(match.id) === null
+                      ? match.id
+                      : getGameLabel(match.id)
+                  }
+                  live
+                />
+              ))}
             </>
           )}
         </CardContent>
       </Card>
 
-      <Card className="border-sand-dark/40 shadow-beach bg-card/95">
+      <Card className={CARD}>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Latest results</CardTitle>
+          <CardTitle className={CARD_TITLE}>
+            <Trophy className="h-5 w-5 text-ocean" />
+            Latest results
+          </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-1.5">
+        <CardContent className="space-y-2 p-3">
           {recentGroups.length === 0 && recentElimination.length === 0 ? (
             <p className="text-sm text-foreground/60">No results have been entered yet.</p>
           ) : (
             <>
               {recentGroups.map((match) => (
-                <div
+                <CompactMatchCard
                   key={match.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-sand-dark/25 bg-white/60 px-2.5 py-1.5 text-sm"
-                >
-                  <span className="text-xs text-foreground/55">Group · R{match.round}</span>
-                  <span className="flex-1 text-foreground/80">
-                    {nameOf(names, match.teamAId)} {match.scoreA} : {match.scoreB}{" "}
-                    {nameOf(names, match.teamBId)}
-                  </span>
-                  <Badge variant="outline" className="border-emerald-300 text-emerald-700">
-                    Final
-                  </Badge>
-                </div>
+                  match={match}
+                  names={names}
+                  label={`Group · R${match.round}`}
+                  live={false}
+                />
               ))}
               {recentElimination.map((match) => (
-                <div
+                <CompactMatchCard
                   key={match.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-sand-dark/25 bg-white/60 px-2.5 py-1.5 text-sm"
-                >
-                  <span className="text-xs font-semibold text-ocean">
-                    {getGameNumber(match.id) === null ? match.id : getGameLabel(match.id)}
-                  </span>
-                  <span className="flex-1 text-foreground/80">
-                    {nameOf(names, match.teamAId)} {match.scoreA} : {match.scoreB}{" "}
-                    {nameOf(names, match.teamBId)}
-                  </span>
-                  <Badge variant="outline" className="border-emerald-300 text-emerald-700">
-                    Final
-                  </Badge>
-                </div>
+                  match={match}
+                  names={names}
+                  label={
+                    getGameNumber(match.id) === null
+                      ? match.id
+                      : getGameLabel(match.id)
+                  }
+                  live={false}
+                />
               ))}
             </>
           )}
@@ -642,9 +749,12 @@ export function TournamentRulesView() {
   ];
 
   return (
-    <Card className="border-sand-dark/40 shadow-beach bg-card/95">
+    <Card className={CARD}>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">Tournament rules</CardTitle>
+        <CardTitle className={CARD_TITLE}>
+          <BookOpen className="h-5 w-5 text-ocean" />
+          Tournament rules
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         {rules.map((rule) => (
@@ -658,19 +768,26 @@ export function TournamentRulesView() {
   );
 }
 
+/** Shared explanation that group and elimination rankings never combine. */
+export function RankingSystemsNotice() {
+  return (
+    <Card className="border-ocean/20 bg-ocean/5 shadow-sm">
+      <CardContent className="p-3 text-sm text-foreground/75">
+        <strong>Two independent rankings.</strong> {GROUP_RANKING_SYSTEM.label} uses{" "}
+        {GROUP_RANKING_SYSTEM.source.toLowerCase()}; {ELIMINATION_RANKING_SYSTEM.label}{" "}
+        uses {ELIMINATION_RANKING_SYSTEM.source.toLowerCase()}. Group wins/losses are
+        never added to elimination wins/losses.
+      </CardContent>
+    </Card>
+  );
+}
+
 /** Two independent ranking systems shown side by side, never combined. */
 export function IndependentRankingsView({ doc }: ViewsProps) {
   const systems = selectRankingSystems(doc);
   return (
     <div className="space-y-4">
-      <Card className="border-ocean/20 bg-ocean/5 shadow-sm">
-        <CardContent className="p-3 text-sm text-foreground/75">
-          <strong>Two independent rankings.</strong> {GROUP_RANKING_SYSTEM.label} uses{" "}
-          {GROUP_RANKING_SYSTEM.source.toLowerCase()}; {ELIMINATION_RANKING_SYSTEM.label}{" "}
-          uses {ELIMINATION_RANKING_SYSTEM.source.toLowerCase()}. Group wins/losses are
-          never added to elimination wins/losses.
-        </CardContent>
-      </Card>
+      <RankingSystemsNotice />
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="space-y-4">
           <h3 className="text-sm font-bold uppercase tracking-wide text-ocean">
@@ -705,13 +822,13 @@ export function ProgressSummary({ doc }: ViewsProps) {
     doc.tournament.seedingStale ||
     Boolean(doc.tournament.bracketOverrideUsed);
   return (
-    <div className="space-y-2">
+    <Card className={`${CARD} p-3`}>
       <div className="flex flex-wrap gap-2 text-xs">
-        <Badge variant="secondary">
+        <Badge variant="secondary" className="bg-ocean/10 text-ocean-dark">
           Groups {progress.groups.completed}/{progress.groups.total}
         </Badge>
         {doc.elimination ? (
-          <Badge variant="secondary">
+          <Badge variant="secondary" className="bg-ocean/10 text-ocean-dark">
             Elimination matches {progress.eliminationComplete}/{progress.eliminationTotal}
           </Badge>
         ) : null}
@@ -735,17 +852,17 @@ export function ProgressSummary({ doc }: ViewsProps) {
         ) : null}
       </div>
       {progress.issues.length > 0 ? (
-        <p className="text-[11px] text-amber-800" title={progress.issues.join("\n")}>
+        <p className="mt-2 text-[11px] text-amber-800" title={progress.issues.join("\n")}>
           {progress.issues.length} completion blocker(s): {progress.issues[0]}
         </p>
       ) : null}
-    </div>
+    </Card>
   );
 }
 
 function EmptyView({ text }: { text: string }) {
   return (
-    <Card className="border-sand-dark/40 shadow-beach bg-card/95">
+    <Card className={CARD}>
       <CardContent className="p-6 text-center text-sm text-foreground/60">{text}</CardContent>
     </Card>
   );

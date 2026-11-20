@@ -1,28 +1,45 @@
+import { useState } from "react";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { GROUP_DOUBLE_ELIMINATION_FORMAT } from "@/formats";
-import { PageShell, gsdeHref, useGsdeTournament } from "./shared";
+import { gsdeHref, useGsdeTournament } from "./shared";
 import {
+  EliminationStandingsView,
   GlobalRankingView,
-  IndependentRankingsView,
+  GroupStandingsView,
+  PlacementsView,
   ProgressSummary,
+  RankingSystemsNotice,
 } from "./views";
+import {
+  GsdePublicShell,
+  GsdeTabs,
+  type GsdeTabDef,
+} from "./PublicShell";
 
 const ROUTE = GROUP_DOUBLE_ELIMINATION_FORMAT.route;
 
-/** Public ranking: the seeding order plus the two independent ranking systems. */
+const RANKING_TABS: GsdeTabDef[] = [
+  { id: "group", label: "🥇 Group", tone: "sunset" },
+  { id: "elimination", label: "🛡️ Elimination", tone: "ocean" },
+  { id: "places", label: "🏆 Places", tone: "beach" },
+];
+
+/** Public ranking: group standings, elimination status and final places. */
 export default function GroupDoubleEliminationRanking() {
   const { id, doc, loading, error } = useGsdeTournament();
+  const [active, setActive] = useState("group");
 
   return (
-    <PageShell
+    <GsdePublicShell
+      emoji="🏆"
       title="Live Ranking"
       subtitle={`${GROUP_DOUBLE_ELIMINATION_FORMAT.name} · group & elimination rankings`}
       backTo={gsdeHref(ROUTE, id)}
       backLabel="Tournament"
     >
       {loading ? (
-        <Card className="border-sand-dark/40 shadow-beach bg-card/95">
+        <Card className="bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach">
           <CardContent className="flex items-center justify-center gap-2 p-10 text-sm text-foreground/60">
             <Loader2 className="h-4 w-4 animate-spin" /> Loading tournament…
           </CardContent>
@@ -37,10 +54,18 @@ export default function GroupDoubleEliminationRanking() {
       ) : doc ? (
         <>
           <ProgressSummary doc={doc} />
-          <GlobalRankingView doc={doc} />
-          <IndependentRankingsView doc={doc} />
+          <RankingSystemsNotice />
+          <GsdeTabs tabs={RANKING_TABS} active={active} onChange={setActive} />
+          {active === "group" ? (
+            <div className="space-y-4">
+              <GroupStandingsView doc={doc} />
+              <GlobalRankingView doc={doc} />
+            </div>
+          ) : null}
+          {active === "elimination" ? <EliminationStandingsView doc={doc} /> : null}
+          {active === "places" ? <PlacementsView doc={doc} /> : null}
         </>
       ) : null}
-    </PageShell>
+    </GsdePublicShell>
   );
 }

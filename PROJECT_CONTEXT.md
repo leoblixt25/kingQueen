@@ -1511,6 +1511,12 @@ Four new test files, **59 new tests**:
 - Browser checks at 375px, 691px and 1280px: no horizontal overflow, equal card heights per breakpoint, 48px tournament buttons, 44px mobile / 36px desktop Install App, exact copy, and all three buttons navigate to `/king-queen`, `/formats/group-stage-double-elimination` and `/install`.
 - `npm run deploy` succeeded (hosting + Firestore rules; rules were already up to date and unchanged). Live bundle `assets/index-BCEJSpSq.js`, CSS `assets/index-CqCbFUjY.css` (replacing `index-BZpOJpHC.js`); live `/` verified with the new layout and no console errors.
 
+## 13bg. App icon refresh (Nov 2026) — implemented, pushed, deployed
+
+- Replaced the PWA/favicon artwork from the supplied `BVO Beach Volleyball App Icon.png`: `public/icon.png` (1254px, favicon + social tags), `public/icon-192.png`, `public/icon-512.png` (LANCZOS downscales) and `public/icon-maskable-512.png` (artwork cropped to its visible bounds, centred inside the 80% safe zone on a full-bleed black canvas matching the artwork background).
+- `manifest.json`, `index.html` and `sw.js` were unchanged — filenames and declared sizes stay the same, so iOS/Apple touch, PWA install and OG/Twitter references keep working. The service worker is network-first, so no cache-version bump was needed.
+- Generated dimensions/modes verified locally; `npm run deploy` succeeded (hosting + Firestore rules, rules already up to date). All four live icon URLs return HTTP 200 with byte-for-byte identical SHA-256 hashes to the local files. App bundle unchanged: `assets/index-BCEJSpSq.js`.
+
 ## 14. Deployment URLs
 
 ### EU Project (KingQueen_EU â€” LIVE)

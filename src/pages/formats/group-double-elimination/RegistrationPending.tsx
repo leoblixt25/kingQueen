@@ -26,7 +26,6 @@ import {
   useGsdePlayerRedirect,
   useGsdeTournament,
 } from "./shared";
-import GsdeBottomNav from "./GsdeBottomNav";
 
 const ROUTE = GROUP_DOUBLE_ELIMINATION_FORMAT.route;
 const REGISTER_ROUTE = `${ROUTE}/register`;
@@ -78,7 +77,7 @@ export default function GroupDoubleEliminationRegistrationPending() {
   );
 
   return (
-    <div className="min-h-screen bg-sand-gradient px-4 pt-6 pb-[calc(5.5rem+env(safe-area-inset-bottom))] flex items-start justify-center">
+    <div className="min-h-screen bg-sand-gradient px-4 pt-6 pb-6 flex items-start justify-center">
       <div className="w-full max-w-md mx-auto animate-fade-in">
         <Button
           variant="ghost"
@@ -208,7 +207,6 @@ export default function GroupDoubleEliminationRegistrationPending() {
           </Card>
         )}
       </div>
-      <GsdeBottomNav />
     </div>
   );
 }

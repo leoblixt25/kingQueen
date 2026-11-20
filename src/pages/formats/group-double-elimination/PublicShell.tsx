@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
 import { GROUP_DOUBLE_ELIMINATION_FORMAT } from "@/formats";
 import { DEFAULT_GSDE_TOURNAMENT_ID, gsdeHref } from "./shared";
-import GsdeBottomNav from "./GsdeBottomNav";
 
 const FORMAT_ROUTE = GROUP_DOUBLE_ELIMINATION_FORMAT.route;
 
@@ -42,7 +41,7 @@ export function GsdePublicShell({
     searchParams.get("id")?.trim() || DEFAULT_GSDE_TOURNAMENT_ID;
 
   return (
-    <div className="min-h-screen bg-sand-gradient px-4 pt-6 pb-[calc(5.5rem+env(safe-area-inset-bottom))]">
+    <div className="min-h-screen bg-sand-gradient px-4 pt-6 pb-6">
       <div
         className={`w-full mx-auto animate-fade-in ${
           wide ? "max-w-6xl" : "max-w-lg"
@@ -86,7 +85,6 @@ export function GsdePublicShell({
           </div>
         ) : null}
       </div>
-      <GsdeBottomNav />
     </div>
   );
 }

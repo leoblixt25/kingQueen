@@ -28,6 +28,7 @@ import GroupDoubleEliminationInfo from "./pages/formats/group-double-elimination
 import GroupDoubleEliminationPlayerAccess from "./pages/formats/group-double-elimination/PlayerAccess";
 import GroupDoubleEliminationPlayerView from "./pages/formats/group-double-elimination/PlayerView";
 import GroupDoubleEliminationPairing from "./pages/formats/group-double-elimination/Pairing";
+import GsdeLayout from "./pages/formats/group-double-elimination/GsdeLayout";
 import GroupDoubleEliminationRegister from "./pages/formats/group-double-elimination/Register";
 import GroupDoubleEliminationSignIn from "./pages/formats/group-double-elimination/SignIn";
 import GroupDoubleEliminationRegistrationPending from "./pages/formats/group-double-elimination/RegistrationPending";
@@ -47,42 +48,28 @@ const App = () => (
           <Route element={<Layout />}>
             <Route path="/" element={<Home />} />
             <Route path="/king-queen" element={<Landing />} />
-            <Route path="/formats/group-stage-double-elimination" element={<GroupStageDoubleElimination />} />
-            <Route path="/formats/group-stage-double-elimination/draw" element={
-              <GroupDoubleEliminationDraw />
-            } />
-            <Route path="/formats/group-stage-double-elimination/ranking" element={
-              <GroupDoubleEliminationRanking />
-            } />
-            <Route path="/formats/group-stage-double-elimination/info" element={
-              <GroupDoubleEliminationInfo />
-            } />
-            <Route path="/formats/group-stage-double-elimination/player-access" element={
-              <GroupDoubleEliminationPlayerAccess />
-            } />
-            <Route path="/formats/group-stage-double-elimination/admin/sign-in" element={
-              <GsdeAdminSignIn />
-            } />
-            <Route path="/formats/group-stage-double-elimination/admin" element={
-              <GsdeAdminRoute>
-                <GroupDoubleEliminationAdminSetup />
-              </GsdeAdminRoute>
-            } />
-            <Route path="/formats/group-stage-double-elimination/sign-in" element={
-              <GroupDoubleEliminationSignIn />
-            } />
-            <Route path="/formats/group-stage-double-elimination/register" element={
-              <GroupDoubleEliminationRegister />
-            } />
-            <Route path="/formats/group-stage-double-elimination/register/pending" element={
-              <GroupDoubleEliminationRegistrationPending />
-            } />
-            <Route path="/formats/group-stage-double-elimination/player" element={
-              <GroupDoubleEliminationPlayerView />
-            } />
-            <Route path="/formats/group-stage-double-elimination/pairing" element={
-              <GroupDoubleEliminationPairing />
-            } />
+            <Route path="/formats/group-stage-double-elimination" element={<GsdeLayout />}>
+              <Route index element={<GroupStageDoubleElimination />} />
+              <Route path="draw" element={<GroupDoubleEliminationDraw />} />
+              <Route path="ranking" element={<GroupDoubleEliminationRanking />} />
+              <Route path="info" element={<GroupDoubleEliminationInfo />} />
+              <Route path="player-access" element={
+                <GroupDoubleEliminationPlayerAccess />
+              } />
+              <Route path="admin/sign-in" element={<GsdeAdminSignIn />} />
+              <Route path="admin" element={
+                <GsdeAdminRoute>
+                  <GroupDoubleEliminationAdminSetup />
+                </GsdeAdminRoute>
+              } />
+              <Route path="sign-in" element={<GroupDoubleEliminationSignIn />} />
+              <Route path="register" element={<GroupDoubleEliminationRegister />} />
+              <Route path="register/pending" element={
+                <GroupDoubleEliminationRegistrationPending />
+              } />
+              <Route path="player" element={<GroupDoubleEliminationPlayerView />} />
+              <Route path="pairing" element={<GroupDoubleEliminationPairing />} />
+            </Route>
             <Route path="/live-ranking" element={<LiveRanking />} />
             <Route path="/info" element={<InfoPage />} />
             <Route path="/admin" element={<AdminLogin />} />

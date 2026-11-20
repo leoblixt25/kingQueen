@@ -28,7 +28,7 @@ describe("tournament format registry", () => {
     expect(GROUP_DOUBLE_ELIMINATION_FORMAT.route.startsWith("/formats/")).toBe(
       true
     );
-    expect(GROUP_DOUBLE_ELIMINATION_FORMAT.status).toBe("in-development");
+    expect(GROUP_DOUBLE_ELIMINATION_FORMAT.status).toBe("live");
   });
 
   it("recognises only supported format ids", () => {

@@ -103,16 +103,13 @@ export default function Home() {
                   <CardTitle className="text-lg font-bold leading-snug tracking-tight sm:text-xl">
                     {GROUP_DOUBLE_ELIMINATION_FORMAT.name}
                   </CardTitle>
-                  {GROUP_DOUBLE_ELIMINATION_FORMAT.status === "in-development" ? (
-                    <Badge
-                      variant="secondary"
-                      className="mt-2 gap-1.5 bg-ocean/10 text-ocean-dark ring-1 ring-ocean/15 hover:bg-ocean/10"
-                    >
+                  {GROUP_DOUBLE_ELIMINATION_FORMAT.status === "live" ? (
+                    <Badge className="mt-2 gap-1.5 bg-ocean/10 text-ocean-dark ring-1 ring-ocean/15 hover:bg-ocean/10">
                       <span
                         aria-hidden="true"
                         className="h-1.5 w-1.5 rounded-full bg-ocean"
                       />
-                      Coming soon
+                      Live
                     </Badge>
                   ) : null}
                 </div>

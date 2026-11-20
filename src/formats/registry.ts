@@ -30,7 +30,7 @@ export const GROUP_DOUBLE_ELIMINATION_FORMAT: TournamentFormatDefinition = {
   description:
     "Round-robin groups for every team, then a double-elimination bracket with a Grand Final.",
   route: "/formats/group-stage-double-elimination",
-  status: "in-development",
+  status: "live",
   selectable: true,
 };
 

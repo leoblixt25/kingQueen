@@ -1517,6 +1517,11 @@ Four new test files, **59 new tests**:
 - `manifest.json`, `index.html` and `sw.js` were unchanged — filenames and declared sizes stay the same, so iOS/Apple touch, PWA install and OG/Twitter references keep working. The service worker is network-first, so no cache-version bump was needed.
 - Generated dimensions/modes verified locally; `npm run deploy` succeeded (hosting + Firestore rules, rules already up to date). All four live icon URLs return HTTP 200 with byte-for-byte identical SHA-256 hashes to the local files. App bundle unchanged: `assets/index-BCEJSpSq.js`.
 
+## 13bh. New format marked live on the landing page (Nov 2026)
+
+- `GROUP_DOUBLE_ELIMINATION_FORMAT.status` is now `live` in `src/formats/registry.ts`; the landing page renders a blue **Live** badge on that card instead of **Coming soon**. The K&Q card keeps its green Live badge. No routes, tournament logic or data changed.
+- Updated `src/formats/registry.test.ts` to assert the new status. Targeted ESLint clean; `npm test` — 42 files / 458 tests passed; build and deploy succeeded (live bundle `assets/index-5ad0Kvdr.js`, live `/` shows two Live badges and no "Coming soon"). The `TournamentFormatStatus` union still permits `in-development` for future formats.
+
 ## 14. Deployment URLs
 
 ### EU Project (KingQueen_EU â€” LIVE)

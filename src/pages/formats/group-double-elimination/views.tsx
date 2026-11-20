@@ -600,6 +600,7 @@ export function EliminationStandingsView({ doc }: ViewsProps) {
 /** Live (started, awaiting result) matches plus the latest results. */
 export function LiveMatchesView({ doc }: ViewsProps) {
   const names = teamNameMap(doc.teams, doc.registrations ?? []);
+  const progress = selectProgress(doc);
   const liveGroups = doc.matches.filter((match) => match.status === "ready");
   const liveElimination = doc.elimination
     ? [...doc.elimination.winners, ...doc.elimination.losers, ...doc.elimination.grandFinal].filter(
@@ -619,21 +620,38 @@ export function LiveMatchesView({ doc }: ViewsProps) {
         )
         .slice(0, 6)
     : [];
+  const tournamentComplete =
+    (progress.isComplete || doc.tournament.status === "completed") &&
+    liveGroups.length === 0 &&
+    liveElimination.length === 0;
+  const championName = progress.champion
+    ? nameOf(names, progress.champion)
+    : null;
 
   return (
     <div className="space-y-4">
       <Card className={CARD}>
         <CardHeader className="pb-2">
           <CardTitle className={CARD_TITLE}>
-            <span className="relative flex h-3 w-3">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-500" />
-            </span>
-            Live matches
+            {tournamentComplete ? (
+              <Trophy className="h-5 w-5 text-emerald-600" />
+            ) : (
+              <span className="relative flex h-3 w-3">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-500" />
+              </span>
+            )}
+            {tournamentComplete ? "Tournament complete" : "Live matches"}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 p-3">
-          {liveGroups.length === 0 && liveElimination.length === 0 ? (
+          {tournamentComplete ? (
+            <div className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800">
+              All matches are finished.
+              {championName ? <> Champion: <strong>{championName}</strong>.</> : null}{" "}
+              See Latest results below.
+            </div>
+          ) : liveGroups.length === 0 && liveElimination.length === 0 ? (
             <p className="text-sm text-foreground/60">
               No matches are live right now. Started matches awaiting a score appear here.
             </p>

@@ -1,14 +1,7 @@
 import { type ReactNode } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  BookOpen,
-  Crown,
-  GitBranch,
-  Layers,
-  ShieldAlert,
-  Trophy,
-} from "lucide-react";
+import { Crown, GitBranch, Layers, ShieldAlert, Trophy } from "lucide-react";
 import type { EliminationMatch, TeamId } from "@/formats/group-double-elimination";
 import {
   getGameLabel,
@@ -712,59 +705,6 @@ export function LiveMatchesView({ doc }: ViewsProps) {
         </CardContent>
       </Card>
     </div>
-  );
-}
-
-/** Format rules, kept in one place so public/player/admin can link to them. */
-export function TournamentRulesView() {
-  const rules: { title: string; body: string }[] = [
-    {
-      title: "Teams and groups",
-      body: "16 teams are split into 4 groups of 4 by seed using a snake distribution. Every team plays a single-set round robin inside its group (6 matches per team, 24 group matches in total).",
-    },
-    {
-      title: "Group standings & tiebreakers",
-      body: "Group ranking uses wins, then head-to-head, then point difference, then points scored, then team id. All four teams in each group qualify.",
-    },
-    {
-      title: "No group eliminations",
-      body: "Group losses never count as elimination losses. A team that loses all three group matches still enters the bracket with zero elimination losses.",
-    },
-    {
-      title: "Elimination bracket",
-      body: "The global group ranking seeds a standard 16-team double-elimination bracket: Winners Bracket rounds of 8, 4, 2 and 1; Losers Bracket rounds of 4, 4, 2, 2, 1 and 1; then the Grand Final. A first elimination loss drops a team to the Losers Bracket; a second loss eliminates it. A full bracket is 30 matches, or 31 when a reset final is needed.",
-    },
-    {
-      title: "Grand Final",
-      body: "The Winners Bracket champion meets the Losers Bracket champion in the Grand Final. Both finalists enter with one loss, so the winner is the champion and the loser finishes second.",
-    },
-    {
-      title: "Grand Final reset",
-      body: "A reset final is appended only when the undefeated Winners Bracket champion loses the first Grand Final. The tournament is not complete until the required reset final is played.",
-    },
-    {
-      title: "Two independent rankings",
-      body: "Group standings and elimination standings are calculated separately. Group wins are never added to elimination wins. Final tied places are shared; no artificial tiebreakers are invented.",
-    },
-  ];
-
-  return (
-    <Card className={CARD}>
-      <CardHeader className="pb-2">
-        <CardTitle className={CARD_TITLE}>
-          <BookOpen className="h-5 w-5 text-ocean" />
-          Tournament rules
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {rules.map((rule) => (
-          <div key={rule.title}>
-            <h4 className="text-sm font-semibold text-ocean">{rule.title}</h4>
-            <p className="text-sm text-foreground/75">{rule.body}</p>
-          </div>
-        ))}
-      </CardContent>
-    </Card>
   );
 }
 

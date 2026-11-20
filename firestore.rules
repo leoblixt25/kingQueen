@@ -140,6 +140,23 @@ service cloud.firestore {
            ));
     }
 
+    // Player writes append exactly one audit entry. The client keeps the log
+    // bounded at 500 entries, so once it is full the newest entry displaces
+    // the oldest and the size stays at 500. Accept both cases, but require the
+    // newest entry to belong to the caller so players cannot forge history.
+    function gsdeAuditAppend() {
+      let beforeLog = resource.data.get('auditLog', []);
+      let afterLog = request.resource.data.get('auditLog', []);
+      let beforeSize = beforeLog.size();
+      let afterSize = afterLog.size();
+      return afterSize > 0
+        && (afterSize == beforeSize + 1
+            || (beforeSize >= 500 && afterSize == 500))
+        && afterLog[afterSize - 1].actorId == request.auth.uid
+        && (beforeSize == 0
+            || afterLog[afterSize - 1] != beforeLog[beforeSize - 1]);
+    }
+
     function gsdePlayerWrite() {
       let before = resource.data;
       let after = request.resource.data;
@@ -150,7 +167,7 @@ service cloud.firestore {
       return request.auth != null
         && gsdeFormatGuard()
         && after.tournament.diff(before.tournament).affectedKeys().hasOnly(['updatedAt'])
-        && after.auditLog.size() == before.auditLog.size() + 1
+        && gsdeAuditAppend()
         && (
           // Self-registration: append exactly one registration record.
           (after.diff(before).affectedKeys().hasOnly(['registrations', 'auditLog', 'tournament'])

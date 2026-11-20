@@ -11,6 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "preview": "vite preview",
+    "deploy": "npm run build && firebase deploy --only hosting,firestore:rules --project kingqueen-eu",
+    "deploy:rules": "firebase deploy --only firestore:rules --project kingqueen-eu",
     "deploy-trigger": "echo 'Force rebuild'"
   },
   "dependencies": {

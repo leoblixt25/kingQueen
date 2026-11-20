@@ -95,17 +95,26 @@ service cloud.firestore {
     }
 
     function gsdeSelfRegistrationIndex() {
+      let hasIndex = resource.data.keys().hasAny(['playerPairingIndex']);
       let before = resource.data.get('playerPairingIndex', {});
       let after = request.resource.data.get('playerPairingIndex', {});
       let diff = after.diff(before);
       let mine = after.get(request.auth.uid, null);
-      return diff.addedKeys().size() == 1
-             && diff.addedKeys().hasOnly([request.auth.uid])
-             && diff.changedKeys().size() == 0
-             && diff.removedKeys().size() == 0
-             && mine != null
-             && mine.get('status', '') == 'pending'
-             && mine.get('teamId', null) == null;
+      let mineOk = mine != null
+                   && mine.get('status', '') == 'pending'
+                   && mine.get('teamId', null) == null;
+      // Legacy documents predate the derived index. Let the first registration
+      // seed it, but require exactly one entry per registration so a player
+      // cannot inject arbitrary identities. Once present, every later write
+      // must add only the caller's own entry and leave the rest untouched.
+      let legacyOk = !hasIndex
+                     && after.keys().size() == request.resource.data.registrations.size();
+      let steadyOk = hasIndex
+                     && diff.addedKeys().size() == 1
+                     && diff.addedKeys().hasOnly([request.auth.uid])
+                     && diff.changedKeys().size() == 0
+                     && diff.removedKeys().size() == 0;
+      return mineOk && (legacyOk || steadyOk);
     }
 
     // Pairing invitations live only in this document. Each branch allows one

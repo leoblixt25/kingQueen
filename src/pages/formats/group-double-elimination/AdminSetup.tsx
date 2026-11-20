@@ -1924,7 +1924,7 @@ export default function GroupDoubleEliminationAdminSetup() {
                                       <Pill tone="ocean">Submitted by {submission.playerLabel}</Pill>
                                     ) : null}
                                     <Pill tone={complete ? "palm" : match.status === "ready" ? "ocean" : "slate"}>
-                                      {complete ? "Final" : match.status === "ready" ? "Ready" : "Pending"}
+                                      {complete ? "Complete" : match.status === "ready" ? "Ready" : "Pending"}
                                     </Pill>
                                   </div>
                                 </div>
@@ -2110,7 +2110,7 @@ export default function GroupDoubleEliminationAdminSetup() {
                                     <Pill tone="ocean">Submitted by {submission.playerLabel}</Pill>
                                   ) : null}
                                   <Pill tone={complete ? "palm" : match.status === "ready" ? "ocean" : "slate"}>
-                                    {complete ? "Final" : match.status === "ready" ? "Ready" : "Pending"}
+                                    {complete ? "Complete" : match.status === "ready" ? "Ready" : "Pending"}
                                   </Pill>
                                 </div>
                               </div>

@@ -37,6 +37,7 @@ export default function GroupDoubleEliminationRanking() {
       subtitle={`${GROUP_DOUBLE_ELIMINATION_FORMAT.name} · group & elimination rankings`}
       backTo={gsdeHref(ROUTE, id)}
       backLabel="Tournament"
+      wide
     >
       {loading ? (
         <Card className="bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach">

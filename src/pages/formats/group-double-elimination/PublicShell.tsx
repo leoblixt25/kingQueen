@@ -15,6 +15,8 @@ interface GsdePublicShellProps {
   backTo: string;
   backLabel: string;
   wide?: boolean;
+  /** Small status chip under the title, e.g. the tournament stage. */
+  badge?: ReactNode;
   /** Extra header content, e.g. the EN/ES picker on the info page. */
   headerExtra?: ReactNode;
   showAutoFooter?: boolean;
@@ -29,6 +31,7 @@ export function GsdePublicShell({
   backTo,
   backLabel,
   wide = false,
+  badge,
   headerExtra,
   showAutoFooter = true,
   children,
@@ -65,6 +68,7 @@ export function GsdePublicShell({
           {subtitle ? (
             <p className="text-sm text-foreground/70">{subtitle}</p>
           ) : null}
+          {badge}
           {headerExtra}
         </header>
 

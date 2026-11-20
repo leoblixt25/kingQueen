@@ -38,13 +38,14 @@ import {
 } from "@/formats/group-double-elimination/playerView";
 import { getRegisteredTeamId } from "@/formats/group-double-elimination/registration";
 import {
-  PageShell,
   STATUS_LABEL,
+  gsdeHref,
   statusColor,
   teamNameMap,
   useGsdeAuth,
   useGsdeTournament,
 } from "./shared";
+import { GsdePublicShell } from "./PublicShell";
 import { PlacementsView } from "./views";
 
 const STAGE_LABEL = {
@@ -300,11 +301,14 @@ export default function GroupDoubleEliminationPlayerView() {
   const status = doc?.tournament.status ?? "draft";
 
   return (
-    <PageShell
+    <GsdePublicShell
+      emoji="🏐"
       title="My tournament"
       subtitle={`${GROUP_DOUBLE_ELIMINATION_FORMAT.name} · stage-dependent team view`}
-      backTo={`${GROUP_DOUBLE_ELIMINATION_FORMAT.route}${id !== "default" ? `?id=${encodeURIComponent(id)}` : ""}`}
+      backTo={gsdeHref(GROUP_DOUBLE_ELIMINATION_FORMAT.route, id)}
       backLabel="Tournament overview"
+      wide
+      showAutoFooter={false}
       badge={
         view ? (
           <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${statusColor(status)}`}>
@@ -314,20 +318,20 @@ export default function GroupDoubleEliminationPlayerView() {
       }
     >
       {loading ? (
-        <Card className="border-sand-dark/40 shadow-beach bg-card/95">
+        <Card className="bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach">
           <CardContent className="flex items-center justify-center gap-2 p-10 text-sm text-foreground/60">
             <Loader2 className="h-4 w-4 animate-spin" /> Loading tournament…
           </CardContent>
         </Card>
       ) : error ? (
-        <Card className="border-red-300 bg-red-50">
+        <Card className="bg-white/80 backdrop-blur-sm border border-coral/30 shadow-beach">
           <CardContent className="flex items-center gap-2 p-4 text-sm text-red-800">
             <AlertCircle className="h-4 w-4" /> Could not load this tournament: {error}
           </CardContent>
         </Card>
       ) : doc ? (
         <>
-          <Card className="border-ocean/20 bg-ocean/5 shadow-sm">
+          <Card className="bg-white/80 backdrop-blur-sm border border-ocean/20 shadow-beach">
             <CardContent className="flex flex-wrap items-end gap-3 p-4">
               <label className="flex-1 min-w-[200px] text-xs text-foreground/60">
                 {autoLinked ? "Your team (from your registration)" : "Choose your team"}
@@ -361,7 +365,7 @@ export default function GroupDoubleEliminationPlayerView() {
           </Card>
 
           {!teamId ? (
-            <Card className="border-sand-dark/40 shadow-beach bg-card/95">
+            <Card className="bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach">
               <CardContent className="p-8 text-center text-sm text-foreground/60">
                 Select your team above to see stage-specific information.
               </CardContent>
@@ -373,7 +377,7 @@ export default function GroupDoubleEliminationPlayerView() {
                   className={
                     notice.kind === "ok"
                       ? "border-emerald-300 bg-emerald-50"
-                      : "border-red-300 bg-red-50"
+                      : "bg-white/80 backdrop-blur-sm border border-coral/30 shadow-beach"
                   }
                 >
                   <CardContent
@@ -392,7 +396,7 @@ export default function GroupDoubleEliminationPlayerView() {
               ) : null}
 
               {user && doc && !registeredTeamId ? (
-                <Card className="border-amber-300 bg-amber-50">
+                <Card className="bg-white/80 backdrop-blur-sm border border-sunset/30 shadow-beach">
                   <CardContent className="p-3 text-sm text-amber-900">
                     Your account is not approved for this tournament yet. Score entry
                     unlocks when an admin assigns you to a team.
@@ -401,7 +405,7 @@ export default function GroupDoubleEliminationPlayerView() {
               ) : null}
 
               {canSubmit && submittable.length > 0 ? (
-                <Card className="border-emerald-300/60 bg-emerald-50/70 shadow-sm">
+                <Card className="bg-white/80 backdrop-blur-sm border border-palm/30 shadow-beach">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base flex items-center gap-2 text-emerald-900">
                       <Send className="h-4 w-4" /> Submit your match scores
@@ -465,7 +469,7 @@ export default function GroupDoubleEliminationPlayerView() {
               ) : null}
 
               {canSubmit && submittedEntries.length > 0 ? (
-                <Card className="border-sky-300/60 bg-sky-50/70 shadow-sm">
+                <Card className="bg-white/80 backdrop-blur-sm border border-ocean/30 shadow-beach">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base flex items-center gap-2 text-sky-900">
                       <CheckCircle2 className="h-4 w-4" /> Submitted results (locked)
@@ -505,7 +509,7 @@ export default function GroupDoubleEliminationPlayerView() {
               ) : null}
 
               {view.stage === "registration" ? (
-                <Card className="border-sand-dark/40 shadow-beach bg-card/95">
+                <Card className="bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base flex items-center gap-2">
                       <Users className="h-4 w-4 text-ocean" /> Registration
@@ -525,7 +529,7 @@ export default function GroupDoubleEliminationPlayerView() {
               ) : null}
 
               {view.group ? (
-                <Card className="border-sand-dark/40 shadow-beach bg-card/95">
+                <Card className="bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base flex items-center gap-2">
                       <Layers className="h-4 w-4 text-ocean" />
@@ -579,7 +583,7 @@ export default function GroupDoubleEliminationPlayerView() {
 
               {view.elimination ? (
                 <>
-                  <Card className="border-amber-300/60 bg-amber-50/70 shadow-sm">
+                  <Card className="bg-white/80 backdrop-blur-sm border border-sunset/30 shadow-beach">
                     <CardHeader className="pb-2">
                       <CardTitle className="text-base flex items-center gap-2 text-amber-900">
                         <Swords className="h-4 w-4" /> Elimination stage
@@ -643,7 +647,7 @@ export default function GroupDoubleEliminationPlayerView() {
                     </CardContent>
                   </Card>
 
-                  <Card className="border-sand-dark/40 shadow-beach bg-card/95">
+                  <Card className="bg-white/80 backdrop-blur-sm border border-sand-dark/20 shadow-beach">
                     <CardHeader className="pb-2">
                       <CardTitle className="text-base flex items-center gap-2">
                         <GitBranch className="h-4 w-4 text-ocean" /> Your elimination schedule
@@ -659,7 +663,7 @@ export default function GroupDoubleEliminationPlayerView() {
               ) : null}
 
               {view.stage === "completed" ? (
-                <Card className="border-emerald-300/60 bg-emerald-50/70 shadow-sm">
+                <Card className="bg-white/80 backdrop-blur-sm border border-palm/30 shadow-beach">
                   <CardContent className="flex items-center gap-2 p-4 text-sm text-emerald-900">
                     {view.elimination?.status === "champion" ? (
                       <Crown className="h-4 w-4" />
@@ -686,7 +690,7 @@ export default function GroupDoubleEliminationPlayerView() {
               </p>
             </div>
           ) : (
-            <Card className="border-red-300 bg-red-50">
+            <Card className="bg-white/80 backdrop-blur-sm border border-coral/30 shadow-beach">
               <CardContent className="p-4 text-sm text-red-800">
                 That team is not part of this tournament. Choose another team above.
               </CardContent>
@@ -694,6 +698,6 @@ export default function GroupDoubleEliminationPlayerView() {
           )}
         </>
       ) : null}
-    </PageShell>
+    </GsdePublicShell>
   );
 }

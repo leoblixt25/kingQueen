@@ -14,7 +14,12 @@ import { listEliminationMatches } from "./bracket";
 import { selectFinalResult, startGroupStage } from "./scoring";
 import {
   buildTestPairs,
+  canLoadDemoTestData,
   canLoadTestData,
+  DEMO_PLAYER_EMAIL,
+  DEMO_PLAYER_NAME,
+  ensureDemoPlayerTestData,
+  findDemoRegistration,
   GROUP_COUNT_BY_TEAM_COUNT,
   loadTestTeamsAndPlayers,
   SUPPORTED_TEST_TEAM_COUNTS,
@@ -249,4 +254,125 @@ describe("GSDE admin test-data loader", () => {
       ).toBe(true);
     }
   );
+
+  const DEMO_ID = {
+    uid: "real-firebase-demo-uid",
+    email: DEMO_PLAYER_EMAIL,
+    name: DEMO_PLAYER_NAME,
+  };
+
+  it("creates a real-auth demo participant with an approved paired team and an active schedule", () => {
+    const loaded = loadTestTeamsAndPlayers(makeDoc(8, "Mixto"), ADMIN, {
+      demo: DEMO_ID,
+      rng: seededRng(11),
+    });
+    const demo = findDemoRegistration(loaded);
+
+    expect(demo).toMatchObject({
+      uid: DEMO_ID.uid,
+      email: DEMO_PLAYER_EMAIL,
+      name: DEMO_PLAYER_NAME,
+      status: "approved",
+    });
+
+    const teamId = getRegisteredTeamId(loaded, DEMO_ID.uid);
+    expect(teamId).not.toBeNull();
+    const team = loaded.teams.find((item) => item.id === teamId);
+    expect(team).toBeDefined();
+    expect(team?.playerIds).toHaveLength(2);
+    expect(team?.playerIds).toContain(DEMO_ID.uid);
+    expect(team?.groupId).toBeTruthy();
+    expect(loaded.groups.some((group) => group.id === team?.groupId)).toBe(true);
+    expect(
+      loaded.matches.some(
+        (match) => match.teamAId === teamId || match.teamBId === teamId
+      )
+    ).toBe(true);
+    expect(loaded.tournament.status).toBe("group-stage");
+    expect(loaded.teams).toHaveLength(8);
+    expect(loaded.registrations).toHaveLength(16);
+    expect(
+      loaded.registrations?.filter((item) => item.email === DEMO_PLAYER_EMAIL)
+    ).toHaveLength(1);
+    expect(loaded.playerPairingIndex?.[DEMO_ID.uid]).toEqual({
+      status: "approved",
+      teamId,
+    });
+  });
+
+  it.each([
+    ["Male", "male"] as const,
+    ["Female", "female"] as const,
+    ["Mixto", "male"] as const,
+  ])("keeps the demo pair category-valid in %s", (category, demoGender) => {
+    const loaded = loadTestTeamsAndPlayers(makeDoc(8, category), ADMIN, {
+      demo: DEMO_ID,
+    });
+    const demo = findDemoRegistration(loaded);
+    const teamId = getRegisteredTeamId(loaded, DEMO_ID.uid);
+    const team = loaded.teams.find((item) => item.id === teamId);
+    const partnerUid = team?.playerIds.find((uid) => uid !== DEMO_ID.uid);
+    const partner = partnerUid
+      ? loaded.registrations?.find((item) => item.uid === partnerUid)
+      : undefined;
+
+    expect(demo?.gender).toBe(demoGender);
+    expect(partner?.status).toBe("approved");
+    expect(
+      isPairValidForCategory(
+        category,
+        [demo?.gender, partner?.gender] as ["male" | "female", "male" | "female"]
+      )
+    ).toBe(true);
+  });
+
+  it("reuses the same demo account and team on every repeat click", () => {
+    const first = ensureDemoPlayerTestData(makeDoc(8), ADMIN, DEMO_ID);
+    const second = ensureDemoPlayerTestData(first, ADMIN, DEMO_ID);
+
+    expect(canLoadDemoTestData(second)).toBe(true);
+    expect(second.teams).toHaveLength(first.teams.length);
+    expect(second.registrations).toHaveLength(first.registrations!.length);
+    expect(second.matches).toHaveLength(first.matches.length);
+    expect(
+      second.registrations?.filter((item) => item.uid === DEMO_ID.uid)
+    ).toHaveLength(1);
+    expect(second.teams.filter((team) => team.playerIds.includes(DEMO_ID.uid))).toHaveLength(1);
+    expect(getRegisteredTeamId(second, DEMO_ID.uid)).toBe(
+      getRegisteredTeamId(first, DEMO_ID.uid)
+    );
+  });
+
+  it("reconnects a recreated auth account without duplicating the demo profile", () => {
+    const original = ensureDemoPlayerTestData(makeDoc(8), ADMIN, DEMO_ID);
+    const recreatedUid = "recreated-firebase-demo-uid";
+    const reconnected = ensureDemoPlayerTestData(
+      original,
+      ADMIN,
+      { ...DEMO_ID, uid: recreatedUid }
+    );
+    const teamId = getRegisteredTeamId(reconnected, recreatedUid);
+
+    expect(findDemoRegistration(reconnected)?.uid).toBe(recreatedUid);
+    expect(reconnected.registrations).toHaveLength(original.registrations!.length);
+    expect(reconnected.teams).toHaveLength(original.teams.length);
+    expect(teamId).not.toBeNull();
+    expect(
+      reconnected.teams.find((team) => team.id === teamId)?.playerIds
+    ).toContain(recreatedUid);
+    expect(getRegisteredTeamId(reconnected, DEMO_ID.uid)).toBeNull();
+    expect(
+      reconnected.auditLog?.some((entry) => entry.action === "demo-player-reconnected")
+    ).toBe(true);
+  });
+
+  it("reloads the demo profile after a test-data reset without changing its auth identity", () => {
+    ensureDemoPlayerTestData(makeDoc(8), ADMIN, DEMO_ID);
+    const reloaded = ensureDemoPlayerTestData(makeDoc(8), ADMIN, DEMO_ID);
+
+    expect(findDemoRegistration(reloaded)?.uid).toBe(DEMO_ID.uid);
+    expect(reloaded.teams).toHaveLength(8);
+    expect(getRegisteredTeamId(reloaded, DEMO_ID.uid)).not.toBeNull();
+    expect(reloaded.tournament.status).toBe("group-stage");
+  });
 });

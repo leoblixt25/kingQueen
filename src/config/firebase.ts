@@ -4,7 +4,7 @@ import { getFirestore } from "firebase/firestore";
 import { getFunctions } from "firebase/functions";
 
 // Your web app's Firebase configuration
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: "AIzaSyBmLIUYNdvR1DIlVPjVpkU003zC6UyRzgY",
   authDomain: "kingqueen-eu.firebaseapp.com",
   projectId: "kingqueen-eu",

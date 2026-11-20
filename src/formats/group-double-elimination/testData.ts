@@ -5,6 +5,13 @@ import {
   normalizeTournamentCategory,
   TEAM_PLAYER_COUNT,
 } from "./category";
+import {
+  findRegistrationByEmail,
+  findRegistrationByUid,
+  getRegisteredTeamId,
+  normalizeRegistrationEmail,
+  withPlayerPairingIndex,
+} from "./registration";
 import type { GsdeTournamentDocument } from "./persistence";
 import { listEliminationMatches } from "./bracket";
 import { getGameNumber } from "./gameNumbers";
@@ -20,8 +27,12 @@ import {
 import { acceptPairingInvitation, sendPairingInvitation } from "./pairing";
 import { createTeamId } from "./teams";
 import type {
+  PairingInvitationMap,
+  PairingResponseMap,
   PlayerGender,
+  PlayerId,
   PlayerRegistration,
+  ScoreSubmissionMap,
   Team,
   TournamentCategory,
 } from "./types";
@@ -72,6 +83,12 @@ export interface TestDataOptions {
   results?: TestResultMode;
   /** Injectable RNG so tests are deterministic. Defaults to `Math.random`. */
   rng?: () => number;
+  /**
+   * Real auth identity to use as the first player of pair #1. When present the
+   * loader also activates the group stage so the account behaves exactly like
+   * an ordinary approved, paired tournament participant.
+   */
+  demo?: DemoPlayerIdentity;
 }
 
 const MALE_FIRST_NAMES = [
@@ -117,11 +134,26 @@ const SURNAMES = ["Smith", "Brown", "Wilson", "Martin"] as const;
 export const TEST_PLAYER_UID_PREFIX = "gsde-test-player-";
 export const TEST_PLAYER_EMAIL_PREFIX = "testplayer";
 
+/** Stable identity of the reusable, real Firebase Auth demo account. */
+export const DEMO_PLAYER_EMAIL = "player@player.com";
+export const DEMO_PLAYER_NAME = "Demo Player";
+
 export const testPlayerUid = (index: number): string =>
   `${TEST_PLAYER_UID_PREFIX}${index + 1}`;
 
 export const testPlayerEmail = (index: number): string =>
   `${TEST_PLAYER_EMAIL_PREFIX}${index + 1}@kingqueen.test`;
+
+/**
+ * The demo account always comes from the real auth system, so its uid is only
+ * known after provisioning. The rest of the simulator is pure and accepts it
+ * as an explicit identity instead of inventing a second, fake login.
+ */
+export interface DemoPlayerIdentity {
+  uid: PlayerId;
+  email?: string;
+  name?: string;
+}
 
 /** Loading is only safe before the group stage has produced results. */
 export const canLoadTestData = (doc: GsdeTournamentDocument): boolean =>
@@ -173,7 +205,8 @@ export interface GeneratedPair {
  */
 export const buildTestPairs = (
   teamCount: TestTeamCount,
-  category: TournamentCategory
+  category: TournamentCategory,
+  demo?: DemoPlayerIdentity
 ): GeneratedPair[] => {
   const normalized = normalizeTournamentCategory(category);
   const pairs: GeneratedPair[] = [];
@@ -192,7 +225,23 @@ export const buildTestPairs = (
 
   for (let teamIndex = 0; teamIndex < teamCount; teamIndex += 1) {
     let players: [GeneratedPlayer, GeneratedPlayer];
-    if (normalized === "Mixto") {
+    if (teamIndex === 0 && demo) {
+      // Keep the pair category-valid in every division: Demo Player is male in
+      // Male/Mixto and female in Female; the partner is generated from the
+      // existing test pool with the complementary gender for Mixto.
+      const demoGender: PlayerGender = normalized === "Female" ? "female" : "male";
+      const partnerGender: PlayerGender =
+        normalized === "Mixto" ? "female" : demoGender;
+      players = [
+        {
+          uid: demo.uid,
+          email: normalizeRegistrationEmail(demo.email ?? DEMO_PLAYER_EMAIL),
+          name: demo.name?.trim() || DEMO_PLAYER_NAME,
+          gender: demoGender,
+        },
+        nextPlayer(partnerGender, 0),
+      ];
+    } else if (normalized === "Mixto") {
       players = [
         nextPlayer("male", teamIndex),
         nextPlayer("female", teamIndex),
@@ -320,7 +369,7 @@ export const loadTestTeamsAndPlayers = (
 
   const teamCount = resolveTestTeamCount(doc.tournament.config.teamLimit);
   const category = normalizeTournamentCategory(doc.tournament.config.category);
-  const pairs = buildTestPairs(teamCount, category);
+  const pairs = buildTestPairs(teamCount, category, options.demo);
 
   // Simulate the real player workflow rather than injecting finished teams:
   // individual registrations → compatible invitations → accepted invitations
@@ -379,14 +428,22 @@ export const loadTestTeamsAndPlayers = (
   const registrations: PlayerRegistration[] = seeded.registrations ?? [];
   const scheduled = buildTeamsAndGroups(seeded, teams, actor);
 
+  const demoDetail = options.demo
+    ? ` ${DEMO_PLAYER_NAME} (${normalizeRegistrationEmail(options.demo.email ?? DEMO_PLAYER_EMAIL)}) was registered, approved and paired through the real auth identity ${options.demo.uid}.`
+    : "";
   const loaded = appendAudit(scheduled, {
     action: "test-data-loaded",
     actor,
-    detail: `Loaded ${teams.length} approved ${category} test pairs and ${registrations.length} approved test players via individual registrations and accepted pairing invitations.`,
+    detail: `Loaded ${teams.length} approved ${category} test pairs and ${registrations.length} approved test players via individual registrations and accepted pairing invitations.${demoDetail}`,
   });
 
   const mode = options.results ?? "none";
-  if (mode === "none") return loaded;
+  if (mode === "none") {
+    // A demo login must land on a live tournament, so start the group stage
+    // after generating the schedule. Existing tests without a demo keep the
+    // original draft/configured behaviour.
+    return options.demo ? startGroupStage(loaded, actor) : loaded;
+  }
 
   const rng = options.rng ?? Math.random;
   const withGroupResults = simulateGroupResults(loaded, actor, rng);
@@ -394,4 +451,210 @@ export const loadTestTeamsAndPlayers = (
 
   const withBracket = generateEliminationBracket(withGroupResults, {}, actor);
   return simulateEliminationResults(withBracket, actor, rng);
+};
+
+/** Find the reusable demo registration by its stable email, never by a guessed uid. */
+export const findDemoRegistration = (
+  doc: GsdeTournamentDocument
+): PlayerRegistration | undefined => findRegistrationByEmail(doc, DEMO_PLAYER_EMAIL);
+
+const activeTeamsForPlayer = (
+  doc: GsdeTournamentDocument,
+  uid: PlayerId
+): Team[] =>
+  doc.teams.filter(
+    (team) => team.status !== "pending" && team.playerIds.includes(uid)
+  );
+
+/**
+ * The demo account is only "ready" when the whole player journey is intact:
+ * approved registration, exactly one confirmed team with a valid approved
+ * partner, a real group assignment and at least one group match for the team.
+ */
+const hasCompleteDemoJourney = (
+  doc: GsdeTournamentDocument,
+  uid: PlayerId
+): boolean => {
+  const registration = findRegistrationByUid(doc, uid);
+  if (
+    !registration ||
+    normalizeRegistrationEmail(registration.email) !== DEMO_PLAYER_EMAIL ||
+    registration.status !== "approved"
+  ) {
+    return false;
+  }
+
+  const teams = activeTeamsForPlayer(doc, uid);
+  if (teams.length !== 1) return false;
+  const team = teams[0];
+  if (team.playerIds.length !== TEAM_PLAYER_COUNT) return false;
+
+  const partnerUid = team.playerIds.find((playerUid) => playerUid !== uid);
+  const partner = partnerUid ? findRegistrationByUid(doc, partnerUid) : undefined;
+  if (!partner || partner.status !== "approved") return false;
+
+  const group = team.groupId
+    ? doc.groups.find((item) => item.id === team.groupId)
+    : undefined;
+  if (!group || !group.teamIds.includes(team.id)) return false;
+
+  return doc.matches.some(
+    (match) => match.teamAId === team.id || match.teamBId === team.id
+  );
+};
+
+/** True when an already-loaded tournament contains a usable demo participant. */
+export const hasValidDemoSetup = (doc: GsdeTournamentDocument): boolean => {
+  const registration = findDemoRegistration(doc);
+  return Boolean(registration && hasCompleteDemoJourney(doc, registration.uid));
+};
+
+/** The button stays available on an already-loaded demo tournament for repeat clicks. */
+export const canLoadDemoTestData = (doc: GsdeTournamentDocument): boolean =>
+  canLoadTestData(doc) || Boolean(findDemoRegistration(doc));
+
+/** Keep the stored profile name/email aligned with the real auth account. */
+const syncDemoProfile = (
+  doc: GsdeTournamentDocument,
+  demo: DemoPlayerIdentity
+): GsdeTournamentDocument => {
+  const email = normalizeRegistrationEmail(demo.email ?? DEMO_PLAYER_EMAIL);
+  const name = demo.name?.trim() || DEMO_PLAYER_NAME;
+  const registration = findDemoRegistration(doc);
+  if (!registration) return doc;
+
+  let next: GsdeTournamentDocument = doc;
+  if (registration.email !== email || registration.name !== name) {
+    next = {
+      ...next,
+      registrations: (next.registrations ?? []).map((item) =>
+        item.uid === registration.uid ? { ...item, email, name } : item
+      ),
+    };
+  }
+
+  const teamId = getRegisteredTeamId(next, registration.uid);
+  if (teamId) {
+    next = {
+      ...next,
+      teams: next.teams.map((team) => {
+        if (team.id !== teamId || team.nameIsCustom) return team;
+        const names = team.playerIds.map(
+          (uid) => findRegistrationByUid(next, uid)?.name ?? ""
+        );
+        return { ...team, name: derivePairTeamName(names) };
+      }),
+    };
+  }
+  return next;
+};
+
+/**
+ * Reconnect every stored reference when the auth account was recreated with a
+ * new uid. No auth user or tournament record is deleted or duplicated.
+ */
+const reconnectDemoUid = (
+  doc: GsdeTournamentDocument,
+  from: PlayerId,
+  to: PlayerId
+): GsdeTournamentDocument => {
+  if (from === to) return doc;
+
+  const invitations: PairingInvitationMap = {};
+  for (const [key, invitation] of Object.entries(doc.pairingInvitations ?? {})) {
+    invitations[key === from ? to : key] = {
+      ...invitation,
+      id: invitation.id === from ? to : invitation.id,
+      inviterUid: invitation.inviterUid === from ? to : invitation.inviterUid,
+      inviteeUid: invitation.inviteeUid === from ? to : invitation.inviteeUid,
+    };
+  }
+
+  const responses: PairingResponseMap = {};
+  for (const [key, response] of Object.entries(doc.pairingResponses ?? {})) {
+    responses[key === from ? to : key] = {
+      ...response,
+      invitationId: response.invitationId === from ? to : response.invitationId,
+    };
+  }
+
+  const submissions: ScoreSubmissionMap = {};
+  for (const [key, byMatch] of Object.entries(doc.scoreSubmissions ?? {})) {
+    submissions[key === from ? to : key] = Object.fromEntries(
+      Object.entries(byMatch).map(([matchId, submission]) => [
+        matchId,
+        submission.playerUid === from
+          ? { ...submission, playerUid: to }
+          : submission,
+      ])
+    );
+  }
+
+  return withPlayerPairingIndex({
+    ...doc,
+    registrations: (doc.registrations ?? []).map((item) =>
+      item.uid === from ? { ...item, uid: to } : item
+    ),
+    teams: doc.teams.map((team) =>
+      team.playerIds.includes(from)
+        ? {
+            ...team,
+            playerIds: team.playerIds.map((uid) => (uid === from ? to : uid)),
+          }
+        : team
+    ),
+    pairingInvitations: invitations,
+    pairingResponses: responses,
+    scoreSubmissions: submissions,
+  });
+};
+
+/**
+ * Idempotent entry point used by the admin button. It first repairs/reuses an
+ * existing demo participant, and only runs the full simulator when the test
+ * tournament has been reset. The auth account itself is provisioned by the
+ * caller, so a test-data reset can never delete or disconnect it.
+ */
+export const ensureDemoPlayerTestData = (
+  doc: GsdeTournamentDocument,
+  actor: AuditActor,
+  demo: DemoPlayerIdentity,
+  options: Omit<TestDataOptions, "demo"> = {}
+): GsdeTournamentDocument => {
+  const existing = findDemoRegistration(doc);
+
+  if (existing && existing.uid !== demo.uid) {
+    if (!hasCompleteDemoJourney(doc, existing.uid)) {
+      throw new TestDataError(
+        "The Demo Player profile is incomplete. Reset tournament data and load it again."
+      );
+    }
+    const reconnected = reconnectDemoUid(doc, existing.uid, demo.uid);
+    return appendAudit(syncDemoProfile(reconnected, demo), {
+      action: "demo-player-reconnected",
+      actor,
+      detail: `${DEMO_PLAYER_NAME} was reconnected to auth account ${demo.uid}.`,
+    });
+  }
+
+  if (existing && hasCompleteDemoJourney(doc, demo.uid)) {
+    const reconciled = syncDemoProfile(doc, demo);
+    // Older test data can still be in `configured`; activate it on the first
+    // repeat click without rebuilding teams or wiping submitted scores.
+    if (
+      reconciled.tournament.status === "configured" &&
+      reconciled.matches.length > 0
+    ) {
+      return startGroupStage(withPlayerPairingIndex(reconciled), actor);
+    }
+    return withPlayerPairingIndex(reconciled);
+  }
+
+  if (!canLoadTestData(doc)) {
+    throw new TestDataError(
+      "Test data can only be loaded before the group stage starts. Use \"Delete all tournament data\" to reset first."
+    );
+  }
+
+  return loadTestTeamsAndPlayers(doc, actor, { ...options, demo });
 };

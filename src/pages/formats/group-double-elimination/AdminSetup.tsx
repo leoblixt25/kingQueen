@@ -93,9 +93,9 @@ import {
 } from "@/formats/group-double-elimination/audit";
 import { findSubmissionForMatch } from "@/formats/group-double-elimination/playerSubmission";
 import {
-  canLoadTestData,
+  canLoadDemoTestData,
   GROUP_COUNT_BY_TEAM_COUNT,
-  loadTestTeamsAndPlayers,
+  ensureDemoPlayerTestData,
   SUPPORTED_TEST_TEAM_COUNTS,
   TEST_RESULT_MODE_OPTIONS,
   type TestResultMode,
@@ -107,6 +107,7 @@ import {
   TOURNAMENT_CATEGORY_OPTIONS,
 } from "@/formats/group-double-elimination/category";
 import { getCurrentUser } from "@/utils/authUtils";
+import { ensureDemoPlayerAuth } from "@/utils/demoPlayerAuth";
 import { exportGsdeTournamentPdf } from "@/utils/gsdePdfExport";
 import { downloadGsdeTournamentJson } from "@/utils/gsdeJsonExport";
 import {
@@ -549,6 +550,38 @@ export default function GroupDoubleEliminationAdminSetup() {
       await saveGsdeTournamentAtomic(id, transform);
       setNotice({ kind: "ok", text: successText });
       onSuccess?.();
+    } catch (caught) {
+      setNotice({
+        kind: "error",
+        text: caught instanceof Error ? caught.message : "Unexpected error.",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  /**
+   * Admin-only entry point for the reusable demo participant. Auth is
+   * provisioned on a secondary Firebase app so this admin session stays
+   * signed in, then the ordinary simulator registers/approves/pairs the real
+   * account. Repeating the click only reconciles the existing records.
+   */
+  const loadDemoTestData = async () => {
+    if (!doc) return;
+    setSaving(true);
+    setNotice(null);
+    try {
+      const account = await ensureDemoPlayerAuth();
+      const next = ensureDemoPlayerTestData(doc, actor, account, {
+        results: testResultMode,
+      });
+      await saveGsdeTournament(next);
+      setNotice({
+        kind: "ok",
+        text: account.created
+          ? `${testLoadSuccess} Demo Player account created, approved and paired.`
+          : `${testLoadSuccess} Existing Demo Player account reused and paired.`,
+      });
     } catch (caught) {
       setNotice({
         kind: "error",
@@ -2597,8 +2630,9 @@ export default function GroupDoubleEliminationAdminSetup() {
                       <div className="space-y-3">
                         <p className="text-sm text-foreground/70">
                           Creates {selectedTeamCount} approved {category} pairs ({expectedPlayers} players)
-                          inside this tournament and generates the group schedule. Only available before
-                          the group stage starts.
+                          inside this tournament, generates the group schedule and links the reusable
+                          Demo Player account to one confirmed pair. Only available before the group
+                          stage starts, or to refresh an already-loaded demo setup.
                         </p>
                         <Field label="Results after loading">
                           <select
@@ -2621,21 +2655,13 @@ export default function GroupDoubleEliminationAdminSetup() {
                         </p>
                         <Button
                           className={primaryBtn}
-                          disabled={saving || !canLoadTestData(doc)}
-                          onClick={() =>
-                            apply(
-                              (current) =>
-                                loadTestTeamsAndPlayers(current, actor, {
-                                  results: testResultMode,
-                                }),
-                              testLoadSuccess
-                            )
-                          }
+                          disabled={saving || !canLoadDemoTestData(doc)}
+                          onClick={() => void loadDemoTestData()}
                         >
                           <Zap className="w-5 h-5 mr-2" />
                           Load test teams &amp; players
                         </Button>
-                        {!canLoadTestData(doc) ? (
+                        {!canLoadDemoTestData(doc) ? (
                           <p className="text-center text-xs text-foreground/55">
                             Test data can only be loaded in draft/configured with no matches. Use
                             &quot;Delete all tournament data&quot; below to start over first.

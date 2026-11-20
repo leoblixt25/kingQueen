@@ -28,6 +28,7 @@ export type AuditAction =
   | "tournament-reopened"
   | "tournament-reset"
   | "test-data-loaded"
+  | "demo-player-reconnected"
   | "player-registered"
   | "player-registration-approved"
   | "player-registration-edited"

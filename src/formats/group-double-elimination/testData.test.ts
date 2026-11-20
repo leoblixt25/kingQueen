@@ -82,7 +82,7 @@ describe("GSDE admin test-data loader", () => {
     const loaded = loadTestTeamsAndPlayers(makeDoc(), ADMIN);
 
     expect(loaded.teams).toHaveLength(16);
-    expect(loaded.teams.every((team) => team.status === "approved")).toBe(true);
+    expect(loaded.teams.every((team) => team.status === "confirmed")).toBe(true);
     expect(loaded.registrations).toHaveLength(32);
     expect(loaded.groups).toHaveLength(4);
     expect(loaded.matches).toHaveLength(24);
@@ -90,7 +90,8 @@ describe("GSDE admin test-data loader", () => {
     expect(
       loaded.registrations?.every(
         (registration) =>
-          registration.status === "approved" && Boolean(registration.teamId)
+          registration.status === "approved" &&
+          Boolean(getRegisteredTeamId(loaded, registration.uid))
       )
     ).toBe(true);
     expect(loaded.registrations?.[0].email).toBe(testPlayerEmail(0));
@@ -121,11 +122,7 @@ describe("GSDE admin test-data loader", () => {
       ).toBe(true);
       expect(
         loaded.teams.every((team) =>
-          team.playerIds.every((uid) =>
-            loaded.registrations?.some(
-              (registration) => registration.uid === uid && registration.teamId === team.id
-            )
-          )
+          team.playerIds.every((uid) => getRegisteredTeamId(loaded, uid) === team.id)
         )
       ).toBe(true);
     }
@@ -202,6 +199,7 @@ describe("GSDE admin test-data loader", () => {
         "matches",
         "pairingInvitations",
         "pairingResponses",
+        "playerPairingIndex",
         "registrations",
         "scoreSubmissions",
         "settings",

@@ -31,6 +31,7 @@ import {
   signInWithGoogleForRegistration,
 } from "@/formats/group-double-elimination/registrationAuth";
 import { registerPlayer } from "@/formats/group-double-elimination/scoring";
+import { getRegisteredTeamId } from "@/formats/group-double-elimination/registration";
 import { saveGsdeTournament } from "@/formats/group-double-elimination/persistence";
 import {
   GsdeGoogleButton,
@@ -278,14 +279,15 @@ export default function GroupDoubleEliminationRegister() {
               </p>
               <p className="text-center flex flex-wrap items-center justify-center gap-2">
                 Status: <Badge variant="secondary">{existing.status}</Badge>
-                {existing.status === "approved" && existing.teamId ? (
+                {existing.status === "approved" && getRegisteredTeamId(doc, user?.uid ?? "") ? (
                   <span>
                     · Team:{" "}
                     {(() => {
-                      const team = doc?.teams.find((item) => item.id === existing.teamId);
+                      const teamId = doc ? getRegisteredTeamId(doc, existing.uid) : null;
+                      const team = doc?.teams.find((item) => item.id === teamId);
                       return team && doc
                         ? resolveTeamDisplayName(doc.registrations ?? [], team)
-                        : existing.teamId;
+                        : teamId ?? "unknown";
                     })()}
                   </span>
                 ) : null}
@@ -298,13 +300,15 @@ export default function GroupDoubleEliminationRegister() {
                 >
                   View status
                 </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => goTo(PAIRING_ROUTE)}
-                  className="flex-1 touch-target bg-white/70"
-                >
-                  Find a partner
-                </Button>
+                {existing.status === "approved" ? (
+                  <Button
+                    variant="outline"
+                    onClick={() => goTo(PAIRING_ROUTE)}
+                    className="flex-1 touch-target bg-white/70"
+                  >
+                    Find a partner
+                  </Button>
+                ) : null}
               </div>
               {existing.status === "approved" ? (
                 <Button
@@ -443,9 +447,10 @@ export default function GroupDoubleEliminationRegister() {
               <Alert className="mt-6 border-ocean/30 bg-ocean/5">
                 <Info className="h-4 w-4 text-ocean" />
                 <AlertDescription className="text-foreground/70">
-                  After registration, invite a compatible player to form your 2×2
-                  team. An admin approves completed teams before play. Your data
-                  is stored only in this tournament.
+                  Register as an individual player first. An admin approves your
+                  registration, then you can invite another approved player to
+                  create your 2×2 team automatically. Your data is stored only
+                  in this tournament.
                 </AlertDescription>
               </Alert>
             </CardContent>

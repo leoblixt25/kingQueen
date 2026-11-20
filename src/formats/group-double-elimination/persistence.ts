@@ -5,6 +5,7 @@ import {
   getDoc,
   getDocs,
   onSnapshot,
+  runTransaction,
   setDoc,
   where,
   query,
@@ -21,12 +22,15 @@ import type {
   PairingInvitationMap,
   PairingResponseMap,
   PlayerRegistration,
+  PlayerRegistrationStatus,
   ScoreSubmissionMap,
   Team,
+  TeamId,
   TournamentConfig,
 } from "./types";
 import type { AuditEntry } from "./audit";
 import { normalizeTournamentCategory } from "./category";
+import { rebuildPlayerPairingIndex } from "./registration";
 
 /**
  * Isolated persistence for the new format.
@@ -52,6 +56,20 @@ export const KQ_COLLECTIONS = [
   "finalMatches",
   "tournamentSettings",
 ] as const;
+
+/**
+ * Rules-visible index of each registered player's approval state and active
+ * team. It is rebuilt from registrations + teams on every committed change, so
+ * it is never a second source of truth: Firestore rules use it to check that
+ * only approved, unpaired players can pair, while the UI keeps using the full
+ * registration records.
+ */
+export interface PlayerPairingIndexEntry {
+  status: PlayerRegistrationStatus;
+  teamId: TeamId | null;
+}
+
+export type PlayerPairingIndex = Record<string, PlayerPairingIndexEntry>;
 
 export interface GsdeSettings {
   formatId: typeof GSDE_FORMAT_ID;
@@ -113,6 +131,8 @@ export interface GsdeTournamentDocument {
   auditLog?: AuditEntry[];
   /** Self-registered players for this tournament (isolated from K&Q players). */
   registrations?: PlayerRegistration[];
+  /** Derived, rules-visible approval/pairing state keyed by player uid. */
+  playerPairingIndex?: PlayerPairingIndex;
   /**
    * Player-to-player pairing requests, keyed by the inviter's uid. Kept
    * separate from `registrations` and `teams` so unpaired players remain in the
@@ -161,6 +181,7 @@ export const createGsdeTournamentDocument = (
   elimination: overrides.elimination ?? null,
   auditLog: overrides.auditLog ?? [],
   registrations: overrides.registrations ?? [],
+  playerPairingIndex: overrides.playerPairingIndex ?? {},
   pairingInvitations: overrides.pairingInvitations ?? {},
   pairingResponses: overrides.pairingResponses ?? {},
   scoreSubmissions: overrides.scoreSubmissions ?? {},
@@ -204,6 +225,7 @@ export const toGsdeFirestoreData = (
   elimination: tournament.elimination,
   auditLog: tournament.auditLog ?? [],
   registrations: tournament.registrations ?? [],
+  playerPairingIndex: tournament.playerPairingIndex ?? {},
   pairingInvitations: tournament.pairingInvitations ?? {},
   pairingResponses: tournament.pairingResponses ?? {},
   scoreSubmissions: tournament.scoreSubmissions ?? {},
@@ -221,7 +243,7 @@ export const fromGsdeFirestoreData = (
   const storedTournament = (data.tournament ?? {}) as Partial<
     GsdeTournamentDocument["tournament"]
   >;
-  return {
+  const restored: GsdeTournamentDocument = {
     id,
     tournament: {
       ...base.tournament,
@@ -238,6 +260,7 @@ export const fromGsdeFirestoreData = (
     elimination: data.elimination ?? null,
     auditLog: Array.isArray(data.auditLog) ? data.auditLog : [],
     registrations: Array.isArray(data.registrations) ? data.registrations : [],
+    playerPairingIndex: {},
     pairingInvitations:
       data.pairingInvitations && typeof data.pairingInvitations === "object"
         ? data.pairingInvitations
@@ -252,6 +275,10 @@ export const fromGsdeFirestoreData = (
         : {},
     settings: { ...base.settings, ...(data.settings ?? {}) },
   };
+  return {
+    ...restored,
+    playerPairingIndex: rebuildPlayerPairingIndex(restored),
+  };
 };
 
 export const saveGsdeTournament = async (
@@ -259,6 +286,26 @@ export const saveGsdeTournament = async (
 ): Promise<void> => {
   gsdeTournamentPath(tournament.id);
   await setDoc(gsdeTournamentRef(tournament.id), toGsdeFirestoreData(tournament));
+};
+
+/**
+ * Atomic mutation for approval and team changes. The pure transform runs on a
+ * fresh read inside the transaction, so two simultaneous accept/admin actions
+ * cannot both create a team for the same player: the second transaction retries
+ * against the first result and its validation fails.
+ */
+export const saveGsdeTournamentAtomic = async (
+  id: string,
+  mutate: (current: GsdeTournamentDocument) => GsdeTournamentDocument
+): Promise<void> => {
+  gsdeTournamentPath(id);
+  const reference = gsdeTournamentRef(id);
+  await runTransaction(db, async (transaction) => {
+    const snapshot = await transaction.get(reference);
+    const current =
+      fromGsdeFirestoreData(snapshot.data(), id) ?? createGsdeTournamentDocument(id);
+    transaction.set(reference, toGsdeFirestoreData(mutate(current)));
+  });
 };
 
 export const loadGsdeTournament = async (

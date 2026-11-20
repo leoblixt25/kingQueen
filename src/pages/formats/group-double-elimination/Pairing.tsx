@@ -18,7 +18,7 @@ import {
   resolveTeamDisplayName,
   validateTeamCategory,
 } from "@/formats/group-double-elimination/category";
-import { saveGsdeTournament } from "@/formats/group-double-elimination/persistence";
+import { saveGsdeTournamentAtomic } from "@/formats/group-double-elimination/persistence";
 import {
   acceptPairingInvitation,
   cancelPairingInvitation,
@@ -49,10 +49,12 @@ const OUTLINE =
   "w-full touch-target bg-white/70 hover:bg-ocean hover:text-white border border-ocean/30 text-ocean font-semibold";
 
 const STATUS_COPY: Record<PairingStatus, { label: string; className: string }> = {
-  paired: { label: "Paired · awaiting admin approval", className: "bg-emerald-100 text-emerald-800" },
+  paired: { label: "Confirmed team", className: "bg-emerald-100 text-emerald-800" },
   "invite-sent": { label: "Invitation sent", className: "bg-sky-100 text-sky-800" },
   "invite-received": { label: "Invitation received", className: "bg-amber-100 text-amber-800" },
   searching: { label: "Looking for a partner", className: "bg-slate-100 text-slate-700" },
+  "pending-approval": { label: "Pending approval", className: "bg-amber-100 text-amber-800" },
+  rejected: { label: "Registration rejected", className: "bg-red-100 text-red-700" },
   "not-registered": { label: "Not registered", className: "bg-red-100 text-red-700" },
 };
 
@@ -76,12 +78,15 @@ export default function GroupDoubleEliminationPairing() {
 
   const goTo = (route: string) => navigate(gsdeHref(route, id));
 
-  const run = async (label: string, mutate: () => NonNullable<typeof doc>) => {
+  const run = async (
+    label: string,
+    mutate: (current: NonNullable<typeof doc>) => NonNullable<typeof doc>
+  ) => {
     if (!doc) return;
     setBusy(label);
     setActionError(null);
     try {
-      await saveGsdeTournament(mutate());
+      await saveGsdeTournamentAtomic(id, mutate);
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Could not save that change.");
     } finally {
@@ -145,6 +150,24 @@ export default function GroupDoubleEliminationPairing() {
             </Button>
           </CardContent>
         </Card>
+      ) : registration.status !== "approved" ? (
+        <Card className={`${CARD} border-amber-300/60`}>
+          <CardHeader>
+            <CardTitle className="text-center text-amber-800">
+              {registration.status === "pending" ? "Approval Required" : "Registration Not Approved"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-center text-sm text-foreground/75">
+            <p>
+              {registration.status === "pending"
+                ? "Your registration is pending admin approval. Partner finding opens once you are approved."
+                : "Rejected players cannot send or accept pairing invitations."}
+            </p>
+            <Button onClick={() => goTo(PENDING_ROUTE)} className={PRIMARY}>
+              View registration status
+            </Button>
+          </CardContent>
+        </Card>
       ) : (
         <>
           <Card className={CARD}>
@@ -170,8 +193,8 @@ export default function GroupDoubleEliminationPairing() {
                   <strong>{resolveTeamDisplayName(doc.registrations ?? [], pairedTeam)}</strong>
                   {" · "}
                   {validateTeamCategory(doc, pairedTeam).length === 0
-                    ? "valid category, waiting for admin approval"
-                    : "awaiting admin review"}
+                    ? "confirmed and available for tournament management"
+                    : "confirmed · category needs admin review"}
                 </p>
               ) : null}
               {locked ? (
@@ -229,7 +252,9 @@ export default function GroupDoubleEliminationPairing() {
                       <Button
                         disabled={busy !== null || locked}
                         onClick={() =>
-                          run("accept", () => acceptPairingInvitation(doc!, user.uid, invite.inviterUid))
+                          run("accept", (current) =>
+                            acceptPairingInvitation(current, user.uid, invite.inviterUid)
+                          )
                         }
                         className={PRIMARY}
                       >
@@ -244,7 +269,9 @@ export default function GroupDoubleEliminationPairing() {
                         variant="outline"
                         disabled={busy !== null}
                         onClick={() =>
-                          run("decline", () => declinePairingInvitation(doc!, user.uid, invite.inviterUid))
+                          run("decline", (current) =>
+                            declinePairingInvitation(current, user.uid, invite.inviterUid)
+                          )
                         }
                         className={OUTLINE}
                       >
@@ -269,7 +296,7 @@ export default function GroupDoubleEliminationPairing() {
                 <Button
                   variant="outline"
                   disabled={busy !== null}
-                  onClick={() => run("withdraw", () => cancelPairingInvitation(doc!, user.uid))}
+                  onClick={() => run("withdraw", (current) => cancelPairingInvitation(current, user.uid))}
                   className={OUTLINE}
                 >
                   Withdraw invitation
@@ -317,7 +344,9 @@ export default function GroupDoubleEliminationPairing() {
                         busy !== null || Boolean(pairedTeamId) || Boolean(sent) || pending.length > 0
                       }
                       onClick={() =>
-                        run(`invite-${player.uid}`, () => sendPairingInvitation(doc!, user.uid, player.uid))
+                        run(`invite-${player.uid}`, (current) =>
+                          sendPairingInvitation(current, user.uid, player.uid)
+                        )
                       }
                       className={PRIMARY}
                     >

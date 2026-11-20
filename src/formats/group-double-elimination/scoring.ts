@@ -4,6 +4,9 @@ import type {
   EliminationResultType,
   GroupStageMatch,
   MatchId,
+  PairingInvitationMap,
+  PairingResponseMap,
+  PlayerGender,
   PlayerRegistration,
   Team,
   TeamId,
@@ -71,6 +74,7 @@ import {
   getRegistrations,
   normalizeRegistrationEmail,
   validateRegistrationDraft,
+  withPlayerPairingIndex,
   type RegistrationDraft,
 } from "./registration";
 import {
@@ -184,7 +188,8 @@ const commit = (
   doc: GsdeTournamentDocument,
   audit?: AuditCall
 ): GsdeTournamentDocument => {
-  const next = audit ? appendAudit(doc, audit) : doc;
+  const synced = withPlayerPairingIndex(doc);
+  const next = audit ? appendAudit(synced, audit) : synced;
   if (next.elimination) {
     const bracketProblems = validateEliminationBracket(next.elimination);
     if (bracketProblems.length > 0) {
@@ -355,6 +360,54 @@ const detachPlayerFromTeams = (
     playerIds: team.playerIds.filter((id) => id !== uid),
   }));
 
+/**
+ * Rejecting/removing a player from a confirmed pair dissolves that pair so the
+ * remaining player stays approved and becomes available again. Legacy teams
+ * without the `confirmed` status are left untouched for backwards compatibility.
+ */
+const dissolveConfirmedTeamsForPlayers = (
+  doc: GsdeTournamentDocument,
+  uids: readonly string[]
+): GsdeTournamentDocument => {
+  const removed = new Set(uids);
+  const affected = new Set(
+    doc.teams
+      .filter(
+        (team) =>
+          team.status === "confirmed" &&
+          team.playerIds.some((uid) => removed.has(uid))
+      )
+      .map((team) => team.id)
+  );
+
+  const invitations: PairingInvitationMap = { ...(doc.pairingInvitations ?? {}) };
+  for (const [id, invitation] of Object.entries(invitations)) {
+    if (
+      removed.has(invitation.inviterUid) ||
+      removed.has(invitation.inviteeUid) ||
+      (invitation.teamId !== null && affected.has(invitation.teamId))
+    ) {
+      delete invitations[id];
+    }
+  }
+  const responses: PairingResponseMap = { ...(doc.pairingResponses ?? {}) };
+  for (const [uid, response] of Object.entries(responses)) {
+    if (removed.has(uid) || (response.teamId !== null && affected.has(response.teamId))) {
+      delete responses[uid];
+    }
+  }
+
+  return {
+    ...doc,
+    teams: doc.teams.filter((team) => !affected.has(team.id)),
+    registrations: getRegistrations(doc).map((item) =>
+      item.teamId && affected.has(item.teamId) ? { ...item, teamId: null } : item
+    ),
+    pairingInvitations: invitations,
+    pairingResponses: responses,
+  };
+};
+
 /** Recompute default pair names after any roster change. */
 const withRefreshedPairNames = (
   doc: GsdeTournamentDocument
@@ -411,11 +464,13 @@ const requireRegistration = (
   return registration;
 };
 
-/** Admin approves a pending player and assigns them to a team. */
+/**
+ * Admin approves an individual player. Approval never creates or assigns a
+ * team; pairing happens afterwards through mutual agreement or admin action.
+ */
 export const approvePlayerRegistration = (
   doc: GsdeTournamentDocument,
   uid: string,
-  teamId: TeamId,
   actor?: AuditActor
 ): GsdeTournamentDocument => {
   guardRegistrationOpen(doc);
@@ -423,35 +478,69 @@ export const approvePlayerRegistration = (
   if (registration.gender !== "male" && registration.gender !== "female") {
     fail("registration-invalid", "This registration is missing a player gender.");
   }
-  // Re-approving an already-approved player is a valid, audited reassignment.
-  const target = doc.teams.find((team) => team.id === teamId);
-  if (!target) {
-    fail("invalid-team", `No team "${teamId}".`);
-  }
-  if (!target.playerIds.includes(uid) && target.playerIds.length >= 2) {
-    fail("invalid-team", "Teams are fixed pairs of exactly two players.");
-  }
 
   const now = new Date().toISOString();
   const registrations = getRegistrations(doc).map((item) =>
     item.uid === uid
-      ? { ...item, status: "approved" as const, teamId, decidedAt: now }
+      ? { ...item, status: "approved" as const, teamId: null, decidedAt: now }
       : item
   );
-  const teams = detachPlayerFromTeams(doc, uid).map((team) =>
-    team.id === teamId && !team.playerIds.includes(uid)
-      ? { ...team, playerIds: [...team.playerIds, uid] }
-      : team
+  return commit(touch({ ...doc, registrations }), {
+    action: "player-registration-approved",
+    actor,
+    detail: `${registration.name} approved as an individual player.`,
+  });
+};
+
+export interface PlayerRegistrationPatch {
+  name?: string;
+  email?: string;
+  gender?: PlayerGender;
+}
+
+/** Admin edits a player's own registration details without changing approval. */
+export const editPlayerRegistration = (
+  doc: GsdeTournamentDocument,
+  uid: string,
+  patch: PlayerRegistrationPatch,
+  actor?: AuditActor
+): GsdeTournamentDocument => {
+  guardRegistrationOpen(doc);
+  const registration = requireRegistration(doc, uid);
+  const gender = patch.gender ?? registration.gender;
+  const draft = {
+    uid,
+    email: patch.email ?? registration.email,
+    name: patch.name ?? registration.name,
+    gender: (gender ?? "male") as PlayerGender,
+  };
+  const issues = validateRegistrationDraft({
+    ...draft,
+    gender: gender as PlayerGender,
+  });
+  if (issues.length > 0) fail("registration-invalid", issues[0].message);
+
+  const email = normalizeRegistrationEmail(draft.email);
+  const duplicate = findRegistrationByEmail(doc, email);
+  if (duplicate && duplicate.uid !== uid) {
+    fail("already-registered", "Another player already uses that email address.");
+  }
+
+  const registrations = getRegistrations(doc).map((item) =>
+    item.uid === uid
+      ? {
+          ...item,
+          email,
+          name: draft.name.trim(),
+          ...(gender === "male" || gender === "female" ? { gender } : {}),
+        }
+      : item
   );
-  return commit(
-    touch(withRefreshedPairNames({ ...doc, registrations, teams })),
-    {
-      action: "player-registration-approved",
-      actor,
-      teamId,
-      detail: `${registration.name} approved and assigned to a team.`,
-    }
-  );
+  return commit(touch(withRefreshedPairNames({ ...doc, registrations })), {
+    action: "player-registration-edited",
+    actor,
+    detail: `Admin edited ${registration.name}'s registration details.`,
+  });
 };
 
 /** Admin rejects a registration; any team assignment is cleared. */
@@ -463,13 +552,14 @@ export const rejectPlayerRegistration = (
   guardRegistrationOpen(doc);
   const registration = requireRegistration(doc, uid);
   const now = new Date().toISOString();
-  const registrations = getRegistrations(doc).map((item) =>
+  const cleaned = dissolveConfirmedTeamsForPlayers(doc, [uid]);
+  const registrations = getRegistrations(cleaned).map((item) =>
     item.uid === uid
       ? { ...item, status: "rejected" as const, teamId: null, decidedAt: now }
       : item
   );
   return commit(
-    touch(withRefreshedPairNames({ ...doc, registrations, teams: detachPlayerFromTeams(doc, uid) })),
+    touch(withRefreshedPairNames({ ...cleaned, registrations, teams: detachPlayerFromTeams(cleaned, uid) })),
     {
       action: "player-registration-rejected",
       actor,
@@ -486,9 +576,10 @@ export const removePlayerRegistration = (
 ): GsdeTournamentDocument => {
   guardRegistrationOpen(doc);
   const registration = requireRegistration(doc, uid);
-  const registrations = getRegistrations(doc).filter((item) => item.uid !== uid);
+  const cleaned = dissolveConfirmedTeamsForPlayers(doc, [uid]);
+  const registrations = getRegistrations(cleaned).filter((item) => item.uid !== uid);
   return commit(
-    touch(withRefreshedPairNames({ ...doc, registrations, teams: detachPlayerFromTeams(doc, uid) })),
+    touch(withRefreshedPairNames({ ...cleaned, registrations, teams: detachPlayerFromTeams(cleaned, uid) })),
     {
       action: "player-registration-removed",
       actor,

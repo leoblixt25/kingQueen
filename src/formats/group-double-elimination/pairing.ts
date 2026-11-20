@@ -7,8 +7,9 @@ import {
 import type { GsdeTournamentDocument } from "./persistence";
 import {
   findRegistrationByUid,
-  getRegisteredTeamId,
   getRegistrations,
+  getTeamIdForPlayer,
+  isApprovedUnpairedPlayer,
 } from "./registration";
 import {
   assertRegistrationOpen,
@@ -28,10 +29,10 @@ import type {
 /**
  * Player-to-player pairing for the isolated 2x2 format.
  *
- * Registrations, invitations and teams stay separate: sending an invitation
- * never creates a team or changes a registration, and accepting one creates a
- * pending fixed pair while both players remain registered individuals. Admin
- * approval is still required before the pair can enter the tournament engine.
+ * Approval comes first and is independent. Only approved, unpaired players can
+ * use pairing: sending an invitation never creates a team, and accepting one
+ * creates a single confirmed two-player team. Admin-created pairs follow the
+ * same rule and never change a player's approval status.
  */
 
 type PairErrorCode =
@@ -99,11 +100,19 @@ export const isPairingLocked = (doc: GsdeTournamentDocument): boolean =>
 
 const requirePairableRegistration = (
   doc: GsdeTournamentDocument,
-  uid: PlayerId
+  uid: PlayerId,
+  ignoreTeamId?: TeamId
 ): PlayerRegistration => {
   const registration = findRegistrationByUid(doc, uid);
   if (!registration || registration.status === "rejected") {
     fail("pairing-invalid", "Both players must be registered for this tournament.");
+  }
+  if (registration.status !== "approved") {
+    fail("pairing-invalid", "Only approved players can find a partner.");
+  }
+  const activeTeamId = getTeamIdForPlayer(doc, uid);
+  if (activeTeamId && activeTeamId !== ignoreTeamId) {
+    fail("pairing-unavailable", "A player in this pair already belongs to a team.");
   }
   if (registration.gender !== "male" && registration.gender !== "female") {
     fail("pairing-invalid", "Both players need a gender before they can be paired.");
@@ -120,8 +129,8 @@ const validatePair = (
   if (!firstUid || !secondUid || firstUid === secondUid) {
     fail("pairing-invalid", "A pair needs two different registered players.");
   }
-  const first = requirePairableRegistration(doc, firstUid);
-  const second = requirePairableRegistration(doc, secondUid);
+  const first = requirePairableRegistration(doc, firstUid, ignoreTeamId);
+  const second = requirePairableRegistration(doc, secondUid, ignoreTeamId);
   const category = normalizeTournamentCategory(doc.tournament.config.category);
   if (
     !isPairValidForCategory(category, [
@@ -132,12 +141,6 @@ const validatePair = (
     fail("pairing-unavailable", `This pair is not compatible with the ${category} category.`);
   }
 
-  for (const uid of [firstUid, secondUid]) {
-    const teamId = getRegisteredTeamId(doc, uid);
-    if (teamId && teamId !== ignoreTeamId) {
-      fail("pairing-unavailable", "A player in this pair already belongs to a team.");
-    }
-  }
   return [first, second];
 };
 
@@ -162,8 +165,7 @@ const ensureNoConflictingInvitation = (
   }
 };
 
-const buildPendingPairTeam = (
-  doc: GsdeTournamentDocument,
+const buildConfirmedPairTeam = (
   first: PlayerRegistration,
   second: PlayerRegistration,
   id: TeamId
@@ -173,7 +175,7 @@ const buildPendingPairTeam = (
   playerIds: [first.uid, second.uid],
   seed: null,
   groupId: null,
-  status: "pending",
+  status: "confirmed",
   nameIsCustom: false,
 });
 
@@ -222,7 +224,7 @@ export const sendPairingInvitation = (
   );
 };
 
-/** Invitee accepts a pending invitation; a pending fixed team is created. */
+/** Invitee accepts a pending invitation; one confirmed team is created. */
 export const acceptPairingInvitation = (
   doc: GsdeTournamentDocument,
   inviteeUid: PlayerId,
@@ -246,7 +248,10 @@ export const acceptPairingInvitation = (
     fail("pairing-unavailable", "A team already exists for this player pair.");
   }
   const now = stamp();
-  const team = buildPendingPairTeam(doc, inviter, invitee, teamId);
+  const team = buildConfirmedPairTeam(inviter, invitee, teamId);
+  // Registrations are intentionally untouched: team membership comes from
+  // `team.playerIds`, and the derived pairing index is rebuilt on commit. This
+  // keeps player writes from ever modifying registration records.
   return commitGsdeChange(
     touch({
       ...doc,
@@ -274,7 +279,7 @@ export const acceptPairingInvitation = (
       action: "pairing-invitation-accepted",
       actor: actor ?? actorForPlayer(invitee),
       teamId,
-      detail: `${inviter.name} and ${invitee.name} formed a pending team.`,
+      detail: `${inviter.name} and ${invitee.name} formed a confirmed team.`,
     }
   );
 };
@@ -286,6 +291,8 @@ export const declinePairingInvitation = (
   inviterUid: PlayerId,
   actor?: AuditActor
 ): GsdeTournamentDocument => {
+  assertRegistrationOpen(doc);
+  const invitee = requirePairableRegistration(doc, inviteeUid);
   const invitation = findInvitationByInviter(doc, inviterUid);
   if (!invitation || invitation.inviteeUid !== inviteeUid) {
     fail("pairing-not-found", "That pairing invitation was not found for your account.");
@@ -293,7 +300,6 @@ export const declinePairingInvitation = (
   if (invitation.status !== "pending") {
     fail("pairing-invalid", "That pairing invitation is no longer pending.");
   }
-  const invitee = requirePairableRegistration(doc, inviteeUid);
   const now = stamp();
   return commitGsdeChange(
     touch({
@@ -331,9 +337,10 @@ export const cancelPairingInvitation = (
   inviterUid: PlayerId,
   actor?: AuditActor
 ): GsdeTournamentDocument => {
+  assertRegistrationOpen(doc);
   const invitation = findInvitationByInviter(doc, inviterUid);
-  const inviter = findRegistrationByUid(doc, inviterUid);
-  if (!invitation || !inviter) {
+  const inviter = requirePairableRegistration(doc, inviterUid);
+  if (!invitation) {
     fail("pairing-not-found", "That pairing invitation was not found.");
   }
   if (invitation.status !== "pending") {
@@ -360,7 +367,7 @@ export const cancelPairingInvitation = (
   );
 };
 
-/** Admin manually creates a pending team from two registered players. */
+/** Admin creates a confirmed team from two already-approved, unpaired players. */
 export const adminCreatePairTeam = (
   doc: GsdeTournamentDocument,
   firstUid: PlayerId,
@@ -378,14 +385,15 @@ export const adminCreatePairTeam = (
     fail("pairing-unavailable", "A team already exists for this player pair.");
   }
   const now = stamp();
-  const team = buildPendingPairTeam(doc, first, second, teamId);
+  const team = buildConfirmedPairTeam(first, second, teamId);
   return commitGsdeChange(
     touch({
       ...doc,
       teams: [...doc.teams, team],
+      // Approval is untouched. Only the team link is recorded on admin records.
       registrations: getRegistrations(doc).map((item) =>
         item.uid === firstUid || item.uid === secondUid
-          ? { ...item, status: "approved" as const, teamId, decidedAt: now }
+          ? { ...item, teamId }
           : item
       ),
       pairingInvitations: {
@@ -415,7 +423,7 @@ export const adminCreatePairTeam = (
       action: "pairing-team-created",
       actor,
       teamId,
-      detail: `Admin created a pending pair for ${first.name} and ${second.name}.`,
+      detail: `Admin paired approved players ${first.name} and ${second.name}.`,
     }
   );
 };
@@ -491,16 +499,18 @@ export const adminChangePairing = (
               name: item.nameIsCustom
                 ? item.name
                 : derivePairTeamName([first.name, second.name]),
-              status: "pending" as const,
+              status: "confirmed" as const,
             }
           : item
       ),
+      // Both old and new players keep their approved status; only the team
+      // link changes.
       registrations: getRegistrations(doc).map((item) => {
         if (nextPlayerIds.includes(item.uid)) {
-          return { ...item, status: "approved" as const, teamId, decidedAt: now };
+          return { ...item, teamId };
         }
         if (previousUids.includes(item.uid) && item.teamId === teamId) {
-          return { ...item, status: "pending" as const, teamId: null, decidedAt: null };
+          return { ...item, teamId: null };
         }
         return item;
       }),
@@ -516,7 +526,7 @@ export const adminChangePairing = (
   );
 };
 
-/** Admin removes a pair and detaches both registrations from it. */
+/** Admin dissolves a team; both approved player records remain available. */
 export const adminRemovePairing = (
   doc: GsdeTournamentDocument,
   teamId: TeamId,
@@ -549,10 +559,9 @@ export const adminRemovePairing = (
     touch({
       ...doc,
       teams: doc.teams.filter((item) => item.id !== teamId),
+      // Dissolving a team preserves both player records and their approval.
       registrations: getRegistrations(doc).map((item) =>
-        item.teamId === teamId
-          ? { ...item, status: "pending" as const, teamId: null, decidedAt: null }
-          : item
+        item.teamId === teamId ? { ...item, teamId: null } : item
       ),
       pairingInvitations: invitations,
       pairingResponses: responses,
@@ -583,36 +592,29 @@ export const selectAvailablePlayers = (
   doc: GsdeTournamentDocument,
   viewerUid: PlayerId
 ): PlayerRegistration[] => {
-  if (isPairingLocked(doc) || !findRegistrationByUid(doc, viewerUid)) return [];
-  if (getRegisteredTeamId(doc, viewerUid)) return [];
   const viewer = findRegistrationByUid(doc, viewerUid);
-  if (
-    !viewer ||
-    viewer.status === "rejected" ||
-    (viewer.gender !== "male" && viewer.gender !== "female")
-  ) {
-    return [];
-  }
+  if (isPairingLocked(doc) || !viewer) return [];
+  if (!isApprovedUnpairedPlayer(doc, viewerUid)) return [];
+  if (viewer.gender !== "male" && viewer.gender !== "female") return [];
+
   const category = normalizeTournamentCategory(doc.tournament.config.category);
   return getRegistrations(doc).filter((candidate) => {
-    if (candidate.uid === viewerUid || candidate.status === "rejected") return false;
+    if (candidate.uid === viewerUid) return false;
+    if (!isApprovedUnpairedPlayer(doc, candidate.uid)) return false;
     if (candidate.gender !== "male" && candidate.gender !== "female") return false;
     if (!isPairValidForCategory(category, [viewer.gender as PlayerGender, candidate.gender])) {
       return false;
     }
-    if (getRegisteredTeamId(doc, candidate.uid)) return false;
     return !activeInvitationFor(doc, candidate.uid);
   });
 };
 
-/** Registered players who are not yet linked to any team or accepted pair. */
+/** Approved players who are not linked to any team and can be paired by admin. */
 export const selectUnpairedPlayers = (
   doc: GsdeTournamentDocument
 ): PlayerRegistration[] =>
-  getRegistrations(doc).filter(
-    (registration) =>
-      registration.status !== "rejected" &&
-      !getRegisteredTeamId(doc, registration.uid)
+  getRegistrations(doc).filter((registration) =>
+    isApprovedUnpairedPlayer(doc, registration.uid)
   );
 
 export type PairingStatus =
@@ -620,14 +622,19 @@ export type PairingStatus =
   | "invite-sent"
   | "invite-received"
   | "searching"
+  | "pending-approval"
+  | "rejected"
   | "not-registered";
 
 export const getPairingStatusForPlayer = (
   doc: GsdeTournamentDocument,
   uid: PlayerId
 ): PairingStatus => {
-  if (!findRegistrationByUid(doc, uid)) return "not-registered";
-  if (getRegisteredTeamId(doc, uid)) return "paired";
+  const registration = findRegistrationByUid(doc, uid);
+  if (!registration) return "not-registered";
+  if (registration.status === "pending") return "pending-approval";
+  if (registration.status === "rejected") return "rejected";
+  if (getTeamIdForPlayer(doc, uid)) return "paired";
   const invitations = getPairingInvitations(doc);
   if (
     invitations.some(

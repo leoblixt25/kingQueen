@@ -14,7 +14,10 @@ import {
   XCircle,
 } from "lucide-react";
 import { GROUP_DOUBLE_ELIMINATION_FORMAT } from "@/formats";
-import { findRegistrationByUid } from "@/formats/group-double-elimination/registration";
+import {
+  findRegistrationByUid,
+  getRegisteredTeamId,
+} from "@/formats/group-double-elimination/registration";
 import { signOutRegistration } from "@/formats/group-double-elimination/registrationAuth";
 import { resolveTeamDisplayName } from "@/formats/group-double-elimination/category";
 import {
@@ -44,12 +47,11 @@ export default function GroupDoubleEliminationRegistrationPending() {
   const [signingOut, setSigningOut] = useState(false);
 
   const registration = doc && user ? findRegistrationByUid(doc, user.uid) : undefined;
-  const team = registration?.teamId && doc
-    ? doc.teams.find((item) => item.id === registration.teamId)
-    : undefined;
+  const teamId = doc && user ? getRegisteredTeamId(doc, user.uid) : null;
+  const team = teamId && doc ? doc.teams.find((item) => item.id === teamId) : undefined;
   const teamLabel = team && doc
     ? resolveTeamDisplayName(doc.registrations ?? [], team)
-    : registration?.teamId ?? "not assigned yet";
+    : "no team yet";
 
   const go = (route: string) => navigate(gsdeHref(route, id));
 
@@ -145,7 +147,13 @@ export default function GroupDoubleEliminationRegistrationPending() {
               </p>
               <Alert className="border-palm/30 bg-palm/10">
                 <AlertDescription>
-                  Team: <strong>{teamLabel}</strong>
+                  {team ? (
+                    <>
+                      Team: <strong>{teamLabel}</strong>
+                    </>
+                  ) : (
+                    "You are approved but unpaired. Find a partner to create your team."
+                  )}
                 </AlertDescription>
               </Alert>
               <Button onClick={() => go(PLAYER_ROUTE)} className={PRIMARY}>
@@ -210,17 +218,13 @@ export default function GroupDoubleEliminationRegistrationPending() {
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
                 <h3 className="font-semibold text-amber-800 mb-2">What happens next?</h3>
                 <ul className="text-sm text-amber-700 space-y-2">
-                  <li>• An admin will review your registration</li>
-                  <li>• Invite a compatible registered player to form your team</li>
+                  <li>• An admin will review and approve your individual registration</li>
+                  <li>• Once approved, invite another approved player to form your team</li>
                   <li>• This page updates automatically once you&apos;re approved</li>
                 </ul>
               </div>
 
               <div className="space-y-3">
-                <Button onClick={() => go(PAIRING_ROUTE)} className={PRIMARY}>
-                  <Users className="w-4 h-4 mr-2" />
-                  Find a partner
-                </Button>
                 {homeButton}
                 <Button
                   variant="outline"

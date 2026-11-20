@@ -43,6 +43,7 @@ import {
   completeGroupStage,
   correctEliminationResult,
   correctGroupMatchScore,
+  editPlayerRegistration,
   editTeam,
   generateEliminationBracket,
   rejectPlayerRegistration,
@@ -68,6 +69,7 @@ import {
   verifyGroupStageCompletion,
 } from "@/formats/group-double-elimination/scoring";
 import {
+  getRegisteredTeamId,
   getRegistrations,
   getRegistrationStats,
 } from "@/formats/group-double-elimination/registration";
@@ -80,7 +82,10 @@ import {
   isPairingLocked,
   selectUnpairedPlayers,
 } from "@/formats/group-double-elimination/pairing";
-import type { PairingInvitation } from "@/formats/group-double-elimination/types";
+import type {
+  PairingInvitation,
+  PlayerGender,
+} from "@/formats/group-double-elimination/types";
 import {
   UNKNOWN_ADMIN,
   selectCorrections,
@@ -111,6 +116,7 @@ import {
 } from "@/formats/group-double-elimination/groupStandings";
 import {
   saveGsdeTournament,
+  saveGsdeTournamentAtomic,
   type GsdeTournamentDocument,
 } from "@/formats/group-double-elimination/persistence";
 import { GROUP_DOUBLE_ELIMINATION_FORMAT } from "@/formats";
@@ -351,7 +357,11 @@ export default function GroupDoubleEliminationAdminSetup() {
   const [overrideConfirmed, setOverrideConfirmed] = useState(false);
   const [reopenDiscardConfirmed, setReopenDiscardConfirmed] = useState(false);
   const [reopenTarget, setReopenTarget] = useState<"elimination" | "group-stage">("elimination");
-  const [regTeamChoice, setRegTeamChoice] = useState<Record<string, string>>({});
+  const [playerFilter, setPlayerFilter] = useState<"all" | "pending" | "approved" | "rejected">("pending");
+  const [editingPlayerUid, setEditingPlayerUid] = useState<string | null>(null);
+  const [editPlayerName, setEditPlayerName] = useState("");
+  const [editPlayerEmail, setEditPlayerEmail] = useState("");
+  const [editPlayerGender, setEditPlayerGender] = useState<PlayerGender>("male");
   const [pairFirstUid, setPairFirstUid] = useState("");
   const [pairSecondUid, setPairSecondUid] = useState("");
   const [pairChangeTeamId, setPairChangeTeamId] = useState("");
@@ -460,8 +470,12 @@ export default function GroupDoubleEliminationAdminSetup() {
   const corrections = doc ? selectCorrections(doc) : [];
   const registrationStats = doc ? getRegistrationStats(doc) : null;
   const allRegistrations = doc ? getRegistrations(doc) : [];
+  const filteredRegistrations = allRegistrations.filter(
+    (registration) => playerFilter === "all" || registration.status === playerFilter
+  );
   const allInvitations: PairingInvitation[] = doc ? getPairingInvitations(doc) : [];
   const unpairedPlayers = doc ? selectUnpairedPlayers(doc) : [];
+  const confirmedTeams = doc ? doc.teams.filter((team) => team.status !== "pending") : [];
   const pairingLocked = doc ? isPairingLocked(doc) : true;
   const names = doc ? teamNameMap(doc.teams, doc.registrations ?? []) : new Map();
   const groupTables = doc ? selectGroupStandings(doc) : [];
@@ -511,6 +525,28 @@ export default function GroupDoubleEliminationAdminSetup() {
     setNotice(null);
     try {
       await saveGsdeTournament(transform(doc));
+      setNotice({ kind: "ok", text: successText });
+      onSuccess?.();
+    } catch (caught) {
+      setNotice({
+        kind: "error",
+        text: caught instanceof Error ? caught.message : "Unexpected error.",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  /** Atomic variant for approval and team changes, so concurrent edits cannot duplicate a pair. */
+  const applyAtomic = async (
+    transform: (current: GsdeTournamentDocument) => GsdeTournamentDocument,
+    successText: string,
+    onSuccess?: () => void
+  ) => {
+    setSaving(true);
+    setNotice(null);
+    try {
+      await saveGsdeTournamentAtomic(id, transform);
       setNotice({ kind: "ok", text: successText });
       onSuccess?.();
     } catch (caught) {
@@ -838,21 +874,21 @@ export default function GroupDoubleEliminationAdminSetup() {
 
   const sectionOptions: ReadonlyArray<{ key: AdminSection; label: string }> = [
     { key: "overview", label: "🏠 Overview" },
-    { key: "teams", label: "👥 Teams" },
-    { key: "players", label: "🙋 Players" },
-    { key: "pairing", label: "💞 Pairing" },
-    { key: "matches", label: "🏐 Matches" },
-    { key: "results", label: "🏆 Results" },
-    { key: "manage", label: "⚙️ Manage" },
+    { key: "teams", label: "👥 Team setup" },
+    { key: "players", label: "🙋 Player Management" },
+    { key: "pairing", label: "💞 Team Management" },
+    { key: "matches", label: "🏐 Tournament · Matches" },
+    { key: "results", label: "🏆 Tournament · Results" },
+    { key: "manage", label: "⚙️ Tournament Management" },
   ];
 
   const quickLinks: ReadonlyArray<{ key: AdminSection; label: string }> = [
-    { key: "teams", label: "👥 Teams" },
-    { key: "players", label: "🙋 Players" },
-    { key: "pairing", label: "💞 Pairing" },
-    { key: "matches", label: "🏐 Enter scores" },
-    { key: "results", label: "🏆 Results" },
-    { key: "manage", label: "⚙️ Tournament controls" },
+    { key: "teams", label: "👥 Team setup" },
+    { key: "players", label: "🙋 Player Management" },
+    { key: "pairing", label: "💞 Team Management" },
+    { key: "matches", label: "🏐 Tournament · Enter scores" },
+    { key: "results", label: "🏆 Tournament · Results" },
+    { key: "manage", label: "⚙️ Tournament Management" },
   ];
 
   return (
@@ -1193,10 +1229,15 @@ export default function GroupDoubleEliminationAdminSetup() {
                               className="flex-1 touch-target bg-white/70 hover:bg-coral hover:text-white border-coral/30 text-coral font-semibold py-3"
                               disabled={saving || doc.matches.length > 0}
                               onClick={() =>
-                                apply(
-                                  (current) => removeTeam(current, team.id, actor),
-                                  `${team.name} removed.`
-                                )
+                                team.status === "confirmed"
+                                  ? applyAtomic(
+                                      (current) => adminRemovePairing(current, team.id, actor),
+                                      "Team dissolved; both players remain approved and unpaired."
+                                    )
+                                  : apply(
+                                      (current) => removeTeam(current, team.id, actor),
+                                      `${team.name} removed.`
+                                    )
                               }
                             >
                               <Trash2 className="w-4 h-4 mr-1" />
@@ -1242,35 +1283,46 @@ export default function GroupDoubleEliminationAdminSetup() {
               ) : null}
 
               {section === "players" ? (
-                <SectionCard
-                  emoji="🙋"
-                  title="Player registrations"
-                  gradient="sunset"
-                >
+                <SectionCard emoji="🙋" title="Player Management" gradient="sunset">
                   <p className="text-center text-sm text-foreground/65">
                     {registrationStats?.pending ?? 0} pending ·{" "}
-                    {registrationStats?.approved ?? 0} approved
+                    {registrationStats?.approved ?? 0} approved ·{" "}
+                    {registrationStats?.rejected ?? 0} rejected ·{" "}
+                    {registrationStats?.approvedUnpaired ?? 0} approved &amp; unpaired
                   </p>
                   <p className="text-center text-xs text-foreground/55">
-                    Players register themselves at the public registration page. Approve each player
-                    and assign them to a team. Every decision is saved to the activity log.
+                    Approve each individual player first. Team creation is handled separately in
+                    Team Management. Editing a player never changes their approval status.
                   </p>
+                  <TabBar<typeof playerFilter>
+                    label="Player status filter"
+                    columns="grid-cols-2 sm:grid-cols-4"
+                    options={
+                      [
+                        { key: "pending", label: "Pending" },
+                        { key: "approved", label: "Approved" },
+                        { key: "rejected", label: "Rejected" },
+                        { key: "all", label: "All" },
+                      ] as ReadonlyArray<{ key: typeof playerFilter; label: string }>
+                    }
+                    value={playerFilter}
+                    onChange={setPlayerFilter}
+                  />
                   {allRegistrations.length === 0 ? (
                     <p className="rounded-xl bg-sand-light/50 p-4 text-center text-sm font-semibold text-foreground/60">
                       No players have registered yet. Share the registration page with players.
                     </p>
+                  ) : filteredRegistrations.length === 0 ? (
+                    <p className="rounded-xl bg-sand-light/50 p-4 text-center text-sm font-semibold text-foreground/60">
+                      No {playerFilter} players.
+                    </p>
                   ) : (
                     <div className="space-y-3">
-                      {allRegistrations.map((registration) => {
-                        const teamName = registration.teamId
-                          ? doc.teams.find((team) => team.id === registration.teamId)?.name ??
-                            registration.teamId
-                          : null;
-                        const choice =
-                          regTeamChoice[registration.uid] ??
-                          registration.teamId ??
-                          doc.teams[0]?.id ??
-                          "";
+                      {filteredRegistrations.map((registration) => {
+                        const pairingStatus = getPairingStatusForPlayer(doc, registration.uid);
+                        const teamId = getRegisteredTeamId(doc, registration.uid);
+                        const teamName = teamId ? names.get(teamId) ?? teamId : null;
+                        const editing = editingPlayerUid === registration.uid;
                         const tone =
                           registration.status === "approved"
                             ? "palm"
@@ -1291,64 +1343,110 @@ export default function GroupDoubleEliminationAdminSetup() {
                                   {registration.email}
                                 </p>
                                 <p className="text-xs font-semibold text-ocean">
-                                  {registration.gender
-                                    ? registration.gender === "male"
-                                      ? "Male"
-                                      : "Female"
-                                    : "Gender not supplied"}
+                                  {registration.gender === "male"
+                                    ? "Male"
+                                    : registration.gender === "female"
+                                      ? "Female"
+                                      : "Gender not supplied"}
                                 </p>
                               </div>
                               <Pill tone={tone}>{registration.status}</Pill>
                             </div>
-                            {teamName ? (
-                              <p className="text-sm text-foreground/60">
-                                Team: <span className="font-bold">{teamName}</span>
-                              </p>
-                            ) : null}
-                            {registration.status !== "approved" ? (
-                              <Field label="Assign to team">
-                                <select
-                                  aria-label={`Assign ${registration.name} to a team`}
-                                  className={selectCls}
-                                  value={choice}
-                                  disabled={saving || doc.teams.length === 0}
-                                  onChange={(event) =>
-                                    setRegTeamChoice((previous) => ({
-                                      ...previous,
-                                      [registration.uid]: event.target.value,
-                                    }))
-                                  }
-                                >
-                                  {doc.teams.length === 0 ? (
-                                    <option value="">No teams yet</option>
-                                  ) : (
-                                    doc.teams.map((team) => (
-                                      <option
-                                        key={team.id}
-                                        value={team.id}
-                                        disabled={
-                                          !team.playerIds.includes(registration.uid) &&
-                                          team.playerIds.length >= 2
-                                        }
-                                      >
-                                        {names.get(team.id) ?? team.name}
-                                        {team.playerIds.length >= 2 ? " (full)" : ""}
-                                      </option>
-                                    ))
-                                  )}
-                                </select>
-                              </Field>
+                            <div className="flex flex-wrap items-center gap-2 text-sm text-foreground/65">
+                              <span className="font-semibold">Pairing:</span>
+                              <Pill
+                                tone={
+                                  pairingStatus === "paired"
+                                    ? "palm"
+                                    : pairingStatus === "searching" ||
+                                        pairingStatus === "invite-sent" ||
+                                        pairingStatus === "invite-received"
+                                      ? "slate"
+                                      : pairingStatus === "rejected"
+                                        ? "coral"
+                                        : "amber"
+                                }
+                              >
+                                {pairingStatus.replace(/-/g, " ")}
+                              </Pill>
+                              {teamName ? (
+                                <span className="break-words font-bold text-ocean">{teamName}</span>
+                              ) : null}
+                            </div>
+                            {editing ? (
+                              <div className="space-y-3 rounded-xl border-2 border-ocean/20 bg-ocean/5 p-4">
+                                <Field label="Player name">
+                                  <Input
+                                    value={editPlayerName}
+                                    onChange={(event) => setEditPlayerName(event.target.value)}
+                                  />
+                                </Field>
+                                <Field label="Email address">
+                                  <Input
+                                    type="email"
+                                    value={editPlayerEmail}
+                                    onChange={(event) => setEditPlayerEmail(event.target.value)}
+                                  />
+                                </Field>
+                                <Field label="Gender">
+                                  <select
+                                    aria-label="Edit player gender"
+                                    className={selectCls}
+                                    value={editPlayerGender}
+                                    onChange={(event) =>
+                                      setEditPlayerGender(event.target.value as PlayerGender)
+                                    }
+                                  >
+                                    <option value="male">Male</option>
+                                    <option value="female">Female</option>
+                                  </select>
+                                </Field>
+                                <div className="flex flex-wrap gap-2">
+                                  <Button
+                                    className="flex-1 touch-target bg-ocean hover:bg-ocean-dark text-white font-semibold py-3"
+                                    disabled={saving}
+                                    onClick={() =>
+                                      applyAtomic(
+                                        (current) =>
+                                          editPlayerRegistration(
+                                            current,
+                                            registration.uid,
+                                            {
+                                              name: editPlayerName,
+                                              email: editPlayerEmail,
+                                              gender: editPlayerGender,
+                                            },
+                                            actor
+                                          ),
+                                        `${registration.name}'s details were updated.`,
+                                        () => setEditingPlayerUid(null)
+                                      )
+                                    }
+                                  >
+                                    <Check className="w-4 h-4 mr-1" />
+                                    Save details
+                                  </Button>
+                                  <Button
+                                    className="flex-1 touch-target bg-white/70 border-sand-dark/30 text-foreground/60 font-semibold py-3"
+                                    disabled={saving}
+                                    onClick={() => setEditingPlayerUid(null)}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </div>
                             ) : null}
                             <div className="flex flex-wrap gap-2">
                               {registration.status !== "approved" ? (
                                 <Button
                                   className="flex-1 touch-target bg-palm hover:bg-palm-dark text-white font-semibold py-3"
-                                  disabled={saving || doc.teams.length === 0 || !choice}
+                                  disabled={saving}
                                   onClick={() =>
-                                    apply(
+                                    applyAtomic(
                                       (current) =>
-                                        approvePlayerRegistration(current, registration.uid, choice, actor),
-                                      `${registration.name} approved and assigned.`
+                                        approvePlayerRegistration(current, registration.uid, actor),
+                                      `${registration.name} approved as an individual player.`,
+                                      () => setEditingPlayerUid(null)
                                     )
                                   }
                                 >
@@ -1361,9 +1459,11 @@ export default function GroupDoubleEliminationAdminSetup() {
                                   className="flex-1 touch-target bg-white/70 hover:bg-coral hover:text-white border-coral/30 text-coral font-semibold py-3"
                                   disabled={saving}
                                   onClick={() =>
-                                    apply(
-                                      (current) => rejectPlayerRegistration(current, registration.uid, actor),
-                                      `${registration.name}'s registration was rejected.`
+                                    applyAtomic(
+                                      (current) =>
+                                        rejectPlayerRegistration(current, registration.uid, actor),
+                                      `${registration.name}'s registration was rejected.`,
+                                      () => setEditingPlayerUid(null)
                                     )
                                   }
                                 >
@@ -1371,12 +1471,29 @@ export default function GroupDoubleEliminationAdminSetup() {
                                 </Button>
                               ) : null}
                               <Button
+                                className="flex-1 touch-target bg-white/70 border-ocean/30 text-ocean font-semibold py-3"
+                                disabled={saving}
+                                onClick={() => {
+                                  setEditingPlayerUid(registration.uid);
+                                  setEditPlayerName(registration.name);
+                                  setEditPlayerEmail(registration.email);
+                                  setEditPlayerGender(
+                                    registration.gender === "female" ? "female" : "male"
+                                  );
+                                }}
+                              >
+                                <Pencil className="w-4 h-4 mr-1" />
+                                Edit
+                              </Button>
+                              <Button
                                 className="flex-1 touch-target bg-white/70 border-sand-dark/30 text-foreground/60 font-semibold py-3"
                                 disabled={saving}
                                 onClick={() =>
-                                  apply(
-                                    (current) => removePlayerRegistration(current, registration.uid, actor),
-                                    `${registration.name}'s registration was removed.`
+                                  applyAtomic(
+                                    (current) =>
+                                      removePlayerRegistration(current, registration.uid, actor),
+                                    `${registration.name}'s registration was removed.`,
+                                    () => setEditingPlayerUid(null)
                                   )
                                 }
                               >
@@ -1389,30 +1506,52 @@ export default function GroupDoubleEliminationAdminSetup() {
                       })}
                     </div>
                   )}
-                  {doc.teams.length === 0 ? (
-                    <p className="text-center text-xs font-semibold text-amber-800">
-                      Add teams in the Teams section before approving players.
-                    </p>
-                  ) : null}
                 </SectionCard>
               ) : null}
 
               {section === "pairing" ? (
-                <SectionCard emoji="💞" title="Player pairing" gradient="sunset">
+                <SectionCard emoji="💞" title="Team Management" gradient="sunset">
                   <p className="text-center text-sm text-foreground/65">
-                    {unpairedPlayers.length} unpaired ·{" "}
-                    {allInvitations.filter((item) => item.status === "pending").length} pending ·{" "}
-                    {allInvitations.filter((item) => item.status === "accepted").length} accepted
+                    {confirmedTeams.length} confirmed · {unpairedPlayers.length} approved &amp; unpaired ·{" "}
+                    {allInvitations.filter((item) => item.status === "pending").length} pending invitations
                   </p>
                   <p className="text-center text-xs text-foreground/55">
-                    Players invite compatible partners themselves. Review those invitations below,
-                    or create, change and remove fixed pairs manually. Every change is logged.
+                    Only approved, unpaired players can be paired. Mutual player agreement or an admin
+                    action creates one confirmed team with two players and an automatic display name.
+                    Changing or dissolving a team never changes player approval.
                   </p>
                   {pairingLocked ? (
                     <p className="rounded-xl border border-amber-300/60 bg-amber-50/80 p-3 text-center text-xs font-semibold text-amber-800">
-                      Pairings are locked — registration closes when the group stage starts.
+                      Team changes are locked — registration closes when the group stage starts.
                     </p>
                   ) : null}
+
+                  <div className="space-y-3">
+                    <p className="text-sm font-bold">Confirmed teams</p>
+                    {confirmedTeams.length === 0 ? (
+                      <p className="rounded-xl bg-sand-light/50 p-4 text-center text-sm font-semibold text-foreground/60">
+                        No confirmed teams yet.
+                      </p>
+                    ) : (
+                      confirmedTeams.map((team) => (
+                        <div
+                          key={team.id}
+                          className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-palm/30 bg-palm/5 p-3 shadow-sand"
+                        >
+                          <div className="min-w-0">
+                            <p className="break-words text-sm font-bold text-ocean">
+                              {names.get(team.id) ?? team.name}
+                            </p>
+                            <p className="break-all text-xs text-foreground/60">
+                              {team.playerIds.map(playerLabel).join(" / ")}
+                            </p>
+                          </div>
+                          <Pill tone="palm">confirmed</Pill>
+                          <p className="w-full break-all text-[10px] text-foreground/45">ID: {team.id}</p>
+                        </div>
+                      ))
+                    )}
+                  </div>
 
                   <div className="space-y-3 rounded-xl border-2 border-ocean/20 bg-ocean/5 p-4">
                     <p className="text-sm font-bold text-ocean">Create a pair manually</p>
@@ -1426,9 +1565,9 @@ export default function GroupDoubleEliminationAdminSetup() {
                       className={primaryBtn}
                       disabled={saving || pairingLocked || !pairFirstUid || !pairSecondUid}
                       onClick={() =>
-                        apply(
+                        applyAtomic(
                           (current) => adminCreatePairTeam(current, pairFirstUid, pairSecondUid, actor),
-                          "Pair created as a pending team.",
+                          "Confirmed team created.",
                           () => {
                             setPairFirstUid("");
                             setPairSecondUid("");
@@ -1442,7 +1581,7 @@ export default function GroupDoubleEliminationAdminSetup() {
                   </div>
 
                   <div className="space-y-3 rounded-xl border-2 border-sunset/20 bg-sunset/5 p-4">
-                    <p className="text-sm font-bold text-sunset-dark">Change or remove a pair</p>
+                    <p className="text-sm font-bold text-sunset-dark">Change or dissolve a team</p>
                     <Field label="Team">
                       <select
                         aria-label="Team to change"
@@ -1494,7 +1633,7 @@ export default function GroupDoubleEliminationAdminSetup() {
                             !pairChangeSecondUid
                           }
                           onClick={() =>
-                            apply(
+                            applyAtomic(
                               (current) =>
                                 adminChangePairing(
                                   current,
@@ -1503,7 +1642,7 @@ export default function GroupDoubleEliminationAdminSetup() {
                                   pairChangeSecondUid,
                                   actor
                                 ),
-                              "Pair updated.",
+                              "Team membership updated; approval unchanged.",
                               () => {
                                 setPairChangeTeamId("");
                                 setPairChangeFirstUid("");
@@ -1518,9 +1657,9 @@ export default function GroupDoubleEliminationAdminSetup() {
                           className={dangerBtn}
                           disabled={saving || pairingLocked}
                           onClick={() =>
-                            apply(
+                            applyAtomic(
                               (current) => adminRemovePairing(current, pairChangeTeamId, actor),
-                              "Pair removed and both players are unpaired.",
+                              "Team dissolved; both players remain approved and unpaired.",
                               () => {
                                 setPairChangeTeamId("");
                                 setPairChangeFirstUid("");
@@ -1530,7 +1669,7 @@ export default function GroupDoubleEliminationAdminSetup() {
                           }
                         >
                           <Trash2 className="w-4 h-4 mr-2" />
-                          Remove pair
+                          Dissolve team
                         </Button>
                       </>
                     ) : null}
@@ -1564,46 +1703,45 @@ export default function GroupDoubleEliminationAdminSetup() {
                   </div>
 
                   <div className="space-y-3">
-                    <p className="text-sm font-bold">All registered players</p>
-                    {allRegistrations.length === 0 ? (
+                    <p className="text-sm font-bold">Approved, unpaired players</p>
+                    {unpairedPlayers.length === 0 ? (
                       <p className="rounded-xl bg-sand-light/50 p-4 text-center text-sm font-semibold text-foreground/60">
-                        No players have registered yet.
+                        No approved players are waiting for a partner.
                       </p>
                     ) : (
-                      allRegistrations.map((registration) => (
-                        <div
-                          key={registration.uid}
-                          className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-sand-dark/20 bg-white/70 p-3 shadow-sand"
-                        >
-                          <div className="min-w-0">
-                            <p className="break-words text-sm font-bold text-foreground">
-                              {registration.name}
-                            </p>
-                            <p className="break-all text-xs text-foreground/55">
-                              {registration.email}
-                            </p>
-                          </div>
-                          <Pill
-                            tone={
-                              getPairingStatusForPlayer(doc, registration.uid) === "paired"
-                                ? "palm"
-                                : getPairingStatusForPlayer(doc, registration.uid) === "searching"
-                                  ? "slate"
-                                  : "ocean"
-                            }
+                      unpairedPlayers.map((registration) => {
+                        const pairingStatus = getPairingStatusForPlayer(doc, registration.uid);
+                        return (
+                          <div
+                            key={registration.uid}
+                            className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-sand-dark/20 bg-white/70 p-3 shadow-sand"
                           >
-                            {getPairingStatusForPlayer(doc, registration.uid).replace("-", " ")}
-                          </Pill>
-                        </div>
-                      ))
+                            <div className="min-w-0">
+                              <p className="break-words text-sm font-bold text-foreground">
+                                {registration.name}
+                              </p>
+                              <p className="break-all text-xs text-foreground/55">
+                                {registration.email}
+                              </p>
+                            </div>
+                            <Pill
+                              tone={
+                                pairingStatus === "paired"
+                                  ? "palm"
+                                  : pairingStatus === "searching" ||
+                                      pairingStatus === "invite-sent" ||
+                                      pairingStatus === "invite-received"
+                                    ? "slate"
+                                    : "amber"
+                              }
+                            >
+                              {pairingStatus.replace(/-/g, " ")}
+                            </Pill>
+                          </div>
+                        );
+                      })
                     )}
                   </div>
-
-                  {unpairedPlayers.length > 0 ? (
-                    <p className="text-center text-xs font-semibold text-amber-800">
-                      {unpairedPlayers.length} registered player(s) are still unpaired.
-                    </p>
-                  ) : null}
                 </SectionCard>
               ) : null}
 

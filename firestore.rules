@@ -55,9 +55,62 @@ service cloud.firestore {
              && request.resource.data.formatId == 'group-double-elimination';
     }
 
+    // The derived pairing index mirrors approval state and active team for
+    // each player. It lets rules authorise pairing without giving players any
+    // write access to the registration records themselves. Admin writes rebuild
+    // it atomically with every approval / team change.
+    function gsdeEligiblePlayer(index, uid) {
+      let entry = index.get(uid, null);
+      return entry != null
+             && entry.get('status', '') == 'approved'
+             && entry.get('teamId', null) == null;
+    }
+
+    function gsdePairingIndexUnchanged() {
+      let before = resource.data.get('playerPairingIndex', {});
+      let after = request.resource.data.get('playerPairingIndex', {});
+      return after.diff(before).affectedKeys().size() == 0;
+    }
+
+    function gsdePairingIndexAccepted(inviterUid, teamId) {
+      let before = resource.data.get('playerPairingIndex', {});
+      let after = request.resource.data.get('playerPairingIndex', {});
+      let diff = after.diff(before);
+      let inviterBefore = before.get(inviterUid, null);
+      let inviteeBefore = before.get(request.auth.uid, null);
+      let inviterAfter = after.get(inviterUid, null);
+      let inviteeAfter = after.get(request.auth.uid, null);
+      return diff.addedKeys().size() == 0
+             && diff.removedKeys().size() == 0
+             && diff.changedKeys().size() == 2
+             && diff.changedKeys().hasOnly([inviterUid, request.auth.uid])
+             && gsdeEligiblePlayer(before, inviterUid)
+             && gsdeEligiblePlayer(before, request.auth.uid)
+             && inviterBefore != null && inviteeBefore != null
+             && inviterAfter != null && inviteeAfter != null
+             && inviterAfter.get('status', '') == 'approved'
+             && inviteeAfter.get('status', '') == 'approved'
+             && inviterAfter.get('teamId', null) == teamId
+             && inviteeAfter.get('teamId', null) == teamId;
+    }
+
+    function gsdeSelfRegistrationIndex() {
+      let before = resource.data.get('playerPairingIndex', {});
+      let after = request.resource.data.get('playerPairingIndex', {});
+      let diff = after.diff(before);
+      let mine = after.get(request.auth.uid, null);
+      return diff.addedKeys().size() == 1
+             && diff.addedKeys().hasOnly([request.auth.uid])
+             && diff.changedKeys().size() == 0
+             && diff.removedKeys().size() == 0
+             && mine != null
+             && mine.get('status', '') == 'pending'
+             && mine.get('teamId', null) == null;
+    }
+
     // Pairing invitations live only in this document. Each branch allows one
     // specific player action and nothing else: sending/withdrawing touches only
-    // the invitation map; responding may additionally create the single fixed
+    // the invitation map; responding may additionally create the single confirmed
     // team on acceptance. Admin-only fields (registrations, groups, matches,
     // bracket, setup) are never writable through these player branches.
     function gsdePairingSendWrite() {
@@ -67,6 +120,7 @@ service cloud.firestore {
       let afterInvites = after.get('pairingInvitations', {});
       let diff = afterInvites.diff(beforeInvites);
       let mine = afterInvites.get(request.auth.uid, null);
+      let invitee = mine == null ? '' : mine.inviteeUid;
       return after.diff(before).affectedKeys().hasOnly([
                'pairingInvitations', 'auditLog', 'tournament'
              ])
@@ -76,8 +130,12 @@ service cloud.firestore {
         && diff.removedKeys().size() == 0
         && mine != null
         && mine.inviterUid == request.auth.uid
+        && mine.inviteeUid != request.auth.uid
         && mine.status == 'pending'
-        && mine.teamId == null;
+        && mine.teamId == null
+        && gsdePairingIndexUnchanged()
+        && gsdeEligiblePlayer(before.get('playerPairingIndex', {}), request.auth.uid)
+        && gsdeEligiblePlayer(before.get('playerPairingIndex', {}), invitee);
     }
 
     function gsdePairingCancelWrite() {
@@ -97,7 +155,9 @@ service cloud.firestore {
         && mine != null
         && mine.inviterUid == request.auth.uid
         && mine.status == 'cancelled'
-        && mine.teamId == null;
+        && mine.teamId == null
+        && gsdePairingIndexUnchanged()
+        && gsdeEligiblePlayer(before.get('playerPairingIndex', {}), request.auth.uid);
     }
 
     function gsdePairingRespondWrite(accepted) {
@@ -113,7 +173,7 @@ service cloud.firestore {
         && previous != null
         && invitation != null
         && after.diff(before).affectedKeys().hasOnly(accepted
-             ? ['pairingInvitations', 'pairingResponses', 'teams', 'auditLog', 'tournament']
+             ? ['pairingInvitations', 'pairingResponses', 'teams', 'playerPairingIndex', 'auditLog', 'tournament']
              : ['pairingInvitations', 'pairingResponses', 'auditLog', 'tournament'])
         && previous.status == 'pending'
         && invitation.inviteeUid == request.auth.uid
@@ -127,11 +187,15 @@ service cloud.firestore {
         && after.get('pairingResponses', {}).diff(before.get('pairingResponses', {})).affectedKeys().hasOnly([request.auth.uid])
         && (after.get('pairingResponses', {}).diff(before.get('pairingResponses', {})).addedKeys().size() == 1
             || after.get('pairingResponses', {}).diff(before.get('pairingResponses', {})).changedKeys().size() == 1)
+        && gsdeEligiblePlayer(before.get('playerPairingIndex', {}), request.auth.uid)
+        && (accepted
+             ? gsdePairingIndexAccepted(invitation.inviterUid, invitation.teamId)
+             : gsdePairingIndexUnchanged())
         && (!accepted || (
              after.teams.size() == before.teams.size() + 1
              && after.teams.hasAll(before.teams)
              && after.teams[after.teams.size() - 1].id == invitation.teamId
-             && after.teams[after.teams.size() - 1].status == 'pending'
+             && after.teams[after.teams.size() - 1].status == 'confirmed'
              && after.teams[after.teams.size() - 1].groupId == null
              && after.teams[after.teams.size() - 1].playerIds.size() == 2
              && after.teams[after.teams.size() - 1].playerIds.hasOnly([
@@ -169,9 +233,19 @@ service cloud.firestore {
         && after.tournament.diff(before.tournament).affectedKeys().hasOnly(['updatedAt'])
         && gsdeAuditAppend()
         && (
-          // Self-registration: append exactly one registration record.
-          (after.diff(before).affectedKeys().hasOnly(['registrations', 'auditLog', 'tournament'])
-            && after.registrations.size() == before.registrations.size() + 1)
+          // Self-registration: append exactly one PENDING record owned by the
+          // caller, plus its derived index entry. Approval is admin-only.
+          (after.diff(before).affectedKeys().hasOnly([
+             'registrations', 'playerPairingIndex', 'auditLog', 'tournament'
+           ])
+            && after.registrations.size() == before.registrations.size() + 1
+            && after.registrations[after.registrations.size() - 1].uid == request.auth.uid
+            && after.registrations[after.registrations.size() - 1].status == 'pending'
+            && after.registrations[after.registrations.size() - 1].teamId == null
+            && ['male', 'female'].hasAny([
+                 after.registrations[after.registrations.size() - 1].gender
+               ])
+            && gsdeSelfRegistrationIndex())
           ||
           // Score submission: only the caller's sub-map may gain one entry.
           // No existing submission may be changed or removed (submit-once).

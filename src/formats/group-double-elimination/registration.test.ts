@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { PlayerGender, Team, TournamentCategory } from "./types";
+import type { PlayerGender, TournamentCategory } from "./types";
 import {
   createGsdeTournamentDocument,
   fromGsdeFirestoreData,
@@ -12,46 +12,25 @@ import {
   getRegisteredTeamId,
   getRegistrationStats,
   getRegistrations,
+  isApprovedUnpairedPlayer,
   normalizeRegistrationEmail,
+  selectApprovedUnpairedRegistrations,
   selectPendingRegistrations,
+  selectRegistrationsByStatus,
   validateRegistrationDraft,
 } from "./registration";
 import {
   approvePlayerRegistration,
+  editPlayerRegistration,
   registerPlayer,
   rejectPlayerRegistration,
   removePlayerRegistration,
   ScoringError,
 } from "./scoring";
+import { adminCreatePairTeam, createPairTeamId } from "./pairing";
 import { validateTournamentIntegrity } from "./integrity";
 
 const ADMIN = { id: "admin-1", label: "admin@example.com", isAdmin: true };
-
-const makeTeams = (customName = false): Team[] => [
-  {
-    id: "t1",
-    name: customName ? "The Spikers" : "Team 1",
-    playerIds: [],
-    seed: 1,
-    groupId: null,
-    ...(customName ? { nameIsCustom: true } : {}),
-  },
-  { id: "t2", name: "Team 2", playerIds: [], seed: 2, groupId: null },
-];
-
-const makeDoc = (
-  category: TournamentCategory = "Mixto",
-  teams: Team[] = makeTeams()
-): GsdeTournamentDocument => {
-  const template = createGsdeTournamentDocument("event-1", { teams });
-  return {
-    ...template,
-    tournament: {
-      ...template.tournament,
-      config: { ...template.tournament.config, category },
-    },
-  };
-};
 
 const draft = (
   uid: string,
@@ -59,6 +38,22 @@ const draft = (
   name: string,
   gender: PlayerGender = "male"
 ) => ({ uid, email, name, gender });
+
+const makeDoc = (
+  category: TournamentCategory = "Mixto"
+): GsdeTournamentDocument => {
+  const base = createGsdeTournamentDocument("event-1");
+  return {
+    ...base,
+    tournament: {
+      ...base.tournament,
+      config: { ...base.tournament.config, category },
+    },
+  };
+};
+
+const playerA = draft("u1", "alex@example.com", "Alex", "male");
+const playerB = draft("u2", "blair@example.com", "Blair", "female");
 
 const capture = (action: () => unknown): ScoringError => {
   try {
@@ -70,7 +65,7 @@ const capture = (action: () => unknown): ScoringError => {
   throw new Error("Expected a ScoringError");
 };
 
-describe("player registration validation and selectors", () => {
+describe("individual registration", () => {
   it("normalizes emails and validates player-supplied fields", () => {
     expect(normalizeRegistrationEmail("  Alex@Example.COM ")).toBe("alex@example.com");
     expect(validateRegistrationDraft(draft("u1", "a@b.com", "Alex"))).toEqual([]);
@@ -85,50 +80,8 @@ describe("player registration validation and selectors", () => {
     ).toContain("gender");
   });
 
-  it("resolves a team only for an approved, assigned registration", () => {
-    let doc = registerPlayer(makeDoc(), draft("u1", "a@b.com", "Alex"));
-    expect(getRegisteredTeamId(doc, "u1")).toBeNull();
-
-    doc = approvePlayerRegistration(doc, "u1", "t1", ADMIN);
-    expect(getRegisteredTeamId(doc, "u1")).toBe("t1");
-
-    doc = rejectPlayerRegistration(doc, "u1", ADMIN);
-    expect(getRegisteredTeamId(doc, "u1")).toBeNull();
-  });
-
-  it("reports registration stats and orders pending registrations by time", () => {
-    let doc = makeDoc();
-    doc = registerPlayer(doc, draft("u1", "a@b.com", "Alex"));
-    // Force distinct, sortable timestamps without relying on clock resolution.
-    const registrations = getRegistrations(doc).map((item, index) => ({
-      ...item,
-      registeredAt: index === 0 ? "2026-01-02T00:00:00.000Z" : item.registeredAt,
-    }));
-    doc = { ...doc, registrations };
-    doc = registerPlayer(doc, draft("u2", "b@b.com", "Blair", "female"));
-    doc = {
-      ...doc,
-      registrations: getRegistrations(doc).map((item) =>
-        item.uid === "u2" ? { ...item, registeredAt: "2026-01-01T00:00:00.000Z" } : item
-      ),
-    };
-    doc = approvePlayerRegistration(doc, "u2", "t2", ADMIN);
-
-    const stats = getRegistrationStats(doc);
-    expect(stats).toMatchObject({ total: 2, pending: 1, approved: 1, assigned: 1 });
-    expect(selectPendingRegistrations(doc).map((item) => item.uid)).toEqual(["u1"]);
-    expect(findRegistrationByUid(doc, "u1")?.email).toBe("a@b.com");
-    expect(findRegistrationByEmail(doc, " A@B.COM ")?.uid).toBe("u1");
-  });
-});
-
-describe("registration mutations", () => {
-  it("registers a pending player, normalized, with gender and an audit entry", () => {
-    const doc = registerPlayer(
-      makeDoc(),
-      draft("u1", "  Alex@Example.com ", "  Alex  "),
-      { id: "u1", label: "alex@example.com", isAdmin: false }
-    );
+  it("registers one pending individual with no partner, team name or team link", () => {
+    const doc = registerPlayer(makeDoc(), draft("u1", "  Alex@Example.com ", "  Alex  "));
 
     expect(getRegistrations(doc)).toHaveLength(1);
     expect(getRegistrations(doc)[0]).toMatchObject({
@@ -140,136 +93,178 @@ describe("registration mutations", () => {
       teamId: null,
       decidedAt: null,
     });
+    expect(doc.teams).toEqual([]);
+    expect(getRegisteredTeamId(doc, "u1")).toBeNull();
     expect(doc.auditLog?.some((entry) => entry.action === "player-registered")).toBe(true);
-    expect(doc.teams.every((team) => team.playerIds.length === 0)).toBe(true);
+    expect(validateTournamentIntegrity(doc)).toEqual([]);
   });
 
-  it("rejects duplicate uid/email registrations and invalid fields", () => {
+  it("rejects duplicate uid/email registrations and invalid fields without mutating", () => {
     const doc = registerPlayer(makeDoc(), draft("u1", "alex@example.com", "Alex"));
     expect(capture(() => registerPlayer(doc, draft("u1", "other@example.com", "Other"))).code).toBe("already-registered");
     expect(capture(() => registerPlayer(doc, draft("u2", "ALEX@example.com", "Other"))).code).toBe("already-registered");
     expect(capture(() => registerPlayer(doc, draft("", "x@y.com", "X"))).code).toBe("registration-invalid");
-    expect(getRegistrations(doc)).toHaveLength(1); // failed attempts leave the doc unchanged
+    expect(getRegistrations(doc)).toHaveLength(1);
+  });
+});
+
+describe("independent admin approval", () => {
+  it("approves an individual without creating or assigning a team", () => {
+    const registered = registerPlayer(makeDoc(), playerA);
+    const approved = approvePlayerRegistration(registered, "u1", ADMIN);
+
+    expect(findRegistrationByUid(approved, "u1")).toMatchObject({
+      status: "approved",
+      teamId: null,
+    });
+    expect(findRegistrationByUid(approved, "u1")?.decidedAt).toBeTruthy();
+    expect(approved.teams).toEqual([]);
+    expect(isApprovedUnpairedPlayer(approved, "u1")).toBe(true);
+    expect(selectApprovedUnpairedRegistrations(approved).map((item) => item.uid)).toEqual(["u1"]);
+    expect(approved.playerPairingIndex?.["u1"]).toEqual({ status: "approved", teamId: null });
+    expect(approved.auditLog?.some((entry) => entry.action === "player-registration-approved")).toBe(true);
+    expect(validateTournamentIntegrity(approved)).toEqual([]);
   });
 
-  it("closes registration once the group stage starts", () => {
-    const template = createGsdeTournamentDocument("event-1");
-    const doc: GsdeTournamentDocument = {
-      ...template,
-      teams: makeTeams(),
-      tournament: { ...template.tournament, status: "group-stage" },
-    };
-    expect(capture(() => registerPlayer(doc, draft("u1", "a@b.com", "Alex"))).code).toBe("registration-closed");
-    expect(capture(() => approvePlayerRegistration(doc, "u1", "t1", ADMIN)).code).toBe("registration-closed");
-    expect(capture(() => rejectPlayerRegistration(doc, "u1", ADMIN)).code).toBe("registration-closed");
-    expect(capture(() => removePlayerRegistration(doc, "u1", ADMIN)).code).toBe("registration-closed");
+  it("reports separate pending, approved, rejected and unpaired counts", () => {
+    let doc = makeDoc();
+    doc = registerPlayer(doc, playerA);
+    doc = registerPlayer(doc, playerB);
+    doc = registerPlayer(doc, draft("u3", "casey@example.com", "Casey", "male"));
+    doc = approvePlayerRegistration(doc, "u1", ADMIN);
+    doc = rejectPlayerRegistration(doc, "u2", ADMIN);
+
+    expect(getRegistrationStats(doc)).toMatchObject({
+      total: 3,
+      pending: 1,
+      approved: 1,
+      rejected: 1,
+      assigned: 0,
+      approvedUnpaired: 1,
+    });
+    expect(selectPendingRegistrations(doc).map((item) => item.uid)).toEqual(["u3"]);
+    expect(selectRegistrationsByStatus(doc, "approved").map((item) => item.uid)).toEqual(["u1"]);
+    expect(selectRegistrationsByStatus(doc, "rejected").map((item) => item.uid)).toEqual(["u2"]);
+    expect(findRegistrationByEmail(doc, " ALEX@EXAMPLE.COM ")?.uid).toBe("u1");
   });
 
-  it("approves a player, assigns a team, fills playerIds and audits the decision", () => {
-    let doc = registerPlayer(makeDoc(), draft("u1", "a@b.com", "Alex"));
-    doc = approvePlayerRegistration(doc, "u1", "t2", ADMIN);
+  it("edits player details without changing approval or team state", () => {
+    let doc = registerPlayer(makeDoc(), playerA);
+    doc = approvePlayerRegistration(doc, "u1", ADMIN);
+    doc = editPlayerRegistration(
+      doc,
+      "u1",
+      { name: "Alex Updated", email: " NEW@EXAMPLE.COM ", gender: "female" },
+      ADMIN
+    );
 
     expect(findRegistrationByUid(doc, "u1")).toMatchObject({
+      name: "Alex Updated",
+      email: "new@example.com",
+      gender: "female",
       status: "approved",
-      teamId: "t2",
+      teamId: null,
     });
-    expect(findRegistrationByUid(doc, "u1")?.decidedAt).toBeTruthy();
-    expect(doc.teams.find((team) => team.id === "t2")?.playerIds).toEqual(["u1"]);
-    expect(doc.teams.find((team) => team.id === "t1")?.playerIds).toEqual([]);
-    expect(doc.auditLog?.some((entry) => entry.action === "player-registration-approved" && entry.teamId === "t2")).toBe(true);
+    expect(doc.auditLog?.some((entry) => entry.action === "player-registration-edited")).toBe(true);
+    expect(validateTournamentIntegrity(doc)).toEqual([]);
   });
 
-  it("reassigning an approved player moves the playerId to the new team", () => {
-    let doc = registerPlayer(makeDoc(), draft("u1", "a@b.com", "Alex"));
-    doc = approvePlayerRegistration(doc, "u1", "t1", ADMIN);
-    doc = approvePlayerRegistration(doc, "u1", "t2", ADMIN);
+  it("rejects duplicate email edits and approval of unknown registrations", () => {
+    let doc = registerPlayer(makeDoc(), playerA);
+    doc = registerPlayer(doc, playerB);
 
-    expect(doc.teams.find((team) => team.id === "t1")?.playerIds).toEqual([]);
-    expect(doc.teams.find((team) => team.id === "t2")?.playerIds).toEqual(["u1"]);
-  });
-
-  it("refuses a third player on a fixed two-player team", () => {
-    let doc = makeDoc();
-    doc = registerPlayer(doc, draft("u1", "a@b.com", "Alex", "male"));
-    doc = registerPlayer(doc, draft("u2", "b@b.com", "Blair", "female"));
-    doc = registerPlayer(doc, draft("u3", "c@b.com", "Casey", "male"));
-    doc = approvePlayerRegistration(doc, "u1", "t1", ADMIN);
-    doc = approvePlayerRegistration(doc, "u2", "t1", ADMIN);
-
-    expect(capture(() => approvePlayerRegistration(doc, "u3", "t1", ADMIN)).code).toBe(
-      "invalid-team"
+    expect(capture(() => editPlayerRegistration(doc, "u1", { email: "blair@example.com" }, ADMIN)).code).toBe(
+      "already-registered"
     );
-  });
-
-  it("refuses a pair that violates the selected category", () => {
-    let doc = makeDoc("Male");
-    doc = registerPlayer(doc, draft("u1", "a@b.com", "Alex", "male"));
-    doc = registerPlayer(doc, draft("u2", "b@b.com", "Blair", "female"));
-    doc = approvePlayerRegistration(doc, "u1", "t1", ADMIN);
-
-    expect(capture(() => approvePlayerRegistration(doc, "u2", "t1", ADMIN)).code).toBe(
-      "integrity-violation"
-    );
+    expect(capture(() => approvePlayerRegistration(doc, "missing", ADMIN)).code).toBe("registration-not-found");
+    expect(capture(() => rejectPlayerRegistration(doc, "missing", ADMIN)).code).toBe("registration-not-found");
+    expect(capture(() => removePlayerRegistration(doc, "missing", ADMIN)).code).toBe("registration-not-found");
   });
 
   it("refuses approval when a legacy registration has no gender", () => {
-    let doc = registerPlayer(makeDoc(), draft("u1", "a@b.com", "Alex"));
+    let doc = registerPlayer(makeDoc(), playerA);
     doc = {
       ...doc,
       registrations: getRegistrations(doc).map(({ gender: _gender, ...rest }) => rest),
     };
-    expect(capture(() => approvePlayerRegistration(doc, "u1", "t1", ADMIN)).code).toBe(
-      "registration-invalid"
-    );
+    expect(capture(() => approvePlayerRegistration(doc, "u1", ADMIN)).code).toBe("registration-invalid");
   });
 
-  it("refreshes pair-derived team names but preserves custom names", () => {
-    let derived = makeDoc();
-    derived = registerPlayer(derived, draft("u1", "a@b.com", "Alex", "male"));
-    derived = registerPlayer(derived, draft("u2", "b@b.com", "Blair", "female"));
-    derived = approvePlayerRegistration(derived, "u1", "t1", ADMIN);
-    derived = approvePlayerRegistration(derived, "u2", "t1", ADMIN);
-    expect(derived.teams.find((team) => team.id === "t1")?.name).toBe("Alex / Blair");
+  it("closes approval, editing and decisions once the group stage starts", () => {
+    const base = registerPlayer(makeDoc(), playerA);
+    const locked: GsdeTournamentDocument = {
+      ...base,
+      tournament: { ...base.tournament, status: "group-stage" },
+    };
+    expect(capture(() => registerPlayer(locked, playerB)).code).toBe("registration-closed");
+    expect(capture(() => approvePlayerRegistration(locked, "u1", ADMIN)).code).toBe("registration-closed");
+    expect(capture(() => editPlayerRegistration(locked, "u1", { name: "Other" }, ADMIN)).code).toBe("registration-closed");
+    expect(capture(() => rejectPlayerRegistration(locked, "u1", ADMIN)).code).toBe("registration-closed");
+    expect(capture(() => removePlayerRegistration(locked, "u1", ADMIN)).code).toBe("registration-closed");
+  });
+});
 
-    let custom = makeDoc("Mixto", makeTeams(true));
-    custom = registerPlayer(custom, draft("u1", "a@b.com", "Alex", "male"));
-    custom = registerPlayer(custom, draft("u2", "b@b.com", "Blair", "female"));
-    custom = approvePlayerRegistration(custom, "u1", "t1", ADMIN);
-    custom = approvePlayerRegistration(custom, "u2", "t1", ADMIN);
-    expect(custom.teams.find((team) => team.id === "t1")?.name).toBe("The Spikers");
+describe("team changes preserve player approval", () => {
+  const approvedPairDoc = (): GsdeTournamentDocument => {
+    let doc = registerPlayer(makeDoc(), playerA);
+    doc = registerPlayer(doc, playerB);
+    doc = approvePlayerRegistration(doc, "u1", ADMIN);
+    doc = approvePlayerRegistration(doc, "u2", ADMIN);
+    return adminCreatePairTeam(doc, "u1", "u2", ADMIN);
+  };
+
+  it("links approved players to a confirmed team without re-approving them", () => {
+    const doc = approvedPairDoc();
+    const teamId = createPairTeamId("u1", "u2");
+
+    expect(doc.teams).toHaveLength(1);
+    expect(doc.teams[0]).toMatchObject({
+      id: teamId,
+      name: "Alex / Blair",
+      playerIds: ["u1", "u2"],
+      status: "confirmed",
+      groupId: null,
+    });
+    expect(getRegisteredTeamId(doc, "u1")).toBe(teamId);
+    expect(getRegisteredTeamId(doc, "u2")).toBe(teamId);
+    expect(findRegistrationByUid(doc, "u1")?.status).toBe("approved");
+    expect(findRegistrationByUid(doc, "u2")?.status).toBe("approved");
+    expect(doc.playerPairingIndex?.["u1"]).toEqual({ status: "approved", teamId });
+    expect(doc.playerPairingIndex?.["u2"]).toEqual({ status: "approved", teamId });
+    expect(validateTournamentIntegrity(doc)).toEqual([]);
   });
 
-  it("rejecting and removing a player clear the team assignment", () => {
-    let doc = registerPlayer(makeDoc(), draft("u1", "a@b.com", "Alex"));
-    doc = approvePlayerRegistration(doc, "u1", "t1", ADMIN);
+  it("rejecting a paired player dissolves the team and keeps the other player approved", () => {
+    const doc = rejectPlayerRegistration(approvedPairDoc(), "u1", ADMIN);
 
-    doc = rejectPlayerRegistration(doc, "u1", ADMIN);
+    expect(doc.teams).toEqual([]);
     expect(findRegistrationByUid(doc, "u1")?.status).toBe("rejected");
     expect(findRegistrationByUid(doc, "u1")?.teamId).toBeNull();
-    expect(doc.teams.every((team) => team.playerIds.length === 0)).toBe(true);
-    expect(doc.auditLog?.some((entry) => entry.action === "player-registration-rejected")).toBe(true);
-
-    doc = removePlayerRegistration(doc, "u1", ADMIN);
-    expect(getRegistrations(doc)).toHaveLength(0);
-    expect(findRegistrationByUid(doc, "u1")).toBeUndefined();
-    expect(doc.auditLog?.some((entry) => entry.action === "player-registration-removed")).toBe(true);
+    expect(findRegistrationByUid(doc, "u2")?.status).toBe("approved");
+    expect(findRegistrationByUid(doc, "u2")?.teamId).toBeNull();
+    expect(isApprovedUnpairedPlayer(doc, "u2")).toBe(true);
+    expect(validateTournamentIntegrity(doc)).toEqual([]);
   });
 
-  it("rejects approval for an unknown registration or unknown team", () => {
-    const doc = registerPlayer(makeDoc(), draft("u1", "a@b.com", "Alex"));
-    expect(capture(() => approvePlayerRegistration(doc, "missing", "t1", ADMIN)).code).toBe("registration-not-found");
-    expect(capture(() => approvePlayerRegistration(doc, "u1", "missing", ADMIN)).code).toBe("invalid-team");
+  it("removing a paired player dissolves the team and keeps the other player approved", () => {
+    const doc = removePlayerRegistration(approvedPairDoc(), "u1", ADMIN);
+
+    expect(doc.teams).toEqual([]);
+    expect(findRegistrationByUid(doc, "u1")).toBeUndefined();
+    expect(findRegistrationByUid(doc, "u2")?.status).toBe("approved");
+    expect(getRegisteredTeamId(doc, "u2")).toBeNull();
+    expect(validateTournamentIntegrity(doc)).toEqual([]);
   });
 });
 
 describe("registration integrity and persistence", () => {
-  it("flags duplicate registration identities and invalid assignments", () => {
-    const base = registerPlayer(makeDoc(), draft("u1", "a@b.com", "Alex"));
+  it("flags duplicate identities, invalid assignments and a stale pairing index", () => {
+    const base = registerPlayer(makeDoc(), playerA);
     const duplicateUid = {
       ...base,
       registrations: [
         ...getRegistrations(base),
-        { ...getRegistrations(base)[0], email: "other@b.com" },
+        { ...getRegistrations(base)[0], email: "other@example.com" },
       ],
     };
     expect(validateTournamentIntegrity(duplicateUid).map((issue) => issue.code)).toContain("duplicate-registration-uid");
@@ -278,7 +273,16 @@ describe("registration integrity and persistence", () => {
       ...base,
       registrations: [
         ...getRegistrations(base),
-        { uid: "u2", email: " A@B.COM ", name: "Other", gender: "female" as const, status: "pending" as const, teamId: null, registeredAt: "2026-01-01T00:00:00.000Z", decidedAt: null },
+        {
+          uid: "u2",
+          email: " ALEX@EXAMPLE.COM ",
+          name: "Other",
+          gender: "female" as const,
+          status: "pending" as const,
+          teamId: null,
+          registeredAt: "2026-01-01T00:00:00.000Z",
+          decidedAt: null,
+        },
       ],
     };
     expect(validateTournamentIntegrity(duplicateEmail).map((issue) => issue.code)).toContain("duplicate-registration-email");
@@ -288,15 +292,22 @@ describe("registration integrity and persistence", () => {
       registrations: getRegistrations(base).map((item) => ({ ...item, status: "approved" as const, teamId: "missing" })),
     };
     expect(validateTournamentIntegrity(invalidTeam).map((issue) => issue.code)).toContain("invalid-registration-team");
+
+    const staleIndex = {
+      ...base,
+      registrations: getRegistrations(base).map((item) => ({ ...item, status: "approved" as const })),
+    };
+    expect(validateTournamentIntegrity(staleIndex).map((issue) => issue.code)).toContain("invalid-player-pairing-index");
   });
 
-  it("round-trips registrations through Firestore serialization", () => {
-    let doc = makeDoc();
-    doc = registerPlayer(doc, draft("u1", "a@b.com", "Alex"));
-    doc = approvePlayerRegistration(doc, "u1", "t1", ADMIN);
+  it("round-trips registrations and rebuilds the derived index through Firestore serialization", () => {
+    let doc = registerPlayer(makeDoc(), playerA);
+    doc = approvePlayerRegistration(doc, "u1", ADMIN);
+    doc = registerPlayer(doc, playerB);
 
     const restored = fromGsdeFirestoreData(toGsdeFirestoreData(doc), doc.id);
     expect(restored).toEqual(doc);
     expect(getRegistrations(restored!)).toEqual(getRegistrations(doc));
+    expect(restored?.playerPairingIndex).toEqual(doc.playerPairingIndex);
   });
 });

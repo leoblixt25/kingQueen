@@ -1,13 +1,17 @@
 import type { PlayerGender, PlayerRegistration } from "./types";
-import type { GsdeTournamentDocument } from "./persistence";
+import type {
+  GsdeTournamentDocument,
+  PlayerPairingIndex,
+} from "./persistence";
 
 /**
  * Pure helpers for self-service player registration.
  *
- * Registration is individual (like King & Queen) but is stored ONLY in the
- * isolated `tournaments/{id}` document. The Firebase Auth uid is the identity;
- * an admin approves the player and assigns them to a team, which fills that
- * team's `playerIds`. This module has no React or Firebase dependency.
+ * Registration is individual and approval is independent from team creation.
+ * Records are stored ONLY in the isolated `tournaments/{id}` document. The
+ * Firebase Auth uid is the identity; an admin approves the player first, then
+ * either the players or the admin create a two-player team. This module has no
+ * React or Firebase dependency.
  */
 
 export interface RegistrationDraft {
@@ -37,6 +41,58 @@ export const normalizeRegistrationEmail = (email: string): string =>
 export const getRegistrations = (
   doc: GsdeTournamentDocument
 ): PlayerRegistration[] => doc.registrations ?? [];
+
+/**
+ * The active team for a player is membership in a confirmed team. Registration
+ * `teamId` is kept for admin-managed records, but accepted player invitations
+ * do not need to rewrite registrations to establish membership.
+ */
+export const getTeamIdForPlayer = (
+  doc: GsdeTournamentDocument,
+  uid: string
+): string | null => {
+  const membership = doc.teams.find(
+    (team) => team.status !== "pending" && team.playerIds.includes(uid)
+  );
+  return membership?.id ?? null;
+};
+
+/**
+ * Rebuild the rules-visible pairing index from the authoritative records.
+ * Called on every committed GSDE change so the index can never drift.
+ */
+export const rebuildPlayerPairingIndex = (
+  doc: GsdeTournamentDocument
+): PlayerPairingIndex => {
+  const index: PlayerPairingIndex = {};
+  for (const registration of getRegistrations(doc)) {
+    index[registration.uid] = {
+      status: registration.status,
+      teamId: registration.status === "approved"
+        ? getTeamIdForPlayer(doc, registration.uid)
+        : null,
+    };
+  }
+  return index;
+};
+
+export const withPlayerPairingIndex = (
+  doc: GsdeTournamentDocument
+): GsdeTournamentDocument => ({
+  ...doc,
+  playerPairingIndex: rebuildPlayerPairingIndex(doc),
+});
+
+/** An approved player with no active team may use partner finding. */
+export const isApprovedUnpairedPlayer = (
+  doc: GsdeTournamentDocument,
+  uid: string
+): boolean => {
+  const registration = findRegistrationByUid(doc, uid);
+  return (
+    registration?.status === "approved" && !getTeamIdForPlayer(doc, uid)
+  );
+};
 
 /** Validate the player-supplied fields before any mutation is attempted. */
 export const validateRegistrationDraft = (
@@ -78,28 +134,26 @@ export const findRegistrationByEmail = (
 };
 
 /**
- * The team a signed-in player is allowed to see. Only an APPROVED registration
- * with an assigned team resolves to a team id — pending/rejected players never
- * get an automatic team link.
+ * The team a signed-in player is allowed to see. Approval is checked first, and
+ * the link comes from actual team membership — never from an invitation. This
+ * is what keeps pending players out of teams and prevents duplicate pairings.
  */
 export const getRegisteredTeamId = (
   doc: GsdeTournamentDocument,
   uid: string
 ): string | null => {
   const registration = findRegistrationByUid(doc, uid);
-  if (registration?.status === "approved" && registration.teamId) {
-    return registration.teamId;
-  }
-  // A player-initiated pair creates the team before an admin confirms the
-  // registration. Fall back to an accepted invitation so the two players stay
-  // linked from the moment the invitation is accepted.
-  const accepted = Object.values(doc.pairingInvitations ?? {}).find(
-    (invitation) =>
-      invitation.status === "accepted" &&
-      (invitation.inviterUid === uid || invitation.inviteeUid === uid) &&
-      Boolean(invitation.teamId)
-  );
-  return accepted?.teamId ?? null;
+  if (registration?.status !== "approved") return null;
+  const membership = getTeamIdForPlayer(doc, uid);
+  if (membership) return membership;
+  // Admin-managed records can still carry an explicit team id; accept it only
+  // when it resolves to a real team that contains the player.
+  return registration.teamId &&
+    doc.teams.some(
+      (team) => team.id === registration.teamId && team.playerIds.includes(uid)
+    )
+    ? registration.teamId
+    : null;
 };
 
 export interface RegistrationStats {
@@ -108,6 +162,7 @@ export interface RegistrationStats {
   approved: number;
   rejected: number;
   assigned: number;
+  approvedUnpaired: number;
 }
 
 export const getRegistrationStats = (
@@ -120,7 +175,10 @@ export const getRegistrationStats = (
     approved: registrations.filter((item) => item.status === "approved").length,
     rejected: registrations.filter((item) => item.status === "rejected").length,
     assigned: registrations.filter(
-      (item) => item.status === "approved" && Boolean(item.teamId)
+      (item) => item.status === "approved" && Boolean(getRegisteredTeamId(doc, item.uid))
+    ).length,
+    approvedUnpaired: registrations.filter((item) =>
+      isApprovedUnpairedPlayer(doc, item.uid)
     ).length,
   };
 };
@@ -131,4 +189,18 @@ export const selectPendingRegistrations = (
 ): PlayerRegistration[] =>
   getRegistrations(doc)
     .filter((item) => item.status === "pending")
+    .sort((a, b) => a.registeredAt.localeCompare(b.registeredAt));
+
+export const selectRegistrationsByStatus = (
+  doc: GsdeTournamentDocument,
+  status: PlayerRegistration["status"]
+): PlayerRegistration[] =>
+  getRegistrations(doc).filter((item) => item.status === status);
+
+/** Approved players still waiting for a partner, oldest first. */
+export const selectApprovedUnpairedRegistrations = (
+  doc: GsdeTournamentDocument
+): PlayerRegistration[] =>
+  getRegistrations(doc)
+    .filter((item) => isApprovedUnpairedPlayer(doc, item.uid))
     .sort((a, b) => a.registeredAt.localeCompare(b.registeredAt));

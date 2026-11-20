@@ -4,6 +4,7 @@ import { getLoser, getWinner, hasDecidableScores, deriveWinner } from "./matchRe
 import { listEliminationMatches } from "./bracket";
 import { isGroupStageMatchComplete } from "./groupStageMatches";
 import { normalizeTournamentCategory, validateTeamsForCategory } from "./category";
+import { getTeamIdForPlayer } from "./registration";
 
 /**
  * Central integrity checks. A transition is only allowed to persist if the
@@ -29,6 +30,8 @@ export type IntegrityCode =
   | "invalid-registration-team"
   | "invalid-team-category"
   | "invalid-team-size"
+  | "invalid-team-player"
+  | "invalid-player-pairing-index"
   | "invalid-pairing-invitation"
   | "invalid-pairing-response"
   | "invalid-pairing-team"
@@ -118,15 +121,46 @@ export const validateTournamentIntegrity = (
     add("duplicate-registration-email", `Duplicate registration for email "${email}".`);
   }
   const teamIds = new Set(doc.teams.map((team) => team.id));
+  const teamByIdCheck = new Map(doc.teams.map((team) => [team.id, team]));
   for (const registration of registrations) {
-    if (
-      registration.status === "approved" &&
-      (!registration.teamId || !teamIds.has(registration.teamId))
+    // Approval is independent: an approved player may legitimately have no team
+    // yet. A stored team id, however, must resolve to a team that contains them.
+    if (registration.teamId && !teamIds.has(registration.teamId)) {
+      add(
+        "invalid-registration-team",
+        `Registration "${registration.uid}" points to unknown team "${registration.teamId}".`
+      );
+    } else if (
+      registration.status !== "approved" &&
+      Boolean(registration.teamId)
     ) {
       add(
         "invalid-registration-team",
-        `Approved registration "${registration.uid}" has no valid team.`
+        `${registration.status} registration "${registration.uid}" must not have a team.`
       );
+    } else if (
+      registration.status === "approved" &&
+      registration.teamId &&
+      !teamByIdCheck.get(registration.teamId)?.playerIds.includes(registration.uid)
+    ) {
+      add(
+        "invalid-registration-team",
+        `Registration "${registration.uid}" is not on team "${registration.teamId}".`
+      );
+    }
+
+    const entry = doc.playerPairingIndex?.[registration.uid];
+    if (entry) {
+      const expectedTeamId =
+        registration.status === "approved"
+          ? getTeamIdForPlayer(doc, registration.uid)
+          : null;
+      if (entry.status !== registration.status || entry.teamId !== expectedTeamId) {
+        add(
+          "invalid-player-pairing-index",
+          `Pairing index for "${registration.uid}" is out of sync with its registration.`
+        );
+      }
     }
   }
 
@@ -234,12 +268,23 @@ export const validateTournamentIntegrity = (
     }
   }
 
+  const registrationByUid = new Map(registrations.map((item) => [item.uid, item]));
   for (const team of doc.teams) {
-    if (team.playerIds.length > 2) {
+    if (team.playerIds.length > 2 || (team.status === "confirmed" && team.playerIds.length !== 2)) {
       add(
         "invalid-team-size",
         `Team "${team.name}" has ${team.playerIds.length} players; a 2x2 pair needs exactly two.`
       );
+    }
+    if (team.status === "confirmed") {
+      for (const uid of team.playerIds) {
+        if (registrationByUid.get(uid)?.status !== "approved") {
+          add(
+            "invalid-team-player",
+            `Confirmed team "${team.name}" contains a player who is not approved.`
+          );
+        }
+      }
     }
   }
   for (const message of validateTeamsForCategory(doc)) {

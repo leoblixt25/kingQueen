@@ -10,7 +10,6 @@ import { listEliminationMatches } from "./bracket";
 import { getGameNumber } from "./gameNumbers";
 import {
   approvePlayerRegistration,
-  approveTeam,
   buildTeamsAndGroups,
   generateEliminationBracket,
   registerPlayer,
@@ -355,21 +354,19 @@ export const loadTestTeamsAndPlayers = (
     }
   }
 
-  // 2 & 3. A compatible invitation is sent and accepted, creating one fixed
-  // pending team per pair while registrations remain individual.
+  // 2. Admin approves every individual player. Pairing is gated on approval.
+  for (const pair of pairs) {
+    for (const player of pair.players) {
+      seeded = approvePlayerRegistration(seeded, player.uid, actor);
+    }
+  }
+
+  // 3 & 4. A compatible invitation is sent and accepted, creating one confirmed
+  // team per pair. Registrations keep their independent approved status.
   for (const pair of pairs) {
     const [inviter, invitee] = pair.players;
     const invited = sendPairingInvitation(seeded, inviter.uid, invitee.uid, actor);
     seeded = acceptPairingInvitation(invited, invitee.uid, inviter.uid, actor);
-  }
-
-  // 4. Admin approves every pending team and both players on it.
-  for (const team of seeded.teams) {
-    let approved = approveTeam(seeded, team.id, true, actor);
-    for (const uid of team.playerIds) {
-      approved = approvePlayerRegistration(approved, uid, team.id, actor);
-    }
-    seeded = approved;
   }
 
   // Pair-created teams start unseeded; keep the simulator's stable 1..N order.

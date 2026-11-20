@@ -30,6 +30,7 @@ export type AuditAction =
   | "test-data-loaded"
   | "player-registered"
   | "player-registration-approved"
+  | "player-registration-edited"
   | "player-registration-rejected"
   | "player-registration-removed"
   | "pairing-invitation-sent"

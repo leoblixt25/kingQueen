@@ -66,10 +66,11 @@ export interface Team {
   seed: number | null;
   groupId: GroupId | null;
   /**
-   * Admin approval state. Legacy documents without this field are treated as
-   * approved (see `isApprovedTeam`), so older persisted tournaments keep working.
+   * Team lifecycle state. `confirmed` is the state written when two approved
+   * players pair; `approved` is kept for legacy/manual teams. Missing status is
+   * treated as approved (see `isApprovedTeam`) so older documents keep working.
    */
-  status?: "pending" | "approved";
+  status?: "pending" | "approved" | "confirmed";
   /**
    * True when an admin entered the name manually. Pair-derived names are
    * refreshed when registrations complete; custom names are never overwritten.

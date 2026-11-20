@@ -52,7 +52,7 @@ export function GsdePublicShell({
           <Button
             variant="ghost"
             onClick={() => navigate(backTo)}
-            className="absolute left-0 top-0 px-2 text-foreground/70 hover:text-foreground hover:bg-transparent"
+            className="touch-target absolute left-0 top-0 px-2 text-foreground/70 hover:text-foreground hover:bg-transparent"
           >
             <ChevronLeft className="w-4 h-4 mr-1" />
             {backLabel}

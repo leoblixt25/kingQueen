@@ -15,6 +15,7 @@ import {
   Mail,
 } from "lucide-react";
 import { GROUP_DOUBLE_ELIMINATION_FORMAT } from "@/formats";
+import { destinationForRegistration } from "@/formats/group-double-elimination/playerRouting";
 import {
   findRegistrationByEmail,
   findRegistrationByUid,
@@ -28,6 +29,7 @@ import {
   GsdeGoogleButton,
   GsdeMainTitle,
   gsdeHref,
+  gsdePlayerRoute,
   useGsdeTournament,
 } from "./shared";
 
@@ -60,14 +62,11 @@ export default function GroupDoubleEliminationSignIn() {
     const registration =
       (doc && findRegistrationByUid(doc, user.uid)) ||
       (doc && user.email && findRegistrationByEmail(doc, user.email));
-
-    if (registration?.status === "approved") {
-      go(`${ROUTE}/player`);
-    } else if (registration) {
-      go(`${ROUTE}/register/pending`);
-    } else {
-      go(`${ROUTE}/register`);
-    }
+    const destination =
+      doc && registration
+        ? destinationForRegistration(doc, registration)
+        : "register";
+    navigate(gsdePlayerRoute(destination, id), { replace: true });
   };
 
   const handleSubmit = async (event: React.FormEvent) => {

@@ -1,29 +1,29 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Alert,
+  AlertDescription,
+} from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   AlertCircle,
   ArrowLeft,
+  CheckCircle2,
   Clock,
   Loader2,
   LogOut,
   Mail,
-  Users,
   XCircle,
 } from "lucide-react";
 import { GROUP_DOUBLE_ELIMINATION_FORMAT } from "@/formats";
-import {
-  findRegistrationByUid,
-  getRegisteredTeamId,
-} from "@/formats/group-double-elimination/registration";
+import { findRegistrationByUid } from "@/formats/group-double-elimination/registration";
 import { signOutRegistration } from "@/formats/group-double-elimination/registrationAuth";
-import { resolveTeamDisplayName } from "@/formats/group-double-elimination/category";
 import {
   GsdeMainTitle,
   gsdeHref,
   useGsdeAuth,
+  useGsdePlayerRedirect,
   useGsdeTournament,
 } from "./shared";
 import GsdeBottomNav from "./GsdeBottomNav";
@@ -32,26 +32,31 @@ const ROUTE = GROUP_DOUBLE_ELIMINATION_FORMAT.route;
 const REGISTER_ROUTE = `${ROUTE}/register`;
 const SIGN_IN_ROUTE = `${ROUTE}/sign-in`;
 const PLAYER_ACCESS_ROUTE = `${ROUTE}/player-access`;
-const PLAYER_ROUTE = `${ROUTE}/player`;
-const PAIRING_ROUTE = `${ROUTE}/pairing`;
 
 const CARD = "w-full bg-white/90 backdrop-blur-sm border shadow-beach";
 const PRIMARY =
   "w-full touch-target bg-ocean hover:bg-ocean-dark text-white font-semibold";
 
-/** K&Q-style registration status screen, scoped to the isolated GSDE flow. */
+/**
+ * Registration status screen. Pending and rejected players stay here until an
+ * admin changes the decision; approved players are moved on automatically by
+ * the shared state resolver (pairing first, My Tournament once a team exists).
+ */
 export default function GroupDoubleEliminationRegistrationPending() {
   const navigate = useNavigate();
   const { id, doc, loading: docLoading } = useGsdeTournament();
   const { user, loading: authLoading } = useGsdeAuth();
   const [signingOut, setSigningOut] = useState(false);
 
+  useGsdePlayerRedirect({
+    current: "register-pending",
+    doc,
+    id,
+    uid: user?.uid,
+    ready: !docLoading && !authLoading,
+  });
+
   const registration = doc && user ? findRegistrationByUid(doc, user.uid) : undefined;
-  const teamId = doc && user ? getRegisteredTeamId(doc, user.uid) : null;
-  const team = teamId && doc ? doc.teams.find((item) => item.id === teamId) : undefined;
-  const teamLabel = team && doc
-    ? resolveTeamDisplayName(doc.registrations ?? [], team)
-    : "no team yet";
 
   const go = (route: string) => navigate(gsdeHref(route, id));
 
@@ -105,9 +110,7 @@ export default function GroupDoubleEliminationRegistrationPending() {
             <CardContent className="space-y-4">
               <Alert className="border-coral/30 bg-coral/10">
                 <AlertCircle className="h-4 w-4 text-coral" />
-                <AlertDescription>
-                  Sign in to see your registration status.
-                </AlertDescription>
+                <AlertDescription>Sign in to see your registration status.</AlertDescription>
               </Alert>
               <Button onClick={() => go(SIGN_IN_ROUTE)} className={PRIMARY}>
                 Sign In
@@ -118,9 +121,7 @@ export default function GroupDoubleEliminationRegistrationPending() {
         ) : !registration ? (
           <Card className={`${CARD} border-coral/20`}>
             <CardHeader>
-              <CardTitle className="text-center text-coral">
-                Registration Not Found
-              </CardTitle>
+              <CardTitle className="text-center text-coral">Registration Not Found</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <Alert className="border-coral/30 bg-coral/10">
@@ -135,39 +136,10 @@ export default function GroupDoubleEliminationRegistrationPending() {
             </CardContent>
           </Card>
         ) : registration.status === "approved" ? (
-          <Card className={`${CARD} border-palm/20`}>
-            <CardHeader>
-              <CardTitle className="text-center text-palm flex items-center justify-center gap-2">
-                🎉 Registration Approved!
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-center text-foreground/70">
-                Welcome, <strong>{registration.name}</strong>! You can now access the tournament.
-              </p>
-              <Alert className="border-palm/30 bg-palm/10">
-                <AlertDescription>
-                  {team ? (
-                    <>
-                      Team: <strong>{teamLabel}</strong>
-                    </>
-                  ) : (
-                    "You are approved but unpaired. Find a partner to create your team."
-                  )}
-                </AlertDescription>
-              </Alert>
-              <Button onClick={() => go(PLAYER_ROUTE)} className={PRIMARY}>
-                <Users className="w-4 h-4 mr-2" />
-                Open My team
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => go(PAIRING_ROUTE)}
-                className="w-full"
-              >
-                Find a partner
-              </Button>
-              {homeButton}
+          <Card className={`${CARD} border-palm/30`}>
+            <CardContent className="flex items-center justify-center gap-2 p-10 text-sm text-foreground/60">
+              <CheckCircle2 className="h-5 w-5 text-palm" />
+              Approved — opening your next step…
             </CardContent>
           </Card>
         ) : registration.status === "rejected" ? (
@@ -184,11 +156,7 @@ export default function GroupDoubleEliminationRegistrationPending() {
                   Contact the organiser if you think this is a mistake.
                 </AlertDescription>
               </Alert>
-              <Button
-                variant="outline"
-                onClick={() => go(REGISTER_ROUTE)}
-                className="w-full"
-              >
+              <Button variant="outline" onClick={() => go(REGISTER_ROUTE)} className="w-full">
                 Back to registration
               </Button>
               {homeButton}
@@ -219,8 +187,8 @@ export default function GroupDoubleEliminationRegistrationPending() {
                 <h3 className="font-semibold text-amber-800 mb-2">What happens next?</h3>
                 <ul className="text-sm text-amber-700 space-y-2">
                   <li>• An admin will review and approve your individual registration</li>
-                  <li>• Once approved, invite another approved player to form your team</li>
-                  <li>• This page updates automatically once you&apos;re approved</li>
+                  <li>• Once approved, you will be taken to partner finding automatically</li>
+                  <li>• This page updates as soon as the decision changes</li>
                 </ul>
               </div>
 

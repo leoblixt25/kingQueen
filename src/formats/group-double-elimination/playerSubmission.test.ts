@@ -108,6 +108,33 @@ describe("GSDE player score submission", () => {
     expect(findSubmissionForMatch(next, match.id)?.playerUid).toBe("uid-1");
   });
 
+  it("lets a paired player submit when team membership lives in team.playerIds", () => {
+    // Pairing intentionally leaves registration.teamId null. A paired player
+    // must still be able to score their team's matches from live DB state.
+    const base = readyDoc();
+    const doc = {
+      ...base,
+      registrations: base.registrations?.map((item) =>
+        item.uid === "uid-1" ? { ...item, teamId: null } : item
+      ),
+    };
+    const match = firstMatchFor(doc, "t1");
+    const isA = match.teamAId === "t1";
+
+    const next = submitPlayerGroupScore(doc, {
+      uid: "uid-1",
+      matchId: match.id,
+      scoreFor: 21,
+      scoreAgainst: 18,
+    });
+
+    const scored = next.matches.find((item) => item.id === match.id)!;
+    expect(scored.status).toBe("completed");
+    expect(scored.scoreA).toBe(isA ? 21 : 18);
+    expect(scored.scoreB).toBe(isA ? 18 : 21);
+    expect(findPlayerSubmission(next, "uid-1", match.id)?.winnerId).toBe("t1");
+  });
+
   it("locks a submitted score so the player cannot edit or resubmit", () => {
     const doc = readyDoc();
     const match = firstMatchFor(doc, "t1");

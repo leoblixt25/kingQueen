@@ -6,7 +6,7 @@ import type {
   ScoreSubmissionMap,
   TeamId,
 } from "./types";
-import { findRegistrationByUid } from "./registration";
+import { findRegistrationByUid, getRegisteredTeamId } from "./registration";
 import { listEliminationMatches } from "./bracket";
 import { getGameLabel, getGameNumber } from "./gameNumbers";
 import type { AuditActor } from "./audit";
@@ -153,16 +153,20 @@ const requireApprovedPlayer = (
   if (!registration) {
     fail("not-registered", "You are not registered for this tournament.");
   }
-  if (registration.status !== "approved" || !registration.teamId) {
+  // Pairing creates membership through `team.playerIds` and deliberately
+  // leaves `registration.teamId` null. Use the same approval-gated, DB-derived
+  // lookup as the player pages so paired players can submit scores too.
+  const teamId = getRegisteredTeamId(doc, uid);
+  if (registration.status !== "approved" || !teamId) {
     fail(
       "registration-not-approved",
-      "Your registration is not approved yet. Wait for an admin to assign your team."
+      "Your registration is not approved yet, or you have not formed a team."
     );
   }
-  if (!doc.teams.some((team) => team.id === registration.teamId)) {
+  if (!doc.teams.some((team) => team.id === teamId)) {
     fail("registration-not-approved", "Your assigned team no longer exists.");
   }
-  return { teamId: registration.teamId as TeamId, label: registration.email };
+  return { teamId: teamId as TeamId, label: registration.email };
 };
 
 const assertNotSubmitted = (

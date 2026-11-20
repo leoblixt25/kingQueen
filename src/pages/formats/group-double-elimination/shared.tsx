@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import type {
   BracketLink,
@@ -10,6 +10,10 @@ import type {
 } from "@/formats/group-double-elimination";
 import { getGameLabel } from "@/formats/group-double-elimination";
 import { resolveTeamDisplayName } from "@/formats/group-double-elimination/category";
+import {
+  resolvePlayerDestination,
+  type GsdePlayerDestination,
+} from "@/formats/group-double-elimination/playerRouting";
 import {
   createGsdeTournamentDocument,
   subscribeGsdeTournament,
@@ -31,6 +35,52 @@ export const gsdeHref = (route: string, id: string): string =>
   id === DEFAULT_GSDE_TOURNAMENT_ID
     ? route
     : `${route}?id=${encodeURIComponent(id)}`;
+
+const PLAYER_ROUTE_SUFFIX: Record<GsdePlayerDestination, string> = {
+  register: "/register",
+  "register-pending": "/register/pending",
+  "player-access": "/player-access",
+  "my-tournament": "/player",
+};
+
+/** Maps a player state to its URL while preserving the selected tournament id. */
+export const gsdePlayerRoute = (
+  destination: GsdePlayerDestination,
+  id: string
+): string =>
+  gsdeHref(
+    `${GROUP_DOUBLE_ELIMINATION_FORMAT.route}${PLAYER_ROUTE_SUFFIX[destination]}`,
+    id
+  );
+
+/**
+ * Keeps a player on the screen that matches their live database state.
+ * Call from every player-facing page with the state it represents. Data is
+ * passed in so the hook does not open a second Firestore subscription.
+ */
+export const useGsdePlayerRedirect = ({
+  current,
+  doc,
+  id,
+  uid,
+  ready,
+  enabled = true,
+}: {
+  current: GsdePlayerDestination;
+  doc: GsdeTournamentDocument | null;
+  id: string;
+  uid: string | null | undefined;
+  ready: boolean;
+  enabled?: boolean;
+}): void => {
+  const navigate = useNavigate();
+  const destination = resolvePlayerDestination(doc, uid);
+
+  useEffect(() => {
+    if (!enabled || !ready || !destination || destination === current) return;
+    navigate(gsdePlayerRoute(destination, id), { replace: true });
+  }, [enabled, ready, destination, current, id, navigate]);
+};
 
 /** K&Q-style gradient title, branded for the group-stage format. */
 export function GsdeMainTitle() {

@@ -38,6 +38,7 @@ import {
   GsdeMainTitle,
   gsdeHref,
   useGsdeAuth,
+  useGsdePlayerRedirect,
   useGsdeTournament,
 } from "./shared";
 
@@ -64,7 +65,7 @@ const firebaseMessage = (error: unknown): string => {
 
 /** K&Q-style player registration, scoped to the isolated GSDE flow. */
 export default function GroupDoubleEliminationRegister() {
-  const { id, doc } = useGsdeTournament();
+  const { id, doc, loading: docLoading } = useGsdeTournament();
   const { user, loading: authLoading } = useGsdeAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -75,6 +76,16 @@ export default function GroupDoubleEliminationRegister() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // A signed-in player who is already registered belongs on their state page.
+  useGsdePlayerRedirect({
+    current: "register",
+    doc,
+    id,
+    uid: user?.uid,
+    ready: !docLoading && !authLoading,
+    enabled: searchParams.get("mode") !== "sign-in",
+  });
 
   // The old combined "?mode=sign-in" link now opens the dedicated sign-in page.
   useEffect(() => {

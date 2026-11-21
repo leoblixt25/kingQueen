@@ -5,6 +5,7 @@ import {
   Crown,
   Download,
   Info,
+  LayoutDashboard,
   Shuffle,
   Trophy,
   Users,
@@ -55,6 +56,13 @@ export default function GroupStageDoubleElimination() {
         </p>
 
         <div className="space-y-4">
+          <Button
+            onClick={() => go(`${ROUTE}/overview`)}
+            className="w-full py-7 text-xl font-bold bg-gradient-to-r from-[#0A1E39] via-[#3450D5] to-[#5B78E8] hover:from-[#0A1E39] hover:via-[#2B45B8] hover:to-[#3450D5] text-white shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 flex items-center justify-center gap-3 rounded-2xl"
+          >
+            <LayoutDashboard className="w-6 h-6 text-[#F5C451]" />
+            Tournament Overview
+          </Button>
           <Button
             onClick={() => go(`${ROUTE}/draw`)}
             className="w-full py-7 text-xl font-bold bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 flex items-center justify-center gap-3 rounded-2xl"

@@ -22,6 +22,7 @@ import PublicDrawPage from "./pages/PublicDrawPage";
 import InstallPage from "./pages/InstallPage";
 import GroupStageDoubleElimination from "./pages/formats/GroupStageDoubleElimination";
 import GroupDoubleEliminationAdminSetup from "./pages/formats/group-double-elimination/AdminSetup";
+import GroupDoubleEliminationOverview from "./pages/formats/group-double-elimination/Overview";
 import GroupDoubleEliminationDraw from "./pages/formats/group-double-elimination/Draw";
 import GroupDoubleEliminationRanking from "./pages/formats/group-double-elimination/Ranking";
 import GroupDoubleEliminationInfo from "./pages/formats/group-double-elimination/Info";
@@ -50,6 +51,7 @@ const App = () => (
             <Route path="/king-queen" element={<Landing />} />
             <Route path="/formats/group-stage-double-elimination" element={<GsdeLayout />}>
               <Route index element={<GroupStageDoubleElimination />} />
+              <Route path="overview" element={<GroupDoubleEliminationOverview />} />
               <Route path="draw" element={<GroupDoubleEliminationDraw />} />
               <Route path="ranking" element={<GroupDoubleEliminationRanking />} />
               <Route path="info" element={<GroupDoubleEliminationInfo />} />
